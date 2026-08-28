@@ -11,6 +11,7 @@ import {
 import { normalizeSearchQuery } from "../lib/queryLimits.js";
 import { responseJson } from "../lib/response.js";
 import { applyRecentChapterFields } from "../lib/catalogChapters.js";
+import { sortSourcesByVideoHost } from "../lib/videoHosts.js";
 
 const BASE_URL = "https://french-stream.one";
 const BASE_HOST = "french-stream.one";
@@ -747,21 +748,7 @@ export function flattenFrenchStreamPlayers(players = {}, language = "") {
       });
     }
   }
-  const ranked = [];
-  const used = new Set();
-  for (const pattern of PLAYER_HOST_ORDER) {
-    for (const entry of sources) {
-      if (used.has(entry.url) || !pattern.test(entry.url)) continue;
-      used.add(entry.url);
-      ranked.push(entry);
-    }
-  }
-  for (const entry of sources) {
-    if (used.has(entry.url)) continue;
-    used.add(entry.url);
-    ranked.push(entry);
-  }
-  return ranked;
+  return sortSourcesByVideoHost(sources, (entry) => entry.url, PLAYER_HOST_ORDER);
 }
 
 export function frenchStreamAudioLanguagesFromPlayers(players = {}) {

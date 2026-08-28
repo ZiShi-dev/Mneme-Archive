@@ -11,6 +11,7 @@ import { normalizeSearchQuery } from "../lib/queryLimits.js";
 import { responseJson } from "../lib/response.js";
 import { applyRecentChapterFields } from "../lib/catalogChapters.js";
 import { assertPublicHttpsUrl } from "../lib/urlSecurity.js";
+import { videoHostRank } from "../lib/videoHosts.js";
 
 export const DEFAULT_COFLEX_BASE_URL = "https://coflix.esq";
 const SOURCE_NAME = "Coflix";
@@ -24,15 +25,6 @@ const IMAGE_HOSTS = new Set([
   "image.tmdb.org",
   "www.themoviedb.org",
 ]);
-
-const PLAYER_HOST_ORDER = [
-  /vidzy\./i,
-  /fsvid\./i,
-  /filemoon\./i,
-  /uqload\./i,
-  /voe\.sx/i,
-  /dood\./i,
-];
 
 export function resolveCoflixContext(requestUrl) {
   const raw = requestUrl.searchParams.get("baseUrl")?.trim() || DEFAULT_COFLEX_BASE_URL;
@@ -345,8 +337,7 @@ export function parseCoflixDetails(html, url, ctx) {
 }
 
 function hostRank(url = "") {
-  const index = PLAYER_HOST_ORDER.findIndex((pattern) => pattern.test(url));
-  return index === -1 ? PLAYER_HOST_ORDER.length : index;
+  return videoHostRank(url);
 }
 
 function isHttpUrl(value = "") {

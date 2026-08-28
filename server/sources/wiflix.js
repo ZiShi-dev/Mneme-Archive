@@ -9,6 +9,7 @@ import {
   enrichSourcesWithStreams,
 } from "../lib/embedResolvers.js";
 import { fetchProxiedHlsResource } from "../lib/hlsProxy.js";
+import { videoHostRank } from "../lib/videoHosts.js";
 
 const BASE_URL = "https://www.wiflix.tv";
 const BASE_HOST = "www.wiflix.tv";
@@ -577,8 +578,7 @@ function languageRank(label = "") {
 }
 
 function hostRank(url = "") {
-  const index = PLAYER_HOST_ORDER.findIndex((pattern) => pattern.test(url));
-  return index === -1 ? PLAYER_HOST_ORDER.length : index;
+  return videoHostRank(url, PLAYER_HOST_ORDER);
 }
 
 function pushPlayer(sources, seen, url, hostLabel, version) {

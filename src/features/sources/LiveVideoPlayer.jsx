@@ -1,50 +1,34 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Capacitor } from "@capacitor/core";
-import { ArrowRight, Bookmark, Check, ChevronRight, Clapperboard, ExternalLink, Play, RefreshCw, RotateCcw, RotateCw, Wifi } from "lucide-react";
+import { ArrowRight, Bookmark, Check, ChevronRight, Clapperboard, ExternalLink, RefreshCw, RotateCcw, RotateCw, Wifi } from "lucide-react";
 import { burstSakuraFrom } from "../../lib/sakura/burst";
-import { lockLandscapeOrientation, unlockOrientation } from "../../lib/video/orientationLock";
+import { unlockOrientation } from "../../lib/video/orientationLock";
 import { useToast } from "../../components/ui/ToastProvider";
 import { getSourceProfile, resolveSourceId } from "../../config/sources";
 import { getChapterProgress, setChapterProgress } from "../../lib/storage/chapterProgress";
-import { fetchSourceChapter, fetchSourceDetails, formatSourceError, sourceStreamUrl, sourceSubtitleUrl } from "./sourceApi";
 import { ReaderHeader } from "./ReaderHeader";
 import { VideoPlaybackControls } from "./VideoPlaybackControls";
 import { PlyrHlsPlayer } from "./PlyrHlsPlayer";
 import { EmbedPlayerFrame } from "./EmbedPlayerFrame";
 import { getItemType } from "./contentTypes";
-import { installEmbedPopupGuards } from "../../lib/video/embedHosts";
-import { getMediaPresentation, resolveVideoPlayback, formatEpisodeHeaderLabel } from "./mediaPresentation";
+import { getMediaPresentation, formatEpisodeHeaderLabel } from "./mediaPresentation";
 import { isChromebookApp } from "../../config/appFlavor";
 import { scrollAppToTop } from "../../lib/platform/scrollRoot";
 import { useI18n } from "../../i18n/I18nProvider";
-import { ThemedScrollbar } from "../../components/layout/ThemedScrollbar";
-import { pickBestPlaybackSourceIndex, sortPlaybackSources } from "../../lib/hls/playbackQuality";
-
-const VIDEO_COMPLETE_THRESHOLD = 92;
-const EMBED_TICK_MS = 15000;
-const EMBED_SECONDS_PER_PERCENT = 45;
-const EMBED_PROGRESS_CAP = 91;
-const PLAYBACK_SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
-const SKIP_SECONDS = 10;
-const CHROME_IDLE_MS = 3200;
-const FULLSCREEN_CHROME_IDLE_MS = 2000;
-const DOUBLE_TAP_MS = 320;
-const SINGLE_TAP_DELAY_MS = 280;
-const SKIP_ZONE_RATIO = 0.38;
-
-function formatServerLabel(source = {}, translate) {
-  const label = String(source.label || "").trim();
-  if (/^anime4up[12]$/i.test(label)) return translate("reader.stream.serverN", { n: label.replace(/anime4up/i, "") });
-  return label || translate("reader.stream.server");
-}
-
-function sortSourcesByPlaybackQuality(sources = []) {
-  return sortPlaybackSources(sources);
-}
-
-function pickBestSourceIndex(sources = []) {
-  return pickBestPlaybackSourceIndex(sources);
-}
+import {
+  EMBED_PROGRESS_CAP,
+  EMBED_SECONDS_PER_PERCENT,
+  EMBED_TICK_MS,
+  formatServerLabel,
+  PLAYBACK_SPEEDS,
+  SKIP_SECONDS,
+  SINGLE_TAP_DELAY_MS,
+  SKIP_ZONE_RATIO,
+  DOUBLE_TAP_MS,
+  VIDEO_COMPLETE_THRESHOLD,
+} from "./liveVideo/constants";
+import { useVideoChapterSession } from "./liveVideo/useVideoChapterSession";
+import { useVideoCinemaChrome } from "./liveVideo/useVideoCinemaChrome";
+import { VideoEpisodePlaylist } from "./liveVideo/VideoEpisodePlaylist";
 
 export function LiveVideoPlayer({
   manga,
@@ -60,13 +44,6 @@ export function LiveVideoPlayer({
   const sourceId = resolveSourceId(manga);
   const profile = getSourceProfile(sourceId);
   const presentation = getMediaPresentation(getItemType(manga));
-  const [activeChapter, setActiveChapter] = useState(chapter);
-  const [chapters, setChapters] = useState(manga.recentChapters || [chapter]);
-  const [data, setData] = useState(null);
-  const [error, setError] = useState("");
-  const [activeSourceIndex, setActiveSourceIndex] = useState(0);
-  const [hlsRetryKey, setHlsRetryKey] = useState(0);
-  const [preferEmbedPlayback, setPreferEmbedPlayback] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -75,358 +52,100 @@ export function LiveVideoPlayer({
   const [playbackRate, setPlaybackRate] = useState(1);
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [nativeFullscreen, setNativeFullscreen] = useState(false);
-  const [immersiveMode, setImmersiveMode] = useState(false);
-  const [phoneLandscape, setPhoneLandscape] = useState(false);
   const [subtitlesEnabled, setSubtitlesEnabled] = useState(true);
-  const [chromeVisible, setChromeVisible] = useState(true);
   const [skipFlash, setSkipFlash] = useState(null);
   const videoRef = useRef(null);
   const [plyrInstance, setPlyrInstance] = useState(null);
   const plyrInstanceRef = useRef(null);
   const embedRef = useRef(null);
-  const fullscreenRootRef = useRef(null);
-  const chromeHideTimerRef = useRef(0);
-  const chromeInteractingRef = useRef(false);
   const singleTapTimerRef = useRef(0);
   const skipFlashTimerRef = useRef(0);
   const tapStateRef = useRef({ time: 0, x: 0 });
   const completedRef = useRef(false);
   const playErrorAtRef = useRef(0);
 
-  const orderedSources = useMemo(
-    () => sortSourcesByPlaybackQuality(data?.sources?.length ? data.sources : []),
-    [data?.sources],
-  );
+  const mangaRef = useRef(manga);
+  const saveProgressRef = useRef(onSaveProgress);
+  mangaRef.current = manga;
+  saveProgressRef.current = onSaveProgress;
 
-  const currentSource = orderedSources[activeSourceIndex] ?? orderedSources[0] ?? null;
+  const onChapterLoadStart = useCallback(() => {
+    setPlaying(false);
+    setBuffered(0);
+    setSubtitlesEnabled(true);
+    completedRef.current = false;
+    setCurrentTime(0);
+    setDuration(0);
+  }, []);
 
-  const orderedSourcesRef = useRef(orderedSources);
-  const activeSourceIndexRef = useRef(activeSourceIndex);
-  orderedSourcesRef.current = orderedSources;
-  activeSourceIndexRef.current = activeSourceIndex;
+  const {
+    activeChapter,
+    chapters,
+    data,
+    error,
+    activeSourceIndex,
+    hlsRetryKey,
+    orderedSources,
+    playback,
+    embedMode,
+    usePlyrPlayer,
+    subtitleTracks,
+    handleHlsError,
+    selectSource,
+    changeChapter,
+    initialProgress,
+  } = useVideoChapterSession({
+    manga,
+    chapter,
+    sourceId,
+    presentation,
+    pushToast,
+    t,
+    onChapterLoadStart,
+  });
 
-  const handleHlsError = useCallback(() => {
-    const sources = orderedSourcesRef.current;
-    const index = activeSourceIndexRef.current;
-    const current = sources[index];
-
-    if (current?.streamUrl && current?.url && !preferEmbedPlayback) {
-      pushToast({ type: "info", message: t("reader.stream.embedFallback") });
-      setPreferEmbedPlayback(true);
-      setHlsRetryKey((value) => value + 1);
-      return;
-    }
-
-    if (index + 1 < sources.length) {
-      pushToast({ type: "info", message: t("reader.stream.switchingServer") });
-      setPreferEmbedPlayback(false);
-      setActiveSourceIndex(index + 1);
-      setHlsRetryKey((value) => value + 1);
-      return;
-    }
-
-    if (current?.url && !preferEmbedPlayback) {
-      pushToast({ type: "info", message: t("reader.stream.embedFallback") });
-      setPreferEmbedPlayback(true);
-      setHlsRetryKey((value) => value + 1);
-      return;
-    }
-
-    pushToast({
-      type: "error",
-      message: t("reader.stream.playFailed"),
-    });
-  }, [preferEmbedPlayback, pushToast, t]);
+  const chapterRef = useRef(activeChapter);
+  chapterRef.current = activeChapter;
 
   const handleHlsReady = useCallback((video) => {
     setDuration(video.duration || 0);
   }, []);
 
-  const bindImmersiveRoot = useCallback((node) => {
-    fullscreenRootRef.current = node;
-  }, []);
-
-  const mangaRef = useRef(manga);
-  const chapterRef = useRef(activeChapter);
-  const saveProgressRef = useRef(onSaveProgress);
-  mangaRef.current = manga;
-  chapterRef.current = activeChapter;
-  saveProgressRef.current = onSaveProgress;
-
-  const playback = useMemo(() => {
-    if (!data) return null;
-
-    if (currentSource?.streamUrl && !preferEmbedPlayback) {
-      const referer = currentSource.streamReferer || data.streamReferer || data.url || activeChapter.url;
-      return {
-        mode: "hls",
-        url: sourceStreamUrl(sourceId, currentSource.streamUrl, referer),
-        referer,
-      };
-    }
-
-    if (currentSource?.url) {
-      return { mode: "embed", url: currentSource.url };
-    }
-
-    const resolved = resolveVideoPlayback(data);
-    if (resolved?.mode === "hls" && (data.streamUrl || data.videoUrl || resolved.url)) {
-      const streamUrl = data.streamUrl || data.videoUrl || resolved.url;
-      const referer = data.streamReferer || data.url || activeChapter.url;
-      return {
-        mode: "hls",
-        url: sourceStreamUrl(sourceId, streamUrl, referer),
-        referer,
-      };
-    }
-
-    if (data.embedUrl || resolved?.mode === "embed") {
-      return { mode: "embed", url: data.embedUrl || resolved.url };
-    }
-
-    return resolved;
-  }, [activeChapter.url, currentSource, data, preferEmbedPlayback, sourceId]);
-
-  const embedMode = playback?.mode === "embed";
-  const usePlyrPlayer = playback?.mode === "hls";
-  const plyrFullscreenActive = Boolean(plyrInstance?.fullscreen?.active);
-  const cinemaMode = Boolean(
-    playback
-    && (immersiveMode || isFullscreen || plyrFullscreenActive),
-  );
-  const cssFullscreen = cinemaMode && !nativeFullscreen;
-
-  const syncCinemaDom = useCallback((active) => {
-    const root = fullscreenRootRef.current;
-    if (!root) return;
-    if (active) root.classList.add("plyr--fullscreen-fallback");
-    else root.classList.remove("plyr--fullscreen-fallback", "plyr--fullscreen-active");
-  }, []);
-
-  const activateCinemaMode = useCallback(() => {
-    setChromeVisible(true);
-    setImmersiveMode(true);
-    setIsFullscreen(true);
-    syncCinemaDom(true);
-  }, [syncCinemaDom]);
+  const {
+    chromeVisible,
+    revealChrome,
+    hideChrome,
+    isFullscreen,
+    immersiveMode,
+    cinemaMode,
+    cssFullscreen,
+    bindImmersiveRoot,
+    requestFullscreen,
+    handleChromeInteractionStart,
+    handleChromeInteractionEnd,
+    phoneLandscape,
+    pipSupported,
+    resetChromeOnChapterChange,
+  } = useVideoCinemaChrome({
+    playback,
+    embedMode,
+    usePlyrPlayer,
+    playing,
+    plyrInstance,
+    plyrInstanceRef,
+  });
 
   useEffect(() => {
-    if (!plyrInstance) return undefined;
-    const getFullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
-    const onEnter = () => {
-      const nativeActive = Boolean(getFullscreenElement());
-      setChromeVisible(true);
-      setImmersiveMode(true);
-      setIsFullscreen(true);
-      setNativeFullscreen(nativeActive);
-      if (!nativeActive) syncCinemaDom(true);
-    };
-    const onExit = () => {
-      setImmersiveMode(false);
-      setIsFullscreen(false);
-      setNativeFullscreen(false);
-      syncCinemaDom(false);
-    };
-    plyrInstance.on("enterfullscreen", onEnter);
-    plyrInstance.on("exitfullscreen", onExit);
-    return () => {
-      plyrInstance.off("enterfullscreen", onEnter);
-      plyrInstance.off("exitfullscreen", onExit);
-    };
-  }, [plyrInstance, syncCinemaDom]);
-
-  useEffect(() => {
-    if (!isChromebookApp) return undefined;
-    const root = document.documentElement;
-    const getFullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
-    const syncCinemaClass = () => {
-      const nativeActive = Boolean(getFullscreenElement());
-      const cssCinema = cinemaMode && !nativeActive;
-      if (cssCinema) root.classList.add("video-cinema-active");
-      else root.classList.remove("video-cinema-active");
-    };
-    syncCinemaClass();
-    document.addEventListener("fullscreenchange", syncCinemaClass);
-    document.addEventListener("webkitfullscreenchange", syncCinemaClass);
-    return () => {
-      document.removeEventListener("fullscreenchange", syncCinemaClass);
-      document.removeEventListener("webkitfullscreenchange", syncCinemaClass);
-      root.classList.remove("video-cinema-active");
-    };
-  }, [cinemaMode]);
-
-  useEffect(() => {
-    if (!Capacitor.isNativePlatform() || !isChromebookApp) return undefined;
-    let cancelled = false;
-    (async () => {
-      try {
-        const { StatusBar } = await import("@capacitor/status-bar");
-        if (cancelled) return;
-        if (cinemaMode) await StatusBar.hide();
-        else await StatusBar.show();
-      } catch {
-        // Plugin optionnel selon la plateforme.
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [cinemaMode]);
-
-  useEffect(() => {
-    if (!embedMode || !Capacitor.isNativePlatform()) return undefined;
-    return installEmbedPopupGuards();
-  }, [embedMode]);
-
-  const clearChromeHideTimer = useCallback(() => {
-    if (chromeHideTimerRef.current) {
-      window.clearTimeout(chromeHideTimerRef.current);
-      chromeHideTimerRef.current = 0;
-    }
-  }, []);
-
-  const scheduleChromeHide = useCallback(() => {
-    clearChromeHideTimer();
-    if (chromeInteractingRef.current || embedMode) return;
-    const immersivePlayback = cinemaMode;
-    if (!immersivePlayback && !playing) return;
-
-    const idleMs = immersivePlayback ? FULLSCREEN_CHROME_IDLE_MS : CHROME_IDLE_MS;
-    chromeHideTimerRef.current = window.setTimeout(() => {
-      if (!chromeInteractingRef.current && (playing || immersivePlayback)) {
-        setChromeVisible(false);
-      }
-    }, idleMs);
-  }, [cinemaMode, clearChromeHideTimer, embedMode, playing]);
-
-  const revealChrome = useCallback((options = {}) => {
-    const { autoHide = true } = options;
-    setChromeVisible(true);
-    clearChromeHideTimer();
-    if (autoHide) scheduleChromeHide();
-  }, [clearChromeHideTimer, scheduleChromeHide]);
-
-  const hideChrome = useCallback(() => {
-    clearChromeHideTimer();
-    setChromeVisible(false);
-  }, [clearChromeHideTimer]);
-
-  useEffect(() => {
-    if (!playback || embedMode) return undefined;
-    if (!playing && !cinemaMode) {
-      clearChromeHideTimer();
-      setChromeVisible(true);
-      return undefined;
-    }
-    if (chromeVisible) scheduleChromeHide();
-    return clearChromeHideTimer;
-  }, [chromeVisible, cinemaMode, clearChromeHideTimer, embedMode, playback, playing, scheduleChromeHide]);
-
-  useEffect(() => {
-    if (!cinemaMode || embedMode) return undefined;
-    revealChrome({ autoHide: true });
-    return undefined;
-  }, [cinemaMode, embedMode, revealChrome]);
-
-  useEffect(() => {
-    if (!cinemaMode || !usePlyrPlayer) return undefined;
-    const root = fullscreenRootRef.current;
-    if (!root) return undefined;
-
-    const onPointerOver = (event) => {
-      if (!event.target.closest(".plyr__controls, .plyr__menu")) return;
-      chromeInteractingRef.current = true;
-      clearChromeHideTimer();
-      setChromeVisible(true);
-    };
-    const onPointerOut = (event) => {
-      if (!event.target.closest(".plyr__controls, .plyr__menu")) return;
-      chromeInteractingRef.current = false;
-      scheduleChromeHide();
-    };
-
-    root.addEventListener("pointerover", onPointerOver);
-    root.addEventListener("pointerout", onPointerOut);
-    return () => {
-      root.removeEventListener("pointerover", onPointerOver);
-      root.removeEventListener("pointerout", onPointerOut);
-    };
-  }, [cinemaMode, clearChromeHideTimer, plyrInstance, scheduleChromeHide, usePlyrPlayer]);
+    resetChromeOnChapterChange();
+    completedRef.current = false;
+    setProgress(initialProgress);
+  }, [activeChapter.url, initialProgress, resetChromeOnChapterChange]);
 
   useEffect(() => () => {
     if (singleTapTimerRef.current) window.clearTimeout(singleTapTimerRef.current);
     if (skipFlashTimerRef.current) window.clearTimeout(skipFlashTimerRef.current);
     unlockOrientation();
   }, []);
-
-  useEffect(() => {
-    if (!playback || embedMode || (!immersiveMode && !isFullscreen)) {
-      unlockOrientation();
-      return undefined;
-    }
-
-    lockLandscapeOrientation().catch(() => {});
-    return () => unlockOrientation();
-  }, [embedMode, immersiveMode, isFullscreen, playback]);
-
-  const subtitleTracks = useMemo(() => {
-    if (!data || embedMode) return [];
-    const referer = currentSource?.streamReferer || data.streamReferer || data.url || activeChapter.url;
-    const tracks = currentSource?.subtitleTracks?.length
-      ? currentSource.subtitleTracks
-      : (data.subtitleTracks || []);
-    return tracks.map((track) => ({
-      ...track,
-      url: sourceSubtitleUrl(sourceId, track.url, referer),
-    }));
-  }, [activeChapter.url, currentSource, data, embedMode, sourceId]);
-
-  useEffect(() => {
-    let active = true;
-    fetchSourceDetails(sourceId, manga.url).then((details) => {
-      if (active && details.chapters?.length) setChapters(details.chapters);
-    }).catch(() => {});
-    return () => { active = false; };
-  }, [manga.url, sourceId]);
-
-  useEffect(() => {
-    let active = true;
-    setData(null);
-    setError("");
-    setActiveSourceIndex(0);
-    setHlsRetryKey(0);
-    setPreferEmbedPlayback(false);
-    setPlaying(false);
-    setBuffered(0);
-    setSubtitlesEnabled(true);
-    setChromeVisible(true);
-    setImmersiveMode(false);
-    clearChromeHideTimer();
-    completedRef.current = false;
-    const saved = getChapterProgress(sourceId, activeChapter.url);
-    setProgress(saved > 0 && saved < 100 ? saved : 0);
-    setCurrentTime(0);
-    setDuration(0);
-
-    fetchSourceChapter(sourceId, activeChapter.url, {
-      contentApi: activeChapter.contentApi,
-      language: activeChapter.preferredAudioLanguage || manga.preferredAudioLanguage || "",
-    })
-      .then((result) => {
-        if (!active) return;
-        setData(result);
-        setActiveSourceIndex(pickBestSourceIndex(sortSourcesByPlaybackQuality(result.sources)));
-      })
-      .catch((reason) => {
-        if (!active) return;
-        const message = formatSourceError(reason, presentation.loadError);
-        setError(message);
-        pushToast({ type: "error", message });
-      });
-    return () => { active = false; };
-  }, [activeChapter.url, activeChapter.preferredAudioLanguage, activeChapter.contentApi, clearChromeHideTimer, manga.preferredAudioLanguage, presentation.loadError, pushToast, sourceId]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -519,53 +238,6 @@ export function LiveVideoPlayer({
   }, [muted, playback?.mode, playback?.url, volume]);
 
   useEffect(() => {
-    const syncOrientation = () => {
-      const landscape = window.matchMedia("(orientation: landscape)").matches
-        && window.innerHeight <= 520;
-      setPhoneLandscape(landscape);
-    };
-
-    syncOrientation();
-    window.addEventListener("resize", syncOrientation);
-    window.addEventListener("orientationchange", syncOrientation);
-    return () => {
-      window.removeEventListener("resize", syncOrientation);
-      window.removeEventListener("orientationchange", syncOrientation);
-    };
-  }, []);
-
-  useEffect(() => {
-    const getFullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
-
-    const onFullscreenChange = () => {
-      const root = fullscreenRootRef.current;
-      const nativeActive = Boolean(root && getFullscreenElement() === root);
-      const fallbackActive = Boolean(
-        root?.classList.contains("plyr--fullscreen-fallback")
-        || root?.querySelector(".plyr--fullscreen-fallback, .plyr--fullscreen-active"),
-      );
-      const active = nativeActive || fallbackActive;
-      setNativeFullscreen(nativeActive);
-      setIsFullscreen(active);
-      if (nativeActive) syncCinemaDom(false);
-      if (!active && !plyrInstanceRef.current?.fullscreen?.active) setImmersiveMode(false);
-      else setImmersiveMode(true);
-    };
-
-    document.addEventListener("fullscreenchange", onFullscreenChange);
-    document.addEventListener("webkitfullscreenchange", onFullscreenChange);
-    return () => {
-      document.removeEventListener("fullscreenchange", onFullscreenChange);
-      document.removeEventListener("webkitfullscreenchange", onFullscreenChange);
-    };
-  }, [syncCinemaDom]);
-
-  const pipSupported = typeof document !== "undefined"
-    && document.pictureInPictureEnabled !== false
-    && typeof HTMLVideoElement !== "undefined"
-    && typeof HTMLVideoElement.prototype.requestPictureInPicture === "function";
-
-  useEffect(() => {
     if (!playback) return undefined;
 
     const onKeyDown = (event) => {
@@ -628,7 +300,7 @@ export function LiveVideoPlayer({
         case "f":
         case "F":
           event.preventDefault();
-          requestFullscreen();
+          requestFullscreen(videoRef);
           break;
         case "p":
         case "P":
@@ -659,7 +331,7 @@ export function LiveVideoPlayer({
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [embedMode, pipSupported, playback, revealChrome]);
+  }, [embedMode, pipSupported, playback, revealChrome, requestFullscreen]);
 
   useEffect(() => {
     if (!embedMode || !playback?.url || !data || error) return undefined;
@@ -720,17 +392,6 @@ export function LiveVideoPlayer({
   const nextChapter = currentIndex > 0 ? chapters[currentIndex - 1] : null;
 
   const showEpisodePlaylist = isChromebookApp && presentation.type === "series" && chapters.length > 1;
-  const playlistChapters = useMemo(() => (
-    [...chapters].sort((left, right) => {
-      const leftNumber = Number(String(left.number || "").replace(/[^\d.]/g, ""));
-      const rightNumber = Number(String(right.number || "").replace(/[^\d.]/g, ""));
-      if (leftNumber && rightNumber && leftNumber !== rightNumber) return leftNumber - rightNumber;
-      return String(left.name || left.number || "").localeCompare(String(right.name || right.number || ""), undefined, { numeric: true });
-    })
-  ), [chapters]);
-
-  const activePlaylistItemRef = useRef(null);
-  const playlistScrollerRef = useRef(null);
 
   useEffect(() => {
     scrollAppToTop();
@@ -742,15 +403,6 @@ export function LiveVideoPlayer({
       document.documentElement.classList.remove("video-cinema-active");
     };
   }, []);
-
-  useEffect(() => {
-    if (!showEpisodePlaylist) return;
-    const scroller = playlistScrollerRef.current;
-    const item = activePlaylistItemRef.current;
-    if (!scroller || !item) return;
-    const offset = item.offsetTop - (scroller.clientHeight - item.clientHeight) / 2;
-    scroller.scrollTo({ top: Math.max(0, offset), behavior: "smooth" });
-  }, [activeChapter.url, showEpisodePlaylist]);
 
   function seekToPercent(value) {
     const video = videoRef.current;
@@ -848,7 +500,7 @@ export function LiveVideoPlayer({
     if (embedMode) {
       if (now - last.time <= DOUBLE_TAP_MS && xRatio > SKIP_ZONE_RATIO && xRatio < 1 - SKIP_ZONE_RATIO) {
         tapStateRef.current = { time: 0, x: 0 };
-        void requestFullscreen();
+        void requestFullscreen(videoRef);
         return;
       }
       tapStateRef.current = { time: now, x: xRatio };
@@ -888,17 +540,6 @@ export function LiveVideoPlayer({
     }, SINGLE_TAP_DELAY_MS);
   }
 
-  function handleChromeInteractionStart() {
-    chromeInteractingRef.current = true;
-    clearChromeHideTimer();
-    setChromeVisible(true);
-  }
-
-  function handleChromeInteractionEnd() {
-    chromeInteractingRef.current = false;
-    if (playing || cinemaMode) scheduleChromeHide();
-  }
-
   function togglePlay() {
     const video = videoRef.current;
     if (!video) return;
@@ -914,106 +555,6 @@ export function LiveVideoPlayer({
     } else {
       video.pause();
     }
-  }
-
-  function changeChapter(nextChapterToOpen) {
-    if (!nextChapterToOpen) return;
-    setActiveChapter(nextChapterToOpen);
-  }
-
-  async function exitCinemaMode() {
-    const plyr = plyrInstanceRef.current;
-    if (plyr?.fullscreen?.active) {
-      plyr.fullscreen.exit();
-    }
-
-    const getFullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
-    const root = fullscreenRootRef.current;
-    syncCinemaDom(false);
-
-    if (root && getFullscreenElement() === root) {
-      if (document.exitFullscreen) await document.exitFullscreen();
-      else if (document.webkitExitFullscreen) await document.webkitExitFullscreen();
-    }
-    unlockOrientation();
-    setImmersiveMode(false);
-    setIsFullscreen(false);
-    setNativeFullscreen(false);
-  }
-
-  async function requestNativeFullscreen() {
-    const root = fullscreenRootRef.current;
-    const plyr = plyrInstanceRef.current;
-    const getFullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
-
-    if (plyr?.fullscreen?.enabled) {
-      plyr.fullscreen.enter();
-      if (getFullscreenElement() || plyr.fullscreen?.active) return true;
-    }
-
-    if (!root) return false;
-
-    if (root.requestFullscreen) {
-      await root.requestFullscreen();
-      return Boolean(getFullscreenElement());
-    }
-    if (root.webkitRequestFullscreen) {
-      await root.webkitRequestFullscreen();
-      return Boolean(getFullscreenElement());
-    }
-
-    const video = videoRef.current;
-    if (video?.webkitEnterFullscreen) {
-      video.webkitEnterFullscreen();
-      return true;
-    }
-
-    return false;
-  }
-
-  async function requestFullscreen() {
-    const getFullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
-    const root = fullscreenRootRef.current;
-    const plyr = plyrInstanceRef.current;
-    const fullscreenActive = Boolean(
-      cinemaMode
-      || getFullscreenElement()
-      || immersiveMode
-      || isFullscreen
-      || plyr?.fullscreen?.active
-      || root?.classList.contains("plyr--fullscreen-fallback"),
-    );
-
-    if (fullscreenActive) {
-      await exitCinemaMode();
-      return;
-    }
-
-    if (!root) return;
-
-    setChromeVisible(true);
-    setImmersiveMode(true);
-
-    try {
-      const ok = await requestNativeFullscreen();
-      if (ok) {
-        setIsFullscreen(true);
-        setNativeFullscreen(Boolean(getFullscreenElement()));
-        lockLandscapeOrientation().catch(() => {});
-        return;
-      }
-    } catch {
-      const video = videoRef.current;
-      if (video?.webkitEnterFullscreen) {
-        video.webkitEnterFullscreen();
-        setIsFullscreen(true);
-        lockLandscapeOrientation().catch(() => {});
-        return;
-      }
-    }
-
-    activateCinemaMode();
-    lockLandscapeOrientation().catch(() => {});
   }
 
   const episodeLabel = formatEpisodeHeaderLabel(
@@ -1045,11 +586,7 @@ export function LiveVideoPlayer({
           key={`${source.url}-${index}`}
           type="button"
           className={`live-video-servers__chip${index === activeSourceIndex ? " active" : ""}${source.streamUrl ? " live-video-servers__chip--native" : ""}`}
-          onClick={() => {
-            setActiveSourceIndex(index);
-            setPreferEmbedPlayback(false);
-            setHlsRetryKey((value) => value + 1);
-          }}
+          onClick={() => selectSource(index)}
           aria-pressed={index === activeSourceIndex}
         >
           {formatServerLabel(source, t)}
@@ -1243,7 +780,7 @@ export function LiveVideoPlayer({
                 revealChrome();
               }}
               onClose={hideChrome}
-              onFullscreen={requestFullscreen}
+              onFullscreen={() => requestFullscreen(videoRef)}
               unitLabel={presentation.headerUnit}
               className={cinemaMode ? "reader-playback--overlay" : "reader-playback--docked"}
               compact={cinemaMode || phoneLandscape}
@@ -1306,47 +843,13 @@ export function LiveVideoPlayer({
               </div>
             </div>
             {showEpisodePlaylist ? (
-              <aside className="video-watch-playlist" aria-label={presentation.sectionTitle}>
-                <div className="video-watch-playlist__head">
-                  <h2>{presentation.sectionTitle}</h2>
-                  <span>{chapters.length}</span>
-                </div>
-                <div className="video-watch-playlist__list" ref={playlistScrollerRef}>
-                  {playlistChapters.map((entry) => {
-                    const isActive = entry.url === activeChapter.url
-                      || (entry.number && String(entry.number) === String(activeChapter.number));
-                    const entryProgress = getChapterProgress(sourceId, entry.url);
-                    const entryLabel = formatEpisodeHeaderLabel(entry.number || entry.name, presentation.headerUnit);
-                    return (
-                      <button
-                        key={entry.url}
-                        ref={isActive ? activePlaylistItemRef : null}
-                        type="button"
-                        className={`video-watch-playlist__item${isActive ? " is-active" : ""}${entryProgress >= VIDEO_COMPLETE_THRESHOLD ? " is-complete" : ""}`}
-                        onClick={() => changeChapter(entry)}
-                        aria-current={isActive ? "true" : undefined}
-                      >
-                        <span className="video-watch-playlist__index" aria-hidden="true">
-                          {entry.number || "—"}
-                        </span>
-                        <span className="video-watch-playlist__copy">
-                          <strong dir="auto">{entryLabel}</strong>
-                          {entry.name && entry.name !== entry.number ? <small dir="auto">{entry.name}</small> : null}
-                        </span>
-                        {entryProgress > 0 && entryProgress < VIDEO_COMPLETE_THRESHOLD ? (
-                          <span className="video-watch-playlist__progress">{entryProgress}%</span>
-                        ) : null}
-                        {entryProgress >= VIDEO_COMPLETE_THRESHOLD ? (
-                          <Check size={14} className="video-watch-playlist__done" aria-hidden="true" />
-                        ) : null}
-                      </button>
-                    );
-                  })}
-                </div>
-                {isChromebookApp ? (
-                  <ThemedScrollbar scrollerRef={playlistScrollerRef} className="desktop-scroll--nested" />
-                ) : null}
-              </aside>
+              <VideoEpisodePlaylist
+                chapters={chapters}
+                activeChapter={activeChapter}
+                sourceId={sourceId}
+                presentation={presentation}
+                onSelectChapter={changeChapter}
+              />
             ) : null}
           </div>
         </>
