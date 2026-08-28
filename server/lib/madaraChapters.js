@@ -1,4 +1,5 @@
 import { parseChapterDateString, enrichChapterDates as enrichServerChapterDates } from "./chapterDates.js";
+import { textOnly } from "./htmlUtils.js";
 
 export function extractMadaraMangaId(html = "") {
   const match = html.match(/id=["']manga-chapters-holder["'][^>]*data-id=["'](\d+)["']/i)

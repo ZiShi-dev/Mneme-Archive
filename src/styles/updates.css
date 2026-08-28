@@ -78,6 +78,7 @@
   padding: 12px;
   padding-bottom: max(12px, env(safe-area-inset-bottom));
   background: rgba(8, 10, 18, 0.45);
+  pointer-events: auto;
 }
 
 .follow-sheet {
@@ -408,10 +409,22 @@
 
 .updates-toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 12px;
+}
+
+.updates-toolbar__types {
+  flex: 1 1 100%;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.updates-toolbar__types.la-chip-bar--segmented .la-chip {
+  flex: 1;
+  justify-content: center;
 }
 
 .updates-toolbar__filter {

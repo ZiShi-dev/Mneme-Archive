@@ -137,17 +137,19 @@ export function CatalogSourceToolbar({ sources, activeSourceId, onSetActiveSourc
               showClear={sourceType !== "all"}
               onClear={() => setSourceType("all")}
             >
-              {Object.entries(contentTypes).map(([type, meta]) => (
-                <ChipFilterButton
-                  key={type}
-                  active={sourceType === type}
-                  icon={meta.icon}
-                  count={type !== "all" ? (sourceTypeCounts[type] ?? 0) : undefined}
-                  onClick={() => setSourceType(type)}
-                >
-                  {meta.label}
-                </ChipFilterButton>
-              ))}
+              {Object.entries(contentTypes)
+                .filter(([type]) => type === "all" || (sourceTypeCounts[type] ?? 0) > 0)
+                .map(([type, meta]) => (
+                  <ChipFilterButton
+                    key={type}
+                    active={sourceType === type}
+                    icon={meta.icon}
+                    count={type !== "all" ? (sourceTypeCounts[type] ?? 0) : undefined}
+                    onClick={() => setSourceType(type)}
+                  >
+                    {meta.label}
+                  </ChipFilterButton>
+                ))}
             </ChipFilterBar>
 
             <div className="catalog-source-picker__list">

@@ -4,26 +4,31 @@ import {
   BackgroundTaskResult,
   BackgroundTaskStatus,
 } from "@capgo/capacitor-background-task";
+import { isChromebookApp } from "../../config/appFlavor";
 import { runBackgroundFollowSync } from "./runBackgroundFollowSync";
 
 export const FOLLOW_BACKGROUND_TASK = "living-archive-follow-sync";
 const MIN_BACKGROUND_INTERVAL_MINUTES = 15;
 
-BackgroundTask.defineTask(FOLLOW_BACKGROUND_TASK, async () => {
-  try {
-    const { showChapterUpdateNotifications } = await import("../notifications/nativeNotifications");
-    const result = await runBackgroundFollowSync();
-    if (result.events?.length) {
-      await showChapterUpdateNotifications(result.events);
+const isBackgroundTaskEnabled = () => Capacitor.isNativePlatform() && !isChromebookApp;
+
+if (isBackgroundTaskEnabled()) {
+  BackgroundTask.defineTask(FOLLOW_BACKGROUND_TASK, async () => {
+    try {
+      const { showChapterUpdateNotifications } = await import("../notifications/nativeNotifications");
+      const result = await runBackgroundFollowSync();
+      if (result.events?.length) {
+        await showChapterUpdateNotifications(result.events);
+      }
+      return BackgroundTaskResult.Success;
+    } catch {
+      return BackgroundTaskResult.Failed;
     }
-    return BackgroundTaskResult.Success;
-  } catch {
-    return BackgroundTaskResult.Failed;
-  }
-});
+  });
+}
 
 export async function registerFollowBackgroundTask(intervalMinutes = MIN_BACKGROUND_INTERVAL_MINUTES) {
-  if (!Capacitor.isNativePlatform()) return false;
+  if (!isBackgroundTaskEnabled()) return false;
 
   const status = await BackgroundTask.getStatusAsync();
   if (status !== BackgroundTaskStatus.Available) return false;
@@ -48,7 +53,7 @@ export async function registerFollowBackgroundTask(intervalMinutes = MIN_BACKGRO
 }
 
 export async function unregisterFollowBackgroundTask() {
-  if (!Capacitor.isNativePlatform()) return;
+  if (!isBackgroundTaskEnabled()) return;
   const isRegistered = await BackgroundTask.isTaskRegisteredAsync(FOLLOW_BACKGROUND_TASK);
   if (isRegistered) {
     await BackgroundTask.unregisterTaskAsync(FOLLOW_BACKGROUND_TASK);
@@ -56,13 +61,13 @@ export async function unregisterFollowBackgroundTask() {
 }
 
 export async function triggerFollowBackgroundTaskForTesting() {
-  if (!Capacitor.isNativePlatform()) return false;
+  if (!isBackgroundTaskEnabled()) return false;
   return BackgroundTask.triggerTaskWorkerForTestingAsync();
 }
 
 export async function getFollowBackgroundTaskStatus() {
-  if (!Capacitor.isNativePlatform()) {
-    return { available: false, registered: false, platform: "web" };
+  if (!isBackgroundTaskEnabled()) {
+    return { available: false, registered: false, platform: Capacitor.getPlatform() };
   }
 
   const status = await BackgroundTask.getStatusAsync();

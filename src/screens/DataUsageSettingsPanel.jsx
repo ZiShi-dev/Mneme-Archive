@@ -21,6 +21,7 @@ import {
 import { DEFAULT_APP_SETTINGS, PRELOAD_PAGES_MAX, PRELOAD_PAGES_MIN } from "../lib/settings/defaults";
 import { getPreloadNetworkStatus, refreshNetworkStatus } from "../lib/platform/networkStatus";
 import { useI18n } from "../i18n/I18nProvider";
+import { isChromebookApp } from "../config/appFlavor";
 
 const POLL_OPTIONS = [1, 2, 5, 10];
 const BACKGROUND_INTERVAL_OPTIONS = [15, 30, 60];
@@ -173,6 +174,8 @@ export function DataUsageSettingsSheet({
             </p>
           </section>
 
+          {!isChromebookApp && (
+          <>
           <div className="preload-sheet__divider" aria-hidden="true" />
 
           <section className="preload-sheet__block" aria-label={t("data.preload")}>
@@ -226,6 +229,8 @@ export function DataUsageSettingsSheet({
               </div>
             )}
           </section>
+          </>
+          )}
 
           <div className="preload-sheet__divider" aria-hidden="true" />
 
@@ -235,7 +240,7 @@ export function DataUsageSettingsSheet({
                 <span className="preload-sheet__toggle-icon"><Home size={16} /></span>
                 <div>
                   <strong>{t("data.homeUpdates")}</strong>
-                  <small>{t("data.homeUpdatesHint")}</small>
+                  <small>{isChromebookApp ? t("data.homeUpdatesHintDesktop") : t("data.homeUpdatesHint")}</small>
                 </div>
               </div>
               <SheetSwitch
@@ -281,6 +286,7 @@ export function DataUsageSettingsSheet({
               ))}
             </div>
 
+            {!isChromebookApp && (
             <div className="preload-sheet__toggle data-usage-sheet__background">
               <div className="preload-sheet__toggle-copy">
                 <span className="preload-sheet__toggle-icon"><Smartphone size={16} /></span>
@@ -295,8 +301,9 @@ export function DataUsageSettingsSheet({
                 onToggle={onToggleBackgroundSync}
               />
             </div>
+            )}
 
-            {backgroundEnabled && (
+            {!isChromebookApp && backgroundEnabled && (
               <>
                 <p className="notify-sheet__label">{t("data.backgroundEvery")}</p>
                 <div className="notify-sheet__chips" role="group" aria-label={t("data.backgroundEvery")}>

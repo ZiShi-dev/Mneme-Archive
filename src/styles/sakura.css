@@ -478,3 +478,16 @@ body[data-theme="paper"] {
   background-color: #e6e1d8;
   background-image: radial-gradient(circle at 18% 12%, rgba(91, 71, 214, .06), transparent 32%);
 }
+
+[data-theme="sakura"] .game-nav,
+[data-theme="yozakura"] .game-nav {
+  background: color-mix(in srgb, var(--white) 82%, var(--paper));
+  border-right-color: color-mix(in srgb, var(--sakura) 28%, var(--line));
+}
+
+[data-theme="sakura"] .game-nav__tab.is-active,
+[data-theme="yozakura"] .game-nav__tab.is-active {
+  background: color-mix(in srgb, var(--sakura) 12%, var(--white));
+  color: var(--ume);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--sakura) 18%, transparent);
+}

@@ -16,7 +16,7 @@ export function HomeDiscoverySection({
   );
 
   const meta = enabledSources.length
-    ? t("home.activeSources", { count: enabledSources.length })
+    ? t("home.discoveryHint")
     : t("home.noEnabledSources");
 
   return (

@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { DEFAULT_SOURCE_ID, isChromebookApp } from "../config/appFlavor";
 import { initialSourcePreferences, initialSources, resolveSourceId } from "../config/sources";
 import {
   buildReadingRecord,
@@ -16,10 +17,10 @@ import { applyTypeface, FONT_SANS, normalizeTypefaceId } from "../lib/theme/type
 import { usePersistedState } from "./usePersistedState";
 
 export function useAppPreferences() {
-  const [favorites, setFavorites] = usePersistedState("mangashelf:favorites", ["sword", "night", "core"]);
+  const [favorites, setFavorites] = usePersistedState("mangashelf:favorites", isChromebookApp ? [] : ["sword", "night", "core"]);
   const [liveFavorites, setLiveFavorites] = usePersistedState("living-archive:live-favorites", []);
   const [sources, setSources] = usePersistedState("mangashelf:v4:sources", initialSources);
-  const [activeSourceId, setActiveSourceId] = usePersistedState("living-archive:active-source", "mangalik");
+  const [activeSourceId, setActiveSourceId] = usePersistedState("living-archive:active-source", DEFAULT_SOURCE_ID);
   const [sourcePreferences, setSourcePreferences] = usePersistedState("living-archive:v5:source-preferences", initialSourcePreferences);
   const [legacyInkMode] = usePersistedState("living-archive:ink-mode", true);
   const [appearanceRaw, setAppearanceRaw] = usePersistedState("living-archive:appearance", null);
@@ -62,6 +63,13 @@ export function useAppPreferences() {
     setSources((current) => initialSources.map((fallback) => ({ ...fallback, ...(current.find((entry) => entry.id === fallback.id) || {}) })));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!sources.some((entry) => entry.id === activeSourceId && entry.enabled !== false)) {
+      const next = sources.find((entry) => entry.enabled !== false)?.id || DEFAULT_SOURCE_ID;
+      if (next && next !== activeSourceId) setActiveSourceId(next);
+    }
+  }, [activeSourceId, setActiveSourceId, sources]);
 
   const liveFavoriteKey = (item) => `${resolveSourceId(item)}:${item.url}`;
   const isLiveFavorite = (item) => liveFavorites.some((favorite) => liveFavoriteKey(favorite) === liveFavoriteKey(item));

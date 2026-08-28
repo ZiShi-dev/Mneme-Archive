@@ -17,3 +17,14 @@ test("normalizeSettings preserves booleans", () => {
   assert.equal(normalizeSettings({ preload: false }).preload, false);
   assert.equal(normalizeSettings({ wifi: false }).wifi, false);
 });
+
+test("normalizeSettings normalizes coflix base url", () => {
+  assert.equal(
+    normalizeSettings({ coflixBaseUrl: "https://coflix.foo/path" }).coflixBaseUrl,
+    "https://coflix.foo",
+  );
+  assert.equal(
+    normalizeSettings({ coflixBaseUrl: "http://insecure.test" }).coflixBaseUrl,
+    DEFAULT_APP_SETTINGS.coflixBaseUrl,
+  );
+});

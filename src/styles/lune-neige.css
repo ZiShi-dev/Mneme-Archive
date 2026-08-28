@@ -1,0 +1,153 @@
+/* Lune Mère · neige sous la lune */
+
+[data-theme="lune-neige"] .phone-frame,
+.app-shell--lune-neige .phone-frame {
+  isolation: isolate;
+  background-color: var(--paper);
+  background-image:
+    radial-gradient(ellipse at 78% 8%, color-mix(in srgb, var(--moon-glow) 24%, transparent), transparent 42%),
+    radial-gradient(ellipse at 14% 100%, color-mix(in srgb, var(--frost) 10%, transparent), transparent 48%),
+    radial-gradient(circle at 1px 1px, rgba(232, 242, 255, 0.05) 0.55px, transparent 0.75px);
+  background-size: auto, auto, 10px 10px;
+}
+
+[data-theme="lune-neige"] .moon-snow-fall {
+  overflow: hidden;
+  pointer-events: none;
+}
+
+[data-theme="lune-neige"] .moon-snow-fall__layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+[data-theme="lune-neige"] .moon-snow-fall__layer--far {
+  z-index: 1;
+  filter: blur(0.4px);
+}
+
+[data-theme="lune-neige"] .moon-snow-fall__layer--near {
+  z-index: 2;
+}
+
+[data-theme="lune-neige"] .moon-snow-fall--stage {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+}
+
+[data-theme="lune-neige"] .moon-snow-fall--frame {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+}
+
+[data-theme="lune-neige"] .moon-snow-fall canvas {
+  pointer-events: none;
+}
+
+[data-theme="lune-neige"] .phone-frame,
+.app-shell--lune-neige .phone-frame {
+  z-index: 1;
+}
+
+[data-theme="lune-neige"] .phone-frame:has(.settings-page) .moon-snow-fall {
+  opacity: 0.72;
+}
+
+[data-theme="lune-neige"] .page-header,
+[data-theme="lune-neige"] .content {
+  position: relative;
+  z-index: 2;
+}
+
+[data-theme="lune-neige"] .desktop-topbar {
+  position: relative;
+  z-index: 8;
+}
+
+[data-theme="lune-neige"] .bottom-nav,
+.app-shell--lune-neige .bottom-nav {
+  position: relative;
+  z-index: 5;
+}
+
+[data-theme="lune-neige"] .game-nav,
+.app-shell--lune-neige .game-nav {
+  position: relative;
+  z-index: 8;
+}
+
+[data-theme="lune-neige"] .notify-sheet-backdrop,
+[data-theme="lune-neige"] .follow-sheet-backdrop,
+[data-theme="lune-neige"] .catalog-filter-picker-backdrop,
+[data-theme="lune-neige"] .catalog-source-picker-backdrop,
+[data-theme="lune-neige"] .management-source-picker-backdrop,
+[data-theme="lune-neige"] .reader-settings-backdrop,
+[data-theme="lune-neige"] .source-config-backdrop,
+[data-theme="lune-neige"] .modal-backdrop,
+[data-theme="lune-neige"] .la-sheet-backdrop,
+.app-shell--lune-neige .notify-sheet-backdrop,
+.app-shell--lune-neige .follow-sheet-backdrop,
+.app-shell--lune-neige .catalog-filter-picker-backdrop,
+.app-shell--lune-neige .catalog-source-picker-backdrop,
+.app-shell--lune-neige .management-source-picker-backdrop,
+.app-shell--lune-neige .reader-settings-backdrop,
+.app-shell--lune-neige .source-config-backdrop,
+.app-shell--lune-neige .modal-backdrop,
+.app-shell--lune-neige .la-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+}
+
+body[data-theme="lune-neige"] {
+  background-color: #070b12;
+  background-image:
+    radial-gradient(circle at 82% 12%, rgba(214, 230, 255, 0.14), transparent 28%),
+    radial-gradient(circle at 18% 88%, rgba(120, 156, 210, 0.08), transparent 34%);
+}
+
+[data-theme="lune-neige"] .hero-card {
+  background:
+  radial-gradient(ellipse at 88% 0%, rgba(214, 230, 255, 0.16), transparent 46%),
+  linear-gradient(150deg, #1a2840 0%, #243552 52%, #314868 100%);
+  border: 1px solid color-mix(in srgb, var(--frost) 28%, transparent);
+  box-shadow: 0 18px 42px rgba(4, 10, 22, 0.42);
+}
+
+[data-theme="lune-neige"] .hero-card h2,
+[data-theme="lune-neige"] .hero-card p,
+[data-theme="lune-neige"] .hero-card .pill--light,
+[data-theme="lune-neige"] .content .hero-card__time,
+[data-theme="lune-neige"] .content .hero-card__subtitle,
+[data-theme="lune-neige"] .content .hero-card__chapter-name,
+[data-theme="lune-neige"] .content .hero-card__progress-label,
+[data-theme="lune-neige"] .content .hero-card__source {
+  color: rgba(238, 244, 255, 0.92);
+}
+
+[data-theme="lune-neige"] .button--primary,
+[data-theme="lune-neige"] .hero-card__cta,
+[data-theme="lune-neige"] .notify-sheet__done {
+  background: linear-gradient(135deg, #8eb4e8, #c8daf5);
+  color: #0d1522;
+  border-color: color-mix(in srgb, #c8daf5 40%, transparent);
+}
+
+[data-theme="lune-neige"] .theme-selector > button.active {
+  border-color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 12%, var(--paper));
+}
+
+[data-theme="lune-neige"] .desktop-scroll,
+.app-shell--lune-neige .desktop-scroll {
+  background: color-mix(in srgb, var(--surface-raised) 72%, #0d1522);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--frost) 24%, var(--line));
+}
+
+[data-theme="lune-neige"] .desktop-scroll__thumb,
+.app-shell--lune-neige .desktop-scroll__thumb {
+  background: linear-gradient(180deg, #d6e6ff, #8eb4e8 78%);
+}

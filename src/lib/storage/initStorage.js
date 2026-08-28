@@ -31,4 +31,6 @@ export {
   kvRemove,
   kvSet,
   kvSetString,
+  persistStorageString,
 } from "./kvStore";
+export { peekStorageString } from "./peek.js";

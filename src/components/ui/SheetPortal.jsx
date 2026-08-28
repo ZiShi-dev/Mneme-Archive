@@ -1,6 +1,21 @@
 import { createPortal } from "react-dom";
 
-export function SheetPortal({ children }) {
+const PORTAL_ID = "la-sheet-portal";
+
+function getPortalRoot() {
   if (typeof document === "undefined") return null;
-  return createPortal(children, document.body);
+  let root = document.getElementById(PORTAL_ID);
+  if (!root) {
+    root = document.createElement("div");
+    root.id = PORTAL_ID;
+    root.className = "la-sheet-portal";
+    document.body.appendChild(root);
+  }
+  return root;
+}
+
+export function SheetPortal({ children }) {
+  const root = getPortalRoot();
+  if (!root) return null;
+  return createPortal(children, root);
 }

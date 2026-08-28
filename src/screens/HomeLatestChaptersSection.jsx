@@ -9,7 +9,7 @@ import { HomeLatestChapterRow } from "./HomeLatestChapterRow";
 
 const HOME_PREVIEW_LIMIT = 6;
 
-export const HOME_LATEST_SUPPORTED_FILTERS = new Set(["manga", "novel", "anime", "series"]);
+export const HOME_LATEST_SUPPORTED_FILTERS = new Set(["manga", "novel", "anime", "series", "movie"]);
 
 const MEDIA_ACCENTS = {
   all: "brand",
@@ -17,6 +17,7 @@ const MEDIA_ACCENTS = {
   novel: "novel",
   anime: "anime",
   series: "film",
+  movie: "film",
 };
 
 function HomeLatestSkeleton() {

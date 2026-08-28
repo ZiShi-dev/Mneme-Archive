@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Capacitor } from "@capacitor/core";
+import { isChromebookApp } from "../config/appFlavor";
 import {
   registerFollowBackgroundTask,
   unregisterFollowBackgroundTask,
@@ -7,7 +8,7 @@ import {
 
 export function useBackgroundFollowTask(settings) {
   useEffect(() => {
-    if (!Capacitor.isNativePlatform()) return undefined;
+    if (!Capacitor.isNativePlatform() || isChromebookApp) return undefined;
 
     const enabled = settings?.notifications && settings?.backgroundSync !== false;
 

@@ -1,4 +1,5 @@
 import { Capacitor } from "@capacitor/core";
+import { isChromebookApp } from "../../config/appFlavor.js";
 import { t } from "../../i18n/runtime.js";
 
 export function getLiveSourcesWebMessage() {
@@ -6,7 +7,11 @@ export function getLiveSourcesWebMessage() {
 }
 
 export function isLiveSourcesAvailable() {
-  return Capacitor.isNativePlatform() || import.meta.env.DEV;
+  if (Capacitor.isNativePlatform()) return true;
+  if (import.meta.env?.DEV) return true;
+  // CinéVault web (PWA, preview, start:prod) — pas seulement le mode dev Vite.
+  if (isChromebookApp) return true;
+  return false;
 }
 
 export function assertLiveSourcesAvailable() {

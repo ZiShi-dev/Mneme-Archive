@@ -450,6 +450,22 @@
   to { transform: translateY(0); opacity: 1; }
 }
 
+.la-sheet-portal {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  pointer-events: none;
+  isolation: isolate;
+}
+
+.la-sheet-portal:empty {
+  display: none;
+}
+
+.la-sheet-portal > * {
+  pointer-events: auto;
+}
+
 @keyframes laShimmer {
   to { background-position: -220% 0; }
 }

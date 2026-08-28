@@ -8,6 +8,7 @@ import {
   episodeToPlayers,
   extractPackedPlayerStreamUrl,
   flattenFrenchStreamPlayers,
+  frenchStreamAudioLanguagesFromEpisodeData,
   newsIdFromUrl,
   normalizeFrenchStreamAudioLabel,
   normalizeFrenchStreamUrl,
@@ -268,6 +269,17 @@ test("parseFrenchStreamSeriesChapters keeps playable episodes only", () => {
   assert.deepEqual(chapters.map((chapter) => chapter.number), ["1", "2"]);
   assert.equal(chapters[0].name, "1 · Valles Marineris");
   assert.match(chapters[1].url, /ep=2/);
+  assert.deepEqual(chapters[0].audioLanguages, {
+    VF: "https://french-stream.one/index.php?newsid=15131656&ep=1",
+    VOSTFR: "https://french-stream.one/index.php?newsid=15131656&ep=1",
+  });
+  assert.deepEqual(chapters[1].audioLanguages, {
+    VF: "https://french-stream.one/index.php?newsid=15131656&ep=2",
+  });
+});
+
+test("frenchStreamAudioLanguagesFromEpisodeData aggregates VF and VOSTFR", () => {
+  assert.deepEqual(frenchStreamAudioLanguagesFromEpisodeData(SERIES_EPISODES), ["VF", "VOSTFR"]);
 });
 
 test("episodeToPlayers prefers VF and keeps VOSTFR variants", () => {

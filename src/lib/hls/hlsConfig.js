@@ -1,24 +1,38 @@
 import { allowsVideoDataSaver, isMeteredConnection } from "../platform/dataSaver.js";
 import { getRuntimeSettings } from "../settings/runtimeSettings.js";
+import { isChromebookApp } from "../../config/appFlavor.js";
+
+export function shouldLimitVideoQuality(settings = getRuntimeSettings()) {
+  if (!allowsVideoDataSaver(settings)) return false;
+  if (isChromebookApp) return false;
+  return isMeteredConnection();
+}
+
+export function prefersHighVideoQuality(settings = getRuntimeSettings()) {
+  return !shouldLimitVideoQuality(settings);
+}
 
 export function createHlsPlayerConfig({ loader } = {}) {
   const settings = getRuntimeSettings();
-  const metered = isMeteredConnection() && allowsVideoDataSaver(settings);
+  const limitQuality = shouldLimitVideoQuality(settings);
 
   return {
     enableWorker: false,
-    maxBufferLength: metered ? 12 : 30,
-    maxMaxBufferLength: metered ? 24 : 60,
-    maxLoadingRetry: metered ? 4 : 8,
-    maxNetworkErrorRetry: metered ? 4 : 8,
-    startLevel: metered ? 0 : -1,
-    capLevelToPlayerSize: true,
+    maxBufferLength: limitQuality ? 12 : 45,
+    maxMaxBufferLength: limitQuality ? 24 : 90,
+    maxLoadingRetry: limitQuality ? 4 : 8,
+    maxNetworkErrorRetry: limitQuality ? 4 : 8,
+    startLevel: limitQuality ? 0 : -1,
+    capLevelToPlayerSize: limitQuality,
+    abrEwmaDefaultEstimate: limitQuality ? 500_000 : 8_000_000,
+    abrBandWidthFactor: limitQuality ? 0.8 : 0.95,
+    abrBandWidthUpFactor: limitQuality ? 0.5 : 0.85,
     ...(loader ? { loader } : {}),
   };
 }
 
 export function getVideoPreloadMode() {
   const settings = getRuntimeSettings();
-  if (isMeteredConnection() && allowsVideoDataSaver(settings)) return "metadata";
+  if (shouldLimitVideoQuality(settings)) return "metadata";
   return "auto";
 }

@@ -1,10 +1,56 @@
 /* LTR / RTL : la direction suit html[dir], pas des left/right figés */
 
+[dir="ltr"] .page-header .eyebrow {
+  max-width: 11rem;
+  text-wrap: balance;
+  letter-spacing: 0.04em;
+}
+
+[dir="ltr"] .content .hero-card--continue h2,
+[dir="ltr"] .content .hero-card--empty h2,
+[dir="ltr"] .home-discovery__intro h2,
+[dir="ltr"] .home-latest-panel__intro h2 {
+  font-family: var(--font-display);
+}
+
+[dir="ltr"] .content .hero-card__pill,
+[dir="ltr"] .content .hero-card__time,
+[dir="ltr"] .content .hero-card__subtitle,
+[dir="ltr"] .content .hero-card__chapter-badge,
+[dir="ltr"] .content .hero-card__chapter-name,
+[dir="ltr"] .content .hero-card__progress-label,
+[dir="ltr"] .content .hero-card__source,
+[dir="ltr"] .home-discovery__intro p,
+[dir="ltr"] .home-latest-panel__intro p,
+[dir="ltr"] .home-latest-row__meta small,
+[dir="ltr"] .home-latest-row__chapter,
+[dir="ltr"] .search-scope__copy strong,
+[dir="ltr"] .search-scope__copy small {
+  font-family: var(--font-sans);
+}
+
 [dir="ltr"] .lucide-chevron-left,
 [dir="ltr"] .page-header .lucide-arrow-right,
+[dir="ltr"] .details-hero__nav .lucide-arrow-right,
 [dir="ltr"] .reader-header__back svg,
 [dir="ltr"] .reader-header__back-icon,
+[dir="ltr"] .video-watch-header__back svg,
+[dir="ltr"] .video-watch-header__back-icon,
 [dir="ltr"] .live-video-cinema-back svg {
+  transform: scaleX(-1);
+}
+
+[dir="ltr"] .catalog-carousel-nav__icon .lucide-chevron-right,
+[dir="ltr"] .search-results-pagination > button .lucide-chevron-right,
+[dir="ltr"] .chapter-pagination > button .lucide-chevron-right,
+[dir="ltr"] .chapter-pagination > button .lucide-chevron-left,
+[dir="ltr"] .details-chapters .chapter-row > .lucide-chevron-left,
+[dir="ltr"] .details-movie-watch__arrow {
+  transform: scaleX(-1);
+}
+
+[dir="ltr"] .reader-header__episode-btn .lucide-chevron-right,
+[dir="ltr"] .reader-header__episode-btn .lucide-chevron-left {
   transform: scaleX(-1);
 }
 

@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import Hls from "hls.js";
 import { createSourceStreamLoader } from "../../lib/hls/sourceStreamLoader";
-import { createHlsPlayerConfig, getVideoPreloadMode } from "../../lib/hls/hlsConfig";
+import { createHlsPlayerConfig, getVideoPreloadMode, prefersHighVideoQuality } from "../../lib/hls/hlsConfig";
+import { applyHlsStartLevel } from "../../lib/hls/playbackQuality";
 import { t } from "../../i18n/runtime.js";
 
 const LOAD_TIMEOUT_MS = 45_000;
@@ -126,6 +127,7 @@ export function HlsVideo({
     hls.on(Hls.Events.MANIFEST_PARSED, () => {
       if (disposed) return;
       hideOverlay();
+      applyHlsStartLevel(hls, prefersHighVideoQuality());
       tryAutoplay();
     });
     hls.on(Hls.Events.FRAG_BUFFERED, () => {

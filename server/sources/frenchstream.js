@@ -1,6 +1,13 @@
 import { decodeHtml, textOnly } from "../lib/htmlUtils.js";
 import { createCachedHtmlFetcher, fetchProxiedImage, fetchWithRetries } from "../lib/httpUtils.js";
 import { fetchProxiedHlsResource, isAdSegmentUrl } from "../lib/hlsProxy.js";
+import {
+  assertProxiedStreamUrl,
+  decodePackedPlayerSource,
+  enrichSourcesWithStreams,
+  extractPackedPlayerStreamUrl,
+  resolveEmbedDirectStream,
+} from "../lib/embedResolvers.js";
 import { normalizeSearchQuery } from "../lib/queryLimits.js";
 import { responseJson } from "../lib/response.js";
 import { applyRecentChapterFields } from "../lib/catalogChapters.js";
@@ -22,8 +29,8 @@ const IMAGE_HOSTS = new Set([
   "imgur.com",
 ]);
 
-const STREAM_HOST_PATTERN = /(?:^|\.)(?:vidzy\.(?:cc|live|org)|fsvid\.lol)$/i;
-const DIRECT_PLAYER_PATTERN = /(?:vidzy\.(?:cc|live|org)|fsvid\.lol)/i;
+const STREAM_HOST_PATTERN = /(?:^|\.)(?:vidzy\.(?:cc|live|org)|fsvid\.lol|uqload\.|filemoon\.)/i;
+const DIRECT_PLAYER_PATTERN = /(?:vidzy\.(?:cc|live|org)|fsvid\.lol|uqload\.|filemoon\.)/i;
 const FAKE_STREAM_PATTERN = /(?:troll\/master|\/ads?\/|preroll|fake\.m3u8|decoy)/i;
 const PACKED_PLAYER_PATTERN = /\)\("([A-Za-z0-9+/=]{40,})"\)/g;
 
@@ -35,7 +42,6 @@ const PLAYER_HOST_ORDER = [
   /dood/i,
   /kakaflix/i,
 ];
-
 const PLAYER_LABELS = {
   premium: "Premium",
   vidzy: "Vidzy",
@@ -78,61 +84,23 @@ function buildFrenchStreamStreamProxyPath(targetUrl, referer = "") {
   return `/api/sources/${SOURCE_ID}/stream?${params}`;
 }
 
+export { decodePackedPlayerSource, extractPackedPlayerStreamUrl } from "../lib/embedResolvers.js";
+
 export function assertFrenchStreamStreamUrl(rawUrl = "") {
-  const decoded = decodeHtml(rawUrl);
-  if (!decoded) throw new Error("رابط البث غير صالح");
-  const url = new URL(decoded);
-  if (url.protocol !== "https:" || !STREAM_HOST_PATTERN.test(url.hostname)) {
-    throw new Error("مصدر البث غير مسموح");
-  }
-  url.hash = "";
-  return url.toString();
+  return assertProxiedStreamUrl(rawUrl);
 }
 
 export function assertFrenchStreamStreamReferer(rawUrl = "") {
   const decoded = decodeHtml(rawUrl);
   if (!decoded) throw new Error("مرجع البث غير صالح");
   const url = new URL(decoded);
-  if (url.protocol !== "https:" || !STREAM_HOST_PATTERN.test(url.hostname)) {
-    throw new Error("مرجع البث غير صالح");
-  }
+  if (url.protocol !== "https:") throw new Error("مرجع البث غير صالح");
   url.hash = "";
   return url.toString();
 }
 
-export function decodePackedPlayerSource(packed = "", hostname = "vidzy.cc") {
-  const host = String(hostname || "");
-  let seed = 0;
-  for (let index = 0; index < host.length; index += 1) {
-    seed = (seed + host.charCodeAt(index)) & 255;
-  }
-  const reversed = atob(packed).split("").reverse().join("");
-  let decoded = "";
-  for (let index = 0; index < reversed.length; index += 1) {
-    decoded += String.fromCharCode(reversed.charCodeAt(index) ^ ((0x3d + index * 89 + seed) & 255));
-  }
-  return decoded;
-}
-
-function isValidFrenchStreamHlsUrl(url = "") {
-  return /^https?:\/\//i.test(url)
-    && /\.m3u8/i.test(url)
-    && !FAKE_STREAM_PATTERN.test(url)
-    && !isAdSegmentUrl(url);
-}
-
-export function extractPackedPlayerStreamUrl(html = "", hostname = "vidzy.cc") {
-  const packedMatches = [...String(html).matchAll(PACKED_PLAYER_PATTERN)];
-  for (const match of packedMatches) {
-    try {
-      const decoded = decodePackedPlayerSource(match[1], hostname);
-      if (isValidFrenchStreamHlsUrl(decoded)) return decoded;
-    } catch {
-      // Some decoy payloads are not valid base64 for this player.
-    }
-  }
-  const plain = String(html).match(/https?:\/\/[^"'\\\s]+\.m3u8[^"'\\\s]*/i)?.[0] || "";
-  return isValidFrenchStreamHlsUrl(plain) ? plain : "";
+export async function resolveFrenchStreamDirectStream(embedUrl = "") {
+  return resolveEmbedDirectStream(embedUrl);
 }
 
 export function normalizeFrenchStreamUrl(rawUrl = "") {
@@ -479,16 +447,6 @@ function catalogHasMore(html, page) {
   return new RegExp(`cstart=${page + 1}\\b|/page/${page + 1}/`, "i").test(html);
 }
 
-function interleaveCatalog(left = [], right = []) {
-  const items = [];
-  const max = Math.max(left.length, right.length);
-  for (let index = 0; index < max; index += 1) {
-    if (left[index]) items.push(left[index]);
-    if (right[index]) items.push(right[index]);
-  }
-  return items;
-}
-
 function buildCatalogUrl(page, filterPath = CATALOG_PATH) {
   const path = assertFilterPath(filterPath);
   if (page <= 1) return `${BASE_URL}${path}`;
@@ -634,6 +592,32 @@ function episodeBucket(source, number) {
   return source[String(number)] || source[number] || null;
 }
 
+export function frenchStreamAudioLanguagesFromEpisodeData(episodeData = {}) {
+  const vf = episodeData?.vf || {};
+  const vostfr = episodeData?.vostfr || {};
+  const languages = [];
+  const hasVf = Object.keys(vf).some((number) => hostMapHasUrl(episodeBucket(vf, number)));
+  const hasVostfr = Object.keys(vostfr).some((number) => hostMapHasUrl(episodeBucket(vostfr, number)));
+  if (hasVf) languages.push("VF");
+  if (hasVostfr) languages.push("VOSTFR");
+  return languages;
+}
+
+function frenchStreamAudioLabelFromLanguages(languages = [], fallback = "") {
+  if (languages.includes("VF") && languages.includes("VOSTFR")) return "VF+VOSTFR";
+  if (languages.length === 1) return languages[0];
+  return fallback;
+}
+
+function attachFrenchStreamChapterAudioLanguages(chapter, audioLanguages = {}) {
+  const entries = Object.entries(audioLanguages).filter(([, url]) => Boolean(url));
+  if (!entries.length) return chapter;
+  return {
+    ...chapter,
+    audioLanguages: Object.fromEntries(entries),
+  };
+}
+
 export function parseFrenchStreamSeriesChapters(episodeData, seasonUrl) {
   const vf = episodeData?.vf || {};
   const vostfr = episodeData?.vostfr || {};
@@ -657,12 +641,17 @@ export function parseFrenchStreamSeriesChapters(episodeData, seasonUrl) {
     const name = episodeTitle && !/^épisode\s+\d+$/i.test(episodeTitle)
       ? `${number} · ${episodeTitle}`
       : String(number);
+    const watchUrl = episodeUrl(seasonUrl, number);
+    const audioLanguages = {};
+    if (hostMapHasUrl(episodeBucket(vf, number))) audioLanguages.VF = watchUrl;
+    if (hostMapHasUrl(episodeBucket(vostfr, number))) audioLanguages.VOSTFR = watchUrl;
     return [{
-      url: episodeUrl(seasonUrl, number),
+      url: watchUrl,
       name,
       number: String(number),
       date: "",
       locked: false,
+      audioLanguages,
     }];
   });
 }
@@ -775,6 +764,13 @@ export function flattenFrenchStreamPlayers(players = {}, language = "") {
   return ranked;
 }
 
+export function frenchStreamAudioLanguagesFromPlayers(players = {}) {
+  const languages = [];
+  if (flattenFrenchStreamPlayers(players, "VF").length) languages.push("VF");
+  if (flattenFrenchStreamPlayers(players, "VOSTFR").length) languages.push("VOSTFR");
+  return languages;
+}
+
 export function parseFrenchStreamPlayback(api, details, language = "") {
   const sources = flattenFrenchStreamPlayers(api?.players, language);
   const embedUrl = sources[0]?.url || "";
@@ -789,55 +785,13 @@ export function parseFrenchStreamPlayback(api, details, language = "") {
   };
 }
 
-async function fetchEmbedHtml(embedUrl) {
-  const response = await fetchWithRetries(embedUrl, {
-    headers: {
-      accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      referer: `${BASE_URL}/`,
-      "user-agent": BROWSER_UA,
-    },
-    timeoutMs: 20_000,
-  }, 1);
-  if (!response.ok) throw new Error(`French Stream a répondu ${response.status}`);
-  return response.text();
-}
-
-export async function resolveFrenchStreamDirectStream(embedUrl = "") {
-  let parsed;
-  try {
-    parsed = new URL(embedUrl);
-  } catch {
-    return null;
-  }
-  if (parsed.protocol !== "https:" || !DIRECT_PLAYER_PATTERN.test(parsed.hostname)) return null;
-  const html = await fetchEmbedHtml(parsed.toString());
-  const streamUrl = extractPackedPlayerStreamUrl(html, parsed.hostname);
-  if (!streamUrl) return null;
-  return { url: streamUrl, referer: parsed.toString() };
-}
-
-export async function enrichFrenchStreamPlayback(api, details, language = "") {
+async function enrichFrenchStreamPlayback(api, details, language = "") {
   const playback = parseFrenchStreamPlayback(api, details, language);
-  const sources = [];
-  for (const source of playback.sources) {
-    if (!DIRECT_PLAYER_PATTERN.test(source.url)) {
-      sources.push(source);
-      continue;
-    }
-    try {
-      const stream = await resolveFrenchStreamDirectStream(source.url);
-      sources.push(stream
-        ? { ...source, streamUrl: stream.url, streamReferer: stream.referer }
-        : source);
-    } catch {
-      sources.push(source);
-    }
-  }
+  const sources = await enrichSourcesWithStreams(playback.sources, details.url || playback.url);
   const playable = sources.find((entry) => entry.streamUrl);
-  const hlsSources = sources.filter((entry) => entry.streamUrl);
   return {
     ...playback,
-    sources: playable ? hlsSources : sources,
+    sources,
     streamUrl: playable?.streamUrl || "",
     videoUrl: playable?.streamUrl || "",
     streamReferer: playable?.streamReferer || "",
@@ -966,14 +920,11 @@ export async function handleFrenchStreamRequest(requestUrl) {
     const page = Math.min(Math.max(Number(requestUrl.searchParams.get("page")) || 1, 1), 2000);
     const filterPath = assertFilterPath(requestUrl.searchParams.get("filterPath")?.trim() || MIXED_PATH);
     if (filterPath === MIXED_PATH) {
-      const [filmsHtml, seriesHtml] = await Promise.all([
-        fetchFrenchStreamHtml(buildCatalogUrl(page, CATALOG_PATH)),
-        fetchFrenchStreamHtml(buildCatalogUrl(page, SERIES_PATH)),
-      ]);
+      const html = await fetchFrenchStreamHtml(buildCatalogUrl(page, MIXED_PATH));
       return responseJson(200, {
-        items: interleaveCatalog(parseFrenchStreamCatalog(filmsHtml), parseFrenchStreamCatalog(seriesHtml)),
+        items: parseFrenchStreamCatalog(html),
         page,
-        hasMore: catalogHasMore(filmsHtml, page) || catalogHasMore(seriesHtml, page),
+        hasMore: catalogHasMore(html, page),
         fetchedAt: new Date().toISOString(),
       });
     }
@@ -1000,16 +951,31 @@ export async function handleFrenchStreamRequest(requestUrl) {
     if (details.mediaType === "series") {
       const episodeData = await fetchEpisodeData(details.id).catch(() => null);
       const chapters = parseFrenchStreamSeriesChapters(episodeData, details.url);
+      const availableAudioLanguages = frenchStreamAudioLanguagesFromEpisodeData(episodeData);
       const relatedItems = await fetchRelatedSeasons(details.serieTag, details.id);
       return responseJson(200, applyRecentChapterFields({
         ...details,
         chapters,
         totalEpisodes: chapters.length,
+        availableAudioLanguages,
+        audioLabel: frenchStreamAudioLabelFromLanguages(availableAudioLanguages, details.audioLabel),
         relatedItems,
       }, [...chapters].reverse()));
     }
+    const api = await fetchFilmApi(details.id).catch(() => null);
+    const availableAudioLanguages = frenchStreamAudioLanguagesFromPlayers(api?.players);
+    const watchUrl = details.chapters[0]?.url;
+    const audioLanguages = {};
+    if (watchUrl && availableAudioLanguages.includes("VF")) audioLanguages.VF = watchUrl;
+    if (watchUrl && availableAudioLanguages.includes("VOSTFR")) audioLanguages.VOSTFR = watchUrl;
+    const chapters = details.chapters.length
+      ? [attachFrenchStreamChapterAudioLanguages(details.chapters[0], audioLanguages)]
+      : details.chapters;
     return responseJson(200, {
       ...details,
+      chapters,
+      availableAudioLanguages,
+      audioLabel: frenchStreamAudioLabelFromLanguages(availableAudioLanguages, details.audioLabel),
       relatedItems: await fetchRelatedMovies(details.title, details.id),
     });
   }

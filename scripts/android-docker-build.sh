@@ -7,8 +7,7 @@ BUILD_IMAGE="${MANHAW_ANDROID_BUILD_IMAGE:-manhaw-android-build}"
 
 echo "==> Build web + sync Capacitor"
 cd "$ROOT_DIR"
-npm run build
-npx cap sync android
+npm run build:android
 
 echo "==> Compile APK debug"
 rm -rf "$ANDROID_DIR/.gradle/8.14.3/fileHashes" "$ANDROID_DIR/.gradle/8.14.3/checksums" 2>/dev/null || true

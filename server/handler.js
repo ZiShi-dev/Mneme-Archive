@@ -11,6 +11,7 @@ import { handleKolnovelRequest } from "./sources/kolnovel.js";
 import { handleAnime4upRequest } from "./sources/anime4up.js";
 import { handleFrenchStreamRequest } from "./sources/frenchstream.js";
 import { handleWiflixRequest } from "./sources/wiflix.js";
+import { handleCoflixRequest } from "./sources/coflix.js";
 import { handleDilarRequest } from "./sources/dilar.js";
 import { handleMangaforfreeRequest } from "./sources/mangaforfree.js";
 import { handleArabshentaiRequest } from "./sources/arabshentai.js";
@@ -29,12 +30,13 @@ export async function handleSourceRequest(rawUrl) {
   const isAnime4up = rawUrl?.startsWith("/api/sources/anime4up/");
   const isFrenchStream = rawUrl?.startsWith("/api/sources/frenchstream/");
   const isWiflix = rawUrl?.startsWith("/api/sources/wiflix/");
+  const isCoflix = rawUrl?.startsWith("/api/sources/coflix/");
   const isMangaforfree = rawUrl?.startsWith("/api/sources/mangaforfree/");
   const isDilar = rawUrl?.startsWith("/api/sources/dilar/");
   const isArabshentai = rawUrl?.startsWith("/api/sources/arabshentai/");
   const isHentairead = rawUrl?.startsWith("/api/sources/hentairead/");
   const isHentaigasm = rawUrl?.startsWith("/api/sources/hentaigasm/");
-  if (!isMangaLik && !isAzora && !isGalaxy && !isParadise && !isNightNovel && !isRealmNovel && !isCenele && !isKolnovel && !isAnime4up && !isFrenchStream && !isWiflix && !isMangaforfree && !isDilar && !isArabshentai && !isHentairead && !isHentaigasm) return null;
+  if (!isMangaLik && !isAzora && !isGalaxy && !isParadise && !isNightNovel && !isRealmNovel && !isCenele && !isKolnovel && !isAnime4up && !isFrenchStream && !isWiflix && !isCoflix && !isMangaforfree && !isDilar && !isArabshentai && !isHentairead && !isHentaigasm) return null;
   try {
     const requestUrl = new URL(rawUrl, "http://localhost");
     if (isHentaigasm) return await handleHentaigasmRequest(requestUrl);
@@ -43,6 +45,7 @@ export async function handleSourceRequest(rawUrl) {
     if (isDilar) return await handleDilarRequest(requestUrl);
     if (isMangaforfree) return await handleMangaforfreeRequest(requestUrl);
     if (isWiflix) return await handleWiflixRequest(requestUrl);
+    if (isCoflix) return await handleCoflixRequest(requestUrl);
     if (isFrenchStream) return await handleFrenchStreamRequest(requestUrl);
     if (isAnime4up) return await handleAnime4upRequest(requestUrl);
     if (isKolnovel) return await handleKolnovelRequest(requestUrl);

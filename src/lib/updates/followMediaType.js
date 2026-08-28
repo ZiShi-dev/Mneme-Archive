@@ -6,7 +6,7 @@ export function inferFollowMediaType(item) {
   const types = getSourceProfile(sourceId).contentTypes || ["manga"];
   const label = item?.mediaTypeLabel || "";
   if (/رواية|novel/i.test(label)) return "novel";
-  if (/مسلسل|series/i.test(label)) return "series";
+  if (/مسلسل|s[eéè]rie|series/i.test(label)) return "series";
   if (/فيلم|movie/i.test(label)) return "movie";
   if (/أنمي|anime/i.test(label)) return "anime";
   if (types.includes("anime") && !types.includes("manga") && !types.includes("novel")) {

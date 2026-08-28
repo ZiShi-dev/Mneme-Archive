@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Bell, Minus, Plus } from "lucide-react";
 import { SheetCloseButton } from "../../components/ui/SheetCloseButton";
 import { SheetPortal } from "../../components/ui/SheetPortal";
@@ -20,7 +20,28 @@ export function FollowAlertSheet({
 }) {
   const { t, dir } = useI18n();
   const [interval, setInterval] = useState(preference?.interval || 1);
+  const [backdropArmed, setBackdropArmed] = useState(false);
   const mediaType = resolveFollowMediaType({ ...item, ...preference });
+
+  useEffect(() => {
+    setInterval(preference?.interval || 1);
+  }, [preference?.interval, item?.url]);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setBackdropArmed(true));
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      cancelAnimationFrame(frame);
+      setBackdropArmed(false);
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [onClose]);
 
   function handleSave() {
     onSave({
@@ -36,7 +57,8 @@ export function FollowAlertSheet({
       className="follow-sheet-backdrop"
       role="presentation"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (!backdropArmed || event.target !== event.currentTarget) return;
+        onClose();
       }}
     >
       <section

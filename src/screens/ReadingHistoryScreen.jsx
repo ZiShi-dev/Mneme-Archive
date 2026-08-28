@@ -3,6 +3,7 @@ import {
   BookOpen,
   Check,
   ChevronLeft,
+  Clapperboard,
   Clock3,
   History,
   Sparkles,
@@ -16,9 +17,11 @@ import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { EmptyState } from "../components/ui/EmptyState";
 import { AccessibleSearchField } from "../components/ui/AccessibleSearchField";
 import { manga as demoCatalog } from "../data/demoManga";
+import { isChromebookApp, VISIBLE_MEDIA_TYPES } from "../config/appFlavor";
 import { getSourceProfile } from "../config/sources";
 import { resolveBookmarkType } from "../features/sources/contentTypes";
 import { RemoteCover, SourceLogo } from "../features/sources";
+import { isVideoMediaType } from "../features/sources/mediaPresentation";
 import { listTitleChapterReads } from "../lib/reading/chapterReadLog";
 import { ReadingChapterLogButton, ReadingChapterLogSheet } from "./ReadingChapterLogSheet";
 import { useI18n } from "../i18n/I18nProvider";
@@ -41,6 +44,11 @@ const CONTENT_SINGULAR_KEYS = {
   movie: "content.movieSingular",
   series: "content.seriesSingular",
 };
+
+function isVisibleHistoryType(mediaType) {
+  if (!isChromebookApp) return true;
+  return VISIBLE_MEDIA_TYPES.includes(mediaType);
+}
 
 export function ReadingHistoryScreen({
   readingHistory,
@@ -77,8 +85,13 @@ export function ReadingHistoryScreen({
     return { ...entry, type, target };
   }), [entries, liveFavorites]);
 
+  const scopedEntries = useMemo(
+    () => enrichedEntries.filter((entry) => isVisibleHistoryType(entry.type)),
+    [enrichedEntries],
+  );
+
   const normalizedQuery = query.trim().toLowerCase();
-  const visibleEntries = useMemo(() => enrichedEntries
+  const visibleEntries = useMemo(() => scopedEntries
     .filter((entry) => typeFilter === "all" || entry.type === typeFilter)
     .filter((entry) => {
       if (statusFilter === "reading") return !isRecordCompleted(entry.record);
@@ -90,19 +103,20 @@ export function ReadingHistoryScreen({
       if (!normalizedQuery) return true;
       const haystack = `${entry.record.title} ${entry.record.altTitle || ""} ${getSourceProfile(entry.record.sourceId).name}`;
       return haystack.toLowerCase().includes(normalizedQuery);
-    }), [enrichedEntries, normalizedQuery, statusFilter, typeFilter]);
+    }), [scopedEntries, normalizedQuery, statusFilter, typeFilter]);
 
   const timeline = useMemo(() => groupHistoryEntries(visibleEntries), [visibleEntries]);
 
   const stats = useMemo(() => ({
-    total: entries.length,
-    reading: entries.filter(({ record }) => !isRecordCompleted(record)).length,
-    doneToday: entries.filter(({ record }) => isReadToday(record)).length,
-    manga: enrichedEntries.filter((entry) => entry.type === "manga").length,
-    novel: enrichedEntries.filter((entry) => entry.type === "novel").length,
-    anime: enrichedEntries.filter((entry) => entry.type === "anime").length,
-    movie: enrichedEntries.filter((entry) => entry.type === "movie").length,
-  }), [entries, enrichedEntries]);
+    total: scopedEntries.length,
+    reading: scopedEntries.filter(({ record }) => !isRecordCompleted(record)).length,
+    doneToday: scopedEntries.filter(({ record }) => isReadToday(record)).length,
+    manga: scopedEntries.filter((entry) => entry.type === "manga").length,
+    novel: scopedEntries.filter((entry) => entry.type === "novel").length,
+    anime: scopedEntries.filter((entry) => entry.type === "anime").length,
+    movie: scopedEntries.filter((entry) => entry.type === "movie").length,
+    series: scopedEntries.filter((entry) => entry.type === "series").length,
+  }), [scopedEntries]);
 
   const hasActiveFilters = Boolean(query || typeFilter !== "all" || statusFilter !== "all");
 
@@ -160,13 +174,23 @@ export function ReadingHistoryScreen({
     return listTitleChapterReads(chapterReadLog, chapterLogEntry.key, chapterLogEntry.record);
   }, [chapterLogEntry, chapterReadLog]);
 
-  const typeFilters = [
-    { id: "all", label: t("content.all"), count: stats.total },
-    { id: "manga", label: t("content.manga"), count: stats.manga },
-    { id: "novel", label: t("content.novel"), count: stats.novel },
-    { id: "anime", label: t("content.anime"), count: stats.anime },
-    { id: "movie", label: t("content.movie"), count: stats.movie },
-  ];
+  const typeFilters = useMemo(() => {
+    const all = { id: "all", label: t("content.all"), count: stats.total };
+    if (isChromebookApp) {
+      return [
+        all,
+        { id: "movie", label: t("content.movie"), count: stats.movie },
+        { id: "series", label: t("content.series"), count: stats.series },
+      ];
+    }
+    return [
+      all,
+      { id: "manga", label: t("content.manga"), count: stats.manga },
+      { id: "novel", label: t("content.novel"), count: stats.novel },
+      { id: "anime", label: t("content.anime"), count: stats.anime },
+      { id: "movie", label: t("content.movie"), count: stats.movie },
+    ];
+  }, [stats, t]);
 
   const statusFilters = [
     { id: "all", label: t("common.all") },
@@ -176,14 +200,23 @@ export function ReadingHistoryScreen({
   ];
 
   return (
-    <div className="screen">
-      <Header
-        title={t("history.title")}
-        eyebrow={stats.total ? t("history.nFollowed", { count: stats.total }) : t("history.eyebrow")}
-        onBack={onBack}
-        onSearch={() => navigate("search")}
-        onNotifications={() => navigate("updates")}
-      />
+    <div className={`screen${isChromebookApp ? " screen--history-desktop" : ""}`}>
+      {isChromebookApp ? (
+        <header className="settings-desktop-head">
+          <span className="eyebrow">
+            {stats.total ? t("history.nFollowed", { count: stats.total }) : t("history.eyebrowVideo")}
+          </span>
+          <h1>{t("history.title")}</h1>
+        </header>
+      ) : (
+        <Header
+          title={t("history.title")}
+          eyebrow={stats.total ? t("history.nFollowed", { count: stats.total }) : t("history.eyebrow")}
+          onBack={onBack}
+          onSearch={() => navigate("search")}
+          onNotifications={() => navigate("updates")}
+        />
+      )}
       <main className="content history-page">
         <section className="history-hero" aria-label={t("history.summary")}>
           <div className="history-hero__glow" aria-hidden="true" />
@@ -195,12 +228,12 @@ export function ReadingHistoryScreen({
             <p>
               {stats.reading
                 ? t("history.inProgressTotal", { active: stats.reading, total: stats.total })
-                : t("history.appearHere")}
+                : (isChromebookApp ? t("history.appearHereVideo") : t("history.appearHere"))}
             </p>
           </div>
           <div className="history-hero__stats">
             <span>
-              <BookOpen size={13} aria-hidden="true" />
+              {isChromebookApp ? <Clapperboard size={13} aria-hidden="true" /> : <BookOpen size={13} aria-hidden="true" />}
               <strong>{stats.reading}</strong>
               <small>{t("history.reading")}</small>
             </span>
@@ -217,7 +250,7 @@ export function ReadingHistoryScreen({
           </div>
         </section>
 
-        {stats.total > 0 && (
+        {(stats.total > 0 || isChromebookApp) && (
           <section className="history-controls" aria-label={t("history.filterAria")}>
             <AccessibleSearchField
               className="global-search history-controls__search"
@@ -285,6 +318,7 @@ export function ReadingHistoryScreen({
                       const progress = getRecordProgress(record);
                       const isDemo = entry.target?.kind === "demo";
                       const typeLabel = t(CONTENT_SINGULAR_KEYS[entry.type] || CONTENT_SINGULAR_KEYS.manga);
+                      const ContinueIcon = isVideoMediaType(entry.type) ? Clapperboard : BookOpen;
                       return (
                         <article
                           className={`history-row history-row--${entry.type}${readToday ? " history-row--today" : ""}`}
@@ -299,7 +333,12 @@ export function ReadingHistoryScreen({
                               {isDemo ? (
                                 <Cover item={entry.target.item} />
                               ) : record.cover ? (
-                                <RemoteCover src={record.cover} title={record.title} sourceId={record.sourceId} />
+                                <RemoteCover
+                                  src={record.cover}
+                                  title={record.title}
+                                  sourceId={record.sourceId}
+                                  video={isVideoMediaType(entry.type)}
+                                />
                               ) : (
                                 <span className="history-row__fallback">
                                   <BookOpen size={16} />
@@ -355,7 +394,7 @@ export function ReadingHistoryScreen({
                               className="history-row__continue"
                               onClick={() => openEntry(entry, true)}
                             >
-                              <BookOpen size={13} aria-hidden="true" />
+                              <ContinueIcon size={13} aria-hidden="true" />
                               {completed && !readToday ? t("history.resume") : t("history.continue")}
                             </button>
                             <button
@@ -389,7 +428,7 @@ export function ReadingHistoryScreen({
             icon={History}
             variant="brand"
             title={t("history.empty")}
-            description={t("history.emptyHint")}
+            description={isChromebookApp ? t("history.emptyHintVideo") : t("history.emptyHint")}
             actionLabel={t("history.discover")}
             onAction={() => navigate("sources")}
           />

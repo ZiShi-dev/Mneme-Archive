@@ -1,22 +1,27 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  applyTaxonomyFilters,
   catalogItemMatchesFilter,
   catalogViewKey,
   isSearchQueryActive,
+  normalizeTaxonomySelection,
   resolveEffectiveFilter,
   shouldUseCatalogScopedSearch,
+  toggleTaxonomySelection,
 } from "../../src/features/sources/catalogView.js";
 
 test("catalogViewKey keeps kind, filter and query distinct", () => {
   const base = catalogViewKey("frenchstream", null, "", null);
   const series = catalogViewKey("frenchstream", null, "", { slug: "series" });
   const tagged = catalogViewKey("frenchstream", { type: "tag", slug: "2024", name: "2024" }, "", { slug: "series" });
+  const combined = catalogViewKey("frenchstream", { category: { slug: "action", name: "Action" }, tag: { slug: "2024", name: "2024" } }, "", { slug: "series" });
   const searched = catalogViewKey("frenchstream", null, "naruto", { slug: "series" });
 
   assert.notEqual(base, series);
   assert.notEqual(series, tagged);
-  assert.notEqual(tagged, searched);
+  assert.notEqual(tagged, combined);
+  assert.notEqual(combined, searched);
 });
 
 test("resolveEffectiveFilter keeps taxonomy while preserving kind metadata", () => {
@@ -24,7 +29,7 @@ test("resolveEffectiveFilter keeps taxonomy while preserving kind metadata", () 
   const taxonomy = { type: "category", slug: "action", name: "أكشن", filterPath: "/films/action/" };
   const effective = resolveEffectiveFilter(kind, taxonomy);
 
-  assert.equal(effective.slug, "action");
+  assert.equal(effective.category.slug, "action");
   assert.equal(effective.kindSlug, "series");
   assert.equal(effective.kindFilterPath, "/s-tv/");
 });
@@ -49,6 +54,14 @@ test("shouldUseCatalogScopedSearch keeps kind-only search on the site search", (
 
   assert.equal(shouldUseCatalogScopedSearch("wiflix", series, null, "you"), false);
   assert.equal(shouldUseCatalogScopedSearch("frenchstream", series, null, "reacher"), false);
+  assert.equal(
+    shouldUseCatalogScopedSearch("frenchstream", series, { type: "category", slug: "actions", name: "Action", filterPath: "/films/actions/" }, "reacher"),
+    true,
+  );
+  assert.equal(
+    shouldUseCatalogScopedSearch("wiflix", null, { type: "tag", slug: "2024", name: "2024", filterPath: "/annee/2024/" }, "matrix"),
+    true,
+  );
   assert.equal(shouldUseCatalogScopedSearch("anime4up", movies, null, "naruto"), false);
   assert.equal(shouldUseCatalogScopedSearch("anime4up", anime, null, "naruto"), false);
   assert.equal(shouldUseCatalogScopedSearch("azorafly", novel, null, "solo"), false);
@@ -77,4 +90,45 @@ test("catalogItemMatchesFilter covers video and reading kinds", () => {
 test("isSearchQueryActive requires at least two characters", () => {
   assert.equal(isSearchQueryActive("a"), false);
   assert.equal(isSearchQueryActive("ab"), true);
+});
+
+test("toggleTaxonomySelection keeps category and tag together", () => {
+  const category = { slug: "action", name: "Action", filterPath: "/films/action/" };
+  const tag = { slug: "2024", name: "2024", filterPath: "/xfsearch/date-de-sortie/2024/" };
+  const withCategory = toggleTaxonomySelection(null, "category", category);
+  const withBoth = toggleTaxonomySelection(withCategory, "tag", tag);
+  const normalized = normalizeTaxonomySelection(withBoth);
+
+  assert.equal(normalized.category.slug, "action");
+  assert.equal(normalized.tag.slug, "2024");
+
+  const toggledOffTag = toggleTaxonomySelection(withBoth, "tag", tag);
+  assert.equal(normalizeTaxonomySelection(toggledOffTag).tag, null);
+  assert.equal(normalizeTaxonomySelection(toggledOffTag).category.slug, "action");
+});
+
+test("applyTaxonomyFilters intersects category and year tag", () => {
+  const items = [
+    { title: "Film A", year: "2024", genres: ["Action"] },
+    { title: "Film B", year: "2023", genres: ["Action"] },
+    { title: "Film C", year: "2024", genres: ["Action"] },
+  ];
+  const filtered = applyTaxonomyFilters(items, {
+    category: { type: "category", slug: "action", name: "Action" },
+    tag: { type: "tag", slug: "2024", name: "2024" },
+  });
+
+  assert.deepEqual(filtered.map((item) => item.title), ["Film A", "Film C"]);
+});
+
+test("applyTaxonomyFilters keeps tag-only server results even without year metadata", () => {
+  const items = [
+    { title: "Film A", altTitle: "VOSTFR" },
+    { title: "Film B", year: "2024" },
+  ];
+  const filtered = applyTaxonomyFilters(items, {
+    tag: { type: "tag", slug: "2024", name: "2024", filterPath: "/annee/2024/" },
+  });
+
+  assert.deepEqual(filtered.map((item) => item.title), ["Film A", "Film B"]);
 });

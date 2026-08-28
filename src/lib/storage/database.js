@@ -1,7 +1,6 @@
 import { Capacitor } from "@capacitor/core";
-import { CapacitorSQLite, SQLiteConnection } from "@capacitor-community/sqlite";
+import { isChromebookApp } from "../../config/appFlavor";
 import { DB_NAME, DB_VERSION } from "./constants";
-import { resolveDatabaseOpenOptions } from "./dbEncryption";
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS app_meta (
@@ -33,7 +32,7 @@ let db = null;
 let initPromise = null;
 
 export function isNativeStorage() {
-  return Capacitor.isNativePlatform();
+  return Capacitor.isNativePlatform() && !isChromebookApp;
 }
 
 async function runMigrations(connection) {
@@ -55,9 +54,11 @@ export async function openDatabase() {
   if (db) return db;
   if (!initPromise) {
     initPromise = (async () => {
+      const { CapacitorSQLite, SQLiteConnection } = await import("@capacitor-community/sqlite");
       sqliteConnection = new SQLiteConnection(CapacitorSQLite);
       const consistency = await sqliteConnection.checkConnectionsConsistency();
       const isConn = (await sqliteConnection.isConnection(DB_NAME, false)).result;
+      const { resolveDatabaseOpenOptions } = await import("./dbEncryption.js");
       const openOptions = await resolveDatabaseOpenOptions(sqliteConnection, DB_NAME);
 
       if (consistency.result && isConn) {

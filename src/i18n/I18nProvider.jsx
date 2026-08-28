@@ -1,24 +1,17 @@
 import React, { createContext, useCallback, useContext, useLayoutEffect, useMemo, useState } from "react";
-import { DEFAULT_LOCALE, LOCALES, LOCALE_STORAGE_KEY, normalizeLocale } from "./locales";
+import { kvGetStringSync, kvSetString } from "../lib/storage/initStorage.js";
+import { DEFAULT_UI_LOCALE, LOCALES, LOCALE_STORAGE_KEY, normalizeLocale } from "./locales";
 import { getLocaleMeta, setRuntimeLocale, subscribeLocale, t as runtimeT } from "./runtime";
 
 const I18nContext = createContext(null);
 
 function readLocalLocale() {
-  if (typeof localStorage === "undefined") return DEFAULT_LOCALE;
-  try {
-    return normalizeLocale(localStorage.getItem(LOCALE_STORAGE_KEY));
-  } catch {
-    return DEFAULT_LOCALE;
-  }
+  const stored = kvGetStringSync(LOCALE_STORAGE_KEY, "");
+  return stored ? normalizeLocale(stored) : DEFAULT_UI_LOCALE;
 }
 
 function writeLocalLocale(locale) {
-  try {
-    localStorage.setItem(LOCALE_STORAGE_KEY, locale);
-  } catch {
-    /* ignore quota / private mode */
-  }
+  kvSetString(LOCALE_STORAGE_KEY, locale);
 }
 
 export function I18nProvider({ children }) {

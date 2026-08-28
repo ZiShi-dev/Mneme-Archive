@@ -1,5 +1,4 @@
 import React, { useEffect } from "react";
-import { Capacitor } from "@capacitor/core";
 import { isAllowedEmbedUrl, resolveEmbedIframeSandbox } from "../../lib/video/embedHosts";
 import { useI18n } from "../../i18n/I18nProvider";
 
@@ -10,8 +9,7 @@ export function EmbedPlayerFrame({
   onBlocked,
 }) {
   const { t } = useI18n();
-  const relaxed = !Capacitor.isNativePlatform();
-  const allowed = Boolean(src) && isAllowedEmbedUrl(src, { relaxed });
+  const allowed = Boolean(src) && isAllowedEmbedUrl(src);
   const sandbox = resolveEmbedIframeSandbox(src);
 
   useEffect(() => {

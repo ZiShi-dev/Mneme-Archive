@@ -306,6 +306,22 @@
   margin: 0;
   border-radius: inherit;
   object-fit: cover;
+  object-position: center center;
+}
+
+.bookmark-row__media--movie .remote-cover,
+.bookmark-row__media--movie .cover {
+  object-position: center 22%;
+}
+
+.bookmark-row__media--movie {
+  width: 76px;
+  height: 43px;
+}
+
+.bookmark-row__media--series {
+  width: 54px;
+  height: 76px;
 }
 
 .bookmark-row__type {
@@ -325,6 +341,14 @@
 
 .bookmark-row__type--novel {
   color: #ffd48a;
+}
+
+.bookmark-row__type--movie {
+  color: var(--film);
+}
+
+.bookmark-row__type--series {
+  color: #c9a4ff;
 }
 
 .bookmark-row__body {

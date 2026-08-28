@@ -1,0 +1,159 @@
+/* Barre Mneme — visible, couleurs du thème, toujours à droite même en RTL. */
+
+:root {
+  --scroll-size: 12px;
+  --scroll-inset: 2px;
+}
+
+/* Firefox : propriétés standard. Chrome ignore ::-webkit-scrollbar
+   si scrollbar-width / scrollbar-color sont définis. */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color:
+      color-mix(in srgb, var(--stamp) 72%, var(--brand))
+      color-mix(in srgb, var(--outer) 70%, var(--surface));
+  }
+}
+
+::-webkit-scrollbar {
+  width: var(--scroll-size);
+  height: var(--scroll-size);
+}
+
+::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+::-webkit-scrollbar-corner {
+  background: color-mix(in srgb, var(--outer) 70%, var(--surface));
+}
+
+::-webkit-scrollbar-track {
+  margin-block: 6px;
+  background:
+    linear-gradient(
+      to var(--scroll-edge, left),
+      color-mix(in srgb, var(--stamp) 32%, var(--line)) 0 1px,
+      color-mix(in srgb, var(--outer) 55%, var(--surface)) 1px
+    );
+  border-radius: 99px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--stamp) 14%, transparent);
+}
+
+::-webkit-scrollbar-track:horizontal {
+  margin-inline: 6px;
+  background:
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--stamp) 32%, var(--line)) 0 1px,
+      color-mix(in srgb, var(--outer) 55%, var(--surface)) 1px
+    );
+}
+
+::-webkit-scrollbar-thumb {
+  border: 2px solid color-mix(in srgb, var(--surface-raised) 70%, var(--outer));
+  border-radius: 99px;
+  background-color: var(--stamp);
+  background-image: linear-gradient(180deg, var(--stamp), var(--brand) 78%);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, white 20%, transparent),
+    0 0 8px color-mix(in srgb, var(--stamp) 28%, transparent);
+}
+
+::-webkit-scrollbar-thumb:horizontal {
+  background:
+    linear-gradient(90deg, var(--stamp), var(--brand) 78%)
+    padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background:
+    linear-gradient(180deg, var(--stamp), var(--green-bright))
+    padding-box;
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: var(--brand) padding-box;
+}
+
+[data-theme="sakura"] ::-webkit-scrollbar-thumb,
+.app-shell--sakura ::-webkit-scrollbar-thumb {
+  background:
+    linear-gradient(180deg, var(--nadeshiko), var(--ume) 78%)
+    padding-box;
+}
+
+[data-theme="yozakura"] ::-webkit-scrollbar-thumb,
+.app-shell--yozakura ::-webkit-scrollbar-thumb {
+  background:
+    linear-gradient(180deg, var(--momo), var(--kobai) 78%)
+    padding-box;
+}
+
+:root,
+html[dir="ltr"],
+html[dir="rtl"],
+[dir="ltr"],
+[dir="rtl"] {
+  --scroll-edge: left;
+}
+
+.phone-frame,
+.desktop-app .phone-frame,
+.catalog-filter-picker__list,
+.catalog-source-picker__list,
+.management-source-picker__list,
+.reader-settings__body,
+.genre-picker__list,
+.manga-picker__results,
+.notify-sheet__body {
+  scrollbar-gutter: stable;
+}
+
+/* Le conteneur défile en LTR pour coller la barre à droite ;
+   le contenu reprend RTL via les enfants. */
+html[dir="rtl"] .phone-frame,
+html[dir="rtl"] .desktop-app .phone-frame,
+html[dir="rtl"] .catalog-filter-picker__list,
+html[dir="rtl"] .catalog-source-picker__list,
+html[dir="rtl"] .management-source-picker__list,
+html[dir="rtl"] .reader-settings__body,
+html[dir="rtl"] .genre-picker__list,
+html[dir="rtl"] .manga-picker__results,
+html[dir="rtl"] .notify-sheet__body {
+  direction: ltr;
+}
+
+html[dir="rtl"] .phone-frame > *,
+html[dir="rtl"] .desktop-app .phone-frame > *,
+html[dir="rtl"] .catalog-filter-picker__list > *,
+html[dir="rtl"] .catalog-source-picker__list > *,
+html[dir="rtl"] .management-source-picker__list > *,
+html[dir="rtl"] .reader-settings__body > *,
+html[dir="rtl"] .genre-picker__list > *,
+html[dir="rtl"] .manga-picker__results > *,
+html[dir="rtl"] .notify-sheet__body > * {
+  direction: rtl;
+}
+
+.desktop-app .phone-frame {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.desktop-app .phone-frame::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::-webkit-scrollbar-thumb {
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, white 16%, transparent);
+  }
+}

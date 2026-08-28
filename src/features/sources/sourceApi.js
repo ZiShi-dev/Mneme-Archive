@@ -5,6 +5,18 @@ import { toUserFacingError } from "../../lib/errors/userFacingError";
 import { t } from "../../i18n/runtime.js";
 import { MAX_SEARCH_QUERY_LENGTH } from "../../../server/lib/queryLimits.js";
 import { Capacitor } from "@capacitor/core";
+import { getRuntimeSettings } from "../../lib/settings/runtimeSettings.js";
+
+const FILTER_PATH_SOURCES = new Set([
+  "galaxynovels", "cenele", "anime4up", "frenchstream", "wiflix", "coflix",
+]);
+
+function appendSourceQueryParams(query, sourceId) {
+  if (sourceId === "coflix") {
+    const baseUrl = getRuntimeSettings().coflixBaseUrl;
+    if (baseUrl) query.set("baseUrl", baseUrl);
+  }
+}
 
 const sourcePath = (sourceId, resource) => `/api/sources/${sourceId}/${resource}`;
 const isNative = () => Capacitor.isNativePlatform();
@@ -98,7 +110,7 @@ async function fetchImagePayload(sourceId, url) {
   if (sourceId === "mangalik") await ensureMangalikNative();
   if (sourceId === "arabshentai" || sourceId === "hentairead") await ensureCloudflareNative();
   const { handleSourceRequest } = await import("../../../server/mangaSourcesPlugin.js");
-  const result = await handleSourceRequest(`${sourcePath(sourceId, "image")}?url=${encodeURIComponent(url)}`);
+  const result = await handleSourceRequest(sourceImageUrl(sourceId, url));
   if (!result || result.kind !== "image") throw new Error(t("errors.loadImage"));
   return {
     buffer: result.buffer,
@@ -132,18 +144,22 @@ export function fetchCatalog(sourceId, { page = 1, genre = "", tag = "", tagPath
     if (tagPath) query.set("tagPath", tagPath);
   }
   if (sourceId === "arabshentai" && queryParam === "type" && queryValue) query.set("type", queryValue);
-  if ((sourceId === "galaxynovels" || sourceId === "cenele" || sourceId === "anime4up" || sourceId === "frenchstream" || sourceId === "wiflix") && filterPath) {
+  if (FILTER_PATH_SOURCES.has(sourceId) && filterPath) {
     query.set("filterPath", filterPath);
     if (queryParam && queryValue) {
       query.set("queryParam", queryParam);
       query.set("queryValue", queryValue);
     }
   }
+  appendSourceQueryParams(query, sourceId);
   return requestJson(`${sourcePath(sourceId, "catalog")}?${query}`, t("errors.loadCatalog"), { ttlMs: 90_000 });
 }
 
 export function fetchSourceFilters(sourceId) {
-  return requestJson(sourcePath(sourceId, "filters"), t("errors.loadFilters"), { ttlMs: 300_000 });
+  const query = new URLSearchParams();
+  appendSourceQueryParams(query, sourceId);
+  const suffix = query.toString() ? `?${query}` : "";
+  return requestJson(`${sourcePath(sourceId, "filters")}${suffix}`, t("errors.loadFilters"), { ttlMs: 300_000 });
 }
 
 export function searchSource(sourceId, query, {
@@ -166,18 +182,21 @@ export function searchSource(sourceId, query, {
     if (tagPath) params.set("tagPath", tagPath);
   }
   if (sourceId === "arabshentai" && queryParam === "type" && queryValue) params.set("type", queryValue);
-  if ((sourceId === "galaxynovels" || sourceId === "cenele" || sourceId === "anime4up" || sourceId === "frenchstream" || sourceId === "wiflix") && filterPath) {
+  if (FILTER_PATH_SOURCES.has(sourceId) && filterPath) {
     params.set("filterPath", filterPath);
     if (queryParam && queryValue) {
       params.set("queryParam", queryParam);
       params.set("queryValue", queryValue);
     }
   }
+  appendSourceQueryParams(params, sourceId);
   return requestJson(`${sourcePath(sourceId, "search")}?${params}`, t("errors.searchFailed"), { ttlMs: 120_000 });
 }
 
 export function fetchSourceDetails(sourceId, url) {
-  const path = `${sourcePath(sourceId, "manga")}?url=${encodeURIComponent(url)}`;
+  const query = new URLSearchParams({ url });
+  appendSourceQueryParams(query, sourceId);
+  const path = `${sourcePath(sourceId, "manga")}?${query}`;
   return requestJson(path, t("errors.loadDetails"), { ttlMs: 180_000 });
 }
 
@@ -204,16 +223,20 @@ export async function fetchSourceChapter(sourceId, url, options = "") {
   if (opts.contentApi) query.set("api", opts.contentApi);
   if (opts.language) query.set("language", opts.language);
   if (opts.seriesUrl && sourceId === "novelsparadise") query.set("series", opts.seriesUrl);
+  appendSourceQueryParams(query, sourceId);
   return requestJson(`${sourcePath(sourceId, "chapter")}?${query}`, t("errors.loadChapter"));
 }
 
 export function sourceImageUrl(sourceId, url) {
-  return `${sourcePath(sourceId, "image")}?url=${encodeURIComponent(url)}`;
+  const query = new URLSearchParams({ url });
+  appendSourceQueryParams(query, sourceId);
+  return `${sourcePath(sourceId, "image")}?${query}`;
 }
 
 export function sourceStreamUrl(sourceId, streamUrl, referer = "") {
   const query = new URLSearchParams({ url: streamUrl });
   if (referer) query.set("referer", referer);
+  appendSourceQueryParams(query, sourceId);
   const path = `${sourcePath(sourceId, "stream")}?${query}`;
   if (typeof window !== "undefined" && window.location?.origin) {
     return `${window.location.origin}${path}`;
@@ -224,6 +247,7 @@ export function sourceStreamUrl(sourceId, streamUrl, referer = "") {
 export function sourceSubtitleUrl(sourceId, subtitleUrl, referer = "") {
   const query = new URLSearchParams({ url: subtitleUrl });
   if (referer) query.set("referer", referer);
+  appendSourceQueryParams(query, sourceId);
   const path = `${sourcePath(sourceId, "subtitle")}?${query}`;
   if (typeof window !== "undefined" && window.location?.origin) {
     return `${window.location.origin}${path}`;

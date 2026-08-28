@@ -91,6 +91,18 @@ export function kvGetStringSync(key, fallback = "") {
   return memoryCache.get(key) ?? fallback;
 }
 
+/** Écriture synchrone avec validation de clé et mise à jour du cache mémoire. */
+export function persistStorageString(key, value) {
+  assertAllowedKey(key);
+  const raw = String(value);
+  memoryCache.set(key, raw);
+  if (isNativeStorage()) {
+    void writeNativeRaw(key, raw);
+  } else {
+    writeWebRaw(key, raw);
+  }
+}
+
 export async function kvGet(key, fallback) {
   assertAllowedKey(key);
   if (memoryCache.has(key)) {

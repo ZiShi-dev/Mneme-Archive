@@ -4,11 +4,12 @@ import { Capacitor } from "@capacitor/core";
 import { allowsHeavyNetworkUse } from "../lib/platform/dataSaver";
 import { refreshNetworkStatus } from "../lib/platform/networkStatus";
 import {
-  initNativeNotifications,
+  initSystemNotifications,
   registerNotificationOpenHandler,
   showChapterUpdateNotifications,
-} from "../lib/notifications/nativeNotifications";
+} from "../lib/notifications/pushNotifications";
 import { t } from "../i18n/runtime.js";
+import { isChromebookApp } from "../config/appFlavor";
 
 const DEFAULT_POLL_MINUTES = 1;
 const MIN_POLL_MS = 60_000;
@@ -72,7 +73,11 @@ export function useRealtimeFollowSync({
 
     async function bootstrap() {
       if (Capacitor.isNativePlatform()) {
-        await initNativeNotifications();
+        try {
+          await initSystemNotifications();
+        } catch {
+          // Notifications optionnelles au démarrage.
+        }
       }
 
       if (disposed) return;
@@ -80,6 +85,13 @@ export function useRealtimeFollowSync({
       removeNotificationHandler = registerNotificationOpenHandler((extra) => {
         onNotificationOpenRef.current?.(extra);
       });
+
+      if (isChromebookApp && Capacitor.isNativePlatform()) {
+        window.setTimeout(() => {
+          if (!disposed) void runBackgroundSync("startup");
+        }, 2500);
+        return;
+      }
 
       await runBackgroundSync("startup");
     }

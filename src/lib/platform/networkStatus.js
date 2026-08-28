@@ -1,12 +1,13 @@
 import { t } from "../../i18n/runtime.js";
 import { Capacitor } from "@capacitor/core";
+import { isChromebookApp } from "../../config/appFlavor.js";
 
 const WIFI_TYPES = new Set(["wifi", "ethernet", "wimax"]);
 const CELLULAR_TYPES = new Set(["cellular", "bluetooth", "none"]);
 
 let cachedNetwork = {
-  wifiLike: !Capacitor.isNativePlatform(),
-  label: Capacitor.isNativePlatform() ? t("network.unknown") : t("network.ethernet"),
+  wifiLike: isChromebookApp || !Capacitor.isNativePlatform(),
+  label: Capacitor.isNativePlatform() && !isChromebookApp ? t("network.unknown") : t("network.ethernet"),
   connectionType: "unknown",
   connected: true,
 };
@@ -29,6 +30,9 @@ export function mapConnectionType(connectionType, connected = true, saveData = f
     return { wifiLike: false, label: t("network.cellular"), connectionType: type };
   }
   if (Capacitor.isNativePlatform()) {
+    if (isChromebookApp) {
+      return { wifiLike: true, label: t("network.ethernet"), connectionType: type || "unknown" };
+    }
     return { wifiLike: false, label: t("network.unknown"), connectionType: type || "unknown" };
   }
   return { wifiLike: true, label: t("network.ethernet"), connectionType: type || "unknown" };

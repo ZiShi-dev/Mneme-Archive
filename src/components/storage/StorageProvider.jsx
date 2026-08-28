@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { initStorage } from "../../lib/storage/initStorage";
 import { t } from "../../i18n/runtime";
-import { MnemeMark } from "../brand/MnemeMark";
+import { AppMark } from "../brand/AppMark";
+import { getAppBrandText } from "../../lib/brand/appBrand";
 
 const StorageContext = createContext({ ready: false, error: null });
 
@@ -30,8 +31,8 @@ export function StorageProvider({ children }) {
     return (
       <div className="boot-screen" role="status" aria-live="polite">
         <div className="boot-screen__inner">
-          <MnemeMark size={64} variant="dark" className="boot-screen__mark" decorative />
-          <p>{t("app.loading")}</p>
+          <AppMark size={64} variant="dark" className="boot-screen__mark" decorative />
+          <p>{getAppBrandText(t).loading}</p>
         </div>
       </div>
     );

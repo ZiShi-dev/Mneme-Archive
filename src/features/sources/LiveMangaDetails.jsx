@@ -1,15 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowRight, ArrowUpDown, Bell, BellRing, BookOpen, Bookmark, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clapperboard, ExternalLink, Lock, RefreshCw, Search, Tags, Wifi } from "lucide-react";
+import { ArrowRight, ArrowUpDown, Bell, BellRing, BookOpen, Bookmark, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clapperboard, ExternalLink, Lock, RefreshCw, Search, Wifi } from "lucide-react";
 import { useToast } from "../../components/ui/ToastProvider";
-import { getSourceProfile, getSourceDisplayName, resolveSourceId } from "../../config/sources";
+import { getSourceProfile, resolveSourceId } from "../../config/sources";
 import { AccessibleSearchField } from "../../components/ui/AccessibleSearchField";
 import { ChipFilterBar, ChipFilterButton } from "../../components/ui/ChipFilterBar";
+import { isChromebookApp, isNotifiableMediaType, PREFERRED_AUDIO_LANGUAGE } from "../../config/appFlavor";
 import { fetchSourceDetails } from "./sourceApi";
 import { DetailsActionHub } from "./DetailsActionHub";
 import { RemoteCover } from "./RemoteCover";
 import { CoverAudioBadge } from "./CatalogCard";
 import { useResolvedCoverUrl } from "./useResolvedCoverUrl";
-import { findChapterByRecord } from "../../lib/readingProgress";
+import { findChapterByRecord, formatHistoryUnitLabel, getRecordProgress, isReadToday, isRecordCompleted } from "../../lib/readingProgress";
 import { SourceLogo } from "./SourceLogo";
 import { FollowAlertSheet } from "../updates/FollowAlertSheet";
 import { contentTypes, resolveBookmarkType } from "./contentTypes";
@@ -24,7 +25,6 @@ import {
 import { useI18n } from "../../i18n/I18nProvider";
 import {
   formatChapterPublishedLabel,
-  formatDetailUpdatedAt,
   isChapterWithinNewWindow,
   parseChapterPublishedAt,
 } from "../../lib/media/chapterTiming";
@@ -32,16 +32,126 @@ import {
 const chapterPageSize = 20;
 const GALAXY_AUTHOR_CHAPTER_FILTER_SLUGS = new Set(["netherils-brilliance"]);
 
-function ChapterListRow({ chapter, sourceName, isLatest, onOpen, presentation }) {
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function isNoiseTag(value) {
+  return /^(vf|vostfr|vf\+vostfr|vostfr\+vf|hd|4k|fhd)$/i.test(String(value).replace(/\s/g, ""));
+}
+
+function isMetadataAltTitle(value) {
+  const text = String(value || "").trim();
+  if (!text) return true;
+  const compact = text.replace(/\s/g, "");
+  if (/^(VF\+VOSTFR|VOSTFR\+VF|VOSTFR|VF)([·•|,/\-].*)?$/i.test(compact)) return true;
+  if (/(VF|VOSTFR).*(Ep|Ép|HD|4K)/i.test(text)) return true;
+  if (/^\d{4}(\s*[·•|,/\-].*)?$/i.test(text) && text.length < 48) return true;
+  if (/^(Ep|Ép)\.?\s*\d+/i.test(text)) return true;
+  return false;
+}
+
+function chapterDisplayTitle(chapter, presentation) {
+  const number = String(chapter.number || "").trim();
+  const name = String(chapter.name || "").trim();
+  const unit = presentation.rowPrefix;
+  if (name && name !== number) {
+    const stripped = name
+      .replace(new RegExp(`^${escapeRegExp(unit)}\\s*`, "i"), "")
+      .replace(new RegExp(`^${escapeRegExp(number)}\\s*[·•\\-–:]\\s*`), "")
+      .trim();
+    if (stripped && stripped !== number) return stripped;
+  }
+  return formatEpisodeHeaderLabel(number || name, unit);
+}
+
+function AudioLanguagePicker({ languages, value, onChange, className = "" }) {
+  const { t } = useI18n();
+  if (!languages.length) return null;
+
+  return (
+    <div className={`details-audio-language ${className}`.trim()} aria-label={t("details.audioVersionAria")}>
+      <span className="details-audio-language__label">{t("details.audioVersion")}</span>
+      <ChipFilterBar variant="segmented" className="details-audio-language__chips" role="group" ariaLabel={t("details.audioVersion")}>
+        {languages.map((language) => (
+          <ChipFilterButton
+            key={language}
+            active={value === language}
+            onClick={() => onChange(language)}
+          >
+            {AUDIO_LANGUAGE_LABELS[language] || language}
+          </ChipFilterButton>
+        ))}
+      </ChipFilterBar>
+    </div>
+  );
+}
+
+function MovieDesktopActions({
+  presentation,
+  latestChapter,
+  continueChapter,
+  readingProgress,
+  audioLanguage,
+  onOpen,
+  audioPicker,
+}) {
+  const { t } = useI18n();
+  const hasContinue = Boolean(readingProgress && continueChapter);
+  const targetChapter = hasContinue ? continueChapter : latestChapter;
+  if (!targetChapter) return audioPicker ? <div className="details-movie-hero-actions">{audioPicker}</div> : null;
+
+  const progress = hasContinue ? getRecordProgress(readingProgress) : 0;
+  const readToday = hasContinue && isReadToday(readingProgress);
+  const completed = hasContinue && isRecordCompleted(readingProgress);
+  const hint = hasContinue
+    ? (completed ? (readToday ? presentation.watchedToday : presentation.lastUnitComplete) : presentation.continueAction)
+    : t("media.readyToPlay");
+  const title = hasContinue
+    ? formatHistoryUnitLabel(readingProgress)
+    : presentation.watchLatest;
+
+  return (
+    <div className="details-movie-hero-actions">
+      <button
+        type="button"
+        className={`details-movie-watch${readToday ? " details-movie-watch--today" : ""}`}
+        onClick={() => onOpen(targetChapter)}
+      >
+        <span className="details-movie-watch__icon" aria-hidden="true">
+          <Clapperboard size={20} />
+        </span>
+        <span className="details-movie-watch__copy">
+          <small>{hint}</small>
+          <strong>{title}</strong>
+        </span>
+        {hasContinue && !completed ? (
+          <em className="details-movie-watch__progress">{progress}%</em>
+        ) : (
+          <span className="details-movie-watch__badge">{audioLanguage || t("media.movieHd")}</span>
+        )}
+        <ChevronLeft size={18} className="details-movie-watch__arrow" aria-hidden="true" />
+        {hasContinue && !completed ? (
+          <span className="details-movie-watch__track" aria-hidden="true">
+            <span style={{ width: `${progress}%` }} />
+          </span>
+        ) : null}
+      </button>
+      {audioPicker}
+    </div>
+  );
+}
+
+function ChapterListRow({ chapter, sourceName, isLatest, onOpen, presentation, activeAudioLanguage = "" }) {
   const { t } = useI18n();
   const isPaid = Boolean(chapter.locked);
   const priceLabel = Number(chapter.price) > 0 ? t("details.coins", { n: chapter.price }) : "";
   const publishedLabel = formatChapterPublishedLabel(parseChapterPublishedAt(chapter));
+  const title = chapterDisplayTitle(chapter, presentation);
+  const episodeLanguages = Object.keys(chapter.audioLanguages || {}).filter((entry) => AUDIO_LANGUAGE_LABELS[entry]);
   const metaLabel = isPaid
     ? t("details.requiresPurchase", { source: sourceName })
-    : publishedLabel
-      ? `${publishedLabel} · ${sourceName}`
-      : `${chapter.date || t("details.available")} · ${sourceName}`;
+    : publishedLabel || "";
 
   return (
     <button
@@ -53,7 +163,7 @@ function ChapterListRow({ chapter, sourceName, isLatest, onOpen, presentation })
       <span className="chapter-number">{chapter.number || "—"}</span>
       <span className="chapter-row__body">
         <span className="chapter-row__title">
-          <strong>{formatEpisodeHeaderLabel(chapter.name && chapter.name !== chapter.number ? chapter.name : (chapter.number || chapter.name), presentation.rowPrefix)}</strong>
+          <strong>{title}</strong>
           {isPaid && (
             <span className="chapter-badge chapter-badge--paid">
               <Lock size={11} aria-hidden="true" />
@@ -62,7 +172,19 @@ function ChapterListRow({ chapter, sourceName, isLatest, onOpen, presentation })
             </span>
           )}
         </span>
-        <small>{metaLabel}</small>
+        {metaLabel ? <small>{metaLabel}</small> : null}
+        {episodeLanguages.length > 0 && (
+          <span className="chapter-row__audio-tags" aria-label={t("details.audioVersionAria")}>
+            {episodeLanguages.map((language) => (
+              <em
+                key={language}
+                className={`chapter-row__audio-tag${activeAudioLanguage === language ? " is-active" : ""}`}
+              >
+                {AUDIO_LANGUAGE_LABELS[language] || language}
+              </em>
+            ))}
+          </span>
+        )}
       </span>
       {isLatest && <span className={`new-badge ${isPaid ? "new-badge--paid" : ""}`}>{isPaid ? t("details.newPaid") : t("common.new")}</span>}
       {isPaid ? <ExternalLink size={16} className="chapter-row__external" aria-hidden="true" /> : <ChevronLeft size={18} aria-hidden="true" />}
@@ -75,19 +197,15 @@ function normalizeTaxonomy(value) {
   return [...new Set(entries.map((entry) => (typeof entry === "string" ? entry : String(entry?.name || entry?.label || "")).replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, "").trim()).filter(Boolean))];
 }
 
-function RelatedMoviesRow({ items, onOpen, mediaType }) {
+function RelatedMoviesRow({ items, onOpen, mediaType, layout = "scroll" }) {
   const { t } = useI18n();
   if (!items.length) return null;
   const isSeries = mediaType === "series";
 
   return (
-    <section className="details-related" aria-labelledby="details-related-title">
+    <section className={`details-related details-related--${layout}`} aria-labelledby="details-related-title">
       <div className="details-section-heading">
-        <span>
-          <small>{isSeries ? t("details.sameShow") : t("details.sameSeries")}</small>
-          <h2 id="details-related-title">{isSeries ? t("details.otherSeasons") : t("details.relatedMovies")}</h2>
-        </span>
-        <Clapperboard size={19} />
+        <h2 id="details-related-title">{isSeries ? t("details.otherSeasons") : t("details.relatedMovies")}</h2>
       </div>
       <div className="details-related__scroller">
         {items.map((item) => (
@@ -104,8 +222,10 @@ function RelatedMoviesRow({ items, onOpen, mediaType }) {
               sourceId={item.sourceId}
               video
             />
-            <strong dir="auto">{item.title}</strong>
-            {item.year || item.altTitle ? <small dir="auto">{item.year || item.altTitle}</small> : null}
+            <span className="details-related__copy">
+              <strong dir="auto">{item.title}</strong>
+              {item.year || item.altTitle ? <small dir="auto">{item.year || item.altTitle}</small> : null}
+            </span>
           </button>
         ))}
       </div>
@@ -124,7 +244,7 @@ export function LiveMangaDetails({
   chapterFollow,
 }) {
   const { pushToast } = useToast();
-  const { t } = useI18n();
+  const { t, dir } = useI18n();
   const sourceId = resolveSourceId(seed);
   const profile = getSourceProfile(sourceId);
   const [item, setItem] = useState(seed);
@@ -137,7 +257,7 @@ export function LiveMangaDetails({
   const [chapterOrder, setChapterOrder] = useState("desc");
   const [chapterPage, setChapterPage] = useState(1);
   const [followSheetOpen, setFollowSheetOpen] = useState(false);
-  const [audioLanguage, setAudioLanguage] = useState("VF");
+  const [audioLanguage, setAudioLanguage] = useState(PREFERRED_AUDIO_LANGUAGE);
 
   async function load() {
     setStatus("loading");
@@ -164,13 +284,14 @@ export function LiveMangaDetails({
     setChapterAuthor("");
     setChapterOrder("desc");
     setChapterPage(1);
-    setAudioLanguage("VF");
+    setFollowSheetOpen(false);
+    setAudioLanguage(PREFERRED_AUDIO_LANGUAGE);
     load();
   }, [seed.url, sourceId]);
 
   const chapters = item.chapters || [];
-  const categories = normalizeTaxonomy(item.categories || item.genres);
-  const tags = normalizeTaxonomy(item.tags);
+  const categories = normalizeTaxonomy(item.categories || item.genres).filter((entry) => !isNoiseTag(entry));
+  const tags = normalizeTaxonomy(item.tags).filter((entry) => !isNoiseTag(entry));
   const chapterAuthors = useMemo(() => {
     if (!GALAXY_AUTHOR_CHAPTER_FILTER_SLUGS.has(item.id || "")) return [];
     const values = [...new Set(chapters.map((chapter) => chapter.author).filter(Boolean))];
@@ -226,8 +347,8 @@ export function LiveMangaDetails({
   const publicationStatusLabel = publicationStatusKey
     ? t(`details.status.${publicationStatusKey}`)
     : (item.publicationStatusLabel || "");
-  const lastUpdatedLabel = formatDetailUpdatedAt(item.lastUpdatedAt || latestChapterPublishedAt);
   const mediaType = resolveBookmarkType(item);
+  const isMovieDesktop = isChromebookApp && mediaType === "movie";
   const presentation = getMediaPresentation(mediaType);
   const isNovel = presentation.isNovel;
   const isVideo = presentation.isVideo;
@@ -241,17 +362,32 @@ export function LiveMangaDetails({
     setAudioLanguage((current) => pickDefaultAudioLanguage(availableAudioLanguages, current));
   }, [availableAudioLanguages, seed.url]);
 
-  const metaCaption = isVideo
-    ? [getSourceDisplayName(profile), item.totalEpisodes ? `${item.totalEpisodes} ${presentation.units}` : null]
-      .filter(Boolean)
-      .join(" · ")
-    : [getSourceDisplayName(profile), sourceId === "galaxynovels" && item.author ? `${t("details.authorLabel")}: ${item.author}` : null]
-      .filter(Boolean)
-      .join(" · ");
+  const typeLabel = contentTypes[mediaType]?.singular || presentation.badgeLabel;
+  const altTitle = String(item.altTitle || "").trim();
+  const altIsMeta = isMetadataAltTitle(altTitle);
   const chaptersCount = Math.max(chapters.length, Number(item.totalEpisodes) || 0);
   const coverBackdropUrl = useResolvedCoverUrl(sourceId, item.cover);
+  const countLabel = chaptersCount
+    ? `${chaptersCount} ${chaptersCount === 1 ? presentation.unit : presentation.units}`
+    : null;
+  const heroFacts = [
+    altIsMeta && altTitle ? altTitle : item.year,
+    !altIsMeta && item.duration,
+    mediaType !== "movie" ? countLabel : null,
+    sourceId === "galaxynovels" && item.author ? `${t("details.authorLabel")}: ${item.author}` : null,
+  ].filter(Boolean);
+  const movieFactChips = isMovieDesktop
+    ? [item.year, item.duration, item.audioLabel].filter(Boolean)
+    : heroFacts;
   const followPreference = chapterFollow?.getPreference(item);
   const isFollowing = Boolean(followPreference?.enabled);
+  const canFollowUpdates = Boolean(chapterFollow) && isNotifiableMediaType(mediaType);
+  const showChapterList = mediaType !== "movie" || chapters.length !== 1;
+  const showAbout = Boolean(item.summary) || categories.length > 0 || tags.length > 0;
+  const showActionHubInHero = status === "ready" && !isChromebookApp;
+  const showActionHubInChapters = status === "ready" && isChromebookApp && showChapterList;
+  const showMovieHeroActions = status === "ready" && isMovieDesktop && Boolean(latestChapter);
+  const relatedItems = item.relatedItems || [];
 
   function resolveChapter(chapter) {
     return applyAudioLanguageToChapter(chapter, audioLanguage, sourceId);
@@ -263,8 +399,28 @@ export function LiveMangaDetails({
     else openLiveReader({ ...item, preferredAudioLanguage: audioLanguage }, resolved);
   }
 
+  const detailsActionHub = (
+    <DetailsActionHub
+      mediaType={mediaType}
+      latestChapter={latestChapter ? resolveChapter(latestChapter) : null}
+      readingProgress={readingProgress}
+      continueChapter={continueChapter}
+      onOpenChapter={openChapter}
+    />
+  );
+
+  const audioLanguagePicker = availableAudioLanguages.length > 0 ? (
+    <AudioLanguagePicker
+      className="details-audio-language--hero"
+      languages={availableAudioLanguages}
+      value={audioLanguage}
+      onChange={setAudioLanguage}
+    />
+  ) : null;
+
   return (
-    <div className={`screen screen--live-details${isVideo ? " screen--live-video screen--live-anime" : ""}`}>
+    <>
+    <div dir={dir} className={`screen screen--live-details${isVideo ? " screen--live-video screen--live-anime" : ""}${isChromebookApp ? " screen--details-desktop" : ""}${isMovieDesktop ? " screen--details-movie" : ""}`}>
       <div className={`live-details-hero${presentation.heroClass ? ` ${presentation.heroClass}` : ""}`}>
         {coverBackdropUrl && (
           <div className="live-details-hero__backdrop" aria-hidden="true">
@@ -276,7 +432,7 @@ export function LiveMangaDetails({
           <button className="icon-button icon-button--glass" onClick={onBack} aria-label={t("common.back")}><ArrowRight size={20} /></button>
           <div className="details-hero__actions">
             <button className={`icon-button icon-button--glass details-favorite ${isFavorite ? "active" : ""}`} onClick={(event) => { if (!isFavorite) burstSakuraFrom(event.currentTarget); onToggleFavorite(item); }} aria-label={isFavorite ? t("reader.header.removeFavorite") : t("reader.header.addFavorite")} aria-pressed={isFavorite}><Bookmark size={19} fill={isFavorite ? "currentColor" : "none"} /></button>
-            {chapterFollow && (
+            {canFollowUpdates && (
               <button
                 type="button"
                 className={`icon-button icon-button--glass details-follow${isFollowing ? " active" : ""}`}
@@ -301,15 +457,11 @@ export function LiveMangaDetails({
               video={isVideo}
               priority
             />
-            <CoverAudioBadge label={item.audioLabel} />
+            <CoverAudioBadge label={availableAudioLanguages.length ? audioLanguage : item.audioLabel} />
           </figure>
           <div className="live-details-hero__meta">
             <div className="details-source-line">
-              <SourceLogo sourceId={sourceId} />
-              <span className="pill pill--light">{profile.name}</span>
-              <span className={`media-type-badge media-type-badge--${mediaType}`}>
-                {item.mediaTypeLabel || contentTypes[mediaType]?.singular || presentation.badgeLabel}
-              </span>
+              <span className={`media-type-badge media-type-badge--${mediaType}`}>{typeLabel}</span>
               {publicationStatusLabel ? (
                 <span className={`publication-status publication-status--${publicationStatusKey || "unknown"}`}>
                   {publicationStatusLabel}
@@ -317,17 +469,43 @@ export function LiveMangaDetails({
               ) : null}
             </div>
             <h1 className="live-details-hero__title" dir="auto">{item.title}</h1>
-            {item.altTitle && <p className="live-details-hero__subtitle" dir="auto">{item.altTitle}</p>}
-            <small dir="auto">{metaCaption}</small>
-            {lastUpdatedLabel ? (
-              <small className="live-details-hero__updated" dir="auto">
-                {t("details.lastUpdated")}: {lastUpdatedLabel}
-              </small>
+            {!altIsMeta && altTitle ? <p className="live-details-hero__subtitle" dir="auto">{altTitle}</p> : null}
+            {heroFacts.length ? (
+              isMovieDesktop ? (
+                <ul className="live-details-hero__facts live-details-hero__facts--chips">
+                  {movieFactChips.map((fact) => <li key={fact}>{fact}</li>)}
+                </ul>
+              ) : (
+                <p className="live-details-hero__facts">{heroFacts.join(" · ")}</p>
+              )
             ) : null}
+            <div className="live-details-hero__source">
+              <SourceLogo sourceId={sourceId} />
+              <span>{profile.name}</span>
+            </div>
+            {!showMovieHeroActions && (
+              <>
+                {showActionHubInHero && detailsActionHub}
+                {status === "ready" && audioLanguagePicker}
+              </>
+            )}
           </div>
+          {showMovieHeroActions && (
+            <aside className="live-details-hero__aside">
+              <MovieDesktopActions
+                presentation={presentation}
+                latestChapter={latestChapter ? resolveChapter(latestChapter) : null}
+                continueChapter={continueChapter}
+                readingProgress={readingProgress}
+                audioLanguage={audioLanguage}
+                onOpen={openChapter}
+                audioPicker={audioLanguagePicker}
+              />
+            </aside>
+          )}
         </div>
       </div>
-      <main className="content details-content">
+      <main className={`content details-content${isMovieDesktop ? " details-content--movie" : ""}`}>
         {status === "loading" ? (
           <>
             <div className="catalog-reload" role="status" aria-live="polite">
@@ -347,46 +525,74 @@ export function LiveMangaDetails({
             </div>
           </>
         ) : status === "error" ? <div className="live-error"><Wifi size={30} /><h2>{t("details.loadDetailsFailed")}</h2><p>{error}</p><button className="button button--primary" onClick={load}><RefreshCw size={17} /> {t("common.retry")}</button></div> : <>
-          {availableAudioLanguages.length > 1 && (
-            <section className="details-audio-language" aria-label={t("details.audioVersionAria")}>
-              <div className="details-audio-language__head">
-                <strong>{t("details.audioVersion")}</strong>
-                <small>{t("details.chooseBeforePlay")}</small>
-              </div>
-              <ChipFilterBar variant="segmented" className="details-audio-language__chips" role="group" ariaLabel={t("details.audioVersion")}>
-                {availableAudioLanguages.map((language) => (
-                  <ChipFilterButton
-                    key={language}
-                    active={audioLanguage === language}
-                    onClick={() => setAudioLanguage(language)}
-                  >
-                    {AUDIO_LANGUAGE_LABELS[language] || language}
-                  </ChipFilterButton>
-                ))}
-              </ChipFilterBar>
+          {(showAbout || (isVideo && onOpenRelated)) && (
+            <div className="details-sidebar">
+          {showAbout && (
+            <section className={`about details-about${summaryExpanded ? " expanded" : ""}`}>
+              {item.summary ? (
+                <>
+                  <div className="details-section-heading">
+                    <h2>{t("details.synopsis")}</h2>
+                  </div>
+                  <p dir="auto">{item.summary}</p>
+                  {item.summary.length > 260 && (
+                    <button
+                      className="details-about__toggle"
+                      onClick={() => setSummaryExpanded((expanded) => !expanded)}
+                      aria-expanded={summaryExpanded}
+                    >
+                      {summaryExpanded ? <><ChevronUp size={15} /> {t("details.showLess")}</> : <><ChevronDown size={15} /> {t("details.showFullSynopsis")}</>}
+                    </button>
+                  )}
+                </>
+              ) : null}
+              {(categories.length > 0 || tags.length > 0) && (
+                <div className="details-about__tags">
+                  {(taxonomiesExpanded ? categories : categories.slice(0, 8)).map((category) => (
+                    <span className="details-taxonomy-chip details-taxonomy-chip--category" key={category}>{category}</span>
+                  ))}
+                  {(taxonomiesExpanded ? tags : tags.slice(0, 6)).map((tag) => (
+                    <span className="details-taxonomy-chip" key={tag}>#{tag}</span>
+                  ))}
+                  {(categories.length > 8 || tags.length > 6) && (
+                    <button
+                      className="details-taxonomies__toggle"
+                      onClick={() => setTaxonomiesExpanded((expanded) => !expanded)}
+                      aria-expanded={taxonomiesExpanded}
+                    >
+                      {taxonomiesExpanded ? t("details.showLess") : t("details.showAll", { count: categories.length + tags.length })}
+                    </button>
+                  )}
+                </div>
+              )}
             </section>
           )}
-          <DetailsActionHub
-            mediaType={mediaType}
-            chaptersCount={chaptersCount}
-            latestChapter={latestChapter ? resolveChapter(latestChapter) : null}
-            sourceName={profile.name}
-            readingProgress={readingProgress}
-            continueChapter={continueChapter}
-            onOpenChapter={openChapter}
-          />
-          {item.summary && <section className={`about details-about ${summaryExpanded ? "expanded" : ""}`}><div className="details-section-heading"><span><small>{t("details.aboutWork")}</small><h2>{t("details.synopsis")}</h2></span></div><p dir="auto">{item.summary}</p>{item.summary.length > 260 && <button className="details-about__toggle" onClick={() => setSummaryExpanded((expanded) => !expanded)} aria-expanded={summaryExpanded}>{summaryExpanded ? <><ChevronUp size={15} /> {t("details.showLess")}</> : <><ChevronDown size={15} /> {t("details.showFullSynopsis")}</>}</button>}</section>}
           {isVideo && onOpenRelated && (
             <RelatedMoviesRow
-              items={item.relatedItems || []}
+              items={relatedItems}
               onOpen={onOpenRelated}
               mediaType={mediaType}
+              layout={isMovieDesktop ? "movie-strip" : "scroll"}
             />
           )}
-          {(categories.length > 0 || tags.length > 0) && <section className="details-taxonomies" aria-labelledby="details-taxonomies-title"><div className="details-section-heading"><span><small>{t("details.sourceMetadata")}</small><h2 id="details-taxonomies-title">{t("details.categoriesAndTags")}</h2></span><Tags size={19} /></div>{categories.length > 0 && <div className="details-taxonomy-group"><strong>{t("details.categories")}</strong><div>{(taxonomiesExpanded ? categories : categories.slice(0, 8)).map((category) => <span className="details-taxonomy-chip details-taxonomy-chip--category" key={category}>{category}</span>)}</div></div>}{tags.length > 0 && <div className="details-taxonomy-group"><strong>{t("details.tags")}</strong><div>{(taxonomiesExpanded ? tags : tags.slice(0, 8)).map((tag) => <span className="details-taxonomy-chip" key={tag}>#{tag}</span>)}</div></div>}{(categories.length > 8 || tags.length > 8) && <button className="details-taxonomies__toggle" onClick={() => setTaxonomiesExpanded((expanded) => !expanded)} aria-expanded={taxonomiesExpanded}>{taxonomiesExpanded ? <><ChevronUp size={15} /> {t("details.showLess")}</> : <><ChevronDown size={15} /> {t("details.showAll", { count: categories.length + tags.length })}</>}</button>}</section>}
-          <section className="details-chapters" aria-labelledby="details-chapters-title">
-            <div className="details-section-heading"><span><small>{t("details.organizedList")}</small><h2 id="details-chapters-title">{presentation.sectionTitle}</h2></span><strong>{filteredChapters.length}</strong></div>
-            {chapters.length > 8 && <div className="chapter-tools"><AccessibleSearchField className="global-search chapter-search" value={chapterQuery} onChange={setChapterQuery} placeholder={presentation.searchPlaceholder} ariaLabel={t("details.searchInUnits", { units: presentation.units })} /><button className="chapter-order" onClick={() => setChapterOrder((order) => order === "desc" ? "asc" : "desc")}><ArrowUpDown size={16} /><span>{chapterOrder === "desc" ? t("details.newestFirst") : t("details.oldestFirst")}</span></button></div>}
+            </div>
+          )}
+          {showChapterList && (
+          <section className={`details-chapters${isChromebookApp ? " details-chapters--desktop" : ""}`} aria-labelledby="details-chapters-title">
+            {showActionHubInChapters && detailsActionHub}
+            <div className="details-section-heading">
+              <h2 id="details-chapters-title">{presentation.sectionTitle}</h2>
+              <strong>{filteredChapters.length}</strong>
+            </div>
+            {status === "ready" && availableAudioLanguages.length > 0 && (
+              <AudioLanguagePicker
+                className="details-audio-language--chapters"
+                languages={availableAudioLanguages}
+                value={audioLanguage}
+                onChange={setAudioLanguage}
+              />
+            )}
+            {chapters.length > 15 && <div className="chapter-tools"><AccessibleSearchField className="global-search chapter-search" value={chapterQuery} onChange={setChapterQuery} placeholder={presentation.searchPlaceholder} ariaLabel={t("details.searchInUnits", { units: presentation.units })} /><button className="chapter-order" onClick={() => setChapterOrder((order) => order === "desc" ? "asc" : "desc")}><ArrowUpDown size={16} /><span>{chapterOrder === "desc" ? t("details.newestFirst") : t("details.oldestFirst")}</span></button></div>}
             {chapterAuthors.length > 0 && (
               <ChipFilterBar variant="segmented" className="details-chapter-author-filter" role="group" ariaLabel={t("details.authorFilterAria")}>
                 {chapterAuthors.map((author) => (
@@ -410,14 +616,17 @@ export function LiveMangaDetails({
                     isLatest={chapter.url === latestChapter?.url && isLatestChapterNew}
                     onOpen={openChapter}
                     presentation={presentation}
+                    activeAudioLanguage={audioLanguage}
                   />
                 ))}
               </div>
             ) : chapters.length ? <div className="empty-state empty-state--compact"><Search size={29} /><h2>{presentation.noMatch}</h2><p>{t("details.tryDifferentSearch")}</p><button onClick={() => setChapterQuery("")}>{t("common.clearSearch")}</button></div> : <div className="empty-state empty-state--compact"><BookOpen size={31} /><h2>{presentation.emptyList}</h2></div>}
             {filteredChapters.length > chapterPageSize && <nav className="chapter-pagination" aria-label={presentation.paginationAria}><button onClick={() => setChapterPage((page) => Math.max(1, page - 1))} disabled={chapterPage === 1} aria-label={t("common.previous")}><ChevronRight size={17} /></button><span><small>{t("common.page")}</small><strong>{chapterPage}</strong><small>{t("common.of", { total: totalChapterPages })}</small></span><button onClick={() => setChapterPage((page) => Math.min(totalChapterPages, page + 1))} disabled={chapterPage === totalChapterPages} aria-label={t("common.next")}><ChevronLeft size={17} /></button></nav>}
           </section>
+          )}
         </>}
       </main>
+    </div>
       {followSheetOpen && chapterFollow && (
         <FollowAlertSheet
           item={item}
@@ -435,6 +644,6 @@ export function LiveMangaDetails({
           onClose={() => setFollowSheetOpen(false)}
         />
       )}
-    </div>
+    </>
   );
 }

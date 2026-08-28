@@ -1,4 +1,4 @@
-const EMBED_HOST_PATTERN = /(^|\.)(4h\.b9p2m6c\.shop|[a-z0-9-]+\.b9p2m6c\.shop|[a-z0-9-]+\.anime4up\.rest|voe\.sx|vidzy\.(?:cc|live|org)|(?:[a-z0-9-]+\.)?filemoon\.(?:to|sx|com)|(?:[a-z0-9-]+\.)?mp4upload\.com|(?:[a-z0-9-]+\.)?share4max\.(?:com|org)|vkvideo\.ru|(?:[a-z0-9-]+\.)?playmogo\.com|(?:[a-z0-9-]+\.)?rubyvidhub\.com|(?:[a-z0-9-]+\.)?uqload\.(?:com|net|to|cx)|(?:[a-z0-9-]+\.)?dood\.(?:com|watch)|(?:[a-z0-9-]+\.)?streamruby\.com|videa\.hu|96ar\.com|sandratableother\.com|diananatureforeign\.com)$/i;
+const EMBED_HOST_PATTERN = /(^|\.)(4h\.b9p2m6c\.shop|[a-z0-9-]+\.b9p2m6c\.shop|[a-z0-9-]+\.anime4up\.rest|voe\.sx|vidzy\.(?:cc|live|org)|(?:[a-z0-9-]+\.)?filemoon\.(?:to|sx|com)|(?:[a-z0-9-]+\.)?mp4upload\.com|(?:[a-z0-9-]+\.)?share4max\.(?:com|org)|vkvideo\.ru|(?:[a-z0-9-]+\.)?playmogo\.com|(?:[a-z0-9-]+\.)?rubyvidhub\.com|(?:[a-z0-9-]+\.)?uqload\.(?:com|net|to|cx)|(?:[a-z0-9-]+\.)?dood\.(?:com|watch)|(?:[a-z0-9-]+\.)?streamruby\.com|videa\.hu|96ar\.com|(?:[a-z0-9-]+\.)?fsvid\.lol|(?:[a-z0-9-]+\.)?kakaflix\.[a-z]{2,}|(?:[a-z0-9-]+\.)?netu\.[a-z]{2,}|(?:[a-z0-9-]+\.)?filmoon\.[a-z]{2,}|sandratableother\.com|diananatureforeign\.com)$/i;
 
 const EMBED_NO_SANDBOX_HOSTS = /(^|\.)(voe\.sx|sandratableother\.com|diananatureforeign\.com)$/i;
 
@@ -9,6 +9,7 @@ export const EMBED_IFRAME_SANDBOX = [
   "allow-same-origin",
   "allow-presentation",
   "allow-forms",
+  "allow-fullscreen",
 ].join(" ");
 
 export function isAllowedEmbedHost(hostname = "") {
@@ -38,12 +39,11 @@ export function isBlockedAdUrl(url = "") {
   }
 }
 
-export function isAllowedEmbedUrl(url = "", { relaxed = false } = {}) {
+export function isAllowedEmbedUrl(url = "") {
   try {
     const parsed = new URL(url);
     if (parsed.protocol !== "https:") return false;
     if (isBlockedAdUrl(parsed.href)) return false;
-    if (relaxed) return true;
     return isAllowedEmbedHost(parsed.hostname);
   } catch {
     return false;

@@ -1,4 +1,5 @@
 import { fetchSourceDetails } from "../../features/sources/sourceApi";
+import { isChromebookApp, isNotifiableMediaType } from "../../config/appFlavor";
 import { getItemType } from "../../features/sources/contentTypes";
 import { buildFollowItem, getFollowKey } from "./followKeys";
 import {
@@ -114,6 +115,7 @@ export async function syncAllFollowedTitles(preferences, snapshots) {
   for (const [key, preference] of entries) {
     const pref = normalizeFollowPreference(preference);
     if (!pref?.enabled) continue;
+    if (!isNotifiableMediaType(getItemType(pref))) continue;
 
     const result = await syncFollowedTitle(
       { ...pref, url: pref.url },

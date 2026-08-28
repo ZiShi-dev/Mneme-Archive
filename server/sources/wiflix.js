@@ -3,6 +3,12 @@ import { createCachedHtmlFetcher, fetchProxiedImage } from "../lib/httpUtils.js"
 import { normalizeSearchQuery } from "../lib/queryLimits.js";
 import { responseJson } from "../lib/response.js";
 import { applyRecentChapterFields } from "../lib/catalogChapters.js";
+import { mergeCatalogByRecency } from "../lib/catalogMerge.js";
+import {
+  assertProxiedStreamUrl,
+  enrichSourcesWithStreams,
+} from "../lib/embedResolvers.js";
+import { fetchProxiedHlsResource } from "../lib/hlsProxy.js";
 
 const BASE_URL = "https://www.wiflix.tv";
 const BASE_HOST = "www.wiflix.tv";
@@ -15,9 +21,10 @@ const BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
 
 const IMAGE_HOSTS = new Set(["wiflix.tv", "www.wiflix.tv"]);
 const PLAYER_HOST_ORDER = [
-  /uqload\./i,
   /vidzy\./i,
+  /fsvid\./i,
   /filemoon\./i,
+  /uqload\./i,
   /96ar\.|filmoon|netu/i,
   /voe|sandratableother|diananatureforeign/i,
   /dood/i,
@@ -426,16 +433,6 @@ export function catalogHasMore(html, page) {
   return new RegExp(`[?&]page=${page + 1}\\b`).test(html);
 }
 
-function interleaveCatalog(left = [], right = []) {
-  const items = [];
-  const max = Math.max(left.length, right.length);
-  for (let index = 0; index < max; index += 1) {
-    if (left[index]) items.push(left[index]);
-    if (right[index]) items.push(right[index]);
-  }
-  return items;
-}
-
 export function buildCatalogUrl(page, filterPath = MIXED_PATH) {
   const path = assertFilterPath(filterPath);
   const trimmed = path.replace(/\/+$/, "");
@@ -638,6 +635,40 @@ export function parseWiflixPlayback(html, details) {
   };
 }
 
+function buildWiflixStreamProxyPath(targetUrl, referer = "") {
+  const params = new URLSearchParams({ url: targetUrl });
+  if (referer) params.set("referer", referer);
+  return `/api/sources/${SOURCE_ID}/stream?${params}`;
+}
+
+async function enrichWiflixPlayback(html, details) {
+  let playback;
+  try {
+    playback = parseWiflixPlayback(html, details);
+  } catch {
+    return {
+      title: details.title,
+      url: details.url,
+      kind: "video",
+      embedUrl: "",
+      playerUrl: details.url,
+      sources: [],
+      playbackMode: "embed",
+    };
+  }
+  const sources = await enrichSourcesWithStreams(playback.sources, details.url || playback.url);
+  const playable = sources.find((entry) => entry.streamUrl);
+  return {
+    ...playback,
+    sources,
+    streamUrl: playable?.streamUrl || "",
+    videoUrl: playable?.streamUrl || "",
+    streamReferer: playable?.streamReferer || "",
+    playbackMode: playable ? "hls" : "embed",
+    embedUrl: playable ? "" : playback.embedUrl,
+  };
+}
+
 export function buildSearchUrl(query, page = 1) {
   const params = new URLSearchParams({ keywords: query });
   if (page > 1) params.set("page", String(page));
@@ -715,6 +746,17 @@ export async function handleWiflixRequest(requestUrl) {
     return fetchProxiedImage(assertWiflixImageUrl(requestUrl.searchParams.get("url") ?? ""), `${BASE_URL}/`, SOURCE_NAME);
   }
 
+  if (requestUrl.pathname.endsWith("/stream")) {
+    const target = assertProxiedStreamUrl(requestUrl.searchParams.get("url") ?? "");
+    const referer = String(requestUrl.searchParams.get("referer") ?? `${BASE_URL}/`).trim();
+    return fetchProxiedHlsResource({
+      target,
+      referer,
+      label: SOURCE_NAME,
+      buildProxyUrl: (entry) => buildWiflixStreamProxyPath(entry, referer),
+    });
+  }
+
   if (requestUrl.pathname.endsWith("/filters")) {
     const html = await fetchWiflixHtml(`${BASE_URL}${MOVIES_PATH}`);
     const parsed = parseWiflixFilters(html);
@@ -734,12 +776,25 @@ export async function handleWiflixRequest(requestUrl) {
     const page = Math.min(Math.max(Number(requestUrl.searchParams.get("page")) || 1, 1), 2000);
     const filterPath = assertFilterPath(requestUrl.searchParams.get("filterPath")?.trim() || MIXED_PATH);
     if (filterPath === MIXED_PATH) {
+      if (page <= 1) {
+        const [homeHtml, filmsHtml, seriesHtml] = await Promise.all([
+          fetchWiflixHtml(`${BASE_URL}/`),
+          fetchWiflixHtml(buildCatalogUrl(1, MOVIES_PATH)),
+          fetchWiflixHtml(buildCatalogUrl(1, SERIES_PATH)),
+        ]);
+        return responseJson(200, {
+          items: parseWiflixCatalog(homeHtml),
+          page,
+          hasMore: catalogHasMore(filmsHtml, page) || catalogHasMore(seriesHtml, page),
+          fetchedAt: new Date().toISOString(),
+        });
+      }
       const [filmsHtml, seriesHtml] = await Promise.all([
         fetchWiflixHtml(buildCatalogUrl(page, MOVIES_PATH)),
         fetchWiflixHtml(buildCatalogUrl(page, SERIES_PATH)),
       ]);
       return responseJson(200, {
-        items: interleaveCatalog(parseWiflixCatalog(filmsHtml), parseWiflixCatalog(seriesHtml)),
+        items: mergeCatalogByRecency(parseWiflixCatalog(filmsHtml), parseWiflixCatalog(seriesHtml)),
         page,
         hasMore: catalogHasMore(filmsHtml, page) || catalogHasMore(seriesHtml, page),
         fetchedAt: new Date().toISOString(),
@@ -792,7 +847,7 @@ export async function handleWiflixRequest(requestUrl) {
     const title = details.mediaType === "series" && episode
       ? `${details.title} · ${episode}`
       : details.title;
-    return responseJson(200, parseWiflixPlayback(playable.html, {
+    return responseJson(200, await enrichWiflixPlayback(playable.html, {
       ...details,
       title,
       url: playable.url,

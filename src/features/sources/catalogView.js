@@ -1,4 +1,11 @@
 import { t } from "../../i18n/runtime.js";
+import { localizeCatalogKind } from "./contentTypes.js";
+
+export const MULTI_TAXONOMY_SOURCES = new Set(["wiflix", "frenchstream", "coflix"]);
+
+export function supportsMultiTaxonomy(sourceId) {
+  return MULTI_TAXONOMY_SOURCES.has(sourceId);
+}
 
 export function isSearchQueryActive(query) {
   return String(query || "").trim().length >= 2;
@@ -11,10 +18,77 @@ function isMediaKindFilter(filter) {
   return filter.type === "kind" || MEDIA_KIND_SLUGS.has(filter.slug);
 }
 
+function isCompoundTaxonomy(selection) {
+  return Boolean(selection?.category || selection?.tag || selection?.author);
+}
+
+export function normalizeTaxonomySelection(selection) {
+  if (!selection) {
+    return { category: null, tag: null, author: null };
+  }
+  if (isCompoundTaxonomy(selection)) {
+    return {
+      category: selection.category || null,
+      tag: selection.tag || null,
+      author: selection.author || null,
+    };
+  }
+  if (!selection.type || selection.slug === "all") {
+    return { category: null, tag: null, author: null };
+  }
+  return {
+    category: selection.type === "category" ? selection : null,
+    tag: selection.type === "tag" ? selection : null,
+    author: selection.type === "author" ? selection : null,
+  };
+}
+
+export function isTaxonomySelectionEmpty(selection) {
+  const normalized = normalizeTaxonomySelection(selection);
+  return !normalized.category && !normalized.tag && !normalized.author;
+}
+
+export function toggleTaxonomySelection(current, type, entry) {
+  const normalized = normalizeTaxonomySelection(current);
+  const active = normalized[type];
+  const nextEntry = active?.slug === entry.slug
+    ? null
+    : {
+      type,
+      slug: entry.slug,
+      name: entry.name,
+      archivePath: entry.archivePath,
+      filterPath: entry.filterPath,
+      queryParam: entry.queryParam,
+      queryValue: entry.queryValue,
+    };
+  const next = { ...normalized, [type]: nextEntry };
+  return isTaxonomySelectionEmpty(next) ? null : next;
+}
+
+function taxonomyStorageKey(filter) {
+  const normalized = normalizeTaxonomySelection(filter);
+  const parts = [];
+  if (normalized.category) parts.push(`category:${normalized.category.slug}`);
+  if (normalized.tag) parts.push(`tag:${normalized.tag.slug}`);
+  if (normalized.author) parts.push(`author:${normalized.author.slug}`);
+  if (!parts.length && filter?.slug && filter.slug !== "all") {
+    return `${filter.type || "all"}:${filter.slug}`;
+  }
+  return parts.length ? parts.join("+") : "all";
+}
+
+function primaryTaxonomyFilter(filter) {
+  const normalized = normalizeTaxonomySelection(filter);
+  return normalized.category || normalized.tag || normalized.author || (filter?.slug && filter.slug !== "all" ? filter : null);
+}
+
 export function shouldUseCatalogScopedSearch(sourceId, kind, taxonomy, query) {
   if (!isSearchQueryActive(query)) return false;
-  if (isMediaKindFilter(kind) && (!taxonomy?.slug || taxonomy.slug === "all")) return false;
-  if (!taxonomy?.slug || taxonomy.slug === "all") return false;
+  const primary = primaryTaxonomyFilter(taxonomy);
+  if (isMediaKindFilter(kind) && !primary) return false;
+  if (!primary) return false;
+  if (["frenchstream", "wiflix", "coflix"].includes(sourceId) && primary.filterPath) return true;
   return [
     "mangalik",
     "mangaforfree",
@@ -42,7 +116,7 @@ export function filterCatalogItemsByQuery(items, query) {
 }
 
 export function catalogViewKey(sourceId, filter, query = "", kind = null) {
-  const filterKey = filter?.slug ? `${filter.type || "all"}:${filter.slug}` : "all";
+  const filterKey = taxonomyStorageKey(filter);
   const kindKey = kind?.slug && kind.slug !== "all" ? `:kind:${kind.slug}` : "";
   const normalized = String(query || "").trim().toLocaleLowerCase("ar");
   const queryKey = normalized.length >= 2 ? `:q:${normalized}` : "";
@@ -50,6 +124,15 @@ export function catalogViewKey(sourceId, filter, query = "", kind = null) {
 }
 
 export function resolveEffectiveFilter(kind, taxonomy) {
+  const normalized = normalizeTaxonomySelection(taxonomy);
+  const hasTaxonomy = normalized.category || normalized.tag || normalized.author;
+  if (hasTaxonomy) {
+    return {
+      ...normalized,
+      kindSlug: kind?.slug && kind.slug !== "all" ? kind.slug : "",
+      kindFilterPath: kind?.filterPath || "",
+    };
+  }
   if (taxonomy) {
     return {
       ...taxonomy,
@@ -63,30 +146,57 @@ export function resolveEffectiveFilter(kind, taxonomy) {
 
 export function filterRequestParams(filter) {
   if (!filter) return {};
-  const filterPath = filter.filterPath || filter.kindFilterPath || "";
+  const normalized = normalizeTaxonomySelection(filter);
+  const filterPath = normalized.category?.filterPath
+    || normalized.tag?.filterPath
+    || normalized.author?.filterPath
+    || filter.filterPath
+    || filter.kindFilterPath
+    || "";
   const kindType = filter.kindSlug && filter.kindSlug !== "all" ? filter.kindSlug : "";
+  const taxonomyScoped = Boolean(
+    normalized.category?.filterPath
+    || normalized.tag?.filterPath
+    || normalized.author?.filterPath,
+  );
   return {
-    genre: filter.type === "category" ? filter.slug : "",
-    tag: filter.type === "tag" ? filter.slug : "",
-    tagPath: filter.archivePath || "",
+    genre: normalized.category?.slug || (filter.type === "category" ? filter.slug : ""),
+    tag: normalized.tag?.slug || (filter.type === "tag" ? filter.slug : ""),
+    tagPath: normalized.tag?.archivePath || filter.archivePath || "",
     filterPath,
-    queryParam: filter.queryParam
-      || (filter.type === "author" ? "author" : "")
-      || (filter.type === "kind" && filter.queryValue ? "type" : "")
-      || (kindType ? "type" : ""),
-    queryValue: filter.queryValue
-      || (filter.type === "author" ? filter.name : "")
-      || (filter.type === "kind" ? filter.queryValue : "")
-      || kindType
-      || "",
+    queryParam: taxonomyScoped
+      ? (filter.queryParam
+        || (normalized.author ? "author" : "")
+        || (filter.type === "author" ? "author" : ""))
+      : (filter.queryParam
+        || (normalized.author ? "author" : "")
+        || (filter.type === "author" ? "author" : "")
+        || (filter.type === "kind" && filter.queryValue ? "type" : "")
+        || (kindType ? "type" : "")),
+    queryValue: taxonomyScoped
+      ? (filter.queryValue
+        || (normalized.author?.name || "")
+        || (filter.type === "author" ? filter.name : ""))
+      : (filter.queryValue
+        || (normalized.author?.name || "")
+        || (filter.type === "author" ? filter.name : "")
+        || (filter.type === "kind" ? filter.queryValue : "")
+        || kindType
+        || ""),
   };
 }
 
 export function describeCatalogView({ query, filter, kind, page }) {
   const parts = [];
   if (isSearchQueryActive(query)) parts.push(t("sources.view.search", { query: query.trim() }));
-  if (kind?.slug && kind.slug !== "all") parts.push(t("sources.view.kind", { name: kind.name }));
-  if (filter && filter.slug !== "all") {
+  if (kind?.slug && kind.slug !== "all") {
+    parts.push(t("sources.view.kind", { name: localizeCatalogKind(kind).name }));
+  }
+  const normalized = normalizeTaxonomySelection(filter);
+  if (normalized.category) parts.push(t("sources.view.genre", { name: normalized.category.name }));
+  if (normalized.tag) parts.push(t("sources.view.tag", { name: normalized.tag.name }));
+  if (normalized.author) parts.push(t("sources.view.author", { name: normalized.author.name }));
+  if (!normalized.category && !normalized.tag && !normalized.author && filter?.slug && filter.slug !== "all") {
     const key = filter.type === "tag"
       ? "sources.view.tag"
       : filter.type === "author"
@@ -111,15 +221,40 @@ export function catalogItemMatchesFilter(item, filter) {
     return true;
   }
 
+  if (filter.type === "tag" && /^\d{4}$/.test(String(filter.slug || ""))) {
+    const itemYear = String(item.year || item.altTitle || item.title || "").match(/\b(19|20)\d{2}\b/)?.[0];
+    return itemYear === String(filter.slug);
+  }
+
   const haystack = [
     ...(Array.isArray(item.categories) ? item.categories : []),
     ...(Array.isArray(item.tags) ? item.tags : []),
     ...(Array.isArray(item.genres) ? item.genres : []),
     item.mediaTypeLabel || "",
+    item.year || "",
+    item.altTitle || "",
   ].join(" ").toLocaleLowerCase("ar");
 
   const slug = String(filter.slug || "").toLocaleLowerCase("ar");
   const name = String(filter.name || "").toLocaleLowerCase("ar");
   if (!haystack.trim()) return true;
   return haystack.includes(name) || haystack.includes(slug);
+}
+
+function primaryTaxonomyType(normalized) {
+  if (normalized.category) return "category";
+  if (normalized.tag) return "tag";
+  if (normalized.author) return "author";
+  return null;
+}
+
+export function applyTaxonomyFilters(items, filter) {
+  const normalized = normalizeTaxonomySelection(filter);
+  const primaryType = primaryTaxonomyType(normalized);
+  let result = items;
+  for (const type of ["category", "tag", "author"]) {
+    if (!normalized[type] || type === primaryType) continue;
+    result = result.filter((item) => catalogItemMatchesFilter(item, { ...normalized[type], type }));
+  }
+  return result;
 }

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="CineVault">
+  <defs>
+    <linearGradient id="bg" x1="64" y1="48" x2="448" y2="464" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#221836"/>
+      <stop offset="55%" stop-color="#120d1f"/>
+      <stop offset="100%" stop-color="#090612"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="96" y1="96" x2="416" y2="416" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#8b6dff"/>
+      <stop offset="100%" stop-color="#ff6b9d"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#090A12"/>
+  <path d="M88 40 H424 L472 88 V424 L424 472 H88 L40 424 V88 Z" fill="url(#bg)" stroke="url(#accent)" stroke-width="12"/>
+  <path d="M72 128 H440 L416 168 H96 Z" fill="url(#accent)" opacity="0.92"/>
+  <path d="M112 168 H144 V192 H112 Z M176 168 H208 V192 H176 Z M240 168 H272 V192 H240 Z M304 168 H336 V192 H304 Z M368 168 H400 V192 H368 Z" fill="#0d0a18" opacity="0.85"/>
+  <rect x="96" y="216" width="48" height="72" rx="12" fill="url(#accent)" opacity="0.9"/>
+  <rect x="96" y="312" width="48" height="72" rx="12" fill="url(#accent)" opacity="0.62"/>
+  <rect x="96" y="408" width="48" height="40" rx="10" fill="url(#accent)" opacity="0.38"/>
+  <path d="M232 240 L232 336 L360 288 Z" fill="url(#accent)"/>
+  <rect x="384" y="240" width="40" height="26" rx="8" fill="url(#accent)" opacity="0.82"/>
+  <rect x="384" y="288" width="40" height="26" rx="8" fill="url(#accent)" opacity="0.62"/>
+  <rect x="384" y="336" width="40" height="26" rx="8" fill="url(#accent)" opacity="0.42"/>
+  <rect x="384" y="384" width="40" height="26" rx="8" fill="url(#accent)" opacity="0.28"/>
+</svg>

@@ -1,4 +1,5 @@
 import { getLocale, t } from "../i18n/runtime.js";
+import { ALLOWED_SOURCE_IDS, DEFAULT_SOURCE_ID, isChromebookApp } from "./appFlavor.js";
 
 export const MANGALIK_LOGO_URL = "https://io.mangalik.net/wp-content/app/lekmanganet/lekmanga.png";
 export const AZORAFLY_LOGO_URL = "https://storage.azorafly.com/public/upload/2025/12/24/c925c7f3-2310-4e90-9b62-7fae04fe1c36.webp";
@@ -12,6 +13,7 @@ export const ANIME4UP_LOGO_URL = "https://4h.b9p2m6c.shop/wp-content/uploads/201
 export const MANGAFORFREE_LOGO_URL = "https://mangaforfree.com/wp-content/uploads/2026/07/Site-Icon-mangaforfree.png";
 export const FRENCH_STREAM_LOGO_URL = "https://french-stream.one/apple-touch-icon.png";
 export const WIFLIX_LOGO_URL = "https://www.wiflix.tv/static/templates/wiflixnew/images/favicon.png";
+export const COFLIX_LOGO_URL = "https://coflix.esq/wp-content/uploads/2022/10/cropped-coflix-180x180-1-150x150.png";
 export const DILAR_LOGO_URL = "https://dilar.tube/favicon.ico";
 export const ARABS_HENTAI_LOGO_URL = "https://arabshentai.com/wp-content/themes/dooplay/assets/img/brand/arbs_logo_dark.webp";
 export const HENTAIREAD_LOGO_URL = "https://hentairead.com/favicon.ico";
@@ -162,6 +164,18 @@ export const sourceProfiles = {
     contentTypes: ["movie", "series"],
     languages: ["fr", "en"],
   },
+  coflix: {
+    id: "coflix",
+    name: "Coflix",
+    arabicName: "كوفليكس",
+    domain: "coflix.esq",
+    url: "https://coflix.esq/",
+    logo: COFLIX_LOGO_URL,
+    initials: "CX",
+    contentLabel: "أفلام ومسلسلات فرنسية",
+    contentTypes: ["movie", "series"],
+    languages: ["fr", "en"],
+  },
   dilar: {
     id: "dilar",
     name: "Dilar",
@@ -212,7 +226,11 @@ export const sourceProfiles = {
   },
 };
 
-export const initialSources = Object.values(sourceProfiles).map((profile) => ({
+const listedProfiles = (isChromebookApp && ALLOWED_SOURCE_IDS
+  ? ALLOWED_SOURCE_IDS.map((id) => sourceProfiles[id]).filter(Boolean)
+  : Object.values(sourceProfiles));
+
+export const initialSources = listedProfiles.map((profile) => ({
   id: profile.id,
   name: profile.name,
   url: profile.url,
@@ -222,11 +240,11 @@ export const initialSources = Object.values(sourceProfiles).map((profile) => ({
 }));
 
 export const initialSourcePreferences = Object.fromEntries(
-  Object.keys(sourceProfiles).map((sourceId) => [sourceId, { mode: "full", selectedItems: [] }]),
+  listedProfiles.map((profile) => [profile.id, { mode: "full", selectedItems: [] }]),
 );
 
 export function getSourceProfile(sourceId) {
-  return sourceProfiles[sourceId] || sourceProfiles.mangalik;
+  return sourceProfiles[sourceId] || sourceProfiles[DEFAULT_SOURCE_ID] || sourceProfiles.frenchstream;
 }
 
 export function getSourceDisplayName(sourceIdOrProfile, locale = getLocale()) {
@@ -260,12 +278,20 @@ export function getSourceLanguageLabels(sourceIdOrProfile) {
 export function defaultVideoKinds(sourceId) {
   const profile = sourceProfiles[sourceId];
   if (!(profile?.contentTypes?.includes("movie") && profile.contentTypes?.includes("series"))) return [];
-  const moviesPath = sourceId === "wiflix" ? "/film-en-streaming/" : "/films/";
-  const seriesPath = sourceId === "wiflix" ? "/serie-en-streaming/" : "/s-tv/";
+  const moviesPath = sourceId === "wiflix"
+    ? "/film-en-streaming/"
+    : sourceId === "coflix"
+      ? "/films/"
+      : "/films/";
+  const seriesPath = sourceId === "wiflix"
+    ? "/serie-en-streaming/"
+    : sourceId === "coflix"
+      ? "/series/"
+      : "/s-tv/";
   return [
-    { slug: "all", name: "الكل", filterPath: "/all/" },
-    { slug: "movies", name: "أفلام", filterPath: moviesPath },
-    { slug: "series", name: "مسلسلات", filterPath: seriesPath },
+    { slug: "all", name: t("common.all"), filterPath: "/all/" },
+    { slug: "movies", name: t("content.movie"), filterPath: moviesPath },
+    { slug: "series", name: t("content.series"), filterPath: seriesPath },
   ];
 }
 
@@ -322,6 +348,8 @@ export function resolveSourceId(item) {
   if (item?.sourceId === "frenchstream") return "frenchstream";
   if (item?.source === "Wiflix") return "wiflix";
   if (item?.sourceId === "wiflix") return "wiflix";
+  if (item?.source === "Coflix") return "coflix";
+  if (item?.sourceId === "coflix") return "coflix";
   if (item?.source === "MangaForFree") return "mangaforfree";
   if (item?.sourceId === "mangaforfree") return "mangaforfree";
   if (item?.source === "Dilar") return "dilar";
@@ -332,5 +360,5 @@ export function resolveSourceId(item) {
   if (item?.sourceId === "hentairead") return "hentairead";
   if (item?.source === "HentaiGasm") return "hentaigasm";
   if (item?.sourceId === "hentaigasm") return "hentaigasm";
-  return "mangalik";
+  return DEFAULT_SOURCE_ID;
 }

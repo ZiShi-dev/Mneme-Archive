@@ -1,4 +1,5 @@
 import { t } from "../../i18n/runtime.js";
+import { isChromebookApp } from "../../config/appFlavor.js";
 import { DEFAULT_APP_SETTINGS } from "./defaults.js";
 
 export const DATA_USAGE_PRESETS = {
@@ -58,8 +59,10 @@ export function buildDataUsageSummary(settings) {
 
   const parts = [];
   if (settings.wifi !== false) parts.push(t("data.wifiOnlyChip"));
-  if (settings.preload === false) parts.push(t("data.noPreload"));
-  else parts.push(t("data.pages", { n: settings.preloadPages }));
+  if (!isChromebookApp) {
+    if (settings.preload === false) parts.push(t("data.noPreload"));
+    else parts.push(t("data.pages", { n: settings.preloadPages }));
+  }
   if (settings.homeAutoUpdates === false) parts.push(t("data.noAuto"));
   if (settings.videoDataSaver !== false) parts.push(t("data.videoSaverChip"));
   return parts.join(" · ") || t("data.custom");

@@ -1,5 +1,5 @@
 import { BookOpen, Clapperboard, Film, Layers3, Sparkles, Tv } from "lucide-react";
-import { getSourceProfile, resolveSourceId } from "../../config/sources";
+import { getSourceProfile, resolveSourceId } from "../../config/sources.js";
 import { t } from "../../i18n/runtime.js";
 
 const CONTENT_TYPE_DEFS = {
@@ -24,7 +24,7 @@ export function resolveBookmarkType(item) {
   const explicit = String(item.mediaType || "").toLowerCase();
   if (explicit === "novel" || explicit === "manga" || explicit === "anime" || explicit === "movie" || explicit === "series") return explicit;
   if (/رواية|novel/i.test(item.mediaTypeLabel || "")) return "novel";
-  if (/مسلسل|series/i.test(item.mediaTypeLabel || "")) return "series";
+  if (/مسلسل|s[eéè]rie|series/i.test(item.mediaTypeLabel || "")) return "series";
   if (/أنمي|anime/i.test(item.mediaTypeLabel || "")) return "anime";
   if (/فيلم|movie/i.test(item.mediaTypeLabel || "")) return "movie";
   const sourceId = item.sourceId || resolveSourceId(item);
@@ -41,4 +41,26 @@ export function resolveBookmarkType(item) {
 
 export function getItemType(item) {
   return resolveBookmarkType(item);
+}
+
+const CATALOG_KIND_LABEL_KEYS = {
+  all: "content.all",
+  movies: "content.movie",
+  movie: "content.movieSingular",
+  series: "content.series",
+  anime: "content.anime",
+  manga: "content.manga",
+  novel: "content.novel",
+  manhwa: "content.manhwa",
+};
+
+export function localizeCatalogKind(kind) {
+  if (!kind?.slug) return kind;
+  const labelKey = CATALOG_KIND_LABEL_KEYS[kind.slug];
+  if (!labelKey) return kind;
+  return { ...kind, name: t(labelKey) };
+}
+
+export function localizeCatalogKinds(kinds = []) {
+  return kinds.map((kind) => localizeCatalogKind(kind));
 }

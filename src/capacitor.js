@@ -1,6 +1,7 @@
 import { Capacitor } from "@capacitor/core";
 import { StatusBar, Style } from "@capacitor/status-bar";
 import { SplashScreen } from "@capacitor/splash-screen";
+import { isChromebookApp } from "./config/appFlavor";
 import { initNativeNotifications } from "./lib/notifications/nativeNotifications";
 import { initMangalikNative } from "./lib/platform/mangalikNative";
 
@@ -12,7 +13,9 @@ export async function initCapacitor() {
     await StatusBar.setStyle({ style: Style.Dark });
     await StatusBar.setBackgroundColor({ color: "#171218" });
     await initNativeNotifications();
-    await initMangalikNative();
+    if (!isChromebookApp) {
+      await initMangalikNative();
+    }
     await SplashScreen.hide();
   } catch {
     // Plugins optionnels selon la plateforme.

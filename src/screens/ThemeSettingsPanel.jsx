@@ -1,11 +1,12 @@
 import React, { useEffect } from "react";
-import { Check, ChevronLeft, Moon, Sun } from "lucide-react";
+import { Check, ChevronLeft, Moon, Snowflake, Sun } from "lucide-react";
 import { SheetCloseButton } from "../components/ui/SheetCloseButton";
 import { SheetPortal } from "../components/ui/SheetPortal";
 import { SakuraIcon } from "../components/atmosphere/SakuraIcon";
 import { useI18n } from "../i18n/I18nProvider";
 import {
   THEME_INK,
+  THEME_LUNE_NEIGE,
   THEME_PAPER,
   THEME_SAKURA,
   THEME_YOZAKURA,
@@ -18,12 +19,18 @@ const THEME_OPTIONS = [
   { id: THEME_PAPER, Icon: Sun },
   { id: THEME_SAKURA, Icon: SakuraIcon },
   { id: THEME_YOZAKURA, Icon: SakuraIcon },
+  { id: THEME_LUNE_NEIGE, Icon: Snowflake },
 ];
+
+function ThemeOptionIcon({ Icon }) {
+  if (Icon === SakuraIcon) return <SakuraIcon size={19} decorative />;
+  return <Icon size={19} />;
+}
 
 function ThemeSelector({ appearance, onSetAppearance }) {
   const { t } = useI18n();
   return (
-    <div className="theme-selector theme-selector--four" role="group" aria-label={t("settings.appearance")}>
+    <div className="theme-selector theme-selector--five" role="group" aria-label={t("settings.appearance")}>
       {THEME_OPTIONS.map(({ id, Icon }) => {
         const active = appearance === id;
         return (
@@ -34,7 +41,7 @@ function ThemeSelector({ appearance, onSetAppearance }) {
             aria-pressed={active}
             onClick={() => onSetAppearance(id)}
           >
-            {Icon === SakuraIcon ? <SakuraIcon size={19} decorative /> : <Icon size={19} />}
+            <ThemeOptionIcon Icon={Icon} />
             <span>
               <strong>{t(themeNameKey(id))}</strong>
               <small>{t(themeHintKey(id))}</small>
@@ -110,7 +117,7 @@ export function ThemeSettingsEntry({ appearance, onOpen }) {
   return (
     <button type="button" className="setting-row" onClick={onOpen}>
       <span className="setting-row__icon">
-        {ActiveIcon === SakuraIcon ? <SakuraIcon size={19} decorative /> : <ActiveIcon size={19} />}
+        <ThemeOptionIcon Icon={ActiveIcon} />
       </span>
       <span className="setting-row__copy">
         <strong>{t("settings.appearance")}</strong>

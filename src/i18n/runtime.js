@@ -1,7 +1,9 @@
-import { applyDocumentLocale, DEFAULT_LOCALE, LOCALES, LOCALE_STORAGE_KEY, normalizeLocale } from "./locales.js";
+import { applyDocumentLocale, DEFAULT_LOCALE, DEFAULT_UI_LOCALE, LOCALES, LOCALE_STORAGE_KEY, normalizeLocale } from "./locales.js";
 import { translate } from "./translate.js";
 import { ar } from "./ar.js";
 import { fr } from "./fr.js";
+import { getAppDocumentTitle } from "../lib/brand/appBrand.js";
+import { peekStorageString } from "../lib/storage/peek.js";
 
 const DICTIONARIES = { ar, fr };
 const listeners = new Set();
@@ -23,16 +25,17 @@ export function t(key, vars) {
 function applyLocaleToDocument(locale) {
   applyDocumentLocale(locale);
   if (typeof document !== "undefined") {
-    document.title = t("app.name");
+    document.title = getAppDocumentTitle(t);
   }
 }
 
 if (typeof localStorage !== "undefined") {
   try {
-    currentLocale = normalizeLocale(localStorage.getItem(LOCALE_STORAGE_KEY));
+    const stored = peekStorageString(LOCALE_STORAGE_KEY);
+    currentLocale = stored ? normalizeLocale(stored) : DEFAULT_UI_LOCALE;
     applyLocaleToDocument(currentLocale);
   } catch {
-    currentLocale = DEFAULT_LOCALE;
+    currentLocale = DEFAULT_UI_LOCALE;
   }
 }
 

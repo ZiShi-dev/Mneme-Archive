@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDownAZ, Bell, BookOpen, Bookmark, Check, CheckCheck, ChevronLeft, Clock3, Globe2, RefreshCw, Search, Settings2, Sparkles } from "lucide-react";
+import { ArrowDownAZ, Bell, BookOpen, Bookmark, Check, CheckCheck, ChevronLeft, Clapperboard, Clock3, Globe2, RefreshCw, Search, Settings2, Sparkles } from "lucide-react";
 import { Header } from "../components/layout/Header";
 import { SectionTitle } from "../components/layout/SectionTitle";
 import { Cover } from "../components/manga/Cover";
@@ -7,19 +7,85 @@ import { ChipFilterBar, ChipFilterButton } from "../components/ui/ChipFilterBar"
 import { EmptyState } from "../components/ui/EmptyState";
 import { AccessibleSearchField } from "../components/ui/AccessibleSearchField";
 import { manga } from "../data/demoManga";
+import { VISIBLE_MEDIA_TYPES, isChromebookApp, isNotifiableMediaType } from "../config/appFlavor";
 import { getSourceProfile } from "../config/sources";
 import { RemoteCover, SEARCH_RESULTS_PAGE_SIZE, SearchResultsList, SearchResultsPagination, SearchResultsSkeleton, SourceLogo } from "../features/sources";
 import { contentTypes, getItemType } from "../features/sources/contentTypes";
 import { SourceScopeBar } from "../components/sources/SourceScopeBar";
+import { filterItemsByAudioLanguage } from "../features/sources/audioLanguage";
 import { getEnabledSources, flattenSearchBatches, searchEnabledSources, sourceSupportsMediaType } from "../lib/unifiedSearch";
 import { useToast } from "../components/ui/ToastProvider";
 import { FavoritesOverview } from "./FavoritesOverview";
 import { RemoteCover as UpdatesRemoteCover } from "../features/sources/RemoteCover";
 import { formatRelativeReadingTime, getHistoryDayGroup, historyDayGroupLabel } from "../lib/readingProgress";
-import { formatFollowUpdateLine } from "../lib/updates/followMessaging";
+import { formatFollowUpdateLine, resolveFollowMediaType } from "../lib/updates/followMessaging";
+import { isVideoMediaType } from "../features/sources/mediaPresentation";
 import { UpdatesEmptyPanel } from "../features/updates/UpdatesEmptyPanel";
 import { UpdatesFollowedPreview } from "../features/updates/UpdatesFollowedPreview";
 import { useI18n } from "../i18n/I18nProvider";
+
+function resolveUpdateMediaType(entry) {
+  return entry.mediaType || resolveFollowMediaType(entry);
+}
+
+function isVisibleUpdateType(mediaType) {
+  return isNotifiableMediaType(mediaType);
+}
+
+function isVisibleFavoriteType(mediaType) {
+  return isVisibleUpdateType(mediaType);
+}
+
+function getBookmarkRowCopy(entry, latestChapter, t) {
+  if (entry.kind === "demo") {
+    return {
+      typeLabel: t("content.mangaSingular"),
+      readingLine: t("favorites.chapterOf", { current: entry.item.lastChapter, total: entry.item.chapters }),
+      continueLabel: null,
+      isVideo: false,
+    };
+  }
+
+  const typeLabel = contentTypes[entry.type]?.singular || t("content.mangaSingular");
+  const isVideo = isVideoMediaType(entry.type);
+
+  if (entry.type === "movie") {
+    return {
+      typeLabel,
+      readingLine: latestChapter
+        ? t("favorites.watchMovie", { name: latestChapter.number || latestChapter.name || "?" })
+        : t("favorites.openMovie"),
+      continueLabel: latestChapter?.url
+        ? t("favorites.continueMovie", { name: latestChapter.number || latestChapter.name || "?" })
+        : null,
+      isVideo,
+    };
+  }
+
+  if (entry.type === "series") {
+    return {
+      typeLabel,
+      readingLine: latestChapter
+        ? t("favorites.lastEpisode", { name: latestChapter.number || latestChapter.name || "?" })
+        : t("favorites.openEpisodes"),
+      continueLabel: latestChapter?.url
+        ? t("favorites.continueEpisode", { name: latestChapter.number || latestChapter.name || "?" })
+        : null,
+      isVideo,
+    };
+  }
+
+  return {
+    typeLabel,
+    readingLine: latestChapter
+      ? t("favorites.lastChapter", { name: latestChapter.number || latestChapter.name })
+      : t("favorites.openChapters"),
+    continueLabel: latestChapter?.url
+      ? t("favorites.continueChapter", { name: latestChapter.number || latestChapter.name })
+      : null,
+    isVideo,
+  };
+}
 
 function SearchScopeFooter({ enabledSources, sourcePreferences, onManage }) {
   const { t } = useI18n();
@@ -40,18 +106,23 @@ export function LibraryScreen({ favorites, liveFavorites, toggleFavorite, toggle
   const [typeFilter, setTypeFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [sortMode, setSortMode] = useState("saved");
-  const libraryItems = useMemo(() => manga.filter((item) => favorites.includes(item.id)), [favorites]);
+  const libraryItems = useMemo(
+    () => (isChromebookApp ? [] : manga.filter((item) => favorites.includes(item.id))),
+    [favorites],
+  );
   const bookmarkedItems = useMemo(() => [
     ...libraryItems.map((item, index) => ({ key: `demo:${item.id}`, kind: "demo", type: "manga", sourceId: "mangalik", sourceName: item.source, item, savedOrder: index })),
-    ...liveFavorites.map((item, index) => ({
-      key: `${item.sourceId}:${item.url}`,
-      kind: "live",
-      type: getItemType(item),
-      sourceId: item.sourceId,
-      sourceName: getSourceProfile(item.sourceId).name,
-      item,
-      savedOrder: libraryItems.length + index,
-    })),
+    ...liveFavorites
+      .filter((item) => isVisibleFavoriteType(getItemType(item)))
+      .map((item, index) => ({
+        key: `${item.sourceId}:${item.url}`,
+        kind: "live",
+        type: getItemType(item),
+        sourceId: item.sourceId,
+        sourceName: getSourceProfile(item.sourceId).name,
+        item,
+        savedOrder: libraryItems.length + index,
+      })),
   ], [libraryItems, liveFavorites]);
   const sourceOptions = useMemo(() => [...new Map(bookmarkedItems.map((entry) => [entry.sourceId, entry.sourceName])).entries()], [bookmarkedItems]);
   const normalizedQuery = query.trim().toLowerCase();
@@ -63,9 +134,15 @@ export function LibraryScreen({ favorites, liveFavorites, toggleFavorite, toggle
   const totalItems = bookmarkedItems.length;
   const mangaCount = bookmarkedItems.filter((entry) => entry.type === "manga").length;
   const novelCount = bookmarkedItems.filter((entry) => entry.type === "novel").length;
+  const movieCount = bookmarkedItems.filter((entry) => entry.type === "movie").length;
+  const seriesCount = bookmarkedItems.filter((entry) => entry.type === "series").length;
   const overviewItems = typeFilter === "all" && sourceFilter === "all" && !normalizedQuery ? bookmarkedItems : visibleItems;
-  const overviewMangaCount = overviewItems.filter((entry) => entry.type === "manga").length;
-  const overviewNovelCount = overviewItems.filter((entry) => entry.type === "novel").length;
+  const overviewPrimaryCount = isChromebookApp
+    ? overviewItems.filter((entry) => entry.type === "movie").length
+    : overviewItems.filter((entry) => entry.type === "manga" || entry.type === "movie").length;
+  const overviewSecondaryCount = isChromebookApp
+    ? overviewItems.filter((entry) => entry.type === "series").length
+    : overviewItems.filter((entry) => entry.type === "novel" || entry.type === "series").length;
   const previewItems = overviewItems.slice(0, 3);
   const hasActiveFilters = Boolean(query || typeFilter !== "all" || sourceFilter !== "all");
 
@@ -76,19 +153,28 @@ export function LibraryScreen({ favorites, liveFavorites, toggleFavorite, toggle
   }
 
   return (
-    <div className="screen">
-      <Header title={t("favorites.title")} eyebrow={totalItems ? t("favorites.savedN", { count: totalItems }) : t("favorites.personal")} onSearch={() => navigate("search")} onReadingHistory={() => navigate("reading-history")} onNotifications={() => navigate("updates")} />
+    <div className={`screen${isChromebookApp ? " screen--favorites-desktop" : ""}`}>
+      {isChromebookApp ? (
+        <header className="settings-desktop-head">
+          <span className="eyebrow">{totalItems ? t("favorites.savedN", { count: totalItems }) : t("favorites.personal")}</span>
+          <h1>{t("favorites.title")}</h1>
+        </header>
+      ) : (
+        <Header title={t("favorites.title")} eyebrow={totalItems ? t("favorites.savedN", { count: totalItems }) : t("favorites.personal")} onSearch={() => navigate("search")} onReadingHistory={() => navigate("reading-history")} onNotifications={() => navigate("updates")} />
+      )}
       <main className="content bookmarks-page">
         <FavoritesOverview
           totalItems={overviewItems.length}
-          mangaCount={overviewMangaCount}
-          novelCount={overviewNovelCount}
+          mangaCount={overviewPrimaryCount}
+          novelCount={overviewSecondaryCount}
           sourceCount={new Set(overviewItems.map((entry) => entry.sourceId)).size}
           previewItems={previewItems}
+          variant={isChromebookApp ? "video" : "reading"}
+          desktop={isChromebookApp}
           onDiscover={() => navigate("sources")}
         />
 
-        {totalItems > 0 && (
+        {(totalItems > 0 || isChromebookApp) && (
           <section className="bookmarks-controls" aria-label={t("favorites.filterAria")}>
             <AccessibleSearchField
               className="global-search bookmarks-controls__search"
@@ -101,8 +187,15 @@ export function LibraryScreen({ favorites, liveFavorites, toggleFavorite, toggle
             <ChipFilterBar variant="segmented" role="tablist" ariaLabel={t("favorites.contentType")} className="bookmarks-controls__types">
               {[
                 { id: "all", label: t("content.all"), count: totalItems },
-                { id: "manga", label: t("content.manga"), count: mangaCount },
-                { id: "novel", label: t("content.novel"), count: novelCount },
+                ...(isChromebookApp
+                  ? [
+                      { id: "movie", label: t("content.movie"), count: movieCount },
+                      { id: "series", label: t("content.series"), count: seriesCount },
+                    ]
+                  : [
+                      { id: "manga", label: t("content.manga"), count: mangaCount },
+                      { id: "novel", label: t("content.novel"), count: novelCount },
+                    ]),
               ].map((type) => (
                 <ChipFilterButton
                   key={type.id}
@@ -162,6 +255,8 @@ export function LibraryScreen({ favorites, liveFavorites, toggleFavorite, toggle
                 const latestChapter = entry.kind === "live" ? item.recentChapters?.[0] : null;
                 const subtitle = item.altTitle || item.subtitle;
                 const progress = entry.kind === "demo" ? item.progress : null;
+                const { typeLabel, readingLine, continueLabel, isVideo } = getBookmarkRowCopy(entry, latestChapter, t);
+                const ContinueIcon = isVideo ? Clapperboard : BookOpen;
                 return (
                   <article
                     className={`bookmark-row bookmark-row--${entry.type}${latestChapter?.url ? " bookmark-row--continue" : ""}`}
@@ -172,14 +267,19 @@ export function LibraryScreen({ favorites, liveFavorites, toggleFavorite, toggle
                       type="button"
                       onClick={() => (entry.kind === "demo" ? openManga(item) : openLiveManga(item))}
                     >
-                      <span className="bookmark-row__media">
+                      <span className={`bookmark-row__media bookmark-row__media--${entry.type}${isVideo ? " bookmark-row__media--video" : ""}`}>
                         {entry.kind === "demo" ? (
                           <Cover item={item} />
                         ) : (
-                          <RemoteCover src={item.cover} title={item.title} sourceId={entry.sourceId || item.sourceId} />
+                          <RemoteCover
+                            src={item.cover}
+                            title={item.title}
+                            sourceId={entry.sourceId || item.sourceId}
+                            video={isVideo}
+                          />
                         )}
                         <span className={`bookmark-row__type bookmark-row__type--${entry.type}`}>
-                          {entry.type === "novel" ? t("content.novelSingular") : t("content.mangaSingular")}
+                          {typeLabel}
                         </span>
                       </span>
                       <span className="bookmark-row__body">
@@ -189,20 +289,16 @@ export function LibraryScreen({ favorites, liveFavorites, toggleFavorite, toggle
                           <SourceLogo sourceId={entry.sourceId} />
                           <span>{entry.sourceName}</span>
                         </span>
-                        {entry.kind === "demo" ? (
-                          <span className="bookmark-row__reading">
-                            <em>{t("favorites.chapterOf", { current: item.lastChapter, total: item.chapters })}</em>
-                            <b>{item.progress}%</b>
-                          </span>
-                        ) : (
-                          <span className="bookmark-row__reading">
-                            <em>
-                              {latestChapter
-                                ? t("favorites.lastChapter", { name: latestChapter.number || latestChapter.name })
-                                : t("favorites.openChapters")}
-                            </em>
-                          </span>
-                        )}
+                        <span className="bookmark-row__reading">
+                          {entry.kind === "demo" ? (
+                            <>
+                              <em>{readingLine}</em>
+                              <b>{item.progress}%</b>
+                            </>
+                          ) : (
+                            <em>{readingLine}</em>
+                          )}
+                        </span>
                         {progress != null && (
                           <span className="bookmark-row__progress" aria-hidden="true">
                             <span className="progress progress--thin">
@@ -223,14 +319,14 @@ export function LibraryScreen({ favorites, liveFavorites, toggleFavorite, toggle
                       >
                         <Bookmark size={15} fill="currentColor" aria-hidden="true" />
                       </button>
-                      {latestChapter?.url && (
+                      {continueLabel && (
                         <button
                           type="button"
                           className="bookmark-row__continue"
                           onClick={() => openLiveChapter(item, latestChapter)}
                         >
-                          <BookOpen size={13} aria-hidden="true" />
-                          <span>{t("favorites.continueChapter", { name: latestChapter.number || latestChapter.name })}</span>
+                          <ContinueIcon size={13} aria-hidden="true" />
+                          <span>{continueLabel}</span>
                         </button>
                       )}
                     </div>
@@ -253,7 +349,7 @@ export function LibraryScreen({ favorites, liveFavorites, toggleFavorite, toggle
             icon={Bookmark}
             variant="accent"
             title={t("favorites.empty")}
-            description={t("favorites.emptyHint")}
+            description={isChromebookApp ? t("favorites.emptyHintVideo") : t("favorites.emptyHint")}
           />
         )}
       </main>
@@ -269,19 +365,34 @@ export function UpdatesScreen({
 }) {
   const { pushToast } = useToast();
   const { t, locale } = useI18n();
-  const { feed, preferences, unreadCount, followedCount, syncing, lastSyncAt, syncFollowed, markFeedRead, markAllFeedRead } = chapterFollow;
+  const { feed, preferences, syncing, lastSyncAt, syncFollowed, markFeedRead } = chapterFollow;
   const [filter, setFilter] = useState("all");
 
   const followedItems = useMemo(
     () => Object.values(preferences || {})
       .filter((entry) => entry?.enabled !== false && entry?.url)
+      .filter((entry) => isVisibleUpdateType(resolveFollowMediaType(entry)))
       .sort((a, b) => (a.title || "").localeCompare(b.title || "", locale)),
     [locale, preferences],
   );
 
+  const scopedFeed = useMemo(
+    () => feed.filter((entry) => isVisibleUpdateType(resolveUpdateMediaType(entry))),
+    [feed],
+  );
+
+  const unreadCount = useMemo(
+    () => scopedFeed.filter((entry) => !entry.read).length,
+    [scopedFeed],
+  );
+
+  const followedCount = followedItems.length;
+
+  const previewFollowedItems = followedItems;
+
   const visibleFeed = useMemo(
-    () => (filter === "unread" ? feed.filter((entry) => !entry.read) : feed),
-    [feed, filter],
+    () => (filter === "unread" ? scopedFeed.filter((entry) => !entry.read) : scopedFeed),
+    [filter, scopedFeed],
   );
 
   const groupedFeed = useMemo(() => {
@@ -328,8 +439,15 @@ export function UpdatesScreen({
   }
 
   return (
-    <div className="screen">
-      <Header title={t("updates.title")} eyebrow={t("updates.eyebrow")} onSearch={() => navigate("search")} onReadingHistory={() => navigate("reading-history")} onNotifications={() => navigate("updates")} />
+    <div className={`screen${isChromebookApp ? " screen--updates-desktop" : ""}`}>
+      {isChromebookApp ? (
+        <header className="settings-desktop-head">
+          <span className="eyebrow">{t("updates.eyebrow")}</span>
+          <h1>{t("updates.title")}</h1>
+        </header>
+      ) : (
+        <Header title={t("updates.title")} eyebrow={t("updates.eyebrow")} onSearch={() => navigate("search")} onReadingHistory={() => navigate("reading-history")} onNotifications={() => navigate("updates")} />
+      )}
       <main className="content updates-page">
         <section className={`updates-hero${unreadCount ? " updates-hero--unread" : ""}`}>
           <div className="updates-hero__main">
@@ -342,7 +460,7 @@ export function UpdatesScreen({
               <span>
                 {followedCount
                   ? t("updates.nFollowed", { count: followedCount })
-                  : t("updates.followHint")}
+                  : (isChromebookApp ? t("updates.followHintSeries") : t("updates.followHint"))}
                 {lastSyncAt ? ` · ${formatRelativeReadingTime(lastSyncAt)}` : ""}
               </span>
             </div>
@@ -377,13 +495,18 @@ export function UpdatesScreen({
           {followedCount > 0 && (
             <div className="updates-hero__stats">
               <span><Bell size={12} />{unreadCount} {t("updates.unread")}</span>
-              <span><BookOpen size={12} />{feed.length} {t("updates.inList")}</span>
+              <span>
+                {isChromebookApp ? <Clapperboard size={12} /> : <BookOpen size={12} />}
+                {scopedFeed.length} {t("updates.inList")}
+              </span>
             </div>
           )}
         </section>
 
-        {feed.length > 0 && (
+        {(scopedFeed.length > 0 || followedCount > 0) && (
           <div className="updates-toolbar">
+            {scopedFeed.length > 0 && (
+              <>
             <ChipFilterBar
               variant="segmented"
               className="updates-toolbar__filter"
@@ -393,7 +516,7 @@ export function UpdatesScreen({
               <ChipFilterButton
                 role="tab"
                 active={filter === "all"}
-                count={feed.length}
+                count={scopedFeed.length}
                 onClick={() => setFilter("all")}
               >
                 {t("common.all")}
@@ -413,13 +536,15 @@ export function UpdatesScreen({
               className="updates-toolbar__mark"
               disabled={!unreadCount}
               onClick={() => {
-                markAllFeedRead();
+                scopedFeed.filter((entry) => !entry.read).forEach((entry) => markFeedRead(entry.id));
                 pushToast({ type: "success", message: t("toast.markedAllRead") });
               }}
             >
               <CheckCheck size={14} />
               {t("updates.allRead")}
             </button>
+              </>
+            )}
           </div>
         )}
 
@@ -430,7 +555,7 @@ export function UpdatesScreen({
                 <h3 className="updates-group__title">{group.label}</h3>
                 <div className="updates-list">
                   {group.items.map((entry) => {
-                    const mediaType = entry.mediaType || "manga";
+                    const mediaType = resolveUpdateMediaType(entry);
                     const mediaLabel = contentTypes[mediaType]?.singular || t("content.mangaSingular");
                     return (
                       <button
@@ -440,7 +565,12 @@ export function UpdatesScreen({
                         onClick={() => openUpdate(entry)}
                       >
                         <div className="update-card__cover">
-                          <UpdatesRemoteCover src={entry.cover} title={entry.title} sourceId={entry.sourceId} />
+                          <UpdatesRemoteCover
+                            src={entry.cover}
+                            title={entry.title}
+                            sourceId={entry.sourceId}
+                            video={isVideoMediaType(mediaType)}
+                          />
                           {!entry.read && <span className="update-card__badge">{t("common.new")}</span>}
                         </div>
                         <span className="update-card__body">
@@ -460,7 +590,7 @@ export function UpdatesScreen({
               </section>
             ))}
           </div>
-        ) : feed.length > 0 && filter === "unread" ? (
+        ) : scopedFeed.length > 0 && filter === "unread" ? (
           <EmptyState
             className="updates-empty"
             icon={CheckCheck}
@@ -472,7 +602,7 @@ export function UpdatesScreen({
         ) : followedCount > 0 ? (
           <>
             <UpdatesFollowedPreview
-              items={followedItems}
+              items={previewFollowedItems}
               onOpen={openLiveManga}
               onManage={() => navigate("notification-center")}
             />
@@ -480,13 +610,14 @@ export function UpdatesScreen({
               className="updates-empty updates-empty--compact"
               icon={Sparkles}
               title={t("updates.empty")}
-              description={t("updates.emptyHint")}
+              description={isChromebookApp ? t("updates.emptyHintSeries") : t("updates.emptyHint")}
               actionLabel={t("updates.refreshNow")}
               onAction={handleRefresh}
             />
           </>
         ) : (
           <UpdatesEmptyPanel
+            variant={isChromebookApp ? "series" : "default"}
             onDiscover={() => navigate("sources")}
             onSettings={() => navigate("notification-center")}
           />
@@ -496,14 +627,17 @@ export function UpdatesScreen({
   );
 }
 
-const SEARCH_TYPE_ORDER = ["manga", "novel", "anime", "movie", "series"];
-const SEARCH_SUGGESTIONS = ["you", "reacher", "naruto", "solo", "رواية"];
+const SEARCH_TYPE_ORDER = VISIBLE_MEDIA_TYPES;
+const SEARCH_SUGGESTIONS = ["you", "reacher", "lupin", "dark", "stranger"];
+
+const SEARCH_DESKTOP_PAGE_SIZE = 18;
 
 export function SearchScreen({ sources, sourcePreferences, openLiveManga, navigate }) {
   const { pushToast } = useToast();
   const { t } = useI18n();
   const [query, setQuery] = useState("");
   const [mediaType, setMediaType] = useState("all");
+  const [audioFilter, setAudioFilter] = useState("all");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchErrors, setSearchErrors] = useState([]);
@@ -527,16 +661,17 @@ export function SearchScreen({ sources, sourcePreferences, openLiveManga, naviga
   }, [enabledSources]);
   const normalizedQuery = query.trim();
   const groupResultsBySource = scopedSources.length > 1;
-  const totalResultsPages = Math.max(1, Math.ceil(results.length / SEARCH_RESULTS_PAGE_SIZE));
+  const searchPageSize = isChromebookApp ? SEARCH_DESKTOP_PAGE_SIZE : SEARCH_RESULTS_PAGE_SIZE;
+  const totalResultsPages = Math.max(1, Math.ceil(results.length / searchPageSize));
   const pagedResults = useMemo(
-    () => results.slice((resultsPage - 1) * SEARCH_RESULTS_PAGE_SIZE, resultsPage * SEARCH_RESULTS_PAGE_SIZE),
-    [results, resultsPage],
+    () => results.slice((resultsPage - 1) * searchPageSize, resultsPage * searchPageSize),
+    [results, resultsPage, searchPageSize],
   );
 
   useEffect(() => {
     setResultsPage(1);
     lastToastQueryRef.current = "";
-  }, [mediaType, normalizedQuery]);
+  }, [mediaType, audioFilter, normalizedQuery]);
 
   useEffect(() => {
     if (resultsPage > totalResultsPages) setResultsPage(totalResultsPages);
@@ -565,7 +700,7 @@ export function SearchScreen({ sources, sourcePreferences, openLiveManga, naviga
     const timer = setTimeout(() => {
       searchEnabledSources({ sources, sourcePreferences, query: normalizedQuery, mediaType })
         .then((batches) => {
-          setResults(flattenSearchBatches(batches, normalizedQuery));
+          setResults(filterItemsByAudioLanguage(flattenSearchBatches(batches, normalizedQuery), audioFilter));
           setSearchErrors(batches.filter((batch) => batch.error).map((batch) => ({
             sourceId: batch.sourceId,
             sourceName: batch.sourceName,
@@ -580,7 +715,7 @@ export function SearchScreen({ sources, sourcePreferences, openLiveManga, naviga
     }, 220);
 
     return () => clearTimeout(timer);
-  }, [enabledSources.length, mediaType, normalizedQuery, sourcePreferences, sources]);
+  }, [audioFilter, enabledSources.length, mediaType, normalizedQuery, sourcePreferences, sources]);
 
   useEffect(() => {
     if (loading || normalizedQuery.length < 2) return;
@@ -598,17 +733,24 @@ export function SearchScreen({ sources, sourcePreferences, openLiveManga, naviga
   }, [loading, mediaType, normalizedQuery, pushToast, results.length, searchErrors.length, t]);
 
   return (
-    <div className="screen">
-      <Header title={t("search.title")} eyebrow={t("search.eyebrow")} onBack={() => navigate("home")} actions={false} />
+    <div className={`screen${isChromebookApp ? " screen--search-desktop" : ""}`}>
+      {isChromebookApp ? (
+        <header className="settings-desktop-head">
+          <span className="eyebrow">{t("search.eyebrowVideo")}</span>
+          <h1>{t("search.title")}</h1>
+        </header>
+      ) : (
+        <Header title={t("search.title")} eyebrow={t("search.eyebrow")} onBack={() => navigate("home")} actions={false} />
+      )}
       <main className="content search-page">
         <section className="search-hero">
           <AccessibleSearchField
             className="global-search search-hero__field"
             value={query}
             onChange={setQuery}
-            placeholder={t("search.placeholder")}
+            placeholder={isChromebookApp ? t("search.placeholderVideo") : t("search.placeholder")}
             ariaLabel={t("search.aria")}
-            autoFocus
+            autoFocus={!isChromebookApp}
           />
           {typeFilters.length > 1 && (
             <ChipFilterBar
@@ -628,6 +770,25 @@ export function SearchScreen({ sources, sourcePreferences, openLiveManga, naviga
                   {filter.label}
                 </ChipFilterButton>
               ))}
+            </ChipFilterBar>
+          )}
+          {isChromebookApp && (
+            <ChipFilterBar
+              className="search-hero__types"
+              variant="segmented"
+              role="group"
+              ariaLabel={t("sources.audioFilter")}
+              label={t("sources.audioFilter")}
+            >
+              <ChipFilterButton active={audioFilter === "all"} onClick={() => setAudioFilter("all")}>
+                {t("common.all")}
+              </ChipFilterButton>
+              <ChipFilterButton active={audioFilter === "VF"} onClick={() => setAudioFilter("VF")}>
+                VF
+              </ChipFilterButton>
+              <ChipFilterButton active={audioFilter === "VOSTFR"} onClick={() => setAudioFilter("VOSTFR")}>
+                VOSTFR
+              </ChipFilterButton>
             </ChipFilterBar>
           )}
           {enabledSources.length > 0 && (
@@ -660,7 +821,7 @@ export function SearchScreen({ sources, sourcePreferences, openLiveManga, naviga
             <section className="search-hint">
               <Search size={27} />
               <h2>{t("search.onePlace")}</h2>
-              <p>{t("search.typeTwo")}</p>
+              <p>{isChromebookApp ? t("search.typeTwoVideo") : t("search.typeTwo")}</p>
             </section>
           </>
         )}
@@ -670,7 +831,7 @@ export function SearchScreen({ sources, sourcePreferences, openLiveManga, naviga
             <div className="search-results-head" ref={resultsHeadRef}>
               <div className="search-results-head__copy">
                 <h2>{t("search.results")}</h2>
-                <p>{t("search.about", { query: normalizedQuery })}{mediaType !== "all" ? ` · ${contentTypes[mediaType]?.label}` : ""}</p>
+                <p>{t("search.about", { query: normalizedQuery })}{mediaType !== "all" ? ` · ${contentTypes[mediaType]?.label}` : ""}{audioFilter !== "all" ? ` · ${audioFilter}` : ""}</p>
               </div>
               <span className="search-results-head__badge">
                 {loading ? t("common.loading") : t("search.nResults", { count: results.length })}
@@ -701,7 +862,7 @@ export function SearchScreen({ sources, sourcePreferences, openLiveManga, naviga
                   page={resultsPage}
                   totalPages={totalResultsPages}
                   totalItems={results.length}
-                  pageSize={SEARCH_RESULTS_PAGE_SIZE}
+                  pageSize={searchPageSize}
                   onPageChange={goToResultsPage}
                 />
               </>

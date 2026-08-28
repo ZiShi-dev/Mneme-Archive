@@ -4,20 +4,30 @@ import Hls from "hls.js";
 import { Plyr } from "plyr-react";
 import "plyr-react/plyr.css";
 import { createSourceStreamLoader } from "../../lib/hls/sourceStreamLoader";
-import { createHlsPlayerConfig } from "../../lib/hls/hlsConfig";
+import { createHlsPlayerConfig, prefersHighVideoQuality } from "../../lib/hls/hlsConfig";
+import { applyHlsStartLevel, applyPlyrHlsQualityMenu } from "../../lib/hls/playbackQuality";
+import { isChromebookApp } from "../../config/appFlavor";
 import { useI18n } from "../../i18n/I18nProvider";
 
 const LOAD_TIMEOUT_MS = 45_000;
+
+const PLYR_FULLSCREEN_CONTAINER = ".live-video-immersive-root";
 
 function getPlyrOptions(t) {
   return {
     autoplay: false,
     clickToPlay: true,
-    hideControls: true,
+    hideControls: !isChromebookApp,
     resetOnEnd: false,
     keyboard: { focused: true, global: false },
     tooltips: { controls: true, seek: true },
     speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] },
+    fullscreen: {
+      enabled: true,
+      fallback: Capacitor.isNativePlatform() ? "force" : true,
+      iosNative: !isChromebookApp,
+      container: PLYR_FULLSCREEN_CONTAINER,
+    },
     controls: [
       "play-large",
       "play",
@@ -79,7 +89,10 @@ export function PlyrHlsPlayer({
   onPlyrInstance,
 }) {
   const { t } = useI18n();
-  const plyrOptions = useMemo(() => getPlyrOptions(t), [t]);
+  const plyrOptions = useMemo(
+    () => getPlyrOptions(t),
+    [t, src],
+  );
   const resolvedLoadingLabel = loadingLabel || t("reader.stream.loading");
   const plyrApiRef = useRef(null);
   const hlsRef = useRef(null);
@@ -182,6 +195,8 @@ export function PlyrHlsPlayer({
       if (disposed) return;
       clearLoadTimeout();
       setShowOverlay(false);
+      applyHlsStartLevel(hls, prefersHighVideoQuality());
+      applyPlyrHlsQualityMenu(hls, plyrApiRef.current?.plyr);
     });
     hls.on(Hls.Events.FRAG_BUFFERED, () => {
       if (!disposed) markReady();

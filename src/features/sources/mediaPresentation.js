@@ -146,12 +146,22 @@ export function resolveVideoPlayback(data) {
   }
   if (data.embedUrl) return { mode: "embed", url: data.embedUrl };
   const candidates = [
-    data.url,
     data.sources?.[0]?.streamUrl,
     data.sources?.[0]?.url,
     data.sources?.[0]?.src,
   ].filter(Boolean);
-  const direct = candidates.find((entry) => /^https?:\/\//i.test(String(entry)));
+  const direct = candidates.find((entry) => isDirectPlaybackUrl(entry));
   if (direct) return { mode: "video", url: String(direct) };
   return null;
+}
+
+function isDirectPlaybackUrl(url = "") {
+  try {
+    const parsed = new URL(String(url));
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return false;
+    if (/\.html?(?:$|[?#])/i.test(parsed.pathname)) return false;
+    return /\.m3u8|\.mp4|\/embed|\/e\/|\/v\//i.test(`${parsed.pathname}${parsed.search}`);
+  } catch {
+    return false;
+  }
 }

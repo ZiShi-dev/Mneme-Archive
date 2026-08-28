@@ -7,8 +7,9 @@ import { usePersistedState } from "../../hooks/usePersistedState";
 import { kvGetSync, kvSet } from "../../lib/storage/initStorage";
 import { contentTypes } from "./contentTypes";
 import { Header } from "../../components/layout/Header";
-import { fetchCatalog, fetchSourceDetails, fetchSourceFilters, searchSource } from "./sourceApi";
+import { clearSourceApiCache, fetchCatalog, fetchSourceDetails, fetchSourceFilters, searchSource } from "./sourceApi";
 import { CatalogCard, CatalogGridSkeleton } from "./CatalogCard";
+import { filterItemsByAudioLanguage, sourceSupportsAudioFilter } from "./audioLanguage";
 import { CatalogFilters } from "./CatalogFilters";
 import { CatalogSourceToolbar } from "./CatalogSourceToolbar";
 import {
@@ -20,10 +21,16 @@ import {
   isSearchQueryActive,
   resolveEffectiveFilter,
   shouldUseCatalogScopedSearch,
+  applyTaxonomyFilters,
+  isTaxonomySelectionEmpty,
+  supportsMultiTaxonomy,
 } from "./catalogView";
+import { fetchCatalogBatch, resolvePopulatedCatalogPage } from "./catalogPaging";
+import { getCatalogSkeletonCount } from "../../lib/catalog/catalogLayout";
+import { scrollAppToElement } from "../../lib/platform/scrollRoot";
 
 const CATALOG_STATE_KEY = "living-archive:catalog-state";
-const EMPTY_CATALOG_STATE = { pages: {}, filters: {}, kinds: {}, queries: {}, hasMore: {} };
+const EMPTY_CATALOG_STATE = { pages: {}, filters: {}, kinds: {}, queries: {}, hasMore: {}, audioFilters: {} };
 const CATALOG_SNAPSHOT_MAX_AGE_MS = 2 * 60 * 1000;
 const catalogSnapshotCache = new Map();
 const catalogFiltersCache = new Map();
@@ -54,18 +61,26 @@ function writeCatalogSnapshot(sourceId, filter, page, items, hasMore, query = ""
   });
 }
 
+function invalidateCatalogSnapshots(sourceId) {
+  const prefix = `${sourceId}:`;
+  for (const key of catalogSnapshotCache.keys()) {
+    if (key.startsWith(prefix)) catalogSnapshotCache.delete(key);
+  }
+}
+
 function resolveCatalogBoot(sourceId, enabled, mode) {
   if (!enabled) {
-    return { status: "disabled", items: [], page: 1, hasMore: false, filter: null, kind: null, query: "" };
+    return { status: "disabled", items: [], page: 1, hasMore: false, filter: null, kind: null, audioFilter: "all", query: "" };
   }
   if (mode === "selected") {
-    return { status: "ready", items: [], page: 1, hasMore: false, filter: null, kind: null, query: "" };
+    return { status: "ready", items: [], page: 1, hasMore: false, filter: null, kind: null, audioFilter: "all", query: "" };
   }
 
   const live = catalogLiveViewCache.get(sourceId);
   const stored = readCatalogState();
   const filter = live?.filter ?? stored.filters?.[sourceId] ?? null;
   const kind = live?.kind ?? stored.kinds?.[sourceId] ?? null;
+  const audioFilter = live?.audioFilter ?? stored.audioFilters?.[sourceId] ?? "all";
   const query = live?.query ?? stored.queries?.[sourceId] ?? "";
   const viewKey = catalogViewKey(sourceId, filter, query, kind);
   const page = live?.page ?? stored.pages?.[viewKey] ?? 1;
@@ -81,11 +96,12 @@ function resolveCatalogBoot(sourceId, enabled, mode) {
       hasMore,
       filter,
       kind,
+      audioFilter,
       query,
     };
   }
 
-  return { status: "loading", items: [], page, hasMore, filter, kind, query };
+  return { status: "loading", items: [], page, hasMore, filter, kind, audioFilter, query };
 }
 
 function CatalogCarouselNav({ page, hasMore, loadingMore, error, onPrevious, onNext, onGoToPage }) {
@@ -97,13 +113,15 @@ function CatalogCarouselNav({ page, hasMore, loadingMore, error, onPrevious, onN
     setDraftPage(String(page));
   }, [page]);
 
-  const commitPage = () => {
+  const commitPage = async () => {
     const nextPage = Number.parseInt(draftPage, 10);
     if (!Number.isFinite(nextPage) || nextPage < 1) {
       setDraftPage(String(page));
       return;
     }
-    if (nextPage !== page) onGoToPage(nextPage);
+    if (nextPage === page) return;
+    const landedPage = await onGoToPage(nextPage);
+    setDraftPage(String(typeof landedPage === "number" ? landedPage : page));
   };
 
   const navLabel = `${t("sources.catalogNav")} — ${t("sources.view.page", { page })}`;
@@ -160,7 +178,7 @@ function CatalogCarouselNav({ page, hasMore, loadingMore, error, onPrevious, onN
 
         {open && (
           <div className="catalog-carousel-nav__drawer">
-            <p className="catalog-carousel-nav__hint">{t("sources.swipeHint")}</p>
+            <p className="catalog-carousel-nav__hint catalog-carousel-nav__hint--touch">{t("sources.swipeHint")}</p>
             <label className="catalog-carousel-nav__jump">
               <span>{t("sources.goToPage")}</span>
               <input
@@ -214,17 +232,24 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
   const [filtersLoading, setFiltersLoading] = useState(!cachedFilters && effectiveMode === "full" && activeSource.enabled !== false);
   const [selectedFilter, setSelectedFilter] = useState(boot.filter);
   const [selectedKind, setSelectedKind] = useState(boot.kind);
+  const [selectedAudioFilter, setSelectedAudioFilter] = useState(boot.audioFilter || "all");
   const [, setCatalogState] = usePersistedState(CATALOG_STATE_KEY, EMPTY_CATALOG_STATE);
   const swipeStart = useRef(0);
   const queryTimer = useRef(null);
+  const catalogAnchorRef = useRef(null);
 
-  const rememberCatalogView = (sourceId, filter, kind, catalogQuery, nextPage, nextHasMore, nextItems = items) => {
+  const scrollToCatalogTop = () => {
+    scrollAppToElement(catalogAnchorRef.current, { behavior: "auto", offset: 8 });
+  };
+
+  const rememberCatalogView = (sourceId, filter, kind, catalogQuery, nextPage, nextHasMore, nextItems = items, audioFilter = selectedAudioFilter) => {
     const key = catalogViewKey(sourceId, filter, catalogQuery, kind);
     const safeItems = Array.isArray(nextItems) ? nextItems : [];
     writeCatalogSnapshot(sourceId, filter, nextPage, safeItems, nextHasMore, catalogQuery, kind);
     catalogLiveViewCache.set(sourceId, {
       filter,
       kind,
+      audioFilter,
       query: catalogQuery,
       page: nextPage,
       hasMore: nextHasMore,
@@ -235,6 +260,7 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
       pages: { ...prev.pages, [key]: nextPage },
       filters: { ...prev.filters, [sourceId]: filter || null },
       kinds: { ...(prev.kinds || {}), [sourceId]: kind || null },
+      audioFilters: { ...(prev.audioFilters || {}), [sourceId]: audioFilter || "all" },
       queries: { ...(prev.queries || {}), [sourceId]: catalogQuery || "" },
       hasMore: { ...(prev.hasMore || {}), [key]: nextHasMore },
     };
@@ -246,16 +272,24 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
     return resolveEffectiveFilter(kind, taxonomy);
   }
 
-  async function fetchCatalogPage(sourceId, kind, taxonomy, pageToLoad) {
-    return fetchCatalog(sourceId, {
+  async function fetchCatalogPageSingle(sourceId, kind, taxonomy, pageToLoad) {
+    const data = await fetchCatalog(sourceId, {
       page: pageToLoad,
       ...filterRequestParams(getActiveFilter(kind, taxonomy)),
     });
+    let nextItems = applyTaxonomyFilters(data.items || [], taxonomy);
+    if (kind?.slug && kind.slug !== "all") {
+      nextItems = nextItems.filter((item) => catalogItemMatchesFilter(item, kind));
+    }
+    return {
+      ...data,
+      items: nextItems,
+    };
   }
 
-  async function fetchSearchPage(sourceId, kind, taxonomy, catalogQuery, pageToLoad) {
+  async function fetchSearchPageSingle(sourceId, kind, taxonomy, catalogQuery, pageToLoad) {
     if (shouldUseCatalogScopedSearch(sourceId, kind, taxonomy, catalogQuery)) {
-      const data = await fetchCatalogPage(sourceId, kind, taxonomy, pageToLoad);
+      const data = await fetchCatalogPageSingle(sourceId, kind, taxonomy, pageToLoad);
       let nextItems = filterCatalogItemsByQuery(data.items || [], catalogQuery);
       if (kind?.slug && kind.slug !== "all") {
         nextItems = nextItems.filter((item) => catalogItemMatchesFilter(item, kind));
@@ -268,19 +302,30 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
 
     const data = await searchSource(sourceId, catalogQuery.trim(), {
       page: pageToLoad,
-      ...filterRequestParams(taxonomy),
+      ...filterRequestParams(getActiveFilter(kind, taxonomy)),
     });
-    let nextItems = data.items || [];
+    let nextItems = applyTaxonomyFilters(data.items || [], taxonomy);
     if (kind?.slug && kind.slug !== "all") {
       nextItems = nextItems.filter((item) => catalogItemMatchesFilter(item, kind));
-    }
-    if (taxonomy) {
-      nextItems = nextItems.filter((item) => catalogItemMatchesFilter(item, taxonomy));
     }
     return {
       items: nextItems,
       hasMore: Boolean(data.hasMore) || nextItems.length >= 20,
     };
+  }
+
+  async function fetchCatalogPage(sourceId, kind, taxonomy, uiPage) {
+    return fetchCatalogBatch(
+      (serverPage) => fetchCatalogPageSingle(sourceId, kind, taxonomy, serverPage),
+      uiPage,
+    );
+  }
+
+  async function fetchSearchPage(sourceId, kind, taxonomy, catalogQuery, uiPage) {
+    return fetchCatalogBatch(
+      (serverPage) => fetchSearchPageSingle(sourceId, kind, taxonomy, catalogQuery, serverPage),
+      uiPage,
+    );
   }
 
   async function refreshCatalog({
@@ -344,44 +389,82 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
     }
   }
 
-  async function goToPage(targetPage) {
-    if (loadingMore || targetPage < 1 || targetPage === page) return;
-    const direction = targetPage > page ? "next" : "prev";
-
+  async function loadCatalogPageForNavigation(targetPage) {
     const cached = readCatalogSnapshot(activeSource.id, selectedFilter, targetPage, query, selectedKind);
     if (cached?.items?.length) {
-      setSlideDirection(direction);
-      setItems(cached.items);
-      setPage(targetPage);
-      setHasMore(Boolean(cached.hasMore));
-      setError("");
-      rememberCatalogView(activeSource.id, selectedFilter, selectedKind, query, targetPage, cached.hasMore, cached.items);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
+      return {
+        page: targetPage,
+        items: cached.items,
+        hasMore: Boolean(cached.hasMore),
+      };
     }
 
+    const data = isSearchQueryActive(query)
+      ? await fetchSearchPage(activeSource.id, selectedKind, selectedFilter, query, targetPage)
+      : await fetchCatalogPage(activeSource.id, selectedKind, selectedFilter, targetPage);
+    return {
+      page: targetPage,
+      items: data.items || [],
+      hasMore: Boolean(data.hasMore),
+    };
+  }
+
+  function applyCatalogPageResult(result, direction) {
+    setSlideDirection(direction);
+    setItems(result.items);
+    setPage(result.page);
+    setHasMore(result.hasMore);
+    rememberCatalogView(
+      activeSource.id,
+      selectedFilter,
+      selectedKind,
+      query,
+      result.page,
+      result.hasMore,
+      result.items,
+    );
+    setError("");
+    scrollToCatalogTop();
+  }
+
+  async function goToPage(targetPage) {
+    if (loadingMore || targetPage < 1 || targetPage === page) return page;
+
+    if (targetPage > page && !hasMore && items.length) {
+      pushToast({
+        type: "info",
+        message: t("sources.pageClamped", { requested: targetPage, page }),
+      });
+      return page;
+    }
+
+    const direction = targetPage > page ? "next" : "prev";
     setLoadingMore(true);
     try {
-      const data = isSearchQueryActive(query)
-        ? await fetchSearchPage(activeSource.id, selectedKind, selectedFilter, query, targetPage)
-        : await fetchCatalogPage(activeSource.id, selectedKind, selectedFilter, targetPage);
-      const nextItems = data.items || [];
-      if (!nextItems.length) {
+      const resolved = await resolvePopulatedCatalogPage(
+        targetPage,
+        (pageToLoad) => loadCatalogPageForNavigation(pageToLoad),
+      );
+
+      if (!resolved?.items?.length) {
         pushToast({ type: "info", message: t("sources.pageUnavailable") });
-        return;
+        return page;
       }
-      setSlideDirection(direction);
-      setItems(nextItems);
-      setPage(targetPage);
-      const nextHasMore = Boolean(data.hasMore);
-      setHasMore(nextHasMore);
-      rememberCatalogView(activeSource.id, selectedFilter, selectedKind, query, targetPage, nextHasMore, nextItems);
-      setError("");
-      window.scrollTo({ top: 0, behavior: "smooth" });
+
+      if (resolved.clampedFrom && resolved.clampedFrom !== resolved.page) {
+        pushToast({
+          type: "info",
+          message: t("sources.pageClamped", { requested: resolved.clampedFrom, page: resolved.page }),
+        });
+      }
+
+      applyCatalogPageResult(resolved, direction);
+      return resolved.page;
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : t("sources.pageLoadFailed");
       setError(message);
       pushToast({ type: "error", message });
+      return page;
     } finally {
       setLoadingMore(false);
     }
@@ -398,7 +481,7 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
       setHasMore(Boolean(cached.hasMore));
       setError("");
       rememberCatalogView(activeSource.id, selectedFilter, selectedKind, query, targetPage, cached.hasMore, cached.items);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      scrollToCatalogTop();
       return;
     }
 
@@ -415,7 +498,7 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
       setHasMore(nextHasMore);
       rememberCatalogView(activeSource.id, selectedFilter, selectedKind, query, targetPage, nextHasMore, nextItems);
       setError("");
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      scrollToCatalogTop();
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : t("sources.pageLoadFailed");
       setError(message);
@@ -435,6 +518,7 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
     setSlideDirection("next");
     setSelectedFilter(savedFilter);
     setSelectedKind(savedKind);
+    setSelectedAudioFilter(nextBoot.audioFilter || "all");
     setQuery(savedQuery);
     setPage(savedPage);
     setHasMore(nextBoot.hasMore);
@@ -518,9 +602,12 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
     return () => { cancelled = true; };
   }, [activeSource.enabled, activeSource.id, effectiveMode, selectedItems]);
 
-  const visible = effectiveMode === "full"
-    ? items
-    : selectedLiveItems.filter((item) => item.title.toLowerCase().includes(query.trim().toLowerCase()));
+  const visible = filterItemsByAudioLanguage(
+    effectiveMode === "full"
+      ? items
+      : selectedLiveItems.filter((item) => item.title.toLowerCase().includes(query.trim().toLowerCase())),
+    selectedAudioFilter,
+  );
   const unitLabel = profile.contentTypes?.length === 1
     ? (contentTypes[profile.contentTypes[0]]?.singular || t("common.content"))
     : activeSource.id === "azorafly"
@@ -537,8 +624,26 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
     openLiveManga(item);
   }
 
+  function applyAudioFilter(nextAudioFilter) {
+    const audioFilter = nextAudioFilter || "all";
+    setSelectedAudioFilter(audioFilter);
+    const prev = readCatalogState();
+    const nextState = {
+      ...prev,
+      audioFilters: { ...(prev.audioFilters || {}), [activeSource.id]: audioFilter },
+    };
+    writeCatalogStateSync(nextState);
+    setCatalogState(nextState);
+    catalogLiveViewCache.set(activeSource.id, {
+      ...(catalogLiveViewCache.get(activeSource.id) || {}),
+      audioFilter,
+    });
+  }
+
   function applyKindFilter(nextKind) {
     const kind = !nextKind || nextKind.slug === "all" ? null : { ...nextKind, type: "kind" };
+    invalidateCatalogSnapshots(activeSource.id);
+    clearSourceApiCache();
     setSelectedKind(kind);
     setPage(1);
     setSlideDirection("next");
@@ -546,7 +651,9 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
   }
 
   function applyTaxonomyFilter(nextFilter) {
-    const filter = !nextFilter || nextFilter.slug === "all" ? null : nextFilter;
+    const filter = !nextFilter || isTaxonomySelectionEmpty(nextFilter) ? null : nextFilter;
+    invalidateCatalogSnapshots(activeSource.id);
+    clearSourceApiCache();
     setSelectedFilter(filter);
     setPage(1);
     setSlideDirection("next");
@@ -583,6 +690,7 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
     ? describeCatalogView({ query, filter: selectedFilter, kind: selectedKind, page })
     : t("sources.settingsOnly");
   const catalogBusy = status === "loading" || searching || loadingMore;
+  const skeletonCount = getCatalogSkeletonCount();
   const skeletonType = selectedKind?.slug && selectedKind.slug !== "all"
     ? selectedKind.slug
     : (profile.contentTypes?.length === 1 ? profile.contentTypes[0] : "manga");
@@ -591,7 +699,7 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
     : t("sources.fetching", { name: profile.name });
 
   return (
-    <div className="screen">
+    <div className="screen screen--discover">
       <Header title={t("home.discover")} eyebrow={t("sources.catalogOf", { name: profile.name })} onSearch={() => navigate("search")} onReadingHistory={() => navigate("reading-history")} onNotifications={() => navigate("updates")} />
       <main className="content live-catalog">
         <CatalogSourceToolbar
@@ -609,13 +717,17 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
             kinds={filters.kinds?.length ? filters.kinds : mediaKindsFallback}
             selected={selectedFilter}
             selectedKind={selectedKind}
+            selectedAudioFilter={selectedAudioFilter}
+            showAudioFilter={sourceSupportsAudioFilter(activeSource.id)}
+            onSelectAudioFilter={applyAudioFilter}
             loading={filtersLoading}
+            multiSelect={supportsMultiTaxonomy(activeSource.id)}
             onSelectKind={applyKindFilter}
             onSelect={applyTaxonomyFilter}
           />
         )}
         {status === "disabled" ? <div className="live-error"><Wifi size={30} /><h2>{t("sources.sourceOffline")}</h2><p>{t("sources.enableFromSettings")}</p></div> : status === "error" ? <div className="live-error"><Wifi size={30} /><h2>{t("sources.connectFailed", { name: profile.name })}</h2><p>{error}</p><button className="button button--primary" onClick={() => refreshCatalog({ kind: selectedKind, filter: selectedFilter, catalogQuery: query, page, notify: true })}><RefreshCw size={17} /> {t("common.retry")}</button></div> : <>
-          <div className="live-catalog__meta"><strong>{catalogBusy ? "…" : `${visible.length} ${unitLabel}`}</strong><span>{catalogBusy ? reloadLabel : viewDescription}</span></div>
+          <div className="live-catalog__meta" ref={catalogAnchorRef}><strong>{catalogBusy ? "…" : `${visible.length} ${unitLabel}`}</strong><span>{catalogBusy ? reloadLabel : viewDescription}</span></div>
           {catalogBusy ? (
             <>
               <div className="catalog-reload" role="status" aria-live="polite">
@@ -625,7 +737,7 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
                   <small>{t("sources.connecting")}</small>
                 </span>
               </div>
-              <CatalogGridSkeleton mediaType={skeletonType} label={reloadLabel} />
+              <CatalogGridSkeleton mediaType={skeletonType} count={skeletonCount} label={reloadLabel} />
             </>
           ) : (
             <>

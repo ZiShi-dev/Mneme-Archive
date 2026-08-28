@@ -62,6 +62,11 @@
   --sumi-muted: var(--text-muted);
 }
 
+html[dir="ltr"] {
+  --font-sans: "Instrument Sans", "Manrope", sans-serif;
+  --font-display: "Instrument Sans", "Manrope", sans-serif;
+}
+
 /* Encre */
 .app-shell--dark,
 [data-theme="ink"],
@@ -224,5 +229,51 @@
   --gold: var(--momo);
   --moon-white: var(--text);
   --shadow: 0 22px 50px rgba(0, 0, 0, .38);
+  --radius-control: 14px;
+}
+
+/* Lune Mère · neige sous la lune */
+[data-theme="lune-neige"],
+[data-theme="lune-neige"] .app-shell,
+.app-shell--lune-neige {
+  --moon-glow: #D6E6FF;
+  --frost: #8EB4E8;
+  --star-mist: #121C2B;
+
+  --brand: #A8C4E8;
+  --brand-warm: #C8DAF5;
+  --bg: #0D1522;
+  --surface: #141F2E;
+  --surface-raised: #1B2940;
+  --text: #EEF4FF;
+  --text-muted: #9AADC4;
+  --border: #2A3D58;
+  --success: #7EAE9A;
+  --manga: #E8A8BA;
+  --novel: #D4B896;
+  --anime: #8EB4E8;
+  --film: #A8B8D8;
+  --danger: #E89AA8;
+
+  --ink: var(--text);
+  --muted: var(--text-muted);
+  --disabled: #6E8198;
+  --paper: var(--bg);
+  --white: var(--surface);
+  --outer: #070B12;
+  --outside: var(--surface-raised);
+  --line: var(--border);
+  --green: var(--brand);
+  --green-dark: var(--surface-raised);
+  --green-bright: var(--brand-warm);
+  --green-soft: #1E2E46;
+  --stamp: var(--frost);
+  --favorite: #E8C4D0;
+  --indigo: var(--brand);
+  --gold: var(--brand-warm);
+  --moon-white: var(--text);
+  --shadow: 0 22px 54px rgba(2, 8, 20, 0.42);
+  --cta: #C8DAF5;
+  --cta-text: #0D1522;
   --radius-control: 14px;
 }

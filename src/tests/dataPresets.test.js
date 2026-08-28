@@ -25,5 +25,5 @@ test("buildDataUsageSummary describes custom settings", () => {
     homeAutoUpdates: true,
     videoDataSaver: true,
   }));
-  assert.match(summary, /2 صفحة/);
+  assert.match(summary, /فيديو موفر/);
 });

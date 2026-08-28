@@ -1,5 +1,8 @@
+import { isChromebookApp, LOCALE_STORAGE_KEY as FLAVOR_LOCALE_KEY } from "../config/appFlavor.js";
+
 export const DEFAULT_LOCALE = "ar";
-export const LOCALE_STORAGE_KEY = "living-archive:locale";
+export const DEFAULT_UI_LOCALE = isChromebookApp ? "fr" : DEFAULT_LOCALE;
+export const LOCALE_STORAGE_KEY = FLAVOR_LOCALE_KEY;
 
 export const LOCALES = {
   ar: {

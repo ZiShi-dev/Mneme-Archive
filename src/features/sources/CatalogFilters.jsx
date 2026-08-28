@@ -1,6 +1,9 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Check, LayoutGrid, Search, Tag, UserRound, X } from "lucide-react";
 import { useI18n } from "../../i18n/I18nProvider";
+import { AUDIO_LANGUAGE_LABELS } from "./audioLanguage";
+import { localizeCatalogKinds } from "./contentTypes";
+import { toggleTaxonomySelection, normalizeTaxonomySelection, isTaxonomySelectionEmpty } from "./catalogView";
 import { ChipFilterBar, ChipFilterButton } from "../../components/ui/ChipFilterBar";
 import { AccessibleSearchField } from "../../components/ui/AccessibleSearchField";
 import { SheetCloseButton } from "../../components/ui/SheetCloseButton";
@@ -38,26 +41,45 @@ function getPickerMeta(t) {
   };
 }
 
-export function CatalogFilters({ categories = [], tags = [], authors = [], kinds = [], selected, selectedKind, loading, onSelect, onSelectKind }) {
+export function CatalogFilters({
+  categories = [],
+  tags = [],
+  authors = [],
+  kinds = [],
+  selected,
+  selectedKind,
+  selectedAudioFilter = "all",
+  showAudioFilter = false,
+  onSelectAudioFilter,
+  loading,
+  multiSelect = false,
+  onSelect,
+  onSelectKind,
+}) {
   const { t } = useI18n();
   const pickerMeta = useMemo(() => getPickerMeta(t), [t]);
   const [activeKind, setActiveKind] = useState("category");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [filterQuery, setFilterQuery] = useState("");
+  const backdropPointerDownRef = useRef(false);
   const entries = activeKind === "category" ? categories : activeKind === "tag" ? tags : authors;
   const meta = pickerMeta[activeKind];
   const PickerIcon = meta.icon;
+  const selectedTaxonomies = useMemo(() => normalizeTaxonomySelection(selected), [selected]);
 
   const searchedEntries = useMemo(() => {
     const normalized = filterQuery.trim().toLocaleLowerCase("ar");
     return normalized ? entries.filter((entry) => entry.name.toLocaleLowerCase("ar").includes(normalized)) : entries;
   }, [entries, filterQuery]);
 
+  const localizedKinds = useMemo(() => localizeCatalogKinds(kinds), [kinds, t]);
+  const hasKinds = localizedKinds.length > 0;
+
   const selectedKindSlug = useMemo(() => {
-    if (!kinds.length) return "";
+    if (!localizedKinds.length) return "";
     if (!selectedKind || selectedKind.slug === "all") return "all";
     return selectedKind.slug;
-  }, [kinds, selectedKind]);
+  }, [localizedKinds, selectedKind]);
 
   useEffect(() => {
     if (!pickerOpen) return undefined;
@@ -71,14 +93,15 @@ export function CatalogFilters({ categories = [], tags = [], authors = [], kinds
     };
   }, [pickerOpen]);
 
-  const hasKinds = kinds.length > 0;
-  const showClear = Boolean(selected) && selected.slug !== "all";
+  const showClear = multiSelect
+    ? !isTaxonomySelectionEmpty(selected)
+    : Boolean(selected) && selected.slug !== "all";
 
-  if (loading && !hasKinds) {
+  if (loading && !hasKinds && !showAudioFilter) {
     return <ChipFilterBar label={t("sources.filter")} loading ariaLabel={t("sources.loadingFilters")} />;
   }
 
-  if (!categories.length && !tags.length && !authors.length && !hasKinds) return null;
+  if (!categories.length && !tags.length && !authors.length && !hasKinds && !showAudioFilter) return null;
 
   const chooseKind = (kind) => {
     onSelectKind?.(kind);
@@ -96,6 +119,10 @@ export function CatalogFilters({ categories = [], tags = [], authors = [], kinds
   };
 
   const choose = (entry) => {
+    if (multiSelect) {
+      onSelect(toggleTaxonomySelection(selected, activeKind, entry));
+      return;
+    }
     onSelect({
       type: activeKind,
       slug: entry.slug,
@@ -108,24 +135,63 @@ export function CatalogFilters({ categories = [], tags = [], authors = [], kinds
     closePicker();
   };
 
+  const handleBackdropPointerDown = (event) => {
+    backdropPointerDownRef.current = event.target === event.currentTarget;
+  };
+
+  const handleBackdropPointerUp = (event) => {
+    if (!backdropPointerDownRef.current) return;
+    backdropPointerDownRef.current = false;
+    if (event.target !== event.currentTarget) return;
+    closePicker();
+  };
+
+  const stopPickerPointer = (event) => {
+    event.stopPropagation();
+  };
+
   const clearSelection = () => {
     onSelect(null);
     closePicker();
   };
 
-  const isSelected = (entry) => selected?.type === activeKind && selected.slug === entry.slug;
+  const isSelected = (entry) => {
+    if (multiSelect) {
+      return selectedTaxonomies[activeKind]?.slug === entry.slug;
+    }
+    return selected?.type === activeKind && selected.slug === entry.slug;
+  };
 
   return (
     <>
       {hasKinds && (
         <ChipFilterBar variant="segmented" role="group" ariaLabel={t("sources.kind")} label={t("sources.kind")}>
-          {kinds.map((kind) => (
+          {localizedKinds.map((kind) => (
             <ChipFilterButton
               key={kind.slug}
               active={selectedKindSlug === kind.slug}
               onClick={() => chooseKind(kind)}
             >
               {kind.name}
+            </ChipFilterButton>
+          ))}
+        </ChipFilterBar>
+      )}
+      {showAudioFilter && (
+        <ChipFilterBar variant="segmented" role="group" ariaLabel={t("sources.audioFilter")} label={t("sources.audioFilter")}>
+          <ChipFilterButton
+            active={!selectedAudioFilter || selectedAudioFilter === "all"}
+            onClick={() => onSelectAudioFilter?.("all")}
+          >
+            {t("common.all")}
+          </ChipFilterButton>
+          {["VF", "VOSTFR"].map((value) => (
+            <ChipFilterButton
+              key={value}
+              active={selectedAudioFilter === value}
+              onClick={() => onSelectAudioFilter?.(value)}
+            >
+              {AUDIO_LANGUAGE_LABELS[value]}
             </ChipFilterButton>
           ))}
         </ChipFilterBar>
@@ -139,32 +205,32 @@ export function CatalogFilters({ categories = [], tags = [], authors = [], kinds
         onClear={clearSelection}
       >
         <ChipFilterButton
-          active={selected?.type === "category"}
+          active={multiSelect ? Boolean(selectedTaxonomies.category) : selected?.type === "category"}
           disabled={!categories.length}
           icon={LayoutGrid}
-          count={selected?.type !== "category" && categories.length > 0 ? categories.length : undefined}
+          count={!selectedTaxonomies.category && categories.length > 0 ? categories.length : undefined}
           onClick={() => openPicker("category")}
         >
-          {selected?.type === "category" ? selected.name : t("sources.genres")}
+          {selectedTaxonomies.category ? selectedTaxonomies.category.name : t("sources.genres")}
         </ChipFilterButton>
         <ChipFilterButton
-          active={selected?.type === "tag"}
+          active={multiSelect ? Boolean(selectedTaxonomies.tag) : selected?.type === "tag"}
           disabled={!tags.length}
           icon={Tag}
-          count={selected?.type !== "tag" && tags.length > 0 ? tags.length : undefined}
+          count={!selectedTaxonomies.tag && tags.length > 0 ? tags.length : undefined}
           onClick={() => openPicker("tag")}
         >
-          {selected?.type === "tag" ? `#${selected.name}` : t("sources.tags")}
+          {selectedTaxonomies.tag ? `#${selectedTaxonomies.tag.name}` : t("sources.tags")}
         </ChipFilterButton>
         {authors.length > 0 && (
           <ChipFilterButton
-            active={selected?.type === "author"}
+            active={multiSelect ? Boolean(selectedTaxonomies.author) : selected?.type === "author"}
             disabled={!authors.length}
             icon={UserRound}
-            count={selected?.type !== "author" && authors.length > 0 ? authors.length : undefined}
+            count={!selectedTaxonomies.author && authors.length > 0 ? authors.length : undefined}
             onClick={() => openPicker("author")}
           >
-            {selected?.type === "author" ? selected.name : t("sources.authors")}
+            {selectedTaxonomies.author ? selectedTaxonomies.author.name : t("sources.authors")}
           </ChipFilterButton>
         )}
       </ChipFilterBar>
@@ -174,13 +240,16 @@ export function CatalogFilters({ categories = [], tags = [], authors = [], kinds
         <SheetPortal>
         <div
           className="catalog-filter-picker-backdrop"
-          onMouseDown={(event) => { if (event.target === event.currentTarget) closePicker(); }}
+          onPointerDown={handleBackdropPointerDown}
+          onPointerUp={handleBackdropPointerUp}
+          onPointerCancel={() => { backdropPointerDownRef.current = false; }}
         >
           <section
             className="catalog-filter-picker"
             role="dialog"
             aria-modal="true"
             aria-labelledby="catalog-filter-picker-title"
+            onPointerDown={stopPickerPointer}
           >
             <header className="catalog-filter-picker__header">
               <div className="catalog-filter-picker__title">
@@ -231,6 +300,7 @@ export function CatalogFilters({ categories = [], tags = [], authors = [], kinds
                 type="button"
                 className={`catalog-filter-picker__option catalog-filter-picker__option--all${!showClear ? " active" : ""}`}
                 onClick={clearSelection}
+                onPointerDown={stopPickerPointer}
               >
                 <span>{t("sources.showAll")}</span>
                 {!selected && <Check size={14} aria-hidden="true" />}
@@ -242,6 +312,7 @@ export function CatalogFilters({ categories = [], tags = [], authors = [], kinds
                   type="button"
                   className={`catalog-filter-picker__option${isSelected(entry) ? " active" : ""}`}
                   onClick={() => choose(entry)}
+                  onPointerDown={stopPickerPointer}
                 >
                   <span>{meta.prefix}{entry.name}</span>
                   {entry.count > 0 && <small>{entry.count}</small>}

@@ -13,7 +13,10 @@ import { DataUsageSettingsEntry, DataUsageSettingsSheet } from "./DataUsageSetti
 import { LanguageSettingsEntry, LanguageSettingsSheet } from "./LanguageSettingsPanel";
 import { ThemeSettingsEntry, ThemeSettingsSheet } from "./ThemeSettingsPanel";
 import { FontSettingsEntry, FontSettingsSheet } from "./FontSettingsPanel";
-import { MnemeMark } from "../components/brand/MnemeMark";
+import { CoflixSettingsEntry, CoflixSettingsSheet } from "./CoflixSettingsPanel";
+import { AppMark } from "../components/brand/AppMark";
+import { getAppBrandText } from "../lib/brand/appBrand";
+import { isChromebookApp } from "../config/appFlavor";
 
 export function SettingsScreen({ navigate, appearance, typeface, onSetAppearance, onSetTypeface, sources, sourcePreferences, onToggleSite, onSetSitesEnabled }) {
   const { t } = useI18n();
@@ -25,6 +28,7 @@ export function SettingsScreen({ navigate, appearance, typeface, onSetAppearance
   const [themeOpen, setThemeOpen] = useState(false);
   const [fontOpen, setFontOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
+  const [coflixOpen, setCoflixOpen] = useState(false);
   const activeSourceCount = sources.filter((entry) => entry.enabled !== false).length;
 
   useEffect(() => {
@@ -55,29 +59,37 @@ export function SettingsScreen({ navigate, appearance, typeface, onSetAppearance
   };
 
   return (
-    <div className="screen">
-      <Header
-        title={t("settings.title")}
-        eyebrow={t("settings.eyebrow")}
-        showBrand
-        appearance={appearance}
-        onSearch={() => navigate("search")}
-        onReadingHistory={() => navigate("reading-history")}
-        onNotifications={() => navigate("updates")}
-      />
+    <div className={`screen${isChromebookApp ? " screen--settings-desktop" : ""}`}>
+      {isChromebookApp ? (
+        <header className="settings-desktop-head">
+          <span className="eyebrow">{isChromebookApp ? t("settings.eyebrowDesktop") : t("settings.eyebrow")}</span>
+          <h1>{t("settings.title")}</h1>
+        </header>
+      ) : (
+        <Header
+          title={t("settings.title")}
+          eyebrow={t("settings.eyebrow")}
+          showBrand
+          appearance={appearance}
+          onSearch={() => navigate("search")}
+          onReadingHistory={() => navigate("reading-history")}
+          onNotifications={() => navigate("updates")}
+        />
+      )}
       <main className="content settings-page">
         <section className="settings-profile">
           <span className="settings-profile__seal" aria-hidden="true">
-            <MnemeMark size={42} appearance={appearance} decorative />
+            <AppMark size={42} appearance={appearance} decorative />
           </span>
           <div>
-            <strong>{t("settings.profileName")}</strong>
-            <small>{t("settings.profileHint")}</small>
+            <strong>{getAppBrandText(t).profileName}</strong>
+            <small>{isChromebookApp ? t("settings.profileHintDesktop") : t("settings.profileHint")}</small>
           </div>
         </section>
 
-        <h2 className="settings-group-title">{t("settings.sources")}</h2>
-        <div className="settings-group">
+        <section className="settings-section">
+          <h2 className="settings-group-title">{t("settings.sources")}</h2>
+          <div className="settings-group">
           <button type="button" className="setting-row" onClick={() => navigate("source-management")}>
             <span className="setting-row__icon"><Layers size={19} /></span>
             <span className="setting-row__copy">
@@ -94,38 +106,51 @@ export function SettingsScreen({ navigate, appearance, typeface, onSetAppearance
             </span>
             <ChevronLeft size={18} />
           </button>
-        </div>
+          {isChromebookApp && (
+            <CoflixSettingsEntry
+              baseUrl={settings.coflixBaseUrl}
+              onOpen={() => setCoflixOpen(true)}
+            />
+          )}
+          </div>
+        </section>
 
-        <h2 className="settings-group-title">{t("settings.updates")}</h2>
-        <div className="settings-group">
+        <section className="settings-section">
+          <h2 className="settings-group-title">{t("settings.updates")}</h2>
+          <div className="settings-group">
           <button type="button" className="setting-row" onClick={() => navigate("notification-center")}>
             <span className="setting-row__icon"><BellRing size={19} /></span>
             <span className="setting-row__copy">
               <strong>{t("settings.notificationCenter")}</strong>
-              <small>{t("settings.notificationCenterHint")}</small>
+              <small>{isChromebookApp ? t("settings.notificationCenterHintDesktop") : t("settings.notificationCenterHint")}</small>
             </span>
             <ChevronLeft size={18} />
           </button>
           <DataUsageSettingsEntry settings={settings} onOpen={() => setDataUsageOpen(true)} />
-        </div>
+          </div>
+        </section>
 
-        <h2 className="settings-group-title">{t("settings.appearanceGroup")}</h2>
-        <div className="settings-group">
+        <section className="settings-section">
+          <h2 className="settings-group-title">{t("settings.appearanceGroup")}</h2>
+          <div className="settings-group">
           <ThemeSettingsEntry appearance={appearance} onOpen={() => setThemeOpen(true)} />
           <FontSettingsEntry typeface={typeface} onOpen={() => setFontOpen(true)} />
-        </div>
+          </div>
+        </section>
 
-        <h2 className="settings-group-title">{t("settings.display")}</h2>
-        <div className="settings-group">
+        <section className="settings-section">
+          <h2 className="settings-group-title">{isChromebookApp ? t("settings.displayDesktop") : t("settings.display")}</h2>
+          <div className="settings-group">
           <button type="button" className="setting-row" onClick={() => navigate("reading-history")}>
             <span className="setting-row__icon"><History size={19} /></span>
             <span className="setting-row__copy">
               <strong>{t("common.readingHistory")}</strong>
-              <small>{t("settings.historyHint")}</small>
+              <small>{isChromebookApp ? t("settings.historyHintDesktop") : t("settings.historyHint")}</small>
             </span>
             <ChevronLeft size={18} />
           </button>
           <LanguageSettingsEntry onOpen={() => setLanguageOpen(true)} />
+          {!isChromebookApp && (
           <button type="button" className="setting-row">
             <span className="setting-row__icon"><SlidersHorizontal size={19} /></span>
             <span className="setting-row__copy">
@@ -134,7 +159,9 @@ export function SettingsScreen({ navigate, appearance, typeface, onSetAppearance
             </span>
             <ChevronLeft size={18} />
           </button>
-        </div>
+          )}
+          </div>
+        </section>
         <p className="app-version">{t("app.version")}</p>
       </main>
 
@@ -151,6 +178,15 @@ export function SettingsScreen({ navigate, appearance, typeface, onSetAppearance
         onSetTypeface={onSetTypeface}
       />
       <LanguageSettingsSheet open={languageOpen} onClose={() => setLanguageOpen(false)} />
+      <CoflixSettingsSheet
+        open={coflixOpen}
+        onClose={() => setCoflixOpen(false)}
+        baseUrl={settings.coflixBaseUrl}
+        onSave={(nextUrl) => {
+          setSettings((current) => ({ ...current, coflixBaseUrl: nextUrl }));
+          notifyUpdated(t("settings.coflixUrlUpdated"));
+        }}
+      />
       <EnableSourcesSheet
         open={enableSourcesOpen}
         sources={sources}

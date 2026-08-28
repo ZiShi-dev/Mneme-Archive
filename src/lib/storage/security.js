@@ -26,6 +26,11 @@ const EXACT_KEYS = new Set([
   "living-archive:updates-last-sync",
   "living-archive:home-chapter-first-seen",
   "living-archive:catalog-state",
+  "living-archive:reader-preferences",
+  "cromebook:nav-collapsed",
+  "cromebook:locale",
+  "living-archive:locale",
+  "cinevault:pwa-install-dismissed",
   STORAGE_META_MIGRATED,
   STORAGE_META_CHAPTER_LOG_BACKFILL,
 ]);
@@ -76,9 +81,23 @@ export function isHttpsUrl(value) {
   }
 }
 
+export function isBlockedNetworkHost(hostname = "") {
+  const host = String(hostname).toLowerCase().replace(/^\[|\]$/g, "");
+  if (!host) return true;
+  if (host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0" || host === "::1") return true;
+  if (host.endsWith(".local") || host.endsWith(".internal")) return true;
+  if (/^(10\.|127\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(host)) return true;
+  return false;
+}
+
 export function isAllowedImageUrl(url) {
   if (!isHttpsUrl(url)) return false;
-  return url.length <= 2048;
+  if (url.length > 2048) return false;
+  try {
+    return !isBlockedNetworkHost(new URL(url).hostname);
+  } catch {
+    return false;
+  }
 }
 
 export async function sha256Hex(input) {

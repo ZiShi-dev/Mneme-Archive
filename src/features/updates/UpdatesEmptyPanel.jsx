@@ -1,13 +1,15 @@
 import React from "react";
 import { Bell, BellRing, Compass, Hash } from "lucide-react";
+import { isChromebookApp } from "../../config/appFlavor";
 import { useI18n } from "../../i18n/I18nProvider";
 
-export function UpdatesEmptyPanel({ onDiscover, onSettings }) {
+export function UpdatesEmptyPanel({ onDiscover, onSettings, variant = "default" }) {
   const { t } = useI18n();
+  const isVideo = variant === "video" || variant === "series";
   const steps = [
     { icon: Compass, title: t("updates.openAny"), text: t("updates.fromDiscover") },
-    { icon: BellRing, title: t("updates.enableFollow"), text: t("updates.fromDetails") },
-    { icon: Hash, title: t("updates.pickNumber"), text: t("updates.intervalHint") },
+    { icon: BellRing, title: t("updates.enableFollow"), text: variant === "series" ? t("updates.fromSeriesDetails") : t("updates.fromDetails") },
+    { icon: Hash, title: t("updates.pickNumber"), text: variant === "series" ? t("updates.intervalHintSeries") : isVideo ? t("updates.intervalHintVideo") : t("updates.intervalHint") },
   ];
 
   return (
@@ -17,7 +19,11 @@ export function UpdatesEmptyPanel({ onDiscover, onSettings }) {
           <Bell size={26} />
         </span>
         <h2>{t("updates.startFollow")}</h2>
-        <p>{t("updates.appearHere")}</p>
+        <p>{
+          variant === "series"
+            ? (isChromebookApp ? t("updates.appearHereSeriesDesktop") : t("updates.appearHereSeries"))
+            : isVideo ? t("updates.appearHereVideo") : t("updates.appearHere")
+        }</p>
       </div>
 
       <ol className="updates-onboarding__steps">

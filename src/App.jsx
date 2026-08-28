@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect } from "react";
-import { BottomNav } from "./components/layout/BottomNav";
+import React, { Suspense, lazy, useCallback, useEffect, useRef } from "react";
+import { BottomNav, DesktopMenu } from "./components/layout/BottomNav";
+import { ThemedScrollbar } from "./components/layout/ThemedScrollbar";
 import { useToast } from "./components/ui/ToastProvider";
-import { LiveMangaDetails, LiveReader, LiveVideoPlayer, SourceManagementScreen, SourcesScreen } from "./features/sources";
+import { SourceManagementScreen, SourcesScreen } from "./features/sources";
 import { useAppNavigation } from "./hooks/useAppNavigation";
 import { useAppActionHandlers } from "./hooks/useAppActionHandlers";
 import { useAppPreferences } from "./hooks/useAppPreferences";
@@ -21,10 +22,35 @@ import { NotificationCenterScreen } from "./screens/NotificationCenterScreen";
 import { getItemType } from "./features/sources/contentTypes";
 import { isVideoMediaType } from "./features/sources/mediaPresentation";
 import { SakuraPetals } from "./components/atmosphere/SakuraPetals";
+import { MoonSnowfall } from "./components/atmosphere/MoonSnowfall";
 import { SakuraIcon } from "./components/atmosphere/SakuraIcon";
 import { MnemeMark } from "./components/brand/MnemeMark";
-import { isSakuraTheme } from "./lib/theme/appearance";
+import { isSakuraTheme, isSnowTheme, hasAtmosphereEffect } from "./lib/theme/appearance";
+import { isChromebookApp } from "./config/appFlavor";
 import { useI18n } from "./i18n/I18nProvider";
+import { PwaInstallBanner } from "./components/pwa/PwaInstallBanner";
+import { usePwaInstall } from "./hooks/usePwaInstall";
+import { getAppBrandText } from "./lib/brand/appBrand";
+
+const LiveVideoPlayer = lazy(() => import("./features/sources/LiveVideoPlayer").then((module) => ({ default: module.LiveVideoPlayer })));
+const LiveReader = lazy(() => import("./features/sources/LiveReader").then((module) => ({ default: module.LiveReader })));
+const LiveMangaDetails = lazy(() => import("./features/sources/LiveMangaDetails").then((module) => ({ default: module.LiveMangaDetails })));
+
+function FeatureSuspense({ children }) {
+  const { t } = useI18n();
+  return (
+    <Suspense fallback={(
+      <div className="boot-screen" role="status">
+        <div className="boot-screen__inner">
+          <p>{getAppBrandText(t).loading}</p>
+        </div>
+      </div>
+    )}
+    >
+      {children}
+    </Suspense>
+  );
+}
 
 export function App() {
   const navigation = useAppNavigation();
@@ -35,6 +61,8 @@ export function App() {
   const settings = normalizeSettings(rawSettings);
   const { pushToast } = useToast();
   const { t, dir } = useI18n();
+  const desktopScrollerRef = useRef(null);
+  const pwaInstall = usePwaInstall();
 
   useEffect(() => {
     setRuntimeSettings(settings);
@@ -93,31 +121,36 @@ export function App() {
 
   useBackgroundFollowTask(settings);
 
-  if (liveReader) {
+  const liveReaderContent = liveReader ? (() => {
     const isVideo = isVideoMediaType(getItemType(liveReader.manga));
-    if (isVideo) {
-      return (
-        <LiveVideoPlayer
-          {...liveReader}
-          onBack={goBack}
-          onOpenDetails={() => openLiveManga(liveReader.manga)}
-          isFavorite={preferences.isLiveFavorite(liveReader.manga)}
-          onToggleFavorite={() => handleToggleLiveFavorite(liveReader.manga)}
-          onSaveProgress={saveReadingProgress}
-        />
+    const commonProps = {
+      ...liveReader,
+      onBack: goBack,
+      onOpenDetails: () => openLiveManga(liveReader.manga),
+      isFavorite: preferences.isLiveFavorite(liveReader.manga),
+      onToggleFavorite: () => handleToggleLiveFavorite(liveReader.manga),
+      onSaveProgress: saveReadingProgress,
+    };
+    const readerKey = `${liveReader.manga?.url || "live"}:${liveReader.chapter?.url || "chapter"}`;
+    return isVideo
+      ? (
+        <FeatureSuspense>
+          <LiveVideoPlayer key={readerKey} {...commonProps} />
+        </FeatureSuspense>
+      )
+      : (
+        <FeatureSuspense>
+          <LiveReader
+            key={readerKey}
+            {...commonProps}
+            readerSettings={settings}
+          />
+        </FeatureSuspense>
       );
-    }
-    return (
-      <LiveReader
-        {...liveReader}
-        readerSettings={settings}
-        onBack={goBack}
-        onOpenDetails={() => openLiveManga(liveReader.manga)}
-        isFavorite={preferences.isLiveFavorite(liveReader.manga)}
-        onToggleFavorite={() => handleToggleLiveFavorite(liveReader.manga)}
-        onSaveProgress={saveReadingProgress}
-      />
-    );
+  })() : null;
+
+  if (liveReader && !isChromebookApp) {
+    return liveReaderContent;
   }
 
   if (reader) {
@@ -132,145 +165,291 @@ export function App() {
   }
 
   return (
-    <div className={`app-shell ${darkMode ? "app-shell--dark" : ""} ${isSakuraTheme(appearance) ? `app-shell--${appearance}` : ""}`} dir={dir}>
+    <div className={`app-shell ${darkMode ? "app-shell--dark" : ""} ${hasAtmosphereEffect(appearance) ? `app-shell--${appearance}` : ""} ${isChromebookApp ? "app-shell--desktop" : ""}`} dir={dir}>
+      {isSnowTheme(appearance) ? <MoonSnowfall variant="stage" /> : null}
       {isSakuraTheme(appearance) ? <SakuraPetals appearance={appearance} variant="stage" /> : null}
-      <div className="desktop-note">
-        <MnemeMark size={64} appearance={appearance} className="desktop-note__mark" decorative />
-        {isSakuraTheme(appearance) ? (
-          <>
-            <span className="desktop-note__brand"><SakuraIcon size={14} decorative /> {t("app.kickerSakura")}</span>
-            <h2>{t("app.nameSakura")}</h2>
-          </>
-        ) : (
-          <>
-            <span>{t("app.kicker")}</span>
-            <h2>{t("app.name")}</h2>
-          </>
-        )}
-        <p>{t("app.tagline")}</p>
-      </div>
-      <div className="phone-frame">
-        {isSakuraTheme(appearance) ? <SakuraPetals appearance={appearance} variant="frame" /> : null}
-        {selectedLive ? (
-          <LiveMangaDetails
-            key={selectedLive.url}
-            seed={selectedLive}
-            isFavorite={preferences.isLiveFavorite(selectedLive)}
-            onToggleFavorite={handleToggleLiveFavorite}
-            onBack={goBack}
-            openLiveReader={openLiveReader}
-            onOpenRelated={openLiveManga}
-            readingProgress={getReadingProgress(selectedLive)}
-            chapterFollow={chapterFollow}
-          />
-        ) : selected ? (
-          <MangaDetails
-            item={selected}
-            isFavorite={favorites.includes(selected.id)}
-            toggleFavorite={handleToggleFavorite}
-            onBack={goBack}
-            openReader={openReader}
-            readingProgress={getReadingProgress(selected)}
-          />
-        ) : screen === "source-catalog" || screen === "sources" ? (
-          <SourcesScreen
-            sources={sources}
-            activeSourceId={activeSourceId}
-            onSetActiveSource={handleSetActiveSourceId}
-            sourcePreferences={sourcePreferences}
-            openLiveManga={openLiveManga}
-            openLiveChapter={openLiveReader}
-            navigate={navigate}
-          />
-        ) : screen === "updates" ? (
-          <UpdatesScreen
-            chapterFollow={chapterFollow}
-            openLiveReader={openLiveReader}
-            openLiveManga={openLiveManga}
-            navigate={navigate}
-          />
-        ) : screen === "favorites" ? (
-          <LibraryScreen
-            favorites={favorites}
-            liveFavorites={liveFavorites}
-            toggleFavorite={handleToggleFavorite}
-            toggleLiveFavorite={handleToggleLiveFavorite}
-            openManga={openManga}
-            openLiveManga={openLiveManga}
-            openLiveChapter={openLiveReader}
-            navigate={navigate}
-          />
-        ) : screen === "reading-history" ? (
-          <ReadingHistoryScreen
-            readingHistory={readingHistory}
-            chapterReadLog={chapterReadLog}
-            liveFavorites={liveFavorites}
-            navigate={navigate}
-            onBack={goBack}
-            openManga={openManga}
-            openLiveManga={openLiveManga}
-            openReader={openReader}
-            openLiveReader={openLiveReader}
-            onRemoveEntry={handleRemoveReadingHistoryEntry}
-            onClearHistory={handleClearReadingHistory}
-          />
-        ) : screen === "notification-center" ? (
-          <NotificationCenterScreen
-            chapterFollow={chapterFollow}
-            navigate={navigate}
-            onBack={goBack}
-            openLiveManga={openLiveManga}
-          />
-        ) : screen === "settings" ? (
-          <SettingsScreen
-            navigate={navigate}
-            appearance={appearance}
-            typeface={typeface}
-            onSetAppearance={handleSetAppearance}
-            onSetTypeface={handleSetTypeface}
-            sources={sources}
-            sourcePreferences={sourcePreferences}
-            onToggleSite={handleToggleSite}
-            onSetSitesEnabled={handleSetSitesEnabled}
-          />
-        ) : screen === "source-management" ? (
-          <SourceManagementScreen
-            sources={sources}
-            sourcePreferences={sourcePreferences}
-            navigate={navigate}
-            onBack={goBack}
-            onToggleSite={handleToggleSite}
-            onSetSitesEnabled={handleSetSitesEnabled}
-            onSetSourceMode={handleSetSourceMode}
-            onToggleSelection={handleToggleSourceSelection}
-          />
-        ) : screen === "search" ? (
-          <SearchScreen
-            sources={sources}
-            sourcePreferences={sourcePreferences}
-            openLiveManga={openLiveManga}
-            navigate={navigate}
-          />
-        ) : (
-          <HomeScreen
-            sources={sources}
-            sourcePreferences={sourcePreferences}
-            readingHistory={readingHistory}
-            liveFavorites={liveFavorites}
-            followPreferences={chapterFollow.preferences}
-            openManga={openManga}
-            openReader={openReader}
-            openLiveManga={openLiveManga}
-            openLiveReader={openLiveReader}
-            navigate={navigate}
-            settings={settings}
-            appearance={appearance}
-          />
-        )}
-        {!isOverlayOpen && screen !== "source-management" && screen !== "reading-history" && screen !== "notification-center" && (
-          <BottomNav current={screen} navigate={navigate} />
-        )}
-      </div>
+      {isChromebookApp ? (
+        <div className="desktop-shell">
+          <DesktopMenu current={screen} navigate={navigate} appearance={appearance} />
+          <div className="desktop-main">
+            <PwaInstallBanner
+              canInstall={pwaInstall.canInstall}
+              installed={pwaInstall.installed}
+              dismissed={pwaInstall.dismissed}
+              onInstall={pwaInstall.install}
+              onDismiss={pwaInstall.dismiss}
+            />
+            <div className="phone-frame-wrap">
+              <div className="phone-frame" ref={desktopScrollerRef}>
+                {isSnowTheme(appearance) ? <MoonSnowfall variant="frame" /> : null}
+                {isSakuraTheme(appearance) ? <SakuraPetals appearance={appearance} variant="frame" /> : null}
+                {liveReaderContent ?? (selectedLive ? (
+                  <FeatureSuspense>
+                    <LiveMangaDetails
+                      key={selectedLive.url}
+                      seed={selectedLive}
+                      isFavorite={preferences.isLiveFavorite(selectedLive)}
+                      onToggleFavorite={handleToggleLiveFavorite}
+                      onBack={goBack}
+                      openLiveReader={openLiveReader}
+                      onOpenRelated={openLiveManga}
+                      readingProgress={getReadingProgress(selectedLive)}
+                      chapterFollow={chapterFollow}
+                    />
+                  </FeatureSuspense>
+                ) : selected ? (
+                  <MangaDetails
+                    item={selected}
+                    isFavorite={favorites.includes(selected.id)}
+                    toggleFavorite={handleToggleFavorite}
+                    onBack={goBack}
+                    openReader={openReader}
+                    readingProgress={getReadingProgress(selected)}
+                  />
+                ) : screen === "source-catalog" || screen === "sources" ? (
+                  <SourcesScreen
+                    sources={sources}
+                    activeSourceId={activeSourceId}
+                    onSetActiveSource={handleSetActiveSourceId}
+                    sourcePreferences={sourcePreferences}
+                    openLiveManga={openLiveManga}
+                    openLiveChapter={openLiveReader}
+                    navigate={navigate}
+                  />
+                ) : screen === "updates" ? (
+                  <UpdatesScreen
+                    chapterFollow={chapterFollow}
+                    openLiveReader={openLiveReader}
+                    openLiveManga={openLiveManga}
+                    navigate={navigate}
+                  />
+                ) : screen === "favorites" ? (
+                  <LibraryScreen
+                    favorites={favorites}
+                    liveFavorites={liveFavorites}
+                    toggleFavorite={handleToggleFavorite}
+                    toggleLiveFavorite={handleToggleLiveFavorite}
+                    openManga={openManga}
+                    openLiveManga={openLiveManga}
+                    openLiveChapter={openLiveReader}
+                    navigate={navigate}
+                  />
+                ) : screen === "reading-history" ? (
+                  <ReadingHistoryScreen
+                    readingHistory={readingHistory}
+                    chapterReadLog={chapterReadLog}
+                    liveFavorites={liveFavorites}
+                    navigate={navigate}
+                    onBack={goBack}
+                    openManga={openManga}
+                    openLiveManga={openLiveManga}
+                    openReader={openReader}
+                    openLiveReader={openLiveReader}
+                    onRemoveEntry={handleRemoveReadingHistoryEntry}
+                    onClearHistory={handleClearReadingHistory}
+                  />
+                ) : screen === "notification-center" ? (
+                  <NotificationCenterScreen
+                    chapterFollow={chapterFollow}
+                    navigate={navigate}
+                    onBack={goBack}
+                    openLiveManga={openLiveManga}
+                  />
+                ) : screen === "settings" ? (
+                  <SettingsScreen
+                    navigate={navigate}
+                    appearance={appearance}
+                    typeface={typeface}
+                    onSetAppearance={handleSetAppearance}
+                    onSetTypeface={handleSetTypeface}
+                    sources={sources}
+                    sourcePreferences={sourcePreferences}
+                    onToggleSite={handleToggleSite}
+                    onSetSitesEnabled={handleSetSitesEnabled}
+                  />
+                ) : screen === "source-management" ? (
+                  <SourceManagementScreen
+                    sources={sources}
+                    sourcePreferences={sourcePreferences}
+                    navigate={navigate}
+                    onBack={goBack}
+                    onToggleSite={handleToggleSite}
+                    onSetSitesEnabled={handleSetSitesEnabled}
+                    onSetSourceMode={handleSetSourceMode}
+                    onToggleSelection={handleToggleSourceSelection}
+                  />
+                ) : screen === "search" ? (
+                  <SearchScreen
+                    sources={sources}
+                    sourcePreferences={sourcePreferences}
+                    openLiveManga={openLiveManga}
+                    navigate={navigate}
+                  />
+                ) : (
+                  <HomeScreen
+                    sources={sources}
+                    sourcePreferences={sourcePreferences}
+                    readingHistory={readingHistory}
+                    liveFavorites={liveFavorites}
+                    followPreferences={chapterFollow.preferences}
+                    openManga={openManga}
+                    openReader={openReader}
+                    openLiveManga={openLiveManga}
+                    openLiveReader={openLiveReader}
+                    navigate={navigate}
+                    settings={settings}
+                    appearance={appearance}
+                  />
+                ))}
+              </div>
+              <ThemedScrollbar scrollerRef={desktopScrollerRef} />
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="desktop-note">
+            <MnemeMark size={64} appearance={appearance} className="desktop-note__mark" decorative />
+            {isSakuraTheme(appearance) ? (
+              <>
+                <span className="desktop-note__brand"><SakuraIcon size={14} decorative /> {t("app.kickerSakura")}</span>
+                <h2>{t("app.nameSakura")}</h2>
+              </>
+            ) : (
+              <>
+                <span>{t("app.kicker")}</span>
+                <h2>{t("app.name")}</h2>
+              </>
+            )}
+            <p>{t("app.tagline")}</p>
+          </div>
+          <div className="phone-frame">
+            {isSnowTheme(appearance) ? <MoonSnowfall variant="frame" /> : null}
+            {isSakuraTheme(appearance) ? <SakuraPetals appearance={appearance} variant="frame" /> : null}
+            {liveReaderContent ?? (selectedLive ? (
+              <FeatureSuspense>
+                <LiveMangaDetails
+                  key={selectedLive.url}
+                  seed={selectedLive}
+                  isFavorite={preferences.isLiveFavorite(selectedLive)}
+                  onToggleFavorite={handleToggleLiveFavorite}
+                  onBack={goBack}
+                  openLiveReader={openLiveReader}
+                  onOpenRelated={openLiveManga}
+                  readingProgress={getReadingProgress(selectedLive)}
+                  chapterFollow={chapterFollow}
+                />
+              </FeatureSuspense>
+            ) : selected ? (
+              <MangaDetails
+                item={selected}
+                isFavorite={favorites.includes(selected.id)}
+                toggleFavorite={handleToggleFavorite}
+                onBack={goBack}
+                openReader={openReader}
+                readingProgress={getReadingProgress(selected)}
+              />
+            ) : screen === "source-catalog" || screen === "sources" ? (
+              <SourcesScreen
+                sources={sources}
+                activeSourceId={activeSourceId}
+                onSetActiveSource={handleSetActiveSourceId}
+                sourcePreferences={sourcePreferences}
+                openLiveManga={openLiveManga}
+                openLiveChapter={openLiveReader}
+                navigate={navigate}
+              />
+            ) : screen === "updates" ? (
+              <UpdatesScreen
+                chapterFollow={chapterFollow}
+                openLiveReader={openLiveReader}
+                openLiveManga={openLiveManga}
+                navigate={navigate}
+              />
+            ) : screen === "favorites" ? (
+              <LibraryScreen
+                favorites={favorites}
+                liveFavorites={liveFavorites}
+                toggleFavorite={handleToggleFavorite}
+                toggleLiveFavorite={handleToggleLiveFavorite}
+                openManga={openManga}
+                openLiveManga={openLiveManga}
+                openLiveChapter={openLiveReader}
+                navigate={navigate}
+              />
+            ) : screen === "reading-history" ? (
+              <ReadingHistoryScreen
+                readingHistory={readingHistory}
+                chapterReadLog={chapterReadLog}
+                liveFavorites={liveFavorites}
+                navigate={navigate}
+                onBack={goBack}
+                openManga={openManga}
+                openLiveManga={openLiveManga}
+                openReader={openReader}
+                openLiveReader={openLiveReader}
+                onRemoveEntry={handleRemoveReadingHistoryEntry}
+                onClearHistory={handleClearReadingHistory}
+              />
+            ) : screen === "notification-center" ? (
+              <NotificationCenterScreen
+                chapterFollow={chapterFollow}
+                navigate={navigate}
+                onBack={goBack}
+                openLiveManga={openLiveManga}
+              />
+            ) : screen === "settings" ? (
+              <SettingsScreen
+                navigate={navigate}
+                appearance={appearance}
+                typeface={typeface}
+                onSetAppearance={handleSetAppearance}
+                onSetTypeface={handleSetTypeface}
+                sources={sources}
+                sourcePreferences={sourcePreferences}
+                onToggleSite={handleToggleSite}
+                onSetSitesEnabled={handleSetSitesEnabled}
+              />
+            ) : screen === "source-management" ? (
+              <SourceManagementScreen
+                sources={sources}
+                sourcePreferences={sourcePreferences}
+                navigate={navigate}
+                onBack={goBack}
+                onToggleSite={handleToggleSite}
+                onSetSitesEnabled={handleSetSitesEnabled}
+                onSetSourceMode={handleSetSourceMode}
+                onToggleSelection={handleToggleSourceSelection}
+              />
+            ) : screen === "search" ? (
+              <SearchScreen
+                sources={sources}
+                sourcePreferences={sourcePreferences}
+                openLiveManga={openLiveManga}
+                navigate={navigate}
+              />
+            ) : (
+              <HomeScreen
+                sources={sources}
+                sourcePreferences={sourcePreferences}
+                readingHistory={readingHistory}
+                liveFavorites={liveFavorites}
+                followPreferences={chapterFollow.preferences}
+                openManga={openManga}
+                openReader={openReader}
+                openLiveManga={openLiveManga}
+                openLiveReader={openLiveReader}
+                navigate={navigate}
+                settings={settings}
+                appearance={appearance}
+              />
+            ))}
+            {!isOverlayOpen && screen !== "source-management" && screen !== "reading-history" && screen !== "notification-center" && (
+              <BottomNav current={screen} navigate={navigate} />
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

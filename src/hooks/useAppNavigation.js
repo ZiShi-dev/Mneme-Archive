@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { resolveBookmarkType } from "../features/sources/contentTypes";
+import { scrollAppToTop } from "../lib/platform/scrollRoot";
 
 function resolveScreenFromHistory(entries) {
   for (let index = entries.length - 1; index >= 0; index -= 1) {
@@ -24,25 +25,25 @@ export function useAppNavigation() {
     setLiveReader(null);
     setScreen(next);
     setHistory((prev) => [...prev, next]);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    scrollAppToTop({ behavior: "smooth" });
   };
 
   const openManga = (item) => {
     setSelected(item);
     setReader(null);
     setHistory((prev) => [...prev, `manga:${item.id}`]);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    scrollAppToTop({ behavior: "smooth" });
   };
 
   const openReader = (item, chapter = item.lastChapter) => {
     setReader({ item, chapter });
-    window.scrollTo(0, 0);
+    scrollAppToTop();
   };
 
   const openLiveManga = (item) => {
     setSelectedLive(item);
     setLiveReader(null);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    scrollAppToTop({ behavior: "smooth" });
   };
 
   const openLiveReader = (item, chapter) => {
@@ -52,7 +53,7 @@ export function useAppNavigation() {
       mediaTypeLabel: item.mediaTypeLabel || undefined,
     };
     setLiveReader({ manga, chapter });
-    window.scrollTo(0, 0);
+    scrollAppToTop();
   };
 
   const goBack = () => {
@@ -68,7 +69,7 @@ export function useAppNavigation() {
       if (prev.length <= 1) return prev;
       const next = prev.slice(0, -1);
       setScreen(resolveScreenFromHistory(next));
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      scrollAppToTop({ behavior: "smooth" });
       return next;
     });
   };

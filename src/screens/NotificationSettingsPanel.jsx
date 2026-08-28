@@ -10,6 +10,7 @@ import {
 import { SheetCloseButton } from "../components/ui/SheetCloseButton";
 import { SheetPortal } from "../components/ui/SheetPortal";
 import { useI18n } from "../i18n/I18nProvider";
+import { isChromebookApp } from "../config/appFlavor";
 
 const POLL_HINT_KEYS = {
   1: "data.fast",
@@ -39,6 +40,7 @@ export function NotificationSettingsSheet({
   permission,
   backgroundStatus,
   isNative,
+  supportsSystemNotifications = false,
   onToggleNotifications,
   onToggleBackgroundSync,
   onSetPollMinutes,
@@ -103,6 +105,7 @@ export function NotificationSettingsSheet({
                 </div>
               </div>
 
+              {!isChromebookApp && (
               <div className="notify-sheet__row">
                 <span>
                   <Clock3 size={15} /> {t("notify.background")}{" "}
@@ -114,24 +117,25 @@ export function NotificationSettingsSheet({
                   onToggle={onToggleBackgroundSync}
                 />
               </div>
+              )}
 
-              {isNative && (
+              {supportsSystemNotifications && (
                 <div className="notify-sheet__tools">
                   {!permission.granted && (
                     <button type="button" className="notify-sheet__tools-primary" onClick={onRequestPermission}>
-                      {t("notify.phonePermission")}
+                      {isChromebookApp ? t("notify.desktopPermission") : t("notify.phonePermission")}
                     </button>
                   )}
                   <button type="button" onClick={onTestNotification}>{t("notify.test")}</button>
-                  {backgroundEnabled && (
+                  {isNative && backgroundEnabled && (
                     <button type="button" onClick={onTestBackgroundSync}>{t("notify.testBackground")}</button>
                   )}
                 </div>
               )}
 
               <p className="notify-sheet__hint">
-                {t("notify.intervalHint")}
-                {!isNative && ` ${t("notify.browserOnly")}`}
+                {isChromebookApp ? t("notify.intervalHintDesktop") : t("notify.intervalHint")}
+                {!isNative && !isChromebookApp && ` ${t("notify.browserOnly")}`}
                 {isNative && backgroundStatus.registered && ` · ${t("notify.backgroundOn")}`}
               </p>
             </>
@@ -155,7 +159,8 @@ export function NotificationSettingsEntry({ settings, isNative, permission, onOp
   let summary = t("notify.off");
   if (enabled) {
     summary = t("data.minutes", { minutes: pollMinutes });
-    if (isNative && !permission.granted) summary += ` · ${t("notify.permissionNeeded")}`;
+    if (isChromebookApp) summary += ` · ${t("notify.inAppOnly")}`;
+    else if (isNative && !permission.granted) summary += ` · ${t("notify.permissionNeeded")}`;
     else if (enabled) summary += ` · ${t("notify.phonePlus")}`;
   }
 
@@ -165,7 +170,7 @@ export function NotificationSettingsEntry({ settings, isNative, permission, onOp
         {enabled ? <BellRing size={19} /> : <Bell size={19} />}
       </span>
       <span className="setting-row__copy">
-        <strong>{t("notify.chapters")}</strong>
+        <strong>{isChromebookApp ? t("notify.chaptersDesktop") : t("notify.chapters")}</strong>
         <small>{summary}</small>
       </span>
       <ChevronLeft size={18} />

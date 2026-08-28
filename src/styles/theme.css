@@ -42,7 +42,7 @@
 .catalog-filter-picker__search { height: 40px; flex: 0 0 40px; margin: 0 0 10px; border-radius: 11px; }
 .catalog-filter-picker__search input { font-size: 9px; }
 .catalog-filter-picker__list { min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; padding: 2px; align-content: start; }
-.catalog-filter-picker__option { min-width: 0; min-height: 42px; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--border, var(--line)) 80%, transparent); border-radius: 11px; background: var(--surface, var(--white)); color: var(--text, var(--ink)); display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; gap: 6px; text-align: start; cursor: pointer; transition: border-color var(--motion-standard), background var(--motion-standard); }
+.catalog-filter-picker__option { min-width: 0; min-height: 42px; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--border, var(--line)) 80%, transparent); border-radius: 11px; background: var(--surface, var(--white)); color: var(--text, var(--ink)); display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; gap: 6px; text-align: start; cursor: pointer; touch-action: manipulation; transition: border-color var(--motion-standard), background var(--motion-standard); }
 .catalog-filter-picker__option--all { grid-column: 1 / -1; min-height: 38px; background: color-mix(in srgb, var(--surface, var(--outside)) 55%, transparent); }
 .catalog-filter-picker__option span { overflow: hidden; font: 600 8px/1.35 "Alexandria"; text-overflow: ellipsis; white-space: nowrap; }
 .catalog-filter-picker__option small { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: color-mix(in srgb, var(--surface, var(--outside)) 80%, transparent); color: var(--text-muted, var(--muted)); display: grid; place-items: center; font: 600 6px/1 "Fragment Mono"; }
@@ -207,12 +207,13 @@
 .cover-audio-badge--vf { background: color-mix(in srgb, #3dd68c 82%, #091012); }
 .cover-audio-badge--vostfr { background: color-mix(in srgb, #f0a14a 86%, #120c08); }
 .cover-audio-badge--both { background: color-mix(in srgb, var(--film) 78%, #091018); }
-.live-details-hero__cover > .cover-audio-badge { z-index: 3; top: 8px; left: 8px; min-height: 22px; padding: 0 8px; font-size: 8px; }
+.live-details-hero__cover > .cover-audio-badge { z-index: 3; inset-block-start: 8px; inset-inline-start: 8px; left: auto; right: auto; min-height: 22px; padding: 0 8px; font-size: 8px; }
 .media-type-badge--novel { color: var(--brand-warm); border-color: color-mix(in srgb, var(--brand-warm) 42%, var(--border)); background: color-mix(in srgb, var(--brand-warm) 14%, var(--surface)); }
 .media-type-badge--anime { color: var(--anime); border-color: color-mix(in srgb, var(--anime) 42%, var(--border)); background: color-mix(in srgb, var(--anime) 14%, var(--surface)); }
 .media-type-badge--movie { color: var(--film); border-color: color-mix(in srgb, var(--film) 42%, var(--border)); background: color-mix(in srgb, var(--film) 14%, var(--surface)); }
 .media-type-badge--series { color: #c9a4ff; border-color: color-mix(in srgb, #c9a4ff 42%, var(--border)); background: color-mix(in srgb, #c9a4ff 14%, var(--surface)); }
 .source-logo--frenchstream { background: #111111; }
+.source-logo--coflix { background: #0d1117; }
 .details-source-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .details-source-line .source-logo { width: 30px; height: 30px; padding: 4px; border-radius: 8px; }
 .details-source-line .pill, .details-source-line .media-type-badge { min-height: 25px; margin: 0; }
@@ -451,8 +452,10 @@
 .theme-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; padding: 12px; border-bottom: 1px solid var(--line); }
 .theme-selector:last-child { border-bottom: 0; }
 .theme-sheet .theme-selector { padding: 0; border-bottom: 0; }
-.theme-selector--four { gap: 8px; }
-.theme-selector--four > button { min-height: 72px; }
+.theme-selector--four,
+.theme-selector--five { gap: 8px; }
+.theme-selector--four > button,
+.theme-selector--five > button { min-height: 72px; }
 .theme-selector > button { min-height: 78px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); color: var(--muted); display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; text-align: start; cursor: pointer; transition: border-color var(--motion-standard), background var(--motion-standard), transform var(--motion-standard); }
 .theme-selector > button:hover { transform: translateY(-2px); }
 .theme-selector > button > span { display: grid; gap: 3px; }

@@ -2,8 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   applyAudioLanguageToChapter,
+  filterItemsByAudioLanguage,
+  itemMatchesAudioFilter,
   parseAudioLabelOptions,
   resolveAvailableAudioLanguages,
+  resolveItemAudioOptions,
+  sourceSupportsAudioFilter,
 } from "../features/sources/audioLanguage.js";
 
 test("parseAudioLabelOptions reads VF and VOSTFR combinations", () => {
@@ -27,6 +31,15 @@ test("resolveAvailableAudioLanguages prefers chapter language map", () => {
   assert.deepEqual(languages, ["VF", "VOSTFR"]);
 });
 
+test("resolveAvailableAudioLanguages uses french stream availableAudioLanguages", () => {
+  const languages = resolveAvailableAudioLanguages(
+    { audioLabel: "VF", availableAudioLanguages: ["VF", "VOSTFR"] },
+    [],
+    "frenchstream",
+  );
+  assert.deepEqual(languages, ["VF", "VOSTFR"]);
+});
+
 test("applyAudioLanguageToChapter rewrites wiflix episode url", () => {
   const chapter = applyAudioLanguageToChapter({
     url: "https://www.wiflix.tv/watch/demo?language=VF&episode=3",
@@ -38,4 +51,24 @@ test("applyAudioLanguageToChapter rewrites wiflix episode url", () => {
   }, "VOSTFR", "wiflix");
   assert.match(chapter.url, /language=VOSTFR&episode=3/);
   assert.equal(chapter.preferredAudioLanguage, "VOSTFR");
+});
+
+test("sourceSupportsAudioFilter covers video sources", () => {
+  assert.equal(sourceSupportsAudioFilter("wiflix"), true);
+  assert.equal(sourceSupportsAudioFilter("coflix"), true);
+  assert.equal(sourceSupportsAudioFilter("mangalik"), false);
+});
+
+test("filterItemsByAudioLanguage keeps dual-audio and unknown labels", () => {
+  const items = [
+    { title: "VF only", audioLabel: "VF" },
+    { title: "VOSTFR only", audioLabel: "VOSTFR" },
+    { title: "Both", audioLabel: "VF+VOSTFR" },
+    { title: "Unknown" },
+  ];
+  assert.deepEqual(filterItemsByAudioLanguage(items, "all").map((item) => item.title), ["VF only", "VOSTFR only", "Both", "Unknown"]);
+  assert.deepEqual(filterItemsByAudioLanguage(items, "VF").map((item) => item.title), ["VF only", "Both"]);
+  assert.deepEqual(filterItemsByAudioLanguage(items, "VOSTFR").map((item) => item.title), ["VOSTFR only", "Both"]);
+  assert.equal(itemMatchesAudioFilter({ audioLabel: "VF+VOSTFR" }, "VF"), true);
+  assert.equal(resolveItemAudioOptions({ availableAudioLanguages: ["VF", "VOSTFR"] }).length, 2);
 });

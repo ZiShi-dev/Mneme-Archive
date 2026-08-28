@@ -5,6 +5,7 @@ import {
   BellRing,
   ChevronLeft,
   Clock3,
+  Monitor,
   Settings2,
   Smartphone,
   Zap,
@@ -14,6 +15,7 @@ import { EmptyState } from "../components/ui/EmptyState";
 import { AccessibleSearchField } from "../components/ui/AccessibleSearchField";
 import { useToast } from "../components/ui/ToastProvider";
 import { useNotificationSettings } from "../hooks/useNotificationSettings";
+import { isChromebookApp, isNotifiableMediaType } from "../config/appFlavor";
 import { getSourceProfile } from "../config/sources";
 import { RemoteCover, SourceLogo } from "../features/sources";
 import { contentTypes } from "../features/sources/contentTypes";
@@ -77,6 +79,7 @@ export function NotificationCenterScreen({
   const followedItems = useMemo(
     () => Object.values(chapterFollow.preferences || {})
       .filter((entry) => entry?.enabled !== false && entry?.url)
+      .filter((entry) => isNotifiableMediaType(resolveFollowMediaType(entry)))
       .sort((a, b) => (a.title || "").localeCompare(b.title || "", "ar")),
     [chapterFollow.preferences],
   );
@@ -96,18 +99,24 @@ export function NotificationCenterScreen({
 
   const globalEnabled = notificationSettings.settings.notifications;
   const pollMinutes = notificationSettings.settings.followPollMinutes || 2;
-  const backgroundEnabled = notificationSettings.settings.backgroundSync !== false;
 
   return (
-    <div className="screen">
-      <Header
-        title={t("notify.centerTitle")}
-        eyebrow={t("notify.centerEyebrow")}
-        onBack={onBack}
-        onSearch={() => navigate("search")}
-        onReadingHistory={() => navigate("reading-history")}
-        onNotifications={() => navigate("updates")}
-      />
+    <div className={`screen${isChromebookApp ? " screen--notify-desktop" : ""}`}>
+      {isChromebookApp ? (
+        <header className="settings-desktop-head">
+          <span className="eyebrow">{t("notify.centerEyebrow")}</span>
+          <h1>{t("notify.centerTitle")}</h1>
+        </header>
+      ) : (
+        <Header
+          title={t("notify.centerTitle")}
+          eyebrow={t("notify.centerEyebrow")}
+          onBack={onBack}
+          onSearch={() => navigate("search")}
+          onReadingHistory={() => navigate("reading-history")}
+          onNotifications={() => navigate("updates")}
+        />
+      )}
 
       <main className="content notify-center-page">
         <section className="notify-center-hero">
@@ -119,7 +128,7 @@ export function NotificationCenterScreen({
             <span>
               {t("notify.nFollowed", { count: followedItems.length })}
               {globalEnabled ? ` · ${t("notify.checkEvery", { n: pollMinutes })}` : ""}
-              {globalEnabled && backgroundEnabled ? ` · ${t("notify.background15")}` : ""}
+              {globalEnabled && isChromebookApp ? ` · ${t("notify.desktopTabChip")}` : ""}
             </span>
           </div>
           <button type="button" className="notify-center-hero__feed" onClick={() => navigate("updates")}>
@@ -138,9 +147,18 @@ export function NotificationCenterScreen({
           />
           <div className="notify-center-global__chips" aria-label={t("notify.summary")}>
             <span><Zap size={12} />{t("notify.openCheck", { n: pollMinutes })}</span>
-            <span><Clock3 size={12} />{backgroundEnabled ? t("notify.backgroundOnShort") : t("notify.backgroundOffShort")}</span>
-            {notificationSettings.isNative && (
-              <span><Smartphone size={12} />{notificationSettings.permission.granted ? t("notify.granted") : t("notify.needed")}</span>
+            {isChromebookApp ? (
+              <span><Monitor size={12} />{t("notify.desktopTabChip")}</span>
+            ) : (
+              <>
+                <span><Clock3 size={12} />{notificationSettings.settings.backgroundSync !== false ? t("notify.backgroundOnShort") : t("notify.backgroundOffShort")}</span>
+                {notificationSettings.isNative && (
+                  <span><Smartphone size={12} />{notificationSettings.permission.granted ? t("notify.granted") : t("notify.needed")}</span>
+                )}
+              </>
+            )}
+            {isChromebookApp && notificationSettings.supportsSystemNotifications && (
+              <span><Bell size={12} />{notificationSettings.permission.granted ? t("notify.granted") : t("notify.needed")}</span>
             )}
           </div>
         </div>
@@ -186,7 +204,7 @@ export function NotificationCenterScreen({
             className="notify-center-empty"
             icon={BellRing}
             title={t("notify.noFollows")}
-            description={t("notify.noFollowsHint")}
+            description={isChromebookApp ? t("notify.noFollowsHintSeries") : t("notify.noFollowsHint")}
             actionLabel={t("history.discover")}
             onAction={() => navigate("sources")}
           />
@@ -200,6 +218,7 @@ export function NotificationCenterScreen({
         permission={notificationSettings.permission}
         backgroundStatus={notificationSettings.backgroundStatus}
         isNative={notificationSettings.isNative}
+        supportsSystemNotifications={notificationSettings.supportsSystemNotifications}
         onToggleNotifications={notificationSettings.toggleNotifications}
         onToggleBackgroundSync={notificationSettings.toggleBackgroundSync}
         onSetPollMinutes={notificationSettings.setPollMinutes}
