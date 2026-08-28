@@ -1,0 +1,111 @@
+.app-toast-stack {
+  position: fixed;
+  inset-inline: 16px;
+  top: max(16px, env(safe-area-inset-top));
+  z-index: 12000;
+  display: grid;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.app-toast {
+  pointer-events: auto;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  background: color-mix(in srgb, var(--white) 92%, transparent);
+  box-shadow: 0 16px 40px rgba(9, 10, 18, .18);
+  backdrop-filter: blur(12px);
+  animation: toast-in .28s ease;
+}
+
+.app-toast--success {
+  border-color: color-mix(in srgb, var(--success) 45%, var(--line));
+  background: color-mix(in srgb, var(--success) 10%, var(--white));
+}
+
+.app-toast--error {
+  border-color: color-mix(in srgb, var(--stamp) 45%, var(--line));
+  background: color-mix(in srgb, var(--stamp) 10%, var(--white));
+}
+
+.app-toast--info {
+  border-color: color-mix(in srgb, var(--indigo) 35%, var(--line));
+  background: color-mix(in srgb, var(--indigo) 8%, var(--white));
+}
+
+.app-toast__icon {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.app-toast--success .app-toast__icon { color: var(--success); }
+.app-toast--error .app-toast__icon { color: var(--stamp); }
+.app-toast--info .app-toast__icon { color: var(--indigo); }
+
+.app-toast__message {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.app-toast__close {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.app-toast__close:hover {
+  background: color-mix(in srgb, var(--line) 35%, transparent);
+}
+
+.app-shell--dark .app-toast {
+  background: color-mix(in srgb, #151821 92%, transparent);
+  border-color: color-mix(in srgb, #2a3140 80%, transparent);
+}
+
+.app-shell--dark .app-toast--success {
+  background: color-mix(in srgb, var(--success) 14%, #151821);
+}
+
+.app-shell--dark .app-toast--error {
+  background: color-mix(in srgb, var(--stamp) 14%, #151821);
+}
+
+.app-shell--dark .app-toast--info {
+  background: color-mix(in srgb, var(--indigo) 14%, #151821);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (min-width: 720px) {
+  .app-toast-stack {
+    inset-inline: auto;
+    right: 24px;
+    width: min(360px, calc(100vw - 32px));
+  }
+}

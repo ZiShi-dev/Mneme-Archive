@@ -1,0 +1,24 @@
+node_modules/
+dist/
+*.apk
+*.aab
+*.xapk
+.tmp/
+.tmp_*
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Android build cache (also covered by android/.gitignore)
+android/.gradle/
+android/app/build/
+android/build/
+android/captures/
+
+# Third-party APK dumps used only for local emulator experiments
+docker/android-emulator/apk/

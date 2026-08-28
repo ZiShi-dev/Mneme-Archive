@@ -1,0 +1,482 @@
+/* ── المفضلة · page layout ── */
+.bookmarks-page {
+  padding-bottom: 112px;
+}
+
+/* ── Hero compact ── */
+.favorites-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  gap: 14px 16px;
+  margin-bottom: 18px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--favorite) 22%, var(--line));
+  border-radius: var(--radius-sheet);
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--favorite) 14%, transparent), transparent 52%),
+    linear-gradient(160deg, color-mix(in srgb, var(--favorite) 6%, var(--white)), var(--white));
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--favorite) 7%, transparent);
+}
+
+.favorites-hero__visual {
+  grid-row: span 2;
+  align-self: center;
+}
+
+.favorites-hero__stack {
+  position: relative;
+  width: 74px;
+  height: 88px;
+}
+
+.favorites-hero__cover {
+  position: absolute;
+  inset: 0;
+  width: 52px;
+  height: 74px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--outside);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, .14);
+  transform:
+    translateX(calc(var(--stack-index, 0) * 9px))
+    rotate(calc(var(--stack-index, 0) * -4deg + 2deg));
+  transform-origin: bottom center;
+}
+
+.favorites-hero__cover .cover,
+.favorites-hero__cover .remote-cover {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+.favorites-hero__placeholder {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  color: var(--favorite);
+  background: color-mix(in srgb, var(--favorite) 12%, var(--white));
+}
+
+.favorites-hero__copy {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.favorites-hero__eyebrow {
+  color: var(--favorite);
+  font: 600 8px/1 "Alexandria";
+  letter-spacing: .02em;
+}
+
+.favorites-hero__copy h2 {
+  margin: 0;
+  color: var(--ink);
+  font: 700 15px/1.35 "Reem Kufi", "Alexandria";
+}
+
+.favorites-hero__copy p {
+  margin: 0;
+  color: var(--muted);
+  font: 500 9px/1.65 "Alexandria";
+}
+
+.favorites-hero__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.favorites-hero__stats li {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 9px;
+  border-radius: var(--radius-pill);
+  color: var(--muted);
+  background: color-mix(in srgb, var(--outside) 80%, var(--white));
+  font: 500 8px/1 "Alexandria";
+}
+
+.favorites-hero__stats svg {
+  color: var(--favorite);
+  flex-shrink: 0;
+}
+
+.favorites-hero__stats strong {
+  color: var(--ink);
+  font: 700 9px/1 "Fragment Mono", monospace;
+}
+
+.favorites-hero__action {
+  grid-column: 1 / -1;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 14px;
+  border: 1px solid color-mix(in srgb, var(--favorite) 28%, var(--line));
+  border-radius: var(--radius-control);
+  color: var(--favorite);
+  background: color-mix(in srgb, var(--favorite) 7%, var(--white));
+  font: 600 9px/1 "Alexandria";
+  cursor: pointer;
+  transition: border-color var(--motion-standard), background var(--motion-standard);
+}
+
+.favorites-hero__action:hover {
+  border-color: color-mix(in srgb, var(--favorite) 45%, var(--line));
+  background: color-mix(in srgb, var(--favorite) 11%, var(--white));
+}
+
+/* ── Filtres ── */
+.bookmarks-controls {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--white);
+}
+
+.bookmarks-controls__search {
+  height: 44px;
+  margin: 0;
+  border-radius: var(--radius-control);
+  box-shadow: none;
+}
+
+.bookmarks-controls__search input {
+  font-size: 10px;
+}
+
+.bookmarks-controls__types {
+  margin: 0;
+}
+
+.bookmarks-controls__sources {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+.bookmarks-controls__sources::-webkit-scrollbar {
+  display: none;
+}
+
+.bookmarks-controls__sources > button {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  color: var(--muted);
+  background: var(--outside);
+  font: 600 8px/1 "Alexandria";
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color var(--motion-standard), color var(--motion-standard), background var(--motion-standard);
+}
+
+.bookmarks-controls__sources > button .source-logo {
+  width: 16px;
+  height: 16px;
+  padding: 2px;
+}
+
+.bookmarks-controls__sources > button.active {
+  color: var(--brand);
+  border-color: color-mix(in srgb, var(--brand) 42%, var(--line));
+  background: color-mix(in srgb, var(--brand) 9%, var(--white));
+}
+
+.bookmarks-controls__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 28px;
+  color: var(--muted);
+  font: 500 8px/1 "Alexandria";
+}
+
+.bookmarks-controls__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bookmarks-controls__reset {
+  border: 0;
+  padding: 0;
+  color: var(--brand);
+  background: transparent;
+  font: 600 8px/1 "Alexandria";
+  cursor: pointer;
+}
+
+.bookmarks-controls__sort {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  color: var(--muted);
+  background: var(--outside);
+  font: 600 8px/1 "Alexandria";
+  cursor: pointer;
+}
+
+.bookmarks-controls__sort svg {
+  color: var(--brand);
+}
+
+/* ── Liste des titres ── */
+.bookmark-list {
+  display: grid;
+  gap: 10px;
+}
+
+.bookmark-row {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--white);
+  transition: border-color var(--motion-standard), box-shadow var(--motion-standard);
+}
+
+.bookmark-row:hover {
+  border-color: color-mix(in srgb, var(--brand) 28%, var(--line));
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--brand) 6%, transparent);
+}
+
+.bookmark-row--continue {
+  border-color: color-mix(in srgb, var(--brand) 22%, var(--line));
+}
+
+.bookmark-row__open {
+  width: 100%;
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  padding: 10px 10px 10px 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.bookmark-row__media {
+  position: relative;
+  flex: 0 0 auto;
+  width: 62px;
+  height: 86px;
+  overflow: hidden;
+  border-radius: 11px;
+  background: var(--outside);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, .1);
+}
+
+.bookmark-row__media .cover,
+.bookmark-row__media .remote-cover {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+.bookmark-row__type {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  min-height: 20px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 6px;
+  border-radius: 6px;
+  color: #fff;
+  background: rgba(9, 10, 18, .72);
+  font: 600 7px/1 "Alexandria";
+  backdrop-filter: blur(6px);
+}
+
+.bookmark-row__type--novel {
+  color: #ffd48a;
+}
+
+.bookmark-row__body {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  align-content: center;
+  gap: 5px;
+  padding-block: 2px;
+}
+
+.bookmark-row__body > strong {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--ink);
+  font: 700 11px/1.45 "Instrument Sans", "Alexandria";
+}
+
+.bookmark-row__subtitle {
+  overflow: hidden;
+  color: var(--muted);
+  font: 500 8px/1.35 "Alexandria";
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bookmark-row__source {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  max-width: 100%;
+  color: var(--brand);
+  font: 600 8px/1 "Alexandria";
+}
+
+.bookmark-row__source .source-logo {
+  width: 15px;
+  height: 15px;
+  padding: 2px;
+  flex-shrink: 0;
+}
+
+.bookmark-row__source > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bookmark-row__reading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.bookmark-row__reading em {
+  min-width: 0;
+  overflow: hidden;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bookmark-row__reading b {
+  color: var(--ink);
+  font: 600 8px/1 "Fragment Mono", monospace;
+}
+
+.bookmark-row__progress {
+  display: block;
+}
+
+.bookmark-row__progress .progress {
+  margin: 0;
+  height: 3px;
+  border-radius: 3px;
+}
+
+.bookmark-row__chevron {
+  flex: 0 0 auto;
+  align-self: center;
+  color: var(--muted);
+  opacity: .7;
+}
+
+.bookmark-row__aside {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 10px 10px;
+}
+
+.bookmark-row__remove {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--favorite) 25%, var(--line));
+  border-radius: 10px;
+  color: var(--favorite);
+  background: color-mix(in srgb, var(--favorite) 8%, var(--white));
+  cursor: pointer;
+  transition: background var(--motion-standard), border-color var(--motion-standard);
+}
+
+.bookmark-row__remove:hover {
+  background: color-mix(in srgb, var(--favorite) 14%, var(--white));
+}
+
+.bookmark-row__continue {
+  min-height: 34px;
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--brand), color-mix(in srgb, var(--brand) 75%, #2a1f6e));
+  font: 600 8px/1 "Alexandria";
+  cursor: pointer;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--brand) 28%, transparent);
+}
+
+.bookmark-row__continue span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-shell:not(.app-shell--dark) .bookmark-row__continue {
+  color: #fff;
+}
+
+/* RTL tweaks */
+[dir="rtl"] .favorites-hero__cover {
+  transform:
+    translateX(calc(var(--stack-index, 0) * -9px))
+    rotate(calc(var(--stack-index, 0) * 4deg - 2deg));
+}
+
+[dir="rtl"] .bookmark-row__body > strong {
+  direction: inherit;
+  text-align: start;
+}

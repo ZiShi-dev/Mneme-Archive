@@ -1,0 +1,903 @@
+.home-discovery {
+  margin-top: 20px;
+  margin-bottom: 4px;
+  border: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
+  border-radius: 16px;
+  background: var(--white);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+
+.home-discovery__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px 8px;
+}
+
+.home-discovery__intro {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.home-discovery__intro h2 {
+  margin: 0;
+  color: var(--ink);
+  font: 700 14px/1.3 "Alexandria";
+}
+
+.home-discovery__intro p {
+  margin: 0;
+  color: var(--muted);
+  font: 500 12px/1.4 "Alexandria";
+}
+
+.home-discovery__manage {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: color var(--motion-standard), background var(--motion-standard);
+}
+
+.home-discovery__manage:hover {
+  color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 8%, var(--white));
+}
+
+.home-discovery .home-discovery__scope {
+  width: 100%;
+  margin: 0;
+  padding: 8px 12px 10px;
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  border-radius: 0;
+  background: color-mix(in srgb, var(--line) 10%, var(--white));
+  gap: 10px;
+}
+
+.home-discovery .home-discovery__scope:hover {
+  background: color-mix(in srgb, var(--brand) 4%, var(--white));
+}
+
+.home-discovery .home-discovery__scope .search-scope__avatar {
+  width: 27px;
+  height: 27px;
+  margin-inline-start: -9px;
+  border-width: 2px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.home-discovery .home-discovery__scope .search-scope__more {
+  width: 27px;
+  height: 27px;
+  margin-inline-start: -9px;
+  border-width: 2px;
+  font-size: 8px;
+}
+
+.home-discovery .home-discovery__scope .search-scope__copy strong {
+  font-size: 9px;
+}
+
+.home-discovery .home-discovery__scope .search-scope__copy small {
+  font-size: 7px;
+}
+
+.home-discovery .home-discovery__scope .search-scope__chevron {
+  width: 14px;
+  height: 14px;
+  opacity: 0.55;
+}
+
+.home-discovery__empty {
+  padding: 0 12px 10px;
+}
+
+.home-discovery__empty p {
+  margin: 0;
+  padding: 10px;
+  border-top: 1px dashed color-mix(in srgb, var(--line) 80%, transparent);
+  color: var(--muted);
+  font: 500 8px/1.5 "Alexandria";
+  text-align: center;
+}
+
+.app-shell--dark .home-discovery {
+  background: color-mix(in srgb, var(--white) 4%, transparent);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);
+}
+
+.app-shell--dark .home-discovery .home-discovery__scope {
+  background: color-mix(in srgb, var(--line) 12%, transparent);
+}
+
+.home-latest-panel {
+  margin-top: 20px;
+  border: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
+  border-radius: 16px;
+  background: var(--white);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--ink) 4%, transparent);
+  overflow: hidden;
+}
+
+.home-latest-panel__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px 8px;
+}
+
+.home-latest-panel__icon {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--home-latest-accent, var(--brand));
+  background: color-mix(in srgb, var(--home-latest-accent, var(--brand)) 10%, var(--white));
+}
+
+.home-latest-panel--manga { --home-latest-accent: var(--manga); }
+.home-latest-panel--novel { --home-latest-accent: var(--novel); }
+.home-latest-panel--anime { --home-latest-accent: var(--anime); }
+.home-latest-panel--film { --home-latest-accent: var(--film); }
+.home-latest-panel--brand { --home-latest-accent: var(--brand); }
+
+.home-latest-panel__intro {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.home-latest-panel__intro h2 {
+  margin: 0;
+  font: 700 14px/1.35 "Alexandria";
+  color: var(--ink);
+}
+
+.home-latest-panel__intro p {
+  margin: 0;
+  color: var(--muted);
+  font: 500 12px/1.45 "Alexandria";
+}
+
+.home-latest-panel__refresh {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: color var(--motion-standard), background var(--motion-standard);
+}
+
+.home-latest-panel__refresh:hover:not(:disabled) {
+  color: var(--home-latest-accent, var(--brand));
+  background: color-mix(in srgb, var(--home-latest-accent, var(--brand)) 8%, var(--white));
+}
+
+.home-latest-panel__refresh:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.home-latest-panel__refresh.is-syncing svg {
+  animation: home-latest-spin 0.9s linear infinite;
+}
+
+.home-latest-panel__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 10px 8px;
+}
+
+.home-latest-panel__filter {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.home-latest-panel__filter .la-chip-bar__chips {
+  width: 100%;
+}
+
+.home-latest-panel__filter.la-chip-bar--segmented .la-chip {
+  flex: 1;
+  min-width: 0;
+}
+
+.home-latest-panel__link {
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: var(--home-latest-accent, var(--brand));
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font: 600 8px/1 "Alexandria";
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.home-latest-panel__feed {
+  display: grid;
+  gap: 6px;
+  padding: 0 10px 10px;
+}
+
+.home-latest-panel__feed.is-refreshing {
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.home-latest-row {
+  width: 100%;
+  min-height: 74px;
+  border: 1px solid color-mix(in srgb, var(--line) 84%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--outside) 14%, var(--white));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  text-align: start;
+  cursor: pointer;
+  transition: border-color var(--motion-standard), background var(--motion-standard), transform 0.12s ease;
+}
+
+.home-latest-row:hover {
+  border-color: color-mix(in srgb, var(--home-latest-accent, var(--brand)) 24%, var(--line));
+  background: color-mix(in srgb, var(--home-latest-accent, var(--brand)) 4%, var(--white));
+}
+
+.home-latest-row:active {
+  transform: scale(0.995);
+}
+
+.home-latest-row--new {
+  border-color: color-mix(in srgb, var(--home-latest-accent, var(--brand)) 28%, var(--line));
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--home-latest-accent, var(--brand)) 7%, var(--white)),
+    color-mix(in srgb, var(--outside) 14%, var(--white))
+  );
+}
+
+.home-latest-row__cover {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.home-latest-row__cover .remote-cover {
+  width: 48px;
+  height: 64px;
+  margin: 0;
+  border-radius: 8px;
+}
+
+.home-latest-row__badge {
+  position: absolute;
+  top: -4px;
+  inset-inline-start: -4px;
+  min-height: 16px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--home-latest-accent, var(--brand));
+  color: var(--moon-white, #fff);
+  font: 700 6px/16px "Alexandria";
+  display: grid;
+  place-items: center;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--ink) 12%, transparent);
+}
+
+.home-latest-row__body {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.home-latest-row__meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.home-latest-row__source {
+  width: 16px !important;
+  height: 16px !important;
+  padding: 1px !important;
+  border-radius: 5px !important;
+  flex: 0 0 auto;
+}
+
+.home-latest-row__meta small {
+  color: var(--muted);
+  font: 500 7px/1 "Alexandria";
+  white-space: nowrap;
+}
+
+.home-latest-row__meta em {
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--home-latest-accent, var(--brand)) 10%, var(--white));
+  color: color-mix(in srgb, var(--home-latest-accent, var(--brand)) 78%, var(--ink));
+  font: 600 6px/1 "Alexandria";
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.home-latest-row__time {
+  margin-inline-start: auto;
+  color: var(--home-latest-accent, var(--brand));
+  font: 700 7px/1 "Alexandria";
+  white-space: nowrap;
+}
+
+.home-latest-row__body strong {
+  font: 600 10px/1.35 "Alexandria";
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-latest-row__chapter {
+  color: var(--muted);
+  font: 500 8px/1.25 "Alexandria";
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-latest-row__chevron {
+  flex: 0 0 auto;
+  color: var(--muted);
+  opacity: 0.65;
+}
+
+.home-latest-row--skeleton {
+  pointer-events: none;
+  border-color: color-mix(in srgb, var(--line) 70%, transparent);
+  background: color-mix(in srgb, var(--outside) 20%, var(--white));
+}
+
+.home-latest-row__cover-skeleton {
+  width: 48px;
+  height: 64px;
+  flex: 0 0 48px;
+  border-radius: 8px;
+  background: linear-gradient(
+    105deg,
+    color-mix(in srgb, var(--line) 35%, transparent) 35%,
+    color-mix(in srgb, var(--outside) 70%, transparent) 48%,
+    color-mix(in srgb, var(--line) 35%, transparent) 61%
+  );
+  background-size: 220% 100%;
+  animation: home-latest-shimmer 1.4s linear infinite;
+}
+
+.home-latest-row__body-skeleton {
+  flex: 1;
+  display: grid;
+  gap: 7px;
+}
+
+.home-latest-row__body-skeleton span {
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(
+    105deg,
+    color-mix(in srgb, var(--line) 35%, transparent) 35%,
+    color-mix(in srgb, var(--outside) 70%, transparent) 48%,
+    color-mix(in srgb, var(--line) 35%, transparent) 61%
+  );
+  background-size: 220% 100%;
+  animation: home-latest-shimmer 1.4s linear infinite;
+}
+
+.home-latest-row__body-skeleton span:nth-child(1) { width: 42%; height: 7px; }
+.home-latest-row__body-skeleton span:nth-child(2) { width: 78%; height: 10px; }
+.home-latest-row__body-skeleton span:nth-child(3) { width: 52%; }
+
+.home-latest-panel__more {
+  width: calc(100% - 20px);
+  margin: 0 10px 10px;
+  min-height: 36px;
+  border: 1px dashed color-mix(in srgb, var(--line) 82%, transparent);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--outside) 24%, var(--white));
+  color: var(--home-latest-accent, var(--brand));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font: 600 8px/1 "Alexandria";
+  cursor: pointer;
+}
+
+.home-latest-panel__empty.la-empty {
+  margin: 0 10px 12px;
+  padding: 16px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--outside) 22%, var(--white));
+}
+
+.app-shell--dark .home-latest-panel {
+  background: color-mix(in srgb, var(--white) 4%, transparent);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
+}
+
+.app-shell--dark .home-latest-row {
+  background: color-mix(in srgb, var(--white) 5%, transparent);
+}
+
+.app-shell--dark .home-latest-row--new {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--home-latest-accent, var(--brand)) 10%, transparent),
+    color-mix(in srgb, var(--white) 5%, transparent)
+  );
+}
+
+@keyframes home-latest-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes home-latest-shimmer {
+  to { background-position: -220% 0; }
+}
+
+.home-recent-panel {
+  margin-top: 20px;
+  border: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
+  border-radius: 16px;
+  background: var(--white);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--ink) 4%, transparent);
+  overflow: hidden;
+}
+
+.home-recent-panel--film {
+  --home-recent-accent: var(--film);
+}
+
+.home-recent-panel__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px 8px;
+}
+
+.home-recent-panel__icon {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--home-recent-accent, var(--brand));
+  background: color-mix(in srgb, var(--home-recent-accent, var(--brand)) 10%, var(--white));
+}
+
+.home-recent-panel__intro {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.home-recent-panel__intro h2 {
+  margin: 0;
+  font: 700 14px/1.35 "Alexandria";
+  color: var(--ink);
+}
+
+.home-recent-panel__intro p {
+  margin: 0;
+  color: var(--muted);
+  font: 500 12px/1.45 "Alexandria";
+}
+
+.home-recent-panel__link {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: color var(--motion-standard), background var(--motion-standard);
+}
+
+.home-recent-panel__link:hover {
+  color: var(--home-recent-accent, var(--brand));
+  background: color-mix(in srgb, var(--home-recent-accent, var(--brand)) 8%, var(--white));
+}
+
+.home-recent-panel__feed {
+  display: grid;
+  gap: 6px;
+  padding: 0 10px 8px;
+}
+
+.home-recent-panel__more {
+  width: calc(100% - 20px);
+  margin: 0 10px 10px;
+  min-height: 36px;
+  border: 1px dashed color-mix(in srgb, var(--line) 82%, transparent);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--outside) 24%, var(--white));
+  color: var(--home-recent-accent, var(--brand));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font: 600 8px/1 "Alexandria";
+  cursor: pointer;
+}
+
+.app-shell--dark .home-recent-panel {
+  background: color-mix(in srgb, var(--white) 4%, transparent);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
+}
+
+/* ── بطاقة متابعة + فلاتر ── */
+.home-hero-panel {
+  margin-bottom: 16px;
+  border: 1px solid color-mix(in srgb, var(--line) 84%, transparent);
+  border-radius: 22px;
+  background: var(--white);
+  overflow: hidden;
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--ink) 6%, transparent);
+}
+
+.app-shell--dark .home-hero-panel {
+  background: color-mix(in srgb, var(--white) 4%, transparent);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+}
+
+.home-hero-panel .hero-card--continue,
+.home-hero-panel .hero-card--empty {
+  margin-bottom: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  min-height: 210px;
+  padding: 14px 14px 12px;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 14px;
+}
+
+.home-hero-panel__track {
+  padding: 8px 10px 10px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  background: color-mix(in srgb, var(--outside) 38%, var(--white));
+}
+
+.app-shell--dark .home-hero-panel__track {
+  background: color-mix(in srgb, var(--white) 5%, transparent);
+}
+
+.home-hero-panel__filters {
+  width: 100%;
+  margin: 0;
+  min-height: 0;
+}
+
+.home-hero-panel__filters .la-chip-bar__chips {
+  width: 100%;
+  gap: 5px;
+  padding: 2px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.home-hero-panel__filters .la-chip-bar__chips::-webkit-scrollbar {
+  display: none;
+}
+
+.home-hero-panel__filters.la-chip-bar--segmented .la-chip-bar__chips {
+  border-color: color-mix(in srgb, var(--line) 78%, transparent);
+  background: color-mix(in srgb, var(--outside) 55%, transparent);
+}
+
+.home-hero-panel__filters.la-chip-bar--segmented .la-chip {
+  flex: 0 0 auto;
+  min-width: 68px;
+  min-height: 32px;
+  justify-content: center;
+  scroll-snap-align: start;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+/* ── بطاقة متابعة القراءة ── */
+.content .hero-card--continue,
+.content .hero-card--empty {
+  margin-bottom: 16px;
+  min-height: 228px;
+  padding: 14px;
+  gap: 12px;
+  grid-template-columns: 96px minmax(0, 1fr);
+  border-radius: 22px;
+  overflow: hidden;
+  transition: transform var(--motion-standard), box-shadow var(--motion-standard);
+}
+
+.content .home-hero-panel .hero-card--continue,
+.content .home-hero-panel .hero-card--empty {
+  margin-bottom: 0;
+}
+
+.content .hero-card--continue:hover {
+  transform: translateY(-1px);
+}
+
+.content .hero-card--continue:active {
+  transform: scale(0.995);
+}
+
+.content .hero-card--continue:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--brand) 55%, transparent);
+  outline-offset: 2px;
+}
+
+.content .hero-card__glow {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(90% 80% at 100% 0%, color-mix(in srgb, var(--brand) 16%, transparent), transparent 62%),
+    radial-gradient(70% 60% at 0% 100%, color-mix(in srgb, var(--brand) 8%, transparent), transparent 58%);
+}
+
+.content .hero-card__glow--empty {
+  background: radial-gradient(80% 70% at 50% 0%, color-mix(in srgb, var(--brand) 10%, transparent), transparent 70%);
+}
+
+.content .hero-card__copy {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.content .hero-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.content .hero-card__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  max-width: 100%;
+  padding: 4px 11px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--brand) 30%, var(--line));
+  background: color-mix(in srgb, var(--brand) 10%, var(--white));
+  color: var(--ink);
+  font: 600 11px/1.35 "Alexandria";
+  line-height: 1.35;
+}
+
+.content .hero-card__pill > svg {
+  flex: 0 0 auto;
+  color: var(--brand);
+}
+
+.content .hero-card__pill > span {
+  min-width: 0;
+}
+
+.app-shell--dark .content .hero-card__pill {
+  border-color: color-mix(in srgb, var(--brand) 38%, rgba(255, 255, 255, 0.14));
+  background: color-mix(in srgb, var(--brand) 16%, rgba(255, 255, 255, 0.06));
+  color: rgba(255, 255, 255, 0.94);
+}
+
+.app-shell--dark .content .hero-card__pill > svg {
+  color: color-mix(in srgb, var(--brand) 70%, white);
+}
+
+.content .hero-card__time {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font: 600 11px/1.2 "Alexandria";
+  white-space: nowrap;
+}
+
+.content .hero-card--continue h2 {
+  margin: 0;
+  font: 700 18px/1.3 "Reem Kufi";
+  letter-spacing: -0.02em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.content .hero-card__subtitle {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font: 500 12px/1.45 "Alexandria";
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.content .hero-card__chapter {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.content .hero-card__chapter-badge {
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  background: color-mix(in srgb, var(--outside) 45%, var(--white));
+  color: var(--ink);
+  font: 600 11px/1 "Alexandria";
+  display: inline-flex;
+  align-items: center;
+}
+
+.content .hero-card__chapter-name {
+  min-width: 0;
+  color: var(--muted);
+  font: 500 12px/1.4 "Alexandria";
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.content .hero-card__progress-wrap {
+  display: grid;
+  gap: 5px;
+  margin-top: auto;
+  padding-top: 10px;
+}
+
+.content .hero-card__progress-label {
+  color: var(--muted);
+  font: 600 11px/1 "Fragment Mono";
+  text-align: start;
+}
+
+.content .hero-card__progress {
+  width: 100%;
+  height: 4px;
+  margin: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--line) 70%, transparent);
+}
+
+.content .hero-card__progress span {
+  border-radius: inherit;
+  transition: width 0.35s ease;
+}
+
+.content .hero-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.content .hero-card__cta {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 0 11px;
+  font-size: 12px;
+  gap: 4px;
+}
+
+.content .hero-card__source {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font: 600 11px/1.2 "Alexandria";
+}
+
+.content .hero-card__source span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.content .hero-card__source-logo {
+  width: 16px !important;
+  height: 16px !important;
+  padding: 1px !important;
+  border-radius: 5px !important;
+  flex: 0 0 auto;
+}
+
+.content .hero-card__visual {
+  position: relative;
+  z-index: 2;
+  width: 96px;
+  height: 136px;
+  border-radius: 12px;
+  border-width: 1px;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.2);
+}
+
+.content .hero-card__cover-shade {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, transparent 55%, rgba(0, 0, 0, 0.35) 100%);
+  pointer-events: none;
+}
+
+.content .hero-card--empty {
+  grid-template-columns: 1fr;
+  min-height: 200px;
+  text-align: center;
+}
+
+.content .hero-card--empty .hero-card__copy {
+  align-items: center;
+}
+
+.content .hero-card--empty h2 {
+  margin: 12px 0 6px;
+  font-size: 16px;
+}
+
+.content .hero-card--empty p {
+  margin: 0 0 14px;
+  max-width: 32ch;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.content .hero-card--empty .hero-card__cta {
+  width: auto;
+  min-width: 148px;
+}
+
+.app-shell--dark .content .hero-card__chapter-badge {
+  border-color: color-mix(in srgb, var(--line) 55%, transparent);
+  background: color-mix(in srgb, var(--white) 6%, transparent);
+  color: rgba(255, 255, 255, 0.9);
+}

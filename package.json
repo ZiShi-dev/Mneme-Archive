@@ -1,0 +1,47 @@
+{
+  "name": "manga-shelf-front",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:lan": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview",
+    "preview:lan": "vite preview --host 0.0.0.0",
+    "test": "node --test server/tests/*.test.js src/tests/*.test.js",
+    "build:android": "vite build && npx cap sync android",
+    "android": "npx cap open android",
+    "android:sync": "npx cap sync android",
+    "android:docker:up": "docker compose -f docker/android-emulator/docker-compose.yml up -d",
+    "android:docker:build": "bash scripts/android-docker-build.sh",
+    "android:docker:install": "bash scripts/android-docker-install.sh"
+  },
+  "dependencies": {
+    "@capacitor-community/sqlite": "^7.0.3",
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/filesystem": "^8.1.3",
+    "@capacitor/keyboard": "^8.0.5",
+    "@capacitor/local-notifications": "^8.3.1",
+    "@capacitor/network": "^8.0.1",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.3",
+    "@capgo/capacitor-background-task": "^8.1.7",
+    "fdir": "^6.5.0",
+    "hls.js": "^1.7.1",
+    "lucide-react": "^0.468.0",
+    "plyr": "^3.8.4",
+    "plyr-react": "^6.0.0",
+    "react": "^18.3.1",
+    "react-aria-components": "^1.20.0",
+    "react-dom": "^18.3.1",
+    "react-snowfall": "^2.4.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^6.0.7"
+  }
+}

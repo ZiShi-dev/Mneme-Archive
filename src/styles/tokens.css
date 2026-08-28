@@ -1,0 +1,228 @@
+/* Mneme Archive · Encre / Papier (thèmes d’origine) + Sakura / Yozakura */
+:root {
+  --font-sans: "Noto Sans Arabic", "Instrument Sans", "Manrope", sans-serif;
+  --font-display: "Noto Sans Arabic", "Instrument Sans", "Manrope", sans-serif;
+  --font-jp: "Noto Sans JP", "Instrument Sans", sans-serif;
+  --font-arabic: "Noto Sans Arabic", "Alexandria", "Manrope", sans-serif;
+
+  font-family: var(--font-sans);
+
+  --motion-standard: .18s cubic-bezier(.2, .8, .2, 1);
+  --motion-petal: cubic-bezier(.22, .61, .36, 1);
+  --radius-sheet: 22px;
+  --radius-card: 18px;
+  --radius-control: 12px;
+  --radius-pill: 999px;
+
+  --brand: #5b47d6;
+  --brand-warm: #b96828;
+  --bg: #f3f0ea;
+  --surface: #fffcf7;
+  --surface-raised: #ebe7df;
+  --text: #171722;
+  --text-muted: #656575;
+  --border: #ddd8ce;
+  --success: #63d39b;
+  --manga: #b9475b;
+  --novel: #d8b56a;
+  --anime: #6bd7c8;
+  --film: #7aa7ff;
+  --danger: #ff7b7b;
+
+  --ink: var(--text);
+  --muted: var(--text-muted);
+  --disabled: #8a8994;
+  --paper: var(--bg);
+  --white: var(--surface);
+  --outer: #e6e1d8;
+  --outside: var(--surface-raised);
+  --line: var(--border);
+  --green: var(--brand);
+  --green-dark: #ebe5fb;
+  --green-bright: var(--brand);
+  --green-soft: #e8e3f7;
+  --stamp: var(--brand-warm);
+  --favorite: var(--manga);
+  --indigo: var(--brand);
+  --gold: var(--brand-warm);
+  --reader-black: #05060a;
+  --moon-white: var(--text);
+  --shadow: 0 22px 64px rgba(0, 0, 0, .12);
+  --cta: var(--brand);
+  --cta-text: #fff;
+  --sakura-mist: var(--bg);
+  --usuzakura: var(--surface-raised);
+  --washi: var(--surface);
+  --sakura: var(--brand);
+  --nadeshiko: var(--brand);
+  --momo: var(--brand-warm);
+  --kobai: var(--brand);
+  --ume: var(--stamp);
+  --sumi: var(--text);
+  --sumi-muted: var(--text-muted);
+}
+
+/* Encre */
+.app-shell--dark,
+[data-theme="ink"],
+[data-theme="ink"] .app-shell {
+  --brand: #8b7cff;
+  --brand-warm: #ffb36b;
+  --bg: #090a12;
+  --surface: #121522;
+  --surface-raised: #1a1d2e;
+  --text: #f4f1ea;
+  --text-muted: #a7a8b4;
+  --border: #2a2d3f;
+  --success: #63d39b;
+  --manga: #e77b89;
+  --novel: #d8b56a;
+  --anime: #6bd7c8;
+  --film: #7aa7ff;
+  --ink: var(--text);
+  --muted: var(--text-muted);
+  --disabled: #747687;
+  --paper: var(--bg);
+  --white: var(--surface);
+  --outer: #06070d;
+  --outside: var(--surface-raised);
+  --line: var(--border);
+  --green: var(--brand);
+  --green-dark: var(--surface-raised);
+  --green-bright: var(--brand);
+  --green-soft: #24233d;
+  --stamp: var(--brand-warm);
+  --favorite: var(--manga);
+  --indigo: var(--brand);
+  --gold: var(--brand-warm);
+  --moon-white: var(--text);
+  --shadow: 0 22px 64px rgba(0, 0, 0, .32);
+  --cta: var(--brand);
+  --cta-text: #090a12;
+  --sakura-mist: var(--bg);
+  --usuzakura: var(--surface);
+  --washi: var(--surface);
+  --sakura: var(--brand);
+  --nadeshiko: var(--brand);
+  --momo: var(--brand-warm);
+  --kobai: var(--brand);
+  --ume: var(--stamp);
+  --sumi: var(--text);
+  --sumi-muted: var(--text-muted);
+}
+
+/* Sakura · Usuzakura (jour) */
+[data-theme="sakura"],
+[data-theme="sakura"] .app-shell,
+.app-shell--sakura {
+  --font-sans: "Noto Sans Arabic", "Manrope", "Noto Sans JP", "Alexandria", sans-serif;
+  --font-display: "Noto Serif JP", "Noto Sans Arabic", serif;
+  --font-jp: "Noto Sans JP", "Manrope", sans-serif;
+  --font-arabic: "Noto Sans Arabic", "Alexandria", "Manrope", sans-serif;
+
+  --sakura-mist: #FFF8F9;
+  --usuzakura: #FDEDEB;
+  --washi: #FFFCFB;
+  --sakura: #F4B3C2;
+  --nadeshiko: #E597B2;
+  --momo: #F09199;
+  --kobai: #C94F6D;
+  --ume: #793B55;
+  --sumi: #33272D;
+  --sumi-muted: #5A3D47;
+
+  --cta: #C94F6D;
+  --cta-text: #fff;
+  --brand: #E597B2;
+  --brand-warm: #F09199;
+  --bg: #FFF8F9;
+  --surface: #FFFCFB;
+  --surface-raised: #FDEDEB;
+  --text: #33272D;
+  --text-muted: #5A3D47;
+  --border: #F0D5DC;
+  --success: #6E9B7A;
+  --manga: #C94F6D;
+  --novel: #C4A07A;
+  --anime: #8E9BB8;
+  --film: #B089A8;
+  --danger: #C94F6D;
+
+  --ink: var(--text);
+  --muted: var(--text-muted);
+  --disabled: #6B5360;
+  --paper: var(--bg);
+  --white: var(--surface);
+  --outer: #F7E8EC;
+  --outside: var(--surface-raised);
+  --line: var(--border);
+  --green: var(--brand);
+  --green-dark: #F7E0E6;
+  --green-bright: var(--cta);
+  --green-soft: #FBE8EE;
+  --stamp: var(--ume);
+  --favorite: var(--kobai);
+  --indigo: var(--nadeshiko);
+  --gold: var(--momo);
+  --moon-white: var(--text);
+  --shadow: 0 18px 40px rgba(121, 59, 85, .08);
+  --radius-control: 14px;
+}
+
+/* Yozakura 夜桜 (nuit sakura) */
+[data-theme="yozakura"],
+[data-theme="yozakura"] .app-shell,
+.app-shell--yozakura {
+  --font-sans: "Noto Sans Arabic", "Manrope", "Noto Sans JP", "Alexandria", sans-serif;
+  --font-display: "Noto Serif JP", "Noto Sans Arabic", serif;
+  --font-jp: "Noto Sans JP", "Manrope", sans-serif;
+  --font-arabic: "Noto Sans Arabic", "Alexandria", "Manrope", sans-serif;
+
+  --sakura-mist: #171218;
+  --usuzakura: #211920;
+  --washi: #2B2029;
+  --sakura: #E8A8BA;
+  --nadeshiko: #E8A8BA;
+  --momo: #F4CAD5;
+  --kobai: #C94F6D;
+  --ume: #9B607A;
+  --sumi: #FFF4F7;
+  --sumi-muted: #C9A8B4;
+
+  --cta: #C94F6D;
+  --cta-text: #fff;
+  --brand: #E8A8BA;
+  --brand-warm: #F4CAD5;
+  --bg: #171218;
+  --surface: #211920;
+  --surface-raised: #2B2029;
+  --text: #FFF4F7;
+  --text-muted: #C9A8B4;
+  --border: #3D2C36;
+  --success: #7EAE8C;
+  --manga: #E8A8BA;
+  --novel: #D4B896;
+  --anime: #A8B4CC;
+  --film: #C4A0B8;
+  --danger: #C94F6D;
+
+  --ink: var(--text);
+  --muted: var(--text-muted);
+  --disabled: #8A6F7A;
+  --paper: var(--bg);
+  --white: var(--surface);
+  --outer: #120E13;
+  --outside: var(--surface-raised);
+  --line: var(--border);
+  --green: var(--brand);
+  --green-dark: var(--surface-raised);
+  --green-bright: var(--cta);
+  --green-soft: #3A2832;
+  --stamp: var(--sakura);
+  --favorite: #F4CAD5;
+  --indigo: var(--sakura);
+  --gold: var(--momo);
+  --moon-white: var(--text);
+  --shadow: 0 22px 50px rgba(0, 0, 0, .38);
+  --radius-control: 14px;
+}

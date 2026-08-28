@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Mneme Archive</string>
+    <string name="title_activity_main">Mneme Archive</string>
+    <string name="package_name">com.manhaw.livingarchive</string>
+    <string name="custom_url_scheme">com.manhaw.livingarchive</string>
+</resources>

@@ -1,0 +1,1035 @@
+.live-source-banner { display: flex; align-items: center; gap: 12px; padding: 13px; border: 1px solid var(--line); border-radius: 17px; background: var(--white); margin-bottom: 15px; }
+.live-source-banner > div:nth-child(2) { flex: 1; display: grid; gap: 4px; }
+.live-source-banner strong { font: 700 13px/1 "Reem Kufi"; }
+.live-source-banner small { color: var(--muted); font-size: 9px; display: flex; align-items: center; gap: 6px; }
+.live-source-banner > a, .live-source-banner > button { width: 36px; height: 36px; border: 0; display: grid; place-items: center; color: var(--indigo); border-radius: 10px; background: color-mix(in srgb, var(--indigo) 8%, var(--white)); cursor: pointer; }
+.catalog-mode-indicator { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 12px; }
+.catalog-mode-indicator span { display: flex; justify-content: center; align-items: center; gap: 6px; padding: 9px 6px; border: 1px solid var(--line); border-radius: 11px; color: var(--muted); font: 600 9px/1 "Reem Kufi"; background: var(--white); }
+.catalog-mode-indicator span.active { color: var(--moon-white); border-color: var(--green); background: var(--green); }
+.live-loading, .live-error { min-height: 280px; display: grid; place-items: center; align-content: center; gap: 10px; text-align: center; color: var(--muted); }
+.live-loading svg { animation: sourceSpin 1.1s linear infinite; color: var(--green); }
+@keyframes sourceSpin { to { transform: rotate(360deg); } }
+.live-loading strong, .live-error h2 { color: var(--ink); font: 700 15px/1.4 "Reem Kufi"; margin: 0; }
+.live-loading span, .live-error p { font-size: 10px; margin: 0; max-width: 280px; line-height: 1.6; }
+.live-catalog__meta { display: flex; justify-content: space-between; align-items: center; margin: 17px 0 10px; }
+.live-catalog__meta strong { font: 700 12px/1 "Reem Kufi"; }
+.live-catalog__meta span { color: var(--muted); font-size: 8px; }
+.live-manga-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 17px 10px; }
+.live-manga-card { min-width: 0; border: 0; padding: 0; background: transparent; display: grid; align-content: start; gap: 5px; text-align: start; }
+.live-manga-card__main { position: relative; min-width: 0; display: grid; gap: 5px; padding: 0; border: 0; background: transparent; color: inherit; text-align: start; cursor: pointer; }
+.live-manga-card strong { font: 700 10px/1.35 "Alexandria", "Shippori Mincho", sans-serif; color: var(--ink); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; min-height: 27px; }
+.live-manga-card strong[dir="auto"] { text-align: start; }
+.live-manga-card small { color: var(--green); font-size: 9px; font-weight: 700; }
+.live-manga-card__chapters { display: grid; gap: 4px; margin-top: 2px; }
+.live-manga-card__chapters > button { min-height: 29px; display: flex; align-items: center; gap: 5px; padding: 0 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--white); color: inherit; text-align: start; cursor: pointer; transition: border-color var(--motion-standard), background var(--motion-standard), transform var(--motion-standard); }
+.live-manga-card__chapters > button:hover:not(:disabled) { border-color: var(--brand); background: color-mix(in srgb, var(--brand) 8%, var(--white)); transform: translateX(-2px); }
+.live-manga-card__chapters > button:disabled { opacity: .55; cursor: not-allowed; }
+.live-manga-card__chapters i { padding: 4px 5px; border-radius: 6px; background: color-mix(in srgb, var(--brand) 10%, var(--outside)); color: var(--brand); font: normal 6px/1 "Alexandria"; white-space: nowrap; }
+.live-manga-card__chapters b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font: 600 7px/1 "Alexandria"; }
+.live-manga-card__chapters svg { flex: 0 0 auto; color: var(--brand); }
+.live-manga-card__no-chapters {
+  min-height: 29px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 6px;
+  border: 1px dashed color-mix(in srgb, var(--line) 88%, var(--muted));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--outside) 90%, var(--white));
+  color: var(--muted);
+  font: 600 7px/1.35 "Alexandria";
+}
+.live-manga-card__no-chapters svg { flex: 0 0 auto; opacity: .7; }
+
+.catalog-reload {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--brand) 8%, var(--white));
+  color: var(--ink);
+}
+
+.catalog-reload svg {
+  flex: 0 0 auto;
+  color: var(--brand);
+  animation: sourceSpin 1.1s linear infinite;
+}
+
+.catalog-reload span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.catalog-reload strong {
+  font: 700 11px/1.3 "Alexandria", "Reem Kufi", sans-serif;
+}
+
+.catalog-reload small {
+  color: var(--muted);
+  font: 500 8px/1.4 "Alexandria", sans-serif;
+}
+
+.live-manga-card--skeleton {
+  pointer-events: none;
+}
+
+.live-manga-card__cover-skeleton,
+.live-manga-card__title-skeleton,
+.live-manga-card__chapter-skeleton {
+  display: block;
+  border-radius: 10px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--line) 42%, var(--white)) 0%,
+    color-mix(in srgb, var(--line) 16%, var(--white)) 50%,
+    color-mix(in srgb, var(--line) 42%, var(--white)) 100%
+  );
+  background-size: 200% 100%;
+  animation: catalogReloadShimmer 1.2s ease-in-out infinite;
+}
+
+.live-manga-card__cover-skeleton {
+  width: 100%;
+  height: 155px;
+  border-radius: 12px;
+}
+
+.live-manga-card--skeleton-novel .live-manga-card__cover-skeleton {
+  height: 168px;
+}
+
+.live-manga-card--skeleton-anime .live-manga-card__cover-skeleton,
+.live-manga-card--skeleton-movie .live-manga-card__cover-skeleton,
+.live-manga-card--skeleton-series .live-manga-card__cover-skeleton {
+  height: 148px;
+  border-radius: 14px;
+}
+
+.live-manga-card__title-skeleton {
+  height: 9px;
+  width: 86%;
+  margin-top: 2px;
+}
+
+.live-manga-card__title-skeleton--short {
+  width: 54%;
+  height: 8px;
+}
+
+.live-manga-card__chapter-skeleton {
+  min-height: 29px;
+  border-radius: 8px;
+}
+
+@keyframes catalogReloadShimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .catalog-reload svg {
+    animation: none;
+  }
+  .live-manga-card__cover-skeleton,
+  .live-manga-card__title-skeleton,
+  .live-manga-card__chapter-skeleton {
+    animation: none;
+  }
+}
+.live-details-hero {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  overflow: hidden;
+  min-height: 340px;
+  padding: 23px 21px 36px;
+  color: white;
+  background: linear-gradient(145deg, #1a2420, #0d5661);
+}
+
+.phone-frame:has(.screen--live-details) {
+  height: calc(100vh - 64px);
+  max-height: calc(100vh - 64px);
+}
+
+.native-app .phone-frame:has(.screen--live-details) {
+  height: 100dvh;
+  max-height: 100dvh;
+}
+
+.screen--live-details {
+  height: 100%;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: 24px;
+}
+
+.screen--live-details .details-content {
+  position: relative;
+  z-index: 2;
+  overflow-x: hidden;
+  margin-top: -28px;
+  box-shadow: 0 -18px 42px rgba(0, 0, 0, 0.28);
+}
+
+.live-details-hero--novel {
+  background: linear-gradient(145deg, #241a28, #3d2a4a);
+}
+
+.live-details-hero--anime,
+.live-details-hero--video {
+  background: linear-gradient(145deg, #10222f, #0f4f5d);
+}
+
+.live-details-hero--anime .live-details-hero__cover::before,
+.live-details-hero--video .live-details-hero__cover::before {
+  background: linear-gradient(145deg, rgba(107, 215, 200, 0.58), rgba(122, 167, 255, 0.32));
+}
+
+.live-details-hero--movie {
+  background: linear-gradient(145deg, #1a1428, #3a2458);
+}
+
+.live-details-hero--movie .live-details-hero__cover::before {
+  background: linear-gradient(145deg, rgba(231, 123, 137, 0.52), rgba(122, 167, 255, 0.28));
+}
+
+.screen--live-anime .live-details-hero__meta .details-source-line,
+.screen--live-video .live-details-hero__meta .details-source-line {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.screen--live-anime .live-details-hero__title,
+.screen--live-video .live-details-hero__title {
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.72);
+}
+
+.screen--live-anime .live-details-hero__backdrop img,
+.screen--live-video .live-details-hero__backdrop img {
+  opacity: 0.42;
+}
+
+.screen--live-anime .live-details-hero__backdrop-fade,
+.screen--live-video .live-details-hero__backdrop-fade {
+  background:
+    radial-gradient(circle at 18% 8%, rgba(107, 215, 200, 0.2), transparent 36%),
+    linear-gradient(180deg, rgba(9, 10, 18, 0.2) 0%, rgba(9, 10, 18, 0.72) 52%, rgba(9, 10, 18, 0.94) 100%);
+}
+
+.live-details-hero__backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.live-details-hero__backdrop img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.12);
+  filter: blur(32px) saturate(1.15);
+  opacity: 0.62;
+}
+
+.live-details-hero__backdrop-fade {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 18% 8%, rgba(255, 177, 27, 0.18), transparent 36%),
+    linear-gradient(180deg, rgba(9, 10, 18, 0.2) 0%, rgba(9, 10, 18, 0.72) 52%, rgba(9, 10, 18, 0.94) 100%);
+}
+
+.live-details-hero .details-hero__nav,
+.live-details-hero__content {
+  position: relative;
+  z-index: 2;
+}
+
+.live-details-hero__content {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 18px;
+  margin-top: 30px;
+}
+
+[dir="rtl"] .live-details-hero__content {
+  flex-direction: row-reverse;
+}
+
+.live-details-hero__cover {
+  margin: 0;
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.live-details-hero__cover::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(255, 177, 27, 0.55), rgba(231, 123, 137, 0.28));
+  z-index: 0;
+}
+
+.live-details-hero__cover .remote-cover {
+  position: relative;
+  z-index: 1;
+}
+
+.live-details-hero__meta {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  text-align: start;
+}
+
+.live-details-hero__meta .details-source-line {
+  justify-content: flex-start;
+}
+
+.live-details-hero__title,
+.live-details-hero__subtitle {
+  unicode-bidi: plaintext;
+  text-align: start;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.live-details-hero__content h1,
+.live-details-hero__title {
+  font: 800 22px/1.2 "Shippori Mincho";
+  margin: 11px 0 6px;
+  overflow-wrap: anywhere;
+}
+
+.live-details-hero__content p,
+.live-details-hero__subtitle {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 10px;
+  line-height: 1.45;
+  margin: 0 0 8px;
+}
+
+.live-details-hero__content small {
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 9px;
+  text-align: start;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.live-details-hero__updated {
+  display: block;
+  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.publication-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.publication-status--ongoing {
+  background: color-mix(in srgb, var(--success) 18%, var(--white));
+  color: var(--success);
+}
+
+.publication-status--completed {
+  background: color-mix(in srgb, var(--muted) 16%, var(--white));
+  color: color-mix(in srgb, var(--ink) 72%, white);
+}
+
+.publication-status--unknown {
+  background: color-mix(in srgb, var(--brand-warm) 14%, var(--white));
+  color: var(--brand-warm);
+}
+
+.screen--live-anime .details-about p {
+  unicode-bidi: plaintext;
+  text-align: start;
+}
+
+.live-details-hero--novel .live-details-hero__cover::before {
+  background: linear-gradient(145deg, rgba(231, 123, 137, 0.5), rgba(13, 86, 97, 0.35));
+}
+.details-latest-chapter { width: 100%; min-height: 66px; margin: 0 0 22px; padding: 12px 15px; border: 1px solid color-mix(in srgb, var(--brand) 48%, var(--line)); border-radius: 16px; background: color-mix(in srgb, var(--brand) 10%, var(--white)); color: var(--ink); display: flex; align-items: center; justify-content: space-between; gap: 14px; text-align: start; cursor: pointer; transition: transform var(--motion-standard), border-color var(--motion-standard), background var(--motion-standard); }
+.details-latest-chapter:hover { transform: translateY(-2px); border-color: var(--brand); background: color-mix(in srgb, var(--brand) 15%, var(--white)); }
+.details-latest-chapter > span { min-width: 0; display: grid; gap: 5px; }
+.details-latest-chapter small { color: var(--muted); font: 500 8px/1.3 "Alexandria"; }
+.details-latest-chapter strong { overflow: hidden; color: var(--ink); font: 700 11px/1.4 "Alexandria"; text-overflow: ellipsis; white-space: nowrap; }
+.details-latest-chapter > svg { width: 38px; height: 38px; flex: 0 0 38px; padding: 9px; border-radius: 11px; background: var(--brand); color: #090a12; }
+.details-about, .details-taxonomies, .details-chapters, .details-related { margin: 0 0 22px; padding: 17px; border: 1px solid var(--line); border-radius: 18px; background: var(--white); }
+.details-related .details-section-heading > svg { color: var(--film); }
+.details-related__scroller {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 2px 2px 8px;
+  margin: 0 -4px;
+  scrollbar-width: thin;
+}
+.details-related__card {
+  flex: 0 0 92px;
+  min-width: 92px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  text-align: start;
+  cursor: pointer;
+}
+.details-related__card .remote-cover {
+  width: 92px;
+  height: 128px;
+  margin: 0;
+  border-radius: 10px;
+}
+.details-related__card strong {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  color: var(--ink);
+  font: 700 9px/1.35 "Alexandria";
+  min-height: 24px;
+}
+.details-related__card small {
+  color: var(--muted);
+  font: 600 8px/1.2 "Alexandria";
+}
+.details-section-heading { min-height: 38px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.details-section-heading > span { display: grid; gap: 3px; }
+.details-section-heading small { color: var(--muted); font: 500 8px/1.2 "Alexandria"; }
+.details-section-heading h2 { margin: 0; color: var(--ink); font: 700 16px/1.35 "Alexandria"; }
+.details-section-heading > strong { min-width: 36px; height: 28px; padding: 0 8px; display: grid; place-items: center; border-radius: 9px; background: color-mix(in srgb, var(--brand) 11%, var(--paper)); color: var(--brand); font: 600 9px/1 "Unbounded"; }
+.details-about p { position: relative; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 5; color: var(--muted); font: 400 10px/1.9 "Alexandria"; white-space: pre-line; }
+.details-about.expanded p { display: block; overflow: visible; }
+.details-about__toggle { min-height: 34px; margin: 10px 0 -4px; padding: 0; border: 0; background: transparent; color: var(--brand); display: flex; align-items: center; gap: 5px; font: 600 9px/1 "Alexandria"; cursor: pointer; }
+.details-taxonomies .details-section-heading > svg { color: var(--brand-warm); }
+.details-taxonomy-group { display: grid; gap: 9px; padding: 12px 0; border-top: 1px solid var(--line); }
+.details-taxonomy-group:first-of-type { border-top: 0; padding-top: 2px; }
+.details-taxonomy-group > strong { color: var(--muted); font: 600 8px/1.3 "Alexandria"; }
+.details-taxonomy-group > div { display: flex; flex-wrap: wrap; gap: 7px; }
+.details-taxonomy-chip { min-height: 30px; max-width: 100%; padding: 0 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); color: var(--muted); display: inline-flex; align-items: center; overflow: hidden; font: 500 8px/1.2 "Alexandria"; text-overflow: ellipsis; white-space: nowrap; }
+.details-taxonomy-chip--category { border-color: color-mix(in srgb, var(--brand) 34%, var(--line)); background: color-mix(in srgb, var(--brand) 9%, var(--paper)); color: var(--ink); }
+.details-taxonomies__toggle { min-height: 36px; margin: 7px 0 -5px; padding: 0; border: 0; background: transparent; color: var(--brand); display: flex; align-items: center; gap: 5px; font: 600 9px/1 "Alexandria"; cursor: pointer; }
+.chapter-tools { margin-bottom: 12px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.chapter-search { height: 44px; min-width: 0; padding: 0 11px; border-radius: 12px; }
+.chapter-search input { font: 400 10px/1.4 "Alexandria"; }
+.chapter-search .accessible-search__icon { width: 18px; height: 18px; }
+.chapter-order { min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); color: var(--muted); display: flex; align-items: center; justify-content: center; gap: 6px; font: 600 8px/1 "Alexandria"; white-space: nowrap; cursor: pointer; transition: border-color var(--motion-standard), color var(--motion-standard); }
+.chapter-order:hover { border-color: var(--brand); color: var(--brand); }
+.live-chapter-list { max-height: none; overflow: visible; padding-bottom: 8px; }
+.details-chapters .chapter-row { min-height: 64px; padding: 8px 2px; align-items: flex-start; }
+.details-chapters .chapter-row:last-child { border-bottom: 0; }
+.details-chapters .chapter-row > svg { flex: 0 0 auto; color: var(--muted); margin-top: 10px; }
+.details-chapters .chapter-row strong { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 1.45; }
+.chapter-row__body { display: grid; gap: 4px; flex: 1; min-width: 0; }
+.chapter-row__title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.chapter-badge--paid {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 20px;
+  padding: 0 7px;
+  border-radius: 7px;
+  border: 1px solid color-mix(in srgb, var(--brand-warm) 48%, var(--border));
+  background: color-mix(in srgb, var(--brand-warm) 14%, var(--surface));
+  color: var(--brand-warm);
+  font: 700 7px/1 "Alexandria";
+  white-space: nowrap;
+}
+.chapter-badge__price {
+  padding-inline-start: 4px;
+  border-inline-start: 1px solid color-mix(in srgb, var(--brand-warm) 35%, transparent);
+  font-weight: 600;
+}
+.chapter-row--locked .chapter-number {
+  color: var(--brand-warm);
+  border-color: color-mix(in srgb, var(--brand-warm) 40%, var(--line));
+  background: color-mix(in srgb, var(--brand-warm) 8%, var(--paper));
+}
+.chapter-row__external { flex: 0 0 auto; color: var(--brand-warm); }
+.new-badge--paid {
+  color: var(--brand-warm);
+  border-color: color-mix(in srgb, var(--brand-warm) 42%, var(--line));
+  background: color-mix(in srgb, var(--brand-warm) 10%, var(--paper));
+}
+.chapter-pagination { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; gap: 10px; }
+.chapter-pagination > button { width: 40px; height: 40px; border: 1px solid var(--line); border-radius: 11px; background: var(--paper); color: var(--ink); display: grid; place-items: center; cursor: pointer; transition: border-color var(--motion-standard), color var(--motion-standard), opacity var(--motion-standard); }
+.chapter-pagination > button:hover:not(:disabled) { border-color: var(--brand); color: var(--brand); }
+.chapter-pagination > button:disabled { opacity: .35; cursor: not-allowed; }
+.chapter-pagination > span { display: flex; align-items: baseline; justify-content: center; gap: 7px; color: var(--muted); }
+.chapter-pagination small { font: 500 8px/1 "Alexandria"; }
+.chapter-pagination strong { color: var(--ink); font: 600 11px/1 "Unbounded"; }
+@media (max-width: 380px) {
+  .details-about, .details-taxonomies, .details-chapters, .details-related { padding: 14px; }
+  .chapter-tools { grid-template-columns: 1fr; }
+  .chapter-order { min-height: 38px; }
+  .details-chapters .chapter-row { gap: 6px; }
+  .details-chapters .chapter-number {
+    width: 32px;
+    height: 32px;
+    flex-basis: 32px;
+    margin-inline-end: 6px;
+    font-size: 8px;
+  }
+  .chapter-badge--paid {
+    max-width: 100%;
+    white-space: normal;
+  }
+  .new-badge {
+    margin-inline-end: 0;
+    font-size: 6px;
+    padding: 4px 5px 3px;
+  }
+  .live-details-hero__content {
+    gap: 12px;
+    align-items: flex-end;
+  }
+  .live-details-hero__cover .remote-cover--hero.remote-cover--novel,
+  .live-details-hero__cover .remote-cover--hero.remote-cover--video {
+    width: 108px;
+    height: 156px;
+    flex-basis: 108px;
+  }
+  .live-details-hero__content h1,
+  .live-details-hero__title {
+    font-size: 18px;
+  }
+}
+.reader-header__actions { display: flex; align-items: center; flex: 0 0 auto; gap: 4px; }
+.reader-header__action { text-decoration: none; }
+.reader-header__actions > button.active,
+.reader-header__actions > .reader-header__action.active { color: #e77b89; }
+.library-card .remote-cover { margin-bottom: 0; }
+.live-reader-pages { width: 100%; max-width: 100%; padding-bottom: max(40px, env(safe-area-inset-bottom)); background: #000; overflow-x: hidden; }
+.reader-live-state { min-height: calc(100dvh - var(--reader-header-height, 64px)); display: grid; place-items: center; align-content: center; gap: 11px; padding: 30px; text-align: center; color: var(--disabled); }
+.reader-live-state h2 { color: var(--reader-chrome-fg, #f4f1ea); font: 700 17px/1.3 "Reem Kufi"; margin: 0; }
+.reader-live-state p { font-size: 10px; line-height: 1.6; margin: 0; }
+.reader-playback { position: fixed; z-index: 30; left: 50%; right: auto; bottom: max(12px, env(safe-area-inset-bottom)); width: min(calc(100% - 24px), 560px); max-width: min(calc(100vw - 24px), 430px); padding: 9px 11px 10px; border: 1px solid #303342; border-radius: 17px; background: rgba(12,13,20,.94); color: #f4f1ea; box-shadow: 0 18px 55px rgba(0,0,0,.48); backdrop-filter: blur(16px); transform: translateX(-50%); animation: readerControlsIn .18s ease-out; }
+@keyframes readerControlsIn { from { opacity: 0; transform: translate(-50%, 10px); } }
+.reader-playback__timeline { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
+.reader-playback__timeline > span { width: 31px; color: #a7a8b4; font: 600 7px/1 "Fragment Mono"; text-align: start; }
+.reader-playback__close { width: 28px; height: 28px; flex: 0 0 28px; display: grid; place-items: center; padding: 0; border: 1px solid #303342; border-radius: 8px; background: #181a25; color: #a7a8b4; cursor: pointer; }
+.reader-playback__close:hover { color: #f4f1ea; border-color: var(--brand); }
+.reader-playback__slider { flex: 1; padding: 8px 0; touch-action: none; }
+.reader-playback__track { position: relative; display: block; height: 4px; border-radius: 999px; background: #303342; cursor: pointer; }
+.reader-playback__track > span { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--brand); }
+.reader-playback__thumb { position: absolute; top: 50%; width: 14px; height: 14px; border: 3px solid var(--brand); border-radius: 50%; background: #f4f1ea; box-shadow: 0 2px 9px rgba(0,0,0,.4); transform: translate(-50%, -50%); outline: none; }
+.reader-playback__thumb[data-focus-visible] { box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 28%, transparent); }
+.reader-playback__actions { display: grid; grid-template-columns: 1fr 44px 1fr auto; align-items: center; gap: 7px; }
+.reader-playback__actions > button { min-height: 35px; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 0 9px; border: 1px solid #303342; border-radius: 10px; background: #181a25; color: #d8d7df; font: 600 7px/1 "Alexandria"; cursor: pointer; }
+.reader-playback__actions > button:disabled { opacity: .35; cursor: not-allowed; }
+.reader-playback__actions > .reader-playback__chapter { justify-content: flex-start; min-width: 0; padding-inline: 8px 10px; }
+.reader-playback__chapter > svg { flex: 0 0 auto; color: var(--brand); }
+.reader-playback__chapter > span { min-width: 0; display: grid; flex: 1; gap: 3px; text-align: start; }
+.reader-playback__chapter--next > span { text-align: start; }
+.reader-playback__chapter small { color: #d8d7df; font: 600 7px/1 "Alexandria"; white-space: nowrap; }
+.reader-playback__chapter b { overflow: hidden; color: #858795; font: 500 6px/1 "Alexandria"; text-overflow: ellipsis; white-space: nowrap; }
+.reader-playback__actions > .reader-playback__play { width: 44px; height: 40px; padding: 0; border-color: var(--brand); border-radius: 12px; background: var(--brand); color: #090a12; }
+.reader-playback__actions > .reader-playback__play.active { box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 18%, transparent); }
+.reader-playback__actions > .reader-playback__speed { min-width: 55px; color: var(--brand); }
+.reader-playback-reopen { position: fixed; z-index: 30; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); min-width: 58px; height: 42px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0 10px; border: 1px solid #303342; border-radius: 12px; background: rgba(12,13,20,.9); color: var(--brand); box-shadow: 0 12px 32px rgba(0,0,0,.4); backdrop-filter: blur(14px); cursor: pointer; animation: readerReopenIn .18s ease-out; }
+.reader-playback-reopen:hover { border-color: var(--brand); background: #181a25; }
+@keyframes readerReopenIn { from { opacity: 0; transform: translateY(6px); } }
+.reader-playback-reopen span { color: #d8d7df; font: 600 7px/1 "Fragment Mono"; }
+@media (max-width: 520px) {
+  .reader-playback { bottom: max(8px, env(safe-area-inset-bottom)); width: calc(100% - 16px); border-radius: 15px; }
+  .reader-playback__actions { grid-template-columns: minmax(56px, 1fr) 46px minmax(56px, 1fr) auto; justify-content: center; }
+  .reader-playback__chapter b { display: none; }
+  .reader-playback__actions > .reader-playback__speed span { display: inline; }
+
+  .live-reader--video .reader-playback {
+    width: calc(100% - 16px);
+    margin-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+
+  .reader-playback--embed .reader-playback__actions {
+    grid-template-columns: 1fr 1fr auto;
+  }
+}
+
+@media (max-width: 360px) {
+  .reader-playback__actions {
+    grid-template-columns: minmax(48px, 1fr) 42px minmax(48px, 1fr) auto;
+    gap: 5px;
+  }
+
+  .reader-playback__actions > button {
+    min-height: 32px;
+    padding-inline: 6px;
+    font-size: 6px;
+  }
+
+  .reader-playback__actions > .reader-playback__play {
+    width: 42px;
+    height: 36px;
+  }
+
+  .reader-playback__actions > .reader-playback__speed {
+    min-width: 48px;
+  }
+}
+.built-in-source { margin: 15px 0 20px; }
+.source-mode-cards { display: grid; gap: 9px; margin-bottom: 20px; }
+.source-mode-cards > button { width: 100%; border: 1px solid var(--line); border-radius: 15px; background: var(--white); color: var(--muted); display: flex; align-items: center; gap: 12px; padding: 14px; text-align: start; cursor: pointer; }
+.source-mode-cards > button > span { flex: 1; display: grid; gap: 4px; }
+.source-mode-cards strong { color: var(--ink); font: 700 11px/1.2 "Reem Kufi"; }
+.source-mode-cards small { color: var(--muted); font-size: 9px; }
+.source-mode-cards > button > svg:last-child { opacity: 0; color: var(--green); }
+.source-mode-cards > button.active { border-color: var(--green); background: color-mix(in srgb, var(--green) 7%, var(--white)); color: var(--green); }
+.source-mode-cards > button.active > svg:last-child { opacity: 1; }
+
+/* ── Carte reprise lecture (discrète) ── */
+.details-reading-card {
+  margin-bottom: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--outside) 45%, var(--white));
+  overflow: hidden;
+}
+
+.details-reading-card--today {
+  border-color: color-mix(in srgb, var(--success) 22%, var(--line));
+  background: color-mix(in srgb, var(--success) 4%, var(--white));
+}
+
+.details-reading-card__main {
+  width: 100%;
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px 8px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: background var(--motion-standard);
+}
+
+.details-reading-card__main:hover {
+  background: color-mix(in srgb, var(--brand) 4%, transparent);
+}
+
+.details-reading-card__copy {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 2px;
+}
+
+.details-reading-card__copy small {
+  color: var(--muted);
+  font: 500 7px/1 "Alexandria";
+}
+
+.details-reading-card__title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.details-reading-card__title strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font: 600 10px/1.35 "Alexandria";
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.details-reading-card__title em {
+  flex-shrink: 0;
+  color: var(--muted);
+  font: 500 8px/1 "Fragment Mono", monospace;
+  font-style: normal;
+}
+
+.details-reading-card__badge {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: color-mix(in srgb, var(--success) 90%, #0a2018);
+  background: color-mix(in srgb, var(--success) 14%, var(--white));
+}
+
+.details-reading-card__arrow {
+  flex-shrink: 0;
+  color: var(--muted);
+  opacity: .55;
+}
+
+.details-reading-card__track {
+  height: 2px;
+  background: color-mix(in srgb, var(--line) 70%, transparent);
+}
+
+.details-reading-card__track > span {
+  display: block;
+  height: 100%;
+  background: color-mix(in srgb, var(--brand) 55%, var(--line));
+  transition: width var(--motion-standard);
+}
+
+.details-reading-card--today .details-reading-card__track > span {
+  background: color-mix(in srgb, var(--success) 65%, var(--line));
+}
+
+/* ── Hub actions détail (lecture + stats + suivi) ── */
+.details-audio-language {
+  margin-bottom: 12px;
+  padding: 12px 13px;
+  border: 1px solid color-mix(in srgb, var(--line) 84%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--outside) 28%, var(--white));
+}
+
+.details-audio-language__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.details-audio-language__head strong {
+  font: 600 10px/1.3 "Alexandria";
+}
+
+.details-audio-language__head small {
+  color: var(--muted);
+  font: 500 7px/1 "Alexandria";
+}
+
+.details-audio-language__chips {
+  margin-bottom: 0;
+}
+
+.details-audio-language__chips.la-chip-bar--segmented .la-chip {
+  flex: 1;
+  justify-content: center;
+}
+
+.details-hub {
+  margin: 0 0 22px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background:
+    radial-gradient(120% 80% at 100% 0%, color-mix(in srgb, var(--brand) 10%, transparent), transparent 55%),
+    var(--white);
+  overflow: hidden;
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--ink) 5%, transparent);
+}
+
+.details-hub__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px 12px 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 85%, transparent);
+}
+
+.screen--live-anime .details-hub__stat strong.details-hub__source {
+  font-size: 8px;
+  line-height: 1.25;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.details-hub__stat {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 8px 9px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--paper) 70%, var(--white));
+}
+
+.details-hub__stat > svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: var(--brand);
+  opacity: 0.9;
+}
+
+.details-hub__stat > span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.details-hub__stat strong {
+  overflow: hidden;
+  color: var(--ink);
+  font: 600 11px/1.2 "Unbounded";
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.details-hub__stat strong.details-hub__source {
+  font: 600 9px/1.2 "Alexandria";
+}
+
+.details-hub__stat small {
+  color: var(--muted);
+  font: 500 7px/1.2 "Alexandria";
+}
+
+.details-hub__actions {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.details-hub__primary {
+  position: relative;
+  width: 100%;
+  min-height: 62px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--brand) 42%, var(--line));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--brand) 11%, var(--white));
+  color: var(--ink);
+  text-align: start;
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform var(--motion-standard), border-color var(--motion-standard), background var(--motion-standard);
+}
+
+.details-hub__primary:hover {
+  transform: translateY(-1px);
+  border-color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 15%, var(--white));
+}
+
+.details-hub__primary--today {
+  border-color: color-mix(in srgb, var(--success) 40%, var(--line));
+  background: color-mix(in srgb, var(--success) 8%, var(--white));
+}
+
+.details-hub__primary-icon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: var(--brand);
+  color: #090a12;
+}
+
+.details-hub__primary--today .details-hub__primary-icon {
+  background: color-mix(in srgb, var(--success) 82%, #0a2018);
+  color: #f4fff8;
+}
+
+.details-hub__primary-copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.details-hub__primary-copy small {
+  color: var(--muted);
+  font: 500 8px/1.2 "Alexandria";
+}
+
+.details-hub__primary-copy strong {
+  overflow: hidden;
+  color: var(--ink);
+  font: 700 12px/1.35 "Alexandria";
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.details-hub__primary em {
+  color: var(--muted);
+  font: 600 9px/1 "Fragment Mono", monospace;
+  font-style: normal;
+}
+
+.details-hub__primary-arrow {
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+.details-hub__progress {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: color-mix(in srgb, var(--line) 75%, transparent);
+}
+
+.details-hub__progress > span {
+  display: block;
+  height: 100%;
+  background: color-mix(in srgb, var(--brand) 70%, var(--line));
+  transition: width var(--motion-standard);
+}
+
+.details-hub__primary--today .details-hub__progress > span {
+  background: color-mix(in srgb, var(--success) 70%, var(--line));
+}
+
+.details-hub__latest {
+  width: 100%;
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--paper);
+  color: var(--ink);
+  text-align: start;
+  cursor: pointer;
+  transition: border-color var(--motion-standard), background var(--motion-standard);
+}
+
+.details-hub__latest:hover {
+  border-color: color-mix(in srgb, var(--brand) 45%, var(--line));
+  background: color-mix(in srgb, var(--brand) 5%, var(--paper));
+}
+
+.details-hub__latest--secondary {
+  min-height: 48px;
+  padding-block: 9px;
+}
+
+.details-hub__latest-copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.details-hub__latest-copy small {
+  color: var(--muted);
+  font: 500 7px/1.2 "Alexandria";
+}
+
+.details-hub__latest-copy strong {
+  overflow: hidden;
+  font: 600 10px/1.35 "Alexandria";
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.details-hub__latest-icon {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--brand) 14%, var(--white));
+  color: var(--brand);
+}
+
+.details-hub__follow {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--indigo) 4%, var(--white));
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: background var(--motion-standard);
+}
+
+.details-hub__follow:hover {
+  background: color-mix(in srgb, var(--indigo) 7%, var(--white));
+}
+
+.details-hub__follow--active {
+  background: color-mix(in srgb, var(--indigo) 8%, var(--white));
+}
+
+.details-hub__follow-icon {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--indigo);
+  background: color-mix(in srgb, var(--indigo) 10%, var(--white));
+}
+
+.details-hub__follow-copy {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 2px;
+}
+
+.details-hub__follow-copy strong {
+  font: 600 10px/1.3 "Alexandria";
+}
+
+.details-hub__follow-copy small {
+  color: var(--muted);
+  font: 500 8px/1.3 "Alexandria";
+}
+
+.details-hub__follow-action {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--indigo);
+  font: 600 9px/1 "Alexandria";
+}
+
+@media (max-width: 380px) {
+  .details-hub__stats {
+    grid-template-columns: 1fr;
+  }
+
+  .details-hub__primary {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .details-hub__primary-arrow {
+    display: none;
+  }
+}

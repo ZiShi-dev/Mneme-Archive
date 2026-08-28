@@ -1,0 +1,383 @@
+.search-results-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 2px 0 12px;
+}
+
+.search-results-head__copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.search-results-head__copy h2 {
+  margin: 0;
+  color: var(--ink);
+  font: 700 13px/1.2 "Reem Kufi";
+}
+
+.search-results-head__copy p {
+  margin: 0;
+  color: var(--muted);
+  font: 500 9px/1.4 "Alexandria";
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-results-head__copy p em {
+  color: var(--brand);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.search-results-head__badge {
+  flex: 0 0 auto;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--brand) 10%, var(--white));
+  color: var(--brand);
+  font: 700 8px/1 "Fragment Mono";
+}
+
+.search-results-alert {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, #b45309 28%, var(--line));
+  border-radius: 14px;
+  background: color-mix(in srgb, #b45309 7%, var(--white));
+  color: #92400e;
+  font: 500 9px/1.45 "Alexandria";
+}
+
+.search-results {
+  display: grid;
+  gap: 10px;
+}
+
+.search-results__group {
+  display: grid;
+  gap: 6px;
+}
+
+.search-results__group-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 2px;
+  color: var(--ink);
+  font: 700 10px/1 "Alexandria";
+}
+
+.search-results__group-head .source-logo {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  padding: 2px;
+}
+
+.search-results__group-head > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-results__group-head em {
+  margin-inline-start: auto;
+  min-width: 22px;
+  min-height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--line) 28%, var(--white));
+  color: var(--muted);
+  font: 700 8px/1 "Fragment Mono";
+  font-style: normal;
+}
+
+.search-results__list {
+  display: grid;
+  gap: 6px;
+}
+
+.search-results__more {
+  width: 100%;
+  min-height: 36px;
+  border: 1px dashed color-mix(in srgb, var(--brand) 28%, var(--line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--brand) 4%, var(--white));
+  color: var(--brand);
+  font: 600 9px/1 "Alexandria";
+  cursor: pointer;
+  transition: background var(--motion-standard), border-color var(--motion-standard);
+}
+
+.search-results__more:hover {
+  background: color-mix(in srgb, var(--brand) 8%, var(--white));
+  border-color: color-mix(in srgb, var(--brand) 42%, var(--line));
+}
+
+.search-results__more--collapse {
+  border-style: solid;
+  background: transparent;
+  color: var(--muted);
+}
+
+.search-results-pagination {
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--white);
+}
+
+.search-results-pagination > button {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--paper);
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: border-color var(--motion-standard), color var(--motion-standard), opacity var(--motion-standard);
+}
+
+.search-results-pagination > button:hover:not(:disabled) {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.search-results-pagination > button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.search-results-pagination > span {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  color: var(--muted);
+  font: 500 8px/1 "Alexandria";
+}
+
+.search-results-pagination strong {
+  color: var(--ink);
+  font: 700 10px/1 "Fragment Mono";
+}
+
+.search-result-row {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--white);
+  transition: border-color var(--motion-standard), box-shadow var(--motion-standard), transform var(--motion-standard);
+}
+
+.search-result-row:hover {
+  border-color: color-mix(in srgb, var(--brand) 30%, var(--line));
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--brand) 7%, transparent);
+  transform: translateY(-1px);
+}
+
+.search-result-row__open {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px 7px 10px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.search-result-row__media {
+  position: relative;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 62px;
+  overflow: hidden;
+  border-radius: 9px;
+  background: var(--outside);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+.search-result-row__media .remote-cover,
+.search-result-row__media .cover {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+.search-result-row__type {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  min-height: 18px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 5px;
+  border-radius: 6px;
+  color: #fff;
+  background: rgba(9, 10, 18, 0.72);
+  font: 600 7px/1 "Alexandria";
+  backdrop-filter: blur(6px);
+}
+
+.search-result-row__type--novel {
+  color: #ffd48a;
+}
+
+.search-result-row__type--anime {
+  color: var(--anime);
+}
+
+.search-result-row__type--movie {
+  color: var(--film);
+}
+
+.search-result-row__type--series {
+  color: #c9a4ff;
+}
+
+.search-result-row__media > .cover-audio-badge {
+  top: 4px;
+  left: 4px;
+  min-height: 14px;
+  max-width: calc(100% - 8px);
+  padding: 0 4px;
+  font-size: 6px;
+}
+
+.search-result-row__body {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  padding-block: 0;
+}
+
+.search-result-row__body > strong {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--ink);
+  font: 700 10px/1.35 "Instrument Sans", "Alexandria";
+}
+
+.search-result-row__subtitle {
+  overflow: hidden;
+  color: var(--muted);
+  font: 500 8px/1.35 "Alexandria";
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-result-row__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  max-width: 100%;
+  color: var(--brand);
+  font: 600 8px/1 "Alexandria";
+}
+
+.search-result-row__meta .source-logo {
+  width: 15px;
+  height: 15px;
+  padding: 2px;
+  flex-shrink: 0;
+}
+
+.search-result-row__meta > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-result-row__chevron {
+  flex: 0 0 auto;
+  align-self: center;
+  color: var(--muted);
+  opacity: 0.65;
+}
+
+.search-result-skeleton {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--white);
+}
+
+.search-result-skeleton__cover,
+.search-result-skeleton__copy i {
+  border-radius: 10px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--line) 40%, var(--white)) 0%,
+    color-mix(in srgb, var(--line) 18%, var(--white)) 50%,
+    color-mix(in srgb, var(--line) 40%, var(--white)) 100%
+  );
+  background-size: 200% 100%;
+  animation: searchResultShimmer 1.2s ease-in-out infinite;
+}
+
+.search-result-skeleton__cover {
+  width: 44px;
+  height: 62px;
+  flex: 0 0 auto;
+}
+
+.search-result-skeleton__copy {
+  flex: 1;
+  display: grid;
+  align-content: center;
+  gap: 8px;
+}
+
+.search-result-skeleton__copy i {
+  display: block;
+  height: 10px;
+}
+
+.search-result-skeleton__copy i:nth-child(1) { width: 78%; }
+.search-result-skeleton__copy i:nth-child(2) { width: 52%; }
+.search-result-skeleton__copy i:nth-child(3) { width: 34%; height: 8px; }
+
+@keyframes searchResultShimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+[dir="rtl"] .search-result-row__body > strong {
+  text-align: start;
+}
+
+.app-shell--dark .search-result-row,
+.app-shell--dark .search-result-skeleton {
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.14);
+}

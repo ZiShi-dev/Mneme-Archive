@@ -1,0 +1,480 @@
+/* 桜 Sakura atmosphere — scoped to Sakura / Yozakura only */
+
+[data-theme="sakura"] .phone-frame,
+[data-theme="yozakura"] .phone-frame {
+  isolation: isolate;
+  background-color: var(--paper);
+  background-image:
+    radial-gradient(ellipse at 18% -8%, color-mix(in srgb, var(--sakura) 22%, transparent), transparent 46%),
+    radial-gradient(ellipse at 92% 108%, color-mix(in srgb, var(--ume) 10%, transparent), transparent 42%),
+    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--ume) 7%, transparent) 0.6px, transparent 0.8px);
+  background-size: auto, auto, 8px 8px;
+}
+
+[data-theme="sakura"] .phone-frame {
+  background-image:
+    radial-gradient(ellipse at 16% -10%, color-mix(in srgb, var(--sakura) 28%, transparent), transparent 48%),
+    radial-gradient(ellipse at 100% 110%, color-mix(in srgb, var(--nadeshiko) 14%, transparent), transparent 44%),
+    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--ume) 6%, transparent) 0.55px, transparent 0.75px);
+}
+
+[data-theme="yozakura"] .phone-frame {
+  background-image:
+    radial-gradient(ellipse at 20% -6%, color-mix(in srgb, var(--sakura) 16%, transparent), transparent 44%),
+    radial-gradient(ellipse at 88% 108%, color-mix(in srgb, var(--ume) 18%, transparent), transparent 48%),
+    radial-gradient(circle at 1px 1px, rgba(255,244,247,.04) 0.55px, transparent 0.75px);
+}
+
+[data-theme="sakura"] .phone-frame:has(.screen--home)::before,
+[data-theme="yozakura"] .phone-frame:has(.screen--home)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: .03;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='36' viewBox='0 0 72 36'%3E%3Cpath fill='none' stroke='%23C94F6D' stroke-width='1.2' d='M0 36c12-18 24-18 36 0s24 18 36 0'/%3E%3C/svg%3E");
+  background-size: 72px 36px;
+}
+
+[data-theme="sakura"] .sakura-fall,
+[data-theme="yozakura"] .sakura-fall {
+  overflow: hidden;
+  pointer-events: none;
+}
+
+[data-theme="sakura"] .sakura-fall--stage,
+[data-theme="yozakura"] .sakura-fall--stage {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+}
+
+[data-theme="sakura"] .sakura-fall--frame,
+[data-theme="yozakura"] .sakura-fall--frame {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+}
+
+[data-theme="sakura"] .sakura-fall canvas,
+[data-theme="yozakura"] .sakura-fall canvas {
+  pointer-events: none;
+}
+
+[data-theme="sakura"] .phone-frame,
+[data-theme="yozakura"] .phone-frame,
+[data-theme="sakura"] .desktop-note,
+[data-theme="yozakura"] .desktop-note {
+  z-index: 1;
+}
+
+[data-theme="sakura"] .phone-frame:has(.settings-page) .sakura-fall,
+[data-theme="yozakura"] .phone-frame:has(.settings-page) .sakura-fall {
+  opacity: .28;
+}
+
+[data-theme="sakura"] .page-header,
+[data-theme="sakura"] .content,
+[data-theme="yozakura"] .page-header,
+[data-theme="yozakura"] .content {
+  position: relative;
+  z-index: 2;
+}
+
+[data-theme="sakura"] .bottom-nav,
+[data-theme="yozakura"] .bottom-nav {
+  z-index: 10;
+}
+
+[data-theme="sakura"] .notify-sheet-backdrop,
+[data-theme="sakura"] .follow-sheet-backdrop,
+[data-theme="sakura"] .catalog-filter-picker-backdrop,
+[data-theme="sakura"] .catalog-source-picker-backdrop,
+[data-theme="sakura"] .management-source-picker-backdrop,
+[data-theme="sakura"] .reader-settings-backdrop,
+[data-theme="sakura"] .source-config-backdrop,
+[data-theme="sakura"] .modal-backdrop,
+[data-theme="yozakura"] .notify-sheet-backdrop,
+[data-theme="yozakura"] .follow-sheet-backdrop,
+[data-theme="yozakura"] .catalog-filter-picker-backdrop,
+[data-theme="yozakura"] .catalog-source-picker-backdrop,
+[data-theme="yozakura"] .management-source-picker-backdrop,
+[data-theme="yozakura"] .reader-settings-backdrop,
+[data-theme="yozakura"] .source-config-backdrop,
+[data-theme="yozakura"] .modal-backdrop {
+  z-index: 100;
+}
+
+.sakura-burst {
+  position: absolute;
+  z-index: 40;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.sakura-burst i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 10px;
+  height: 12px;
+  margin: -6px 0 0 -5px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 24'%3E%3Cpath fill='%23C94F6D' d='M10 1.4c-1.9 3.5-5.1 6.8-4.4 12.2.5 3.7 3.6 6.3 6.6 5.4 2.6-.7 4.3-3.5 4.1-7C15.9 7 12.7 4 10 1.4z'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  animation: sakura-pop 620ms var(--motion-petal) forwards;
+}
+
+.sakura-burst i:nth-child(1) { --dx: -16px; --dy: -22px; --rot: -50deg; }
+.sakura-burst i:nth-child(2) { --dx: 4px; --dy: -28px; --rot: 20deg; animation-delay: 40ms; }
+.sakura-burst i:nth-child(3) { --dx: 18px; --dy: -16px; --rot: 70deg; animation-delay: 80ms; }
+
+@keyframes sakura-pop {
+  0% { transform: translate3d(0, 0, 0) scale(.3) rotate(0deg); opacity: 0; }
+  28% { opacity: 1; }
+  100% { transform: translate3d(var(--dx), var(--dy), 0) scale(.85) rotate(var(--rot)); opacity: 0; }
+}
+
+[data-theme="sakura"] .details-favorite.active,
+[data-theme="sakura"] .button--square.is-favorite,
+[data-theme="yozakura"] .details-favorite.active,
+[data-theme="yozakura"] .button--square.is-favorite {
+  color: var(--favorite);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sakura-fall,
+  .sakura-burst {
+    display: none !important;
+  }
+  [data-theme="sakura"] .live-manga-card,
+  [data-theme="yozakura"] .live-manga-card,
+  [data-theme="sakura"] .hero-card,
+  [data-theme="yozakura"] .hero-card,
+  [data-theme="sakura"] .button,
+  [data-theme="yozakura"] .button {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+[data-theme="sakura"] .page-header h1,
+[data-theme="sakura"] .desktop-note h2,
+[data-theme="sakura"] .settings-profile strong,
+[data-theme="sakura"] .la-panel__copy h2,
+[data-theme="sakura"] .source-directory__header h2,
+[data-theme="yozakura"] .page-header h1,
+[data-theme="yozakura"] .desktop-note h2,
+[data-theme="yozakura"] .settings-profile strong,
+[data-theme="yozakura"] .la-panel__copy h2,
+[data-theme="yozakura"] .source-directory__header h2 {
+  font-family: var(--font-display);
+}
+
+[data-theme="sakura"] .desktop-note__brand,
+[data-theme="yozakura"] .desktop-note__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ume);
+  font: 600 10px/1 var(--font-jp);
+  letter-spacing: .22em;
+}
+
+[data-theme="sakura"] .desktop-note__brand svg,
+[data-theme="yozakura"] .desktop-note__brand svg {
+  color: var(--nadeshiko);
+}
+
+[data-theme="sakura"] .desktop-note__mark,
+[data-theme="yozakura"] .desktop-note__mark {
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--sakura) 22%, transparent);
+}
+
+[data-theme="sakura"] .desktop-note,
+[data-theme="yozakura"] .desktop-note {
+  position: relative;
+}
+
+[data-theme="sakura"] .desktop-note::before,
+[data-theme="yozakura"] .desktop-note::before {
+  content: "桜";
+  position: absolute;
+  top: -8px;
+  inset-inline-start: -6px;
+  font: 500 72px/1 var(--font-display);
+  color: color-mix(in srgb, var(--sakura) 28%, transparent);
+  pointer-events: none;
+}
+
+[data-theme="sakura"] .hero-card {
+  background:
+    radial-gradient(ellipse at 90% 8%, color-mix(in srgb, #fff 28%, transparent), transparent 40%),
+    linear-gradient(150deg, #8A4460 0%, var(--kobai) 52%, var(--nadeshiko) 100%);
+  color: #fff;
+  border: 1px solid color-mix(in srgb, var(--sakura) 28%, transparent);
+  box-shadow: 0 18px 36px color-mix(in srgb, var(--ume) 22%, transparent);
+}
+
+[data-theme="yozakura"] .hero-card {
+  background:
+    radial-gradient(ellipse at 86% 10%, color-mix(in srgb, var(--sakura) 22%, transparent), transparent 44%),
+    linear-gradient(155deg, #24151C 0%, #3A2230 48%, #5A3344 100%);
+  color: #fff;
+  border-color: color-mix(in srgb, var(--sakura) 22%, transparent);
+  box-shadow: 0 18px 36px color-mix(in srgb, var(--ume) 22%, transparent);
+}
+
+[data-theme="sakura"] .hero-card::before,
+[data-theme="sakura"] .hero-card::after,
+[data-theme="yozakura"] .hero-card::before,
+[data-theme="yozakura"] .hero-card::after {
+  border-color: rgba(255, 244, 247, .22) transparent transparent transparent;
+}
+
+[data-theme="sakura"] .hero-card h2,
+[data-theme="yozakura"] .hero-card h2 {
+  font-family: var(--font-display);
+  color: #fff;
+}
+
+[data-theme="sakura"] .hero-card p,
+[data-theme="sakura"] .hero-card .pill--light,
+[data-theme="yozakura"] .hero-card p,
+[data-theme="yozakura"] .hero-card .pill--light {
+  color: rgba(255, 244, 247, .94);
+}
+
+[data-theme="sakura"] .content .hero-card__time,
+[data-theme="sakura"] .content .hero-card__subtitle,
+[data-theme="sakura"] .content .hero-card__chapter-name,
+[data-theme="sakura"] .content .hero-card__progress-label,
+[data-theme="sakura"] .content .hero-card__source,
+[data-theme="yozakura"] .content .hero-card__time,
+[data-theme="yozakura"] .content .hero-card__subtitle,
+[data-theme="yozakura"] .content .hero-card__chapter-name,
+[data-theme="yozakura"] .content .hero-card__progress-label,
+[data-theme="yozakura"] .content .hero-card__source {
+  color: rgba(255, 244, 247, .95);
+}
+
+[data-theme="sakura"] .content .hero-card__chapter-badge,
+[data-theme="yozakura"] .content .hero-card__chapter-badge {
+  border-color: rgba(255, 244, 247, .38);
+  background: rgba(255, 244, 247, .18);
+  color: #fff;
+}
+
+[data-theme="sakura"] .content .hero-card__pill {
+  border-color: rgba(255, 252, 251, .55);
+  background: rgba(255, 252, 251, .96);
+  color: var(--ume);
+}
+
+[data-theme="sakura"] .content .hero-card__pill > svg {
+  color: var(--ume);
+}
+
+[data-theme="yozakura"] .content .hero-card__pill {
+  border-color: rgba(255, 244, 247, .32);
+  background: rgba(255, 244, 247, .14);
+  color: #fff;
+}
+
+[data-theme="yozakura"] .content .hero-card__pill > svg {
+  color: var(--sakura);
+}
+
+[data-theme="sakura"] .content .hero-card__progress,
+[data-theme="yozakura"] .content .hero-card__progress,
+[data-theme="sakura"] .hero-card .progress,
+[data-theme="yozakura"] .hero-card .progress {
+  background: rgba(255, 244, 247, .32);
+}
+
+[data-theme="sakura"] .content .hero-card__progress span,
+[data-theme="yozakura"] .content .hero-card__progress span,
+[data-theme="sakura"] .hero-card .progress span,
+[data-theme="yozakura"] .hero-card .progress span {
+  background: #fff;
+}
+
+[data-theme="sakura"] .hero-card .progress::after,
+[data-theme="yozakura"] .hero-card .progress::after {
+  background: rgba(255, 244, 247, .42);
+}
+
+[data-theme="sakura"] .eyebrow {
+  color: var(--ume);
+}
+
+[data-theme="sakura"] .la-chip:not(.active),
+[data-theme="sakura"] .home-hero-panel__filters .la-chip:not(.active) {
+  color: var(--sumi);
+  font-weight: 700;
+}
+
+[data-theme="yozakura"] .la-chip:not(.active),
+[data-theme="yozakura"] .home-hero-panel__filters .la-chip:not(.active) {
+  color: color-mix(in srgb, var(--sakura) 55%, var(--text));
+}
+
+[data-theme="sakura"] .button--primary,
+[data-theme="sakura"] .button--dark,
+[data-theme="sakura"] .hero-card__cta,
+[data-theme="sakura"] .notify-sheet__done,
+[data-theme="yozakura"] .button--primary,
+[data-theme="yozakura"] .button--dark,
+[data-theme="yozakura"] .hero-card__cta,
+[data-theme="yozakura"] .notify-sheet__done {
+  background: var(--cta);
+  color: var(--cta-text);
+  border-color: var(--cta);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--kobai) 26%, transparent);
+}
+
+[data-theme="sakura"] .content .hero-card__cta,
+[data-theme="sakura"] .hero-card .hero-card__cta {
+  background: var(--ume);
+  border-color: var(--ume);
+  color: #fff;
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--ume) 32%, transparent);
+}
+
+[data-theme="sakura"] .source-logo,
+[data-theme="yozakura"] .source-logo {
+  background: color-mix(in srgb, var(--nadeshiko) 78%, var(--ume));
+  color: #fff;
+}
+
+[data-theme="sakura"] .settings-group,
+[data-theme="sakura"] .notification-row,
+[data-theme="sakura"] .update-card,
+[data-theme="sakura"] .source-directory-card,
+[data-theme="sakura"] .catalog-row,
+[data-theme="sakura"] .library-card,
+[data-theme="sakura"] .live-manga-card,
+[data-theme="sakura"] .home-discovery,
+[data-theme="yozakura"] .settings-group,
+[data-theme="yozakura"] .notification-row,
+[data-theme="yozakura"] .update-card,
+[data-theme="yozakura"] .source-directory-card,
+[data-theme="yozakura"] .catalog-row,
+[data-theme="yozakura"] .library-card,
+[data-theme="yozakura"] .live-manga-card,
+[data-theme="yozakura"] .home-discovery {
+  border-radius: var(--radius-card);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--ume) 6%, transparent);
+}
+
+[data-theme="sakura"] .notify-sheet,
+[data-theme="sakura"] .catalog-filter-picker,
+[data-theme="sakura"] .catalog-source-picker,
+[data-theme="sakura"] .management-source-picker,
+[data-theme="yozakura"] .notify-sheet,
+[data-theme="yozakura"] .catalog-filter-picker,
+[data-theme="yozakura"] .catalog-source-picker,
+[data-theme="yozakura"] .management-source-picker {
+  background: var(--washi);
+  border-color: color-mix(in srgb, var(--sakura) 28%, var(--line));
+}
+
+[data-theme="sakura"] .notify-sheet-backdrop,
+[data-theme="sakura"] .catalog-filter-picker-backdrop,
+[data-theme="sakura"] .catalog-source-picker-backdrop {
+  background: rgba(121, 59, 85, .22);
+}
+
+[data-theme="yozakura"] .notify-sheet-backdrop,
+[data-theme="yozakura"] .catalog-filter-picker-backdrop,
+[data-theme="yozakura"] .catalog-source-picker-backdrop {
+  background: rgba(23, 18, 24, .48);
+}
+
+[data-theme="sakura"] .bottom-nav {
+  background: color-mix(in srgb, var(--washi) 92%, transparent);
+  border-color: color-mix(in srgb, var(--line) 80%, transparent);
+}
+
+[data-theme="yozakura"] .bottom-nav {
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  border-color: color-mix(in srgb, var(--line) 80%, transparent);
+}
+
+[data-theme="sakura"] .bottom-nav button.active {
+  color: var(--ume);
+}
+
+[data-theme="yozakura"] .bottom-nav button.active {
+  color: var(--sakura);
+}
+
+[data-theme="sakura"] .bottom-nav button.active::before,
+[data-theme="yozakura"] .bottom-nav button.active::before {
+  border-top-color: var(--kobai);
+  box-shadow: 0 4px 0 -1px color-mix(in srgb, var(--sakura) 55%, transparent);
+}
+
+[data-theme="sakura"] .icon-button.has-dot::after,
+[data-theme="yozakura"] .icon-button.has-dot::after {
+  background: var(--kobai);
+}
+
+[data-theme="sakura"] .settings-profile,
+[data-theme="yozakura"] .settings-profile {
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--sakura) 18%, transparent), transparent 46%),
+    var(--white);
+  border-color: color-mix(in srgb, var(--sakura) 32%, var(--line));
+}
+
+[data-theme="sakura"] .settings-profile__seal,
+[data-theme="yozakura"] .settings-profile__seal {
+  background: transparent;
+  border: 0;
+}
+
+[data-theme="sakura"] .theme-selector > button.active,
+[data-theme="yozakura"] .theme-selector > button.active {
+  border-color: var(--kobai);
+  background: color-mix(in srgb, var(--sakura) 16%, var(--paper));
+  color: var(--ume);
+}
+
+[data-theme="sakura"] .app-toast {
+  background: color-mix(in srgb, var(--washi) 92%, transparent);
+  border-color: color-mix(in srgb, var(--sakura) 30%, var(--line));
+}
+
+[data-theme="yozakura"] .app-toast {
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  border-color: color-mix(in srgb, var(--sakura) 30%, var(--line));
+}
+
+[data-theme="sakura"] .screen--home .page-header h1,
+[data-theme="yozakura"] .screen--home .page-header h1 {
+  letter-spacing: -.02em;
+}
+
+body[data-theme="sakura"] {
+  background-color: #F7E8EC;
+  background-image: radial-gradient(circle at 18% 10%, rgba(229, 151, 178, .14), transparent 34%);
+}
+
+body[data-theme="yozakura"] {
+  background-color: #120E13;
+  background-image: radial-gradient(circle at 18% 10%, rgba(232, 168, 186, .08), transparent 34%);
+}
+
+body[data-theme="ink"] {
+  background-color: #06070d;
+  background-image: radial-gradient(circle at 18% 12%, rgba(139, 124, 255, .08), transparent 32%);
+}
+
+body[data-theme="paper"] {
+  background-color: #e6e1d8;
+  background-image: radial-gradient(circle at 18% 12%, rgba(91, 71, 214, .06), transparent 32%);
+}

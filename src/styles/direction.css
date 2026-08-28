@@ -1,0 +1,69 @@
+/* LTR / RTL : la direction suit html[dir], pas des left/right figés */
+
+[dir="ltr"] .lucide-chevron-left,
+[dir="ltr"] .page-header .lucide-arrow-right,
+[dir="ltr"] .reader-header__back svg,
+[dir="ltr"] .reader-header__back-icon,
+[dir="ltr"] .live-video-cinema-back svg {
+  transform: scaleX(-1);
+}
+
+.icon-button.has-dot::after {
+  inset-inline-end: 8px;
+  right: auto;
+}
+
+.favorite-bookmark {
+  inset-inline-end: 0;
+  right: auto;
+}
+
+.favorite-bookmark--card {
+  inset-inline-start: 14px;
+  inset-block-start: 14px;
+  left: auto;
+  right: auto;
+}
+
+.cover__label {
+  inset-inline-start: 10px;
+  left: auto;
+}
+
+.count-badge {
+  inset-inline-end: 7px;
+  right: auto;
+}
+
+.library-card .library-card__copy > strong {
+  padding-inline-end: 27px;
+  padding-right: 0;
+  padding-left: 0;
+}
+
+[dir="rtl"] .library-card .library-card__copy > strong {
+  padding-inline-end: 27px;
+}
+
+.chapter-number {
+  margin-inline-end: 11px;
+}
+
+.new-badge {
+  margin-inline-end: 7px;
+}
+
+.filter-icon {
+  margin-inline-start: auto;
+}
+
+.live-manga-card,
+.live-manga-card__main,
+.live-manga-card strong[dir="auto"] {
+  text-align: start;
+}
+
+[dir="rtl"] .library-card .library-card__copy > strong {
+  direction: inherit;
+  text-align: start;
+}

@@ -1,0 +1,63 @@
+export const manga = [
+  {
+    id: "sword",
+    title: "Liberated Sword Immortal",
+    subtitle: "في عالم تحكمه النساء",
+    source: "MangaLik",
+    status: "مستمرة",
+    chapters: 162,
+    unread: 3,
+    progress: 68,
+    lastChapter: 109,
+    accent: "violet",
+    mark: "劍",
+    description:
+      "بعد استيقاظه في عالم غير متوقع، يتعين على سيد السيف أن يعيد بناء طريقه ويفهم قوانين هذا العالم الجديد.",
+  },
+  {
+    id: "night",
+    title: "Nightwatcher",
+    subtitle: "سجلات الليل",
+    source: "MangaLik",
+    status: "مستمرة",
+    chapters: 95,
+    unread: 1,
+    progress: 34,
+    lastChapter: 32,
+    accent: "indigo",
+    mark: "夜",
+    description:
+      "حارس وحيد يحمي مدينة تعود فيها الأساطير القديمة إلى الحياة عندما تغيب الشمس.",
+  },
+  {
+    id: "core",
+    title: "Golden Core Is a Star",
+    subtitle: "الزراعة السماوية",
+    source: "MangaLik",
+    status: "مستمرة",
+    chapters: 78,
+    unread: 0,
+    progress: 12,
+    lastChapter: 9,
+    accent: "amber",
+    mark: "星",
+    description:
+      "تلتقي الزراعة الروحية بالنجوم في مغامرة يكشف فيها كل تقدم عن كون أكثر اتساعًا.",
+  },
+  {
+    id: "cube",
+    title: "Super Cube",
+    subtitle: "قوة الأبعاد",
+    source: "MangaLik",
+    status: "مكتملة",
+    chapters: 412,
+    unread: 12,
+    progress: 86,
+    lastChapter: 354,
+    accent: "teal",
+    mark: "方",
+    description:
+      "مكعب غامض يغيّر حياة طالب ويفتح أبوابًا نحو أبعاد منسية.",
+  },
+];
+
