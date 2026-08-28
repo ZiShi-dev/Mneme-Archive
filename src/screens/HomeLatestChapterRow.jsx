@@ -1,6 +1,6 @@
 import React from "react";
 import { ChevronLeft } from "lucide-react";
-import { getSourceProfile } from "../config/sources";
+import { getSourceProfile, getSourceDisplayName } from "../config/sources";
 import { contentTypes } from "../features/sources/contentTypes";
 import { RemoteCover, SourceLogo } from "../features/sources";
 import { isVideoMediaType } from "../features/sources/mediaPresentation";
@@ -40,7 +40,7 @@ export function HomeLatestChapterRow({ entry, onClick }) {
       <span className="home-latest-row__body">
         <span className="home-latest-row__meta">
           <SourceLogo sourceId={entry.item.sourceId} className="home-latest-row__source" />
-          <small>{profile.arabicName || profile.name}</small>
+          <small>{getSourceDisplayName(profile)}</small>
           <em>{mediaLabel}</em>
           {timeLabel && (
             <time dateTime={entry.publishedAt} className="home-latest-row__time">

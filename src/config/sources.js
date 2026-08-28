@@ -1,4 +1,4 @@
-import { t } from "../i18n/runtime.js";
+import { getLocale, t } from "../i18n/runtime.js";
 
 export const MANGALIK_LOGO_URL = "https://io.mangalik.net/wp-content/app/lekmanganet/lekmanga.png";
 export const AZORAFLY_LOGO_URL = "https://storage.azorafly.com/public/upload/2025/12/24/c925c7f3-2310-4e90-9b62-7fae04fe1c36.webp";
@@ -227,6 +227,13 @@ export const initialSourcePreferences = Object.fromEntries(
 
 export function getSourceProfile(sourceId) {
   return sourceProfiles[sourceId] || sourceProfiles.mangalik;
+}
+
+export function getSourceDisplayName(sourceIdOrProfile, locale = getLocale()) {
+  const profile = typeof sourceIdOrProfile === "string"
+    ? getSourceProfile(sourceIdOrProfile)
+    : sourceIdOrProfile || getSourceProfile();
+  return locale === "ar" ? (profile.arabicName || profile.name) : profile.name;
 }
 
 export const SOURCE_LANGUAGE_LABELS = {

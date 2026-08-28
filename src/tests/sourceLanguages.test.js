@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getSourceLanguageLabels, sourceProfiles } from "../config/sources.js";
+import { getSourceDisplayName, getSourceLanguageLabels, sourceProfiles } from "../config/sources.js";
+
+test("getSourceDisplayName uses Arabic name in Arabic locale", () => {
+  assert.equal(getSourceDisplayName("wiflix", "ar"), "ويفليكس");
+  assert.equal(getSourceDisplayName("wiflix", "fr"), "Wiflix");
+});
 
 test("getSourceLanguageLabels returns Arabic labels for Arabic sources", () => {
   assert.deepEqual(getSourceLanguageLabels("mangalik"), ["العربية"]);

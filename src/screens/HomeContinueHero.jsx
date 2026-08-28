@@ -1,6 +1,6 @@
 import React from "react";
 import { BookOpen, ChevronLeft, Clapperboard } from "lucide-react";
-import { getSourceProfile } from "../config/sources";
+import { getSourceProfile, getSourceDisplayName } from "../config/sources";
 import { Cover } from "../components/manga/Cover";
 import { RemoteCover, SourceLogo } from "../features/sources";
 import { resolveBookmarkType } from "../features/sources/contentTypes";
@@ -137,7 +137,7 @@ export function HomeContinueHero({
         <div className="hero-card__footer">
           <span className="hero-card__source">
             <SourceLogo sourceId={record.sourceId} className="hero-card__source-logo" />
-            <span>{profile.arabicName || profile.name}</span>
+            <span>{getSourceDisplayName(profile)}</span>
           </span>
           <button
             type="button"

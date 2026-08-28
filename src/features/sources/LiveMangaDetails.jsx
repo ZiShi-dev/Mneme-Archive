@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ArrowRight, ArrowUpDown, Bell, BellRing, BookOpen, Bookmark, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clapperboard, ExternalLink, Lock, RefreshCw, Search, Tags, Wifi } from "lucide-react";
 import { useToast } from "../../components/ui/ToastProvider";
-import { getSourceProfile, resolveSourceId } from "../../config/sources";
+import { getSourceProfile, getSourceDisplayName, resolveSourceId } from "../../config/sources";
 import { AccessibleSearchField } from "../../components/ui/AccessibleSearchField";
 import { ChipFilterBar, ChipFilterButton } from "../../components/ui/ChipFilterBar";
 import { fetchSourceDetails } from "./sourceApi";
@@ -242,10 +242,10 @@ export function LiveMangaDetails({
   }, [availableAudioLanguages, seed.url]);
 
   const metaCaption = isVideo
-    ? [profile.arabicName || profile.name, item.totalEpisodes ? `${item.totalEpisodes} ${presentation.units}` : null]
+    ? [getSourceDisplayName(profile), item.totalEpisodes ? `${item.totalEpisodes} ${presentation.units}` : null]
       .filter(Boolean)
       .join(" · ")
-    : [profile.arabicName || profile.name, sourceId === "galaxynovels" && item.author ? `${t("details.authorLabel")}: ${item.author}` : null]
+    : [getSourceDisplayName(profile), sourceId === "galaxynovels" && item.author ? `${t("details.authorLabel")}: ${item.author}` : null]
       .filter(Boolean)
       .join(" · ");
   const chaptersCount = Math.max(chapters.length, Number(item.totalEpisodes) || 0);
