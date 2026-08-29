@@ -295,6 +295,12 @@ export function defaultVideoKinds(sourceId) {
   ];
 }
 
+export function enrichKindWithFilterPath(kind, sourceId) {
+  if (!kind || kind.slug === "all" || kind.filterPath) return kind;
+  const match = defaultContentKinds(sourceId).find((entry) => entry.slug === kind.slug);
+  return match?.filterPath ? { ...kind, filterPath: match.filterPath } : kind;
+}
+
 export function defaultContentKinds(sourceId) {
   const videoKinds = defaultVideoKinds(sourceId);
   if (videoKinds.length) return videoKinds;

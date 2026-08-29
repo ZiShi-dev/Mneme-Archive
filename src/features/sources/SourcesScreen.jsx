@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight, RefreshCw, Search, Wifi, X } from "lucide-react";
 import { useToast } from "../../components/ui/ToastProvider";
-import { defaultContentKinds, getSourceProfile, initialSourcePreferences, initialSources } from "../../config/sources";
+import { defaultContentKinds, enrichKindWithFilterPath, getSourceProfile, initialSourcePreferences, initialSources } from "../../config/sources";
 import { useI18n } from "../../i18n/I18nProvider";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { kvGetSync, kvSet } from "../../lib/storage/initStorage";
@@ -22,6 +22,8 @@ import {
   resolveEffectiveFilter,
   shouldUseCatalogScopedSearch,
   applyTaxonomyFilters,
+  filterCategoriesForKind,
+  isTaxonomyCompatibleWithKind,
   isTaxonomySelectionEmpty,
   supportsMultiTaxonomy,
 } from "./catalogView";
@@ -510,7 +512,9 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
   useEffect(() => {
     const nextBoot = resolveCatalogBoot(activeSource.id, activeSource.enabled !== false, effectiveMode);
     const savedFilter = nextBoot.filter;
-    const savedKind = nextBoot.kind;
+    const savedKind = nextBoot.kind
+      ? enrichKindWithFilterPath(nextBoot.kind, activeSource.id)
+      : null;
     const savedQuery = nextBoot.query;
     const savedPage = nextBoot.page;
     const cached = readCatalogSnapshot(activeSource.id, savedFilter, savedPage, savedQuery, savedKind);
@@ -618,6 +622,10 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
         ? contentTypes.anime.singular
         : contentTypes.manga.singular;
   const mediaKindsFallback = defaultContentKinds(activeSource.id);
+  const visibleCategories = useMemo(
+    () => filterCategoriesForKind(filters.categories, selectedKind),
+    [filters.categories, selectedKind],
+  );
 
   function handleOpenLiveManga(item) {
     rememberCatalogView(activeSource.id, selectedFilter, selectedKind, query, page, hasMore, items);
@@ -641,13 +649,19 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
   }
 
   function applyKindFilter(nextKind) {
-    const kind = !nextKind || nextKind.slug === "all" ? null : { ...nextKind, type: "kind" };
+    const kind = !nextKind || nextKind.slug === "all"
+      ? null
+      : enrichKindWithFilterPath({ ...nextKind, type: "kind" }, activeSource.id);
+    const nextFilter = kind && selectedFilter && !isTaxonomyCompatibleWithKind(selectedFilter, kind)
+      ? null
+      : selectedFilter;
     invalidateCatalogSnapshots(activeSource.id);
     clearSourceApiCache();
     setSelectedKind(kind);
+    setSelectedFilter(nextFilter);
     setPage(1);
     setSlideDirection("next");
-    void refreshCatalog({ kind, filter: selectedFilter, catalogQuery: query, page: 1, notify: true });
+    void refreshCatalog({ kind, filter: nextFilter, catalogQuery: query, page: 1, notify: true });
   }
 
   function applyTaxonomyFilter(nextFilter) {
@@ -711,7 +725,7 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
         <div className="search-box catalog-search"><span className="catalog-search__icon"><Search size={18} /></span><input value={query} onChange={(event) => updateQuery(event.target.value)} placeholder={effectiveMode === "full" ? t("sources.searchCatalog", { name: profile.name }) : t("sources.searchSaved")} aria-label={t("sources.searchCatalogAria", { name: profile.name })} />{query && <button className="catalog-search__clear" onClick={clearQuery} aria-label={t("common.clearSearch")}><X size={15} /></button>}<span className="catalog-search__source">{profile.initials}</span></div>
         {effectiveMode === "full" && activeSource.enabled !== false && (
           <CatalogFilters
-            categories={filters.categories}
+            categories={visibleCategories}
             tags={filters.tags}
             authors={filters.authors}
             kinds={filters.kinds?.length ? filters.kinds : mediaKindsFallback}

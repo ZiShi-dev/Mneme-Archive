@@ -1,0 +1,342 @@
+/* CinéVault — responsive mobile / tablette */
+
+.desktop-app .desktop-main,
+.desktop-app .phone-frame-wrap,
+.desktop-app .phone-frame {
+  max-width: 100%;
+}
+
+.desktop-app img,
+.desktop-app video,
+.desktop-app iframe {
+  max-width: 100%;
+}
+
+@media (max-width: 1024px) {
+  .desktop-app .live-reader--watch .video-watch-layout--series {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .desktop-app .screen--updates-desktop .updates-feed {
+    grid-template-columns: 1fr;
+  }
+
+  .desktop-app .screen--notify-desktop .notify-center-list {
+    grid-template-columns: 1fr;
+  }
+
+  .desktop-app .screen--history-desktop .history-day__list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .desktop-app .desktop-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .desktop-app .game-nav {
+    display: none;
+  }
+
+  .desktop-app .phone-frame-wrap {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .desktop-app .phone-frame {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding-inline-end: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .desktop-app .phone-frame-wrap > .bottom-nav {
+    position: relative;
+    flex: 0 0 auto;
+    display: grid;
+    width: 100%;
+    z-index: 45;
+  }
+
+  .desktop-app .desktop-scroll {
+    display: none;
+  }
+
+  .desktop-app .page-header {
+    padding: 16px 16px 8px;
+  }
+
+  .desktop-app .content {
+    padding: 8px 16px 24px;
+  }
+
+  .desktop-app .screen {
+    padding-bottom: 12px;
+  }
+
+  .desktop-app .screen--home .content {
+    padding-top: 16px;
+  }
+
+  .desktop-app .settings-desktop-head {
+    padding: 16px 16px 8px;
+  }
+
+  .desktop-app .live-manga-grid {
+    grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+    gap: 18px 12px;
+  }
+
+  .desktop-app .screen--search-desktop .search-results__list,
+  .desktop-app .screen--search-desktop .search-results.search-results--loading {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .desktop-app .screen--search-desktop .search-hero {
+    padding: 16px;
+  }
+
+  .desktop-app .screen--search-desktop .search-hero__types.la-chip-bar--segmented .la-chip {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .desktop-app .screen--favorites-desktop .bookmark-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .desktop-app .screen--details-desktop .details-content {
+    grid-template-columns: 1fr;
+    padding-inline: 16px;
+  }
+
+  .desktop-app .live-reader--watch .video-watch-layout,
+  .desktop-app .live-reader--watch .video-watch-layout--series {
+    grid-template-columns: 1fr;
+    padding: 8px 12px 20px;
+  }
+
+  .desktop-app .live-reader--watch .live-video-stage {
+    min-height: 0;
+    max-height: min(52vw, 420px);
+  }
+
+  .desktop-app .live-reader--watch .video-watch-header {
+    padding-inline: 12px;
+    gap: 8px;
+  }
+
+  .desktop-app .live-reader--watch .video-watch-header__title {
+    min-width: 0;
+  }
+
+  .desktop-app .live-reader--watch .video-watch-playlist {
+    position: static;
+    max-height: min(50vh, 360px);
+  }
+
+  .desktop-app .catalog-carousel-nav {
+    max-width: none;
+    width: 100%;
+  }
+
+  .desktop-app .catalog-carousel-nav__hint--touch {
+    display: block;
+  }
+
+  .desktop-app .catalog-filter-bar {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .desktop-app .catalog-filter-bar__label {
+    width: 100%;
+  }
+
+  .desktop-app .live-catalog .la-chip-bar--segmented .la-chip-bar__chips {
+    flex-wrap: wrap;
+  }
+
+  .desktop-app .updates-hero,
+  .desktop-app .history-hero,
+  .desktop-app .notify-center-hero,
+  .desktop-app .favorites-hero {
+    padding: 16px;
+  }
+
+  .desktop-app .history-controls {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .desktop-app .page-header,
+  .desktop-app .content {
+    padding-inline: 12px;
+  }
+
+  .desktop-app .live-manga-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 10px;
+  }
+
+  .desktop-app .screen--search-desktop .search-results__list,
+  .desktop-app .screen--search-desktop .search-results.search-results--loading {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 10px;
+  }
+
+  .desktop-app .screen--favorites-desktop .bookmark-list {
+    grid-template-columns: 1fr;
+  }
+
+  .desktop-app .screen--favorites-desktop .favorites-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .desktop-app .screen--favorites-desktop .favorites-hero__action {
+    grid-column: 1;
+    justify-self: stretch;
+  }
+
+  .desktop-app .screen--updates-desktop .updates-hero__main {
+    grid-template-columns: 1fr;
+  }
+
+  .desktop-app .screen--updates-desktop .updates-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .desktop-app .live-reader--watch .video-watch-header__action {
+    width: 34px;
+    height: 34px;
+  }
+
+  .desktop-app .live-reader--watch .live-video-servers--dock {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .desktop-app .live-reader--watch .video-watch-meta__facts {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .desktop-app .screen--details-desktop .live-details-hero {
+    margin-inline: 12px;
+    padding: 14px;
+  }
+
+  .desktop-app .screen--details-desktop .live-details-hero__content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .desktop-app .screen--details-desktop .live-details-hero__cover .remote-cover--hero,
+  .desktop-app .screen--details-desktop .live-details-hero__cover .remote-cover--hero.remote-cover--video,
+  .desktop-app .screen--details-desktop .live-details-hero__cover .remote-cover--hero.remote-cover--novel {
+    width: 110px;
+    height: 162px;
+    flex-basis: 110px;
+  }
+
+  .desktop-app .screen--details-desktop .live-details-hero__aside {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .desktop-app .page-header h1,
+  .desktop-app .page-header .page-header__title {
+    font-size: clamp(1.1rem, 5vw, 1.35rem);
+  }
+
+  .desktop-app .live-manga-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 8px;
+  }
+
+  .desktop-app .live-manga-card__main .remote-cover {
+    border-radius: 10px;
+  }
+
+  .desktop-app .screen--search-desktop .search-hero__field {
+    min-height: 46px;
+  }
+
+  .desktop-app .screen--search-desktop .search-chips {
+    flex-wrap: wrap;
+  }
+
+  .desktop-app .screen--search-desktop .search-results-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .desktop-app .live-reader--watch .live-video-stage {
+    max-height: min(56vw, 320px);
+    border-radius: 10px;
+  }
+
+  .desktop-app .live-reader--watch .live-video-immersive-root {
+    margin-top: 8px;
+    border-radius: 10px;
+  }
+
+  .desktop-app .live-reader--watch .video-watch-header__back {
+    width: 34px;
+    height: 34px;
+  }
+
+  .desktop-app .catalog-carousel-nav__rail {
+    padding: 6px 8px;
+  }
+
+  .desktop-app .catalog-carousel-nav__icon {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+  }
+
+  .desktop-app .pwa-install-banner {
+    padding: 10px 12px;
+  }
+
+  .desktop-app .settings-profile {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 360px) {
+  .desktop-app .bottom-nav button span {
+    font-size: 7px;
+  }
+
+  .desktop-app .live-manga-grid {
+    gap: 12px 6px;
+  }
+
+  .desktop-app .screen--search-desktop .search-results__list,
+  .desktop-app .screen--search-desktop .search-results.search-results--loading {
+    gap: 6px 8px;
+  }
+}
+
+@media (max-width: 768px) and (orientation: landscape) {
+  .desktop-app .live-reader--watch .live-video-stage {
+    max-height: min(72vh, 480px);
+  }
+
+  .desktop-app .live-reader--watch .video-watch-playlist {
+    max-height: min(38vh, 240px);
+  }
+}

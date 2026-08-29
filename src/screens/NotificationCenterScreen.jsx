@@ -16,6 +16,7 @@ import { AccessibleSearchField } from "../components/ui/AccessibleSearchField";
 import { useToast } from "../components/ui/ToastProvider";
 import { useNotificationSettings } from "../hooks/useNotificationSettings";
 import { isChromebookApp, isNotifiableMediaType } from "../config/appFlavor";
+import { getDesktopNotificationChipKey } from "../lib/platform/electronApp.js";
 import { getSourceProfile } from "../config/sources";
 import { RemoteCover, SourceLogo } from "../features/sources";
 import { contentTypes } from "../features/sources/contentTypes";
@@ -128,7 +129,7 @@ export function NotificationCenterScreen({
             <span>
               {t("notify.nFollowed", { count: followedItems.length })}
               {globalEnabled ? ` · ${t("notify.checkEvery", { n: pollMinutes })}` : ""}
-              {globalEnabled && isChromebookApp ? ` · ${t("notify.desktopTabChip")}` : ""}
+              {globalEnabled && isChromebookApp ? ` · ${t(getDesktopNotificationChipKey())}` : ""}
             </span>
           </div>
           <button type="button" className="notify-center-hero__feed" onClick={() => navigate("updates")}>
@@ -148,7 +149,7 @@ export function NotificationCenterScreen({
           <div className="notify-center-global__chips" aria-label={t("notify.summary")}>
             <span><Zap size={12} />{t("notify.openCheck", { n: pollMinutes })}</span>
             {isChromebookApp ? (
-              <span><Monitor size={12} />{t("notify.desktopTabChip")}</span>
+              <span><Monitor size={12} />{t(getDesktopNotificationChipKey())}</span>
             ) : (
               <>
                 <span><Clock3 size={12} />{notificationSettings.settings.backgroundSync !== false ? t("notify.backgroundOnShort") : t("notify.backgroundOffShort")}</span>

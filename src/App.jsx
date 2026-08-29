@@ -164,6 +164,12 @@ export function App() {
     );
   }
 
+  const showMainBottomNav = !isOverlayOpen
+    && screen !== "source-management"
+    && screen !== "reading-history"
+    && screen !== "notification-center"
+    && !liveReaderContent;
+
   return (
     <div className={`app-shell ${darkMode ? "app-shell--dark" : ""} ${hasAtmosphereEffect(appearance) ? `app-shell--${appearance}` : ""} ${isChromebookApp ? "app-shell--desktop" : ""}`} dir={dir}>
       {isSnowTheme(appearance) ? <MoonSnowfall variant="stage" /> : null}
@@ -303,6 +309,9 @@ export function App() {
                 ))}
               </div>
               <ThemedScrollbar scrollerRef={desktopScrollerRef} />
+              {showMainBottomNav ? (
+                <BottomNav current={screen} navigate={navigate} />
+              ) : null}
             </div>
           </div>
         </div>
@@ -444,9 +453,9 @@ export function App() {
                 appearance={appearance}
               />
             ))}
-            {!isOverlayOpen && screen !== "source-management" && screen !== "reading-history" && screen !== "notification-center" && (
+            {showMainBottomNav ? (
               <BottomNav current={screen} navigate={navigate} />
-            )}
+            ) : null}
           </div>
         </>
       )}

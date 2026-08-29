@@ -7,7 +7,9 @@ const androidDir = path.join(root, "android");
 
 const REMOVED_PLUGIN_MARKERS = [
   "@capacitor-community/sqlite",
+  "capacitor-community-sqlite",
   "@capgo/capacitor-background-task",
+  "capgo-capacitor-background-task",
 ];
 
 function isRemovedPluginLine(line = "") {

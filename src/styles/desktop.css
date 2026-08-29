@@ -4077,6 +4077,51 @@ html.desktop-app.video-cinema-active .live-reader--watch .live-video-embed-hint 
   display: none;
 }
 
+/* Plein écran natif (APK) — occupe tout le WebView */
+html.native-app.video-cinema-active,
+html.native-app.video-cinema-active body {
+  overflow: hidden;
+  height: 100dvh;
+  max-height: 100dvh;
+}
+
+html.native-app.video-cinema-active .app-shell--desktop,
+html.native-app.video-cinema-active .desktop-shell,
+html.native-app.video-cinema-active .desktop-main,
+html.native-app.video-cinema-active .phone-frame-wrap {
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0;
+}
+
+html.native-app.video-cinema-active .live-reader--watch .live-video-stage {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  aspect-ratio: auto;
+}
+
+html.native-app.video-cinema-active .live-reader--watch .plyr-hls-player .plyr video,
+html.video-cinema-active .live-video-immersive-root.is-cinema .plyr-hls-player .plyr video,
+html.video-cinema-active .live-video-immersive-root.plyr--fullscreen-fallback .plyr-hls-player .plyr video,
+html.video-cinema-active .live-video-immersive-root:fullscreen .plyr-hls-player .plyr video {
+  object-fit: cover;
+}
+
+html.video-cinema-active .live-video-immersive-root.is-cinema .live-video-player,
+html.video-cinema-active .live-video-immersive-root.plyr--fullscreen-fallback .live-video-player {
+  object-fit: cover;
+}
+
+html.video-cinema-active .live-video-immersive-root.is-cinema .live-video-embed__frame,
+html.video-cinema-active .live-video-immersive-root.plyr--fullscreen-fallback .live-video-embed__frame {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+}
+
 /* ── RTL / LTR : pages détail et épisode (desktop) ── */
 
 [dir="ltr"] .desktop-app .live-reader--watch .video-watch-meta__episode,

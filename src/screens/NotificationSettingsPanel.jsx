@@ -11,6 +11,7 @@ import { SheetCloseButton } from "../components/ui/SheetCloseButton";
 import { SheetPortal } from "../components/ui/SheetPortal";
 import { useI18n } from "../i18n/I18nProvider";
 import { isChromebookApp } from "../config/appFlavor";
+import { isElectronApp } from "../lib/platform/electronApp.js";
 
 const POLL_HINT_KEYS = {
   1: "data.fast",
@@ -134,7 +135,9 @@ export function NotificationSettingsSheet({
               )}
 
               <p className="notify-sheet__hint">
-                {isChromebookApp ? t("notify.intervalHintDesktop") : t("notify.intervalHint")}
+                {isChromebookApp
+                  ? (isElectronApp() ? t("notify.intervalHintDesktopElectron") : t("notify.intervalHintDesktop"))
+                  : t("notify.intervalHint")}
                 {!isNative && !isChromebookApp && ` ${t("notify.browserOnly")}`}
                 {isNative && backgroundStatus.registered && ` · ${t("notify.backgroundOn")}`}
               </p>
@@ -159,8 +162,11 @@ export function NotificationSettingsEntry({ settings, isNative, permission, onOp
   let summary = t("notify.off");
   if (enabled) {
     summary = t("data.minutes", { minutes: pollMinutes });
-    if (isChromebookApp) summary += ` · ${t("notify.inAppOnly")}`;
-    else if (isNative && !permission.granted) summary += ` · ${t("notify.permissionNeeded")}`;
+    if (isChromebookApp) {
+      summary += isElectronApp()
+        ? ` · ${t("notify.desktopTrayChip")}`
+        : ` · ${t("notify.inAppOnly")}`;
+    } else if (isNative && !permission.granted) summary += ` · ${t("notify.permissionNeeded")}`;
     else if (enabled) summary += ` · ${t("notify.phonePlus")}`;
   }
 

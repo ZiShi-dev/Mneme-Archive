@@ -1,6 +1,7 @@
 import { Capacitor } from "@capacitor/core";
 import { isChromebookApp } from "../../config/appFlavor.js";
 import { formatFollowNotificationBody } from "../updates/followMessaging.js";
+import { isElectronApp, focusElectronApp } from "../platform/electronApp.js";
 import {
   getNotificationPermissionStatus as getNativePermissionStatus,
   initNativeNotifications,
@@ -21,6 +22,7 @@ export function isWebNotificationsSupported() {
 
 export function isSystemNotificationsAvailable() {
   if (isNativeNotificationsAvailable()) return true;
+  if (isElectronApp() && isWebNotificationsSupported()) return true;
   return isChromebookApp && isWebNotificationsSupported();
 }
 
@@ -96,7 +98,8 @@ export async function showChapterUpdateNotifications(events = []) {
         },
       });
       notification.onclick = () => {
-        window.focus();
+        if (isElectronApp()) focusElectronApp();
+        else window.focus();
         notification.close();
       };
       count += 1;

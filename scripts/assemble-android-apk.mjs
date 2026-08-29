@@ -84,9 +84,12 @@ if (result.status !== 0) {
 }
 
 const apkPath = path.join(androidDir, "app", "build", "outputs", "apk", "debug", "app-debug.apk");
+const rootApkPath = path.join(root, "app-debug.apk");
 if (!fs.existsSync(apkPath)) {
   console.error(`APK introuvable: ${apkPath}`);
   process.exit(1);
 }
 
+fs.copyFileSync(apkPath, rootApkPath);
 console.log(`\nAPK prêt: ${apkPath}`);
+console.log(`Copie locale: ${rootApkPath}`);

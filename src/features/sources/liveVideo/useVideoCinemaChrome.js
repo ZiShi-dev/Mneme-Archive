@@ -3,6 +3,7 @@ import { Capacitor } from "@capacitor/core";
 import { lockLandscapeOrientation, unlockOrientation } from "../../../lib/video/orientationLock";
 import { isChromebookApp } from "../../../config/appFlavor";
 import { installEmbedPopupGuards } from "../../../lib/video/embedHosts";
+import { setNativeImmersive } from "../../../lib/video/nativeImmersive";
 import { CHROME_IDLE_MS, FULLSCREEN_CHROME_IDLE_MS } from "./constants";
 
 export function useVideoCinemaChrome({
@@ -109,12 +110,14 @@ export function useVideoCinemaChrome({
   useEffect(() => {
     if (!isChromebookApp) return undefined;
     const root = document.documentElement;
-    const getFullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
     const syncCinemaClass = () => {
-      const nativeActive = Boolean(getFullscreenElement());
-      const cssCinema = cinemaMode && !nativeActive;
-      if (cssCinema) root.classList.add("video-cinema-active");
-      else root.classList.remove("video-cinema-active");
+      if (cinemaMode) {
+        root.classList.add("video-cinema-active");
+        document.body.classList.add("video-cinema-active");
+      } else {
+        root.classList.remove("video-cinema-active");
+        document.body.classList.remove("video-cinema-active");
+      }
     };
     syncCinemaClass();
     document.addEventListener("fullscreenchange", syncCinemaClass);
@@ -123,6 +126,7 @@ export function useVideoCinemaChrome({
       document.removeEventListener("fullscreenchange", syncCinemaClass);
       document.removeEventListener("webkitfullscreenchange", syncCinemaClass);
       root.classList.remove("video-cinema-active");
+      document.body.classList.remove("video-cinema-active");
     };
   }, [cinemaMode]);
 
@@ -130,17 +134,12 @@ export function useVideoCinemaChrome({
     if (!Capacitor.isNativePlatform() || !isChromebookApp) return undefined;
     let cancelled = false;
     (async () => {
-      try {
-        const { StatusBar } = await import("@capacitor/status-bar");
-        if (cancelled) return;
-        if (cinemaMode) await StatusBar.hide();
-        else await StatusBar.show();
-      } catch {
-        // Plugin optionnel selon la plateforme.
-      }
+      if (cancelled) return;
+      await setNativeImmersive(cinemaMode);
     })();
     return () => {
       cancelled = true;
+      setNativeImmersive(false).catch(() => {});
     };
   }, [cinemaMode]);
 

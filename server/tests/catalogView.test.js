@@ -4,7 +4,11 @@ import {
   applyTaxonomyFilters,
   catalogItemMatchesFilter,
   catalogViewKey,
+  categoryMatchesKind,
+  filterCategoriesForKind,
+  filterRequestParams,
   isSearchQueryActive,
+  isTaxonomyCompatibleWithKind,
   normalizeTaxonomySelection,
   resolveEffectiveFilter,
   shouldUseCatalogScopedSearch,
@@ -32,6 +36,38 @@ test("resolveEffectiveFilter keeps taxonomy while preserving kind metadata", () 
   assert.equal(effective.category.slug, "action");
   assert.equal(effective.kindSlug, "series");
   assert.equal(effective.kindFilterPath, "/s-tv/");
+});
+
+test("filterRequestParams prefers series path when a film genre conflicts with series kind", () => {
+  const kind = { type: "kind", slug: "series", filterPath: "/s-tv/" };
+  const taxonomy = { type: "category", slug: "action", name: "Action", filterPath: "/films/action/", mediaKind: "movies" };
+  const params = filterRequestParams(resolveEffectiveFilter(kind, taxonomy));
+  assert.equal(params.filterPath, "/s-tv/");
+  assert.equal(params.genre, "");
+});
+
+test("filterRequestParams keeps compatible series genre paths", () => {
+  const kind = { type: "kind", slug: "series", filterPath: "/s-tv/" };
+  const taxonomy = {
+    type: "category",
+    slug: "action-serie-",
+    name: "Action",
+    filterPath: "/action-serie-/",
+    mediaKind: "series",
+  };
+  const params = filterRequestParams(resolveEffectiveFilter(kind, taxonomy));
+  assert.equal(params.filterPath, "/action-serie-/");
+  assert.equal(params.genre, "action-serie-");
+});
+
+test("filterCategoriesForKind exposes only series genres when series is selected", () => {
+  const categories = [
+    { slug: "action", name: "Action", filterPath: "/films/action/", mediaKind: "movies" },
+    { slug: "action-serie-", name: "Action", filterPath: "/action-serie-/", mediaKind: "series" },
+  ];
+  assert.equal(filterCategoriesForKind(categories, { slug: "series" }).length, 1);
+  assert.equal(isTaxonomyCompatibleWithKind({ type: "category", slug: "action", filterPath: "/films/action/", mediaKind: "movies" }, { slug: "series" }), false);
+  assert.equal(categoryMatchesKind({ filterPath: "/films/action/", mediaKind: "movies" }, "series"), false);
 });
 
 test("catalogItemMatchesFilter filters series items", () => {

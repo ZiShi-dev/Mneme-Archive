@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "main": "electron/main.js",
   "engines": {
     "node": ">=20"
   },
@@ -15,6 +16,11 @@
     "preview": "vite preview",
     "preview:lan": "vite preview --host 0.0.0.0",
     "start:prod": "node server/productionServer.js",
+    "electron:start": "electron .",
+    "electron:dev": "npm run build && electron .",
+    "build:win": "npm run build && electron-builder --win",
+    "build:win:portable": "npm run build && electron-builder --win portable",
+    "test:electron": "node scripts/electron-smoke-test.mjs",
     "test": "node --test server/tests/*.test.js src/tests/*.test.js",
     "audit:deps": "npm audit --audit-level=moderate",
     "build:android": "npm run prebuild:android && vite build && npx cap sync android && node scripts/patch-android-chromebook.mjs",
@@ -51,9 +57,63 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^35.1.5",
+    "electron-builder": "^25.1.8",
     "sharp": "^0.35.4",
     "vite": "^6.0.7",
     "vite-plugin-pwa": "^1.3.0",
     "workbox-window": "^7.4.1"
+  },
+  "build": {
+    "appId": "com.manhaw.cinevault",
+    "productName": "CineVault",
+    "copyright": "Copyright © 2026",
+    "directories": {
+      "output": "release",
+      "buildResources": "electron/build"
+    },
+    "files": [
+      "dist/**/*",
+      "server/**/*",
+      "electron/main.js",
+      "electron/preload.cjs",
+      "public/pwa/icon-512.png",
+      "package.json",
+      "!node_modules/**/*"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "public/pwa/icon-512.png",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "CineVault",
+      "artifactName": "setup-${version}.exe",
+      "include": "installer.nsh"
+    },
+    "portable": {
+      "artifactName": "CineVault-Portable-${version}.exe"
+    }
+  },
+  "allowScripts": {
+    "electron@35.7.5": true
   }
 }

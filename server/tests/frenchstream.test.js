@@ -17,6 +17,7 @@ import {
   parseFrenchStreamPlayback,
   parseFrenchStreamSearch,
   parseFrenchStreamSeriesChapters,
+  parseFrenchStreamFilters,
   isRelatedFrenchStreamTitle,
   pickRelatedFrenchStreamMovies,
   pickRelatedFrenchStreamSeasons,
@@ -98,6 +99,21 @@ test("parseFrenchStreamCatalog reads films and series", () => {
   assert.equal(items[1].audioLabel, "VF");
   assert.equal(items[1].latestChapter, "7");
   assert.match(items[1].latestChapterUrl, /ep=7/);
+});
+
+test("parseFrenchStreamFilters can expose series genres separately from film genres", () => {
+  const html = `
+    <a href="/films/action/">Action films</a>
+    <a href="/action-serie-/">Action series</a>
+    <a href="/xfsearch/date-de-sortie/2024/">2024</a>
+  `;
+  const films = parseFrenchStreamFilters(html);
+  const series = parseFrenchStreamFilters(html, { includeSeriesGenres: true });
+  assert.equal(films.categories.length, 1);
+  assert.equal(films.categories[0].mediaKind, "movies");
+  assert.equal(series.categories.length, 1);
+  assert.equal(series.categories[0].mediaKind, "series");
+  assert.equal(series.categories[0].filterPath, "/action-serie-/");
 });
 
 test("parseFrenchStreamSearch reads ajax search items", () => {

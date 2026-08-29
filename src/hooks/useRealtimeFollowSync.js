@@ -10,6 +10,7 @@ import {
 } from "../lib/notifications/pushNotifications";
 import { t } from "../i18n/runtime.js";
 import { isChromebookApp } from "../config/appFlavor";
+import { isElectronApp } from "../lib/platform/electronApp.js";
 
 const DEFAULT_POLL_MINUTES = 1;
 const MIN_POLL_MS = 60_000;
@@ -71,8 +72,10 @@ export function useRealtimeFollowSync({
       }
     }
 
+    const desktopBackground = isElectronApp();
+
     async function bootstrap() {
-      if (Capacitor.isNativePlatform()) {
+      if (Capacitor.isNativePlatform() || desktopBackground) {
         try {
           await initSystemNotifications();
         } catch {
@@ -100,8 +103,8 @@ export function useRealtimeFollowSync({
 
     const pollMinutes = Math.max(1, Number(settings.followPollMinutes) || DEFAULT_POLL_MINUTES);
     intervalId = window.setInterval(() => {
-      if (!appActiveRef.current) return;
-      if (typeof document !== "undefined" && document.hidden) return;
+      if (!desktopBackground && !appActiveRef.current) return;
+      if (!desktopBackground && typeof document !== "undefined" && document.hidden) return;
       runBackgroundSync("interval");
     }, Math.max(MIN_POLL_MS, pollMinutes * 60_000));
 

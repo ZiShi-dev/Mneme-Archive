@@ -339,7 +339,13 @@ export function parseFrenchStreamFilters(html = "", { includeSeriesGenres = fals
       const key = `category:${genre}`;
       if (seen.category.has(key)) continue;
       seen.category.add(key);
-      categories.push({ slug: genre, name, count: 0, filterPath: `/films/${genre}/` });
+      categories.push({
+        slug: genre,
+        name,
+        count: 0,
+        filterPath: `/films/${genre}/`,
+        mediaKind: "movies",
+      });
       continue;
     }
     const seriesGenre = path.match(/^\/([a-z0-9-]*series?[a-z0-9-]*|streaming-tv-realits)\/$/i)?.[1];
@@ -348,7 +354,13 @@ export function parseFrenchStreamFilters(html = "", { includeSeriesGenres = fals
       const key = `category:series:${seriesGenre}`;
       if (seen.category.has(key)) continue;
       seen.category.add(key);
-      categories.push({ slug: seriesGenre, name, count: 0, filterPath: `/${seriesGenre}/` });
+      categories.push({
+        slug: seriesGenre,
+        name,
+        count: 0,
+        filterPath: `/${seriesGenre}/`,
+        mediaKind: "series",
+      });
       continue;
     }
     const year = path.match(/^\/xfsearch\/date-de-sortie\/(\d{4})\/$/i)?.[1];
@@ -889,16 +901,28 @@ export async function handleFrenchStreamRequest(requestUrl) {
   }
 
   if (requestUrl.pathname.endsWith("/filters")) {
-    const html = await fetchFrenchStreamHtml(`${BASE_URL}${CATALOG_PATH}`);
-    const films = parseFrenchStreamFilters(html);
+    const [filmsHtml, seriesHtml] = await Promise.all([
+      fetchFrenchStreamHtml(`${BASE_URL}${CATALOG_PATH}`),
+      fetchFrenchStreamHtml(`${BASE_URL}${SERIES_PATH}`),
+    ]);
+    const films = parseFrenchStreamFilters(filmsHtml);
+    const series = parseFrenchStreamFilters(seriesHtml, { includeSeriesGenres: true });
+    const tags = [...films.tags];
+    const seenTags = new Set(tags.map((entry) => entry.slug));
+    for (const tag of series.tags) {
+      if (seenTags.has(tag.slug)) continue;
+      seenTags.add(tag.slug);
+      tags.push(tag);
+    }
+    tags.sort((left, right) => Number(right.slug) - Number(left.slug));
     return responseJson(200, {
       kinds: [
         { slug: "all", name: "الكل", filterPath: MIXED_PATH },
         { slug: "movies", name: "أفلام", filterPath: CATALOG_PATH },
         { slug: "series", name: "مسلسلات", filterPath: SERIES_PATH },
       ],
-      categories: films.categories,
-      tags: films.tags,
+      categories: [...films.categories, ...series.categories],
+      tags,
       fetchedAt: new Date().toISOString(),
     });
   }

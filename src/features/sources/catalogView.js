@@ -144,23 +144,66 @@ export function resolveEffectiveFilter(kind, taxonomy) {
   return null;
 }
 
+function resolveActiveKindSlug(filter) {
+  if (filter?.kindSlug && filter.kindSlug !== "all") return filter.kindSlug;
+  if (filter?.type === "kind" && filter.slug && filter.slug !== "all") return filter.slug;
+  return "";
+}
+
+function resolveActiveKindPath(filter) {
+  return filter?.kindFilterPath
+    || (filter?.type === "kind" ? filter.filterPath : "")
+    || "";
+}
+
+export function categoryMatchesKind(category, kindSlug) {
+  if (!category?.filterPath || !kindSlug || kindSlug === "all") return true;
+  if (category.mediaKind) return category.mediaKind === kindSlug;
+  if (kindSlug === "series") return !/^\/films\//i.test(category.filterPath);
+  if (kindSlug === "movies") {
+    return /^\/films\//i.test(category.filterPath)
+      || !/(?:^|\/)s-tv\/|series/i.test(category.filterPath);
+  }
+  return true;
+}
+
+export function isTaxonomyCompatibleWithKind(taxonomy, kind) {
+  const kindSlug = kind?.slug && kind.slug !== "all" ? kind.slug : "";
+  if (!kindSlug) return true;
+  const normalized = normalizeTaxonomySelection(taxonomy);
+  if (normalized.category && !categoryMatchesKind(normalized.category, kindSlug)) return false;
+  return true;
+}
+
+export function filterCategoriesForKind(categories = [], kind) {
+  const kindSlug = kind?.slug && kind.slug !== "all" ? kind.slug : "";
+  if (!kindSlug) return categories;
+  return categories.filter((entry) => categoryMatchesKind(entry, kindSlug));
+}
+
 export function filterRequestParams(filter) {
   if (!filter) return {};
   const normalized = normalizeTaxonomySelection(filter);
-  const filterPath = normalized.category?.filterPath
+  const kindSlug = resolveActiveKindSlug(filter);
+  const kindPath = resolveActiveKindPath(filter);
+  const categoryPath = normalized.category?.filterPath
+    && categoryMatchesKind(normalized.category, kindSlug)
+    ? normalized.category.filterPath
+    : "";
+  const filterPath = categoryPath
     || normalized.tag?.filterPath
     || normalized.author?.filterPath
+    || kindPath
     || filter.filterPath
-    || filter.kindFilterPath
     || "";
-  const kindType = filter.kindSlug && filter.kindSlug !== "all" ? filter.kindSlug : "";
+  const kindType = kindSlug;
   const taxonomyScoped = Boolean(
-    normalized.category?.filterPath
+    categoryPath
     || normalized.tag?.filterPath
     || normalized.author?.filterPath,
   );
   return {
-    genre: normalized.category?.slug || (filter.type === "category" ? filter.slug : ""),
+    genre: categoryPath ? normalized.category.slug : (filter.type === "category" ? filter.slug : ""),
     tag: normalized.tag?.slug || (filter.type === "tag" ? filter.slug : ""),
     tagPath: normalized.tag?.archivePath || filter.archivePath || "",
     filterPath,
