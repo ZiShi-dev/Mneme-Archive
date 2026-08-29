@@ -2,6 +2,7 @@ import React from "react";
 import { Bell, Bookmark, ChevronLeft, ChevronRight, Compass, History, Home, Search, Settings2, Sparkles } from "lucide-react";
 import { useI18n } from "../../i18n/I18nProvider";
 import { AppMark } from "../brand/AppMark";
+import { AppBrandName } from "../brand/AppBrandName";
 import { getAppBrandText } from "../../lib/brand/appBrand";
 import { usePersistedState } from "../../hooks/usePersistedState";
 
@@ -112,7 +113,9 @@ export function DesktopMenu({ current, navigate, appearance }) {
       >
         <AppMark size={collapsed ? 36 : 40} appearance={appearance} decorative />
         <div className="game-nav__brand-copy">
-          <strong>{brand.name}</strong>
+          <AppBrandName as="strong" variant="nav" lead={brand.nameLead} tail={brand.nameTail}>
+            {brand.name}
+          </AppBrandName>
           <small>{brand.kicker}</small>
         </div>
       </button>

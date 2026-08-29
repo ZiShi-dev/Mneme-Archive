@@ -15,6 +15,7 @@ import { ThemeSettingsEntry, ThemeSettingsSheet } from "./ThemeSettingsPanel";
 import { FontSettingsEntry, FontSettingsSheet } from "./FontSettingsPanel";
 import { SourceUrlsSettingsEntry, SourceUrlsSettingsSheet } from "./SourceUrlsSettingsPanel";
 import { AppMark } from "../components/brand/AppMark";
+import { AppBrandName } from "../components/brand/AppBrandName";
 import { getSourceDisplayName } from "../config/sources";
 import { getAppBrandText } from "../lib/brand/appBrand";
 import { isChromebookApp } from "../config/appFlavor";
@@ -26,6 +27,7 @@ import {
 
 export function SettingsScreen({ navigate, appearance, typeface, onSetAppearance, onSetTypeface, sources, sourcePreferences, onToggleSite, onSetSitesEnabled }) {
   const { t } = useI18n();
+  const brand = getAppBrandText(t);
   const { pushToast } = useToast();
   const [rawSettings, setRawSettings] = usePersistedState("mangashelf:settings", DEFAULT_APP_SETTINGS);
   const settings = normalizeSettings(rawSettings);
@@ -89,7 +91,14 @@ export function SettingsScreen({ navigate, appearance, typeface, onSetAppearance
             <AppMark size={42} appearance={appearance} decorative />
           </span>
           <div>
-            <strong>{getAppBrandText(t).profileName}</strong>
+            <AppBrandName
+              as="strong"
+              variant="profile"
+              lead={brand.nameLead}
+              tail={brand.nameTail}
+            >
+              {brand.profileName}
+            </AppBrandName>
             <small>{isChromebookApp ? t("settings.profileHintDesktop") : t("settings.profileHint")}</small>
           </div>
         </section>

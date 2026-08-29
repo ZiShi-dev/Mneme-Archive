@@ -1,7 +1,11 @@
 export const fr = {
   app: {
     name: "Mneme Archive",
+    nameLead: "Mneme",
+    nameTail: "Archive",
     nameDesktop: "CinéVault",
+    nameDesktopLead: "Ciné",
+    nameDesktopTail: "Vault",
     nameSakura: "桜 Mneme Archive",
     tagline: "Films et séries VOSTFR, sur grand écran.",
     kicker: "MNEME ARCHIVE",

@@ -20,15 +20,7 @@
 .screen--home .page-header .eyebrow {
   display: block;
   line-height: 1.5;
-  max-width: 18ch;
-}
-
-.screen--home .page-header h1 {
-  margin: 0;
-  font-size: clamp(20px, 5.2vw, 24px);
-  line-height: 1.42;
-  letter-spacing: 0;
-  text-wrap: balance;
+  max-width: 22ch;
 }
 
 .screen--home .header-actions {
@@ -1025,11 +1017,6 @@
 /* ── أرشيف منيمي · respiration globale ── */
 .screen--home .page-header {
   padding-bottom: 20px;
-}
-
-.screen--home .page-header h1 {
-  margin-top: 8px;
-  line-height: 1.4;
 }
 
 .screen--home .page-header .eyebrow {

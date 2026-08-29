@@ -381,14 +381,14 @@
   }
 }
 
-[data-theme="sakura"] .page-header h1,
-[data-theme="sakura"] .desktop-note h2,
-[data-theme="sakura"] .settings-profile strong,
+[data-theme="sakura"] .page-header h1:not(.app-brand-name),
+[data-theme="sakura"] .desktop-note h2:not(.app-brand-name),
+[data-theme="sakura"] .settings-profile strong:not(.app-brand-name),
 [data-theme="sakura"] .la-panel__copy h2,
 [data-theme="sakura"] .source-directory__header h2,
-[data-theme="yozakura"] .page-header h1,
-[data-theme="yozakura"] .desktop-note h2,
-[data-theme="yozakura"] .settings-profile strong,
+[data-theme="yozakura"] .page-header h1:not(.app-brand-name),
+[data-theme="yozakura"] .desktop-note h2:not(.app-brand-name),
+[data-theme="yozakura"] .settings-profile strong:not(.app-brand-name),
 [data-theme="yozakura"] .la-panel__copy h2,
 [data-theme="yozakura"] .source-directory__header h2 {
   font-family: var(--font-display);
@@ -655,8 +655,8 @@
   border-color: color-mix(in srgb, var(--sakura) 30%, var(--line));
 }
 
-[data-theme="sakura"] .screen--home .page-header h1,
-[data-theme="yozakura"] .screen--home .page-header h1 {
+[data-theme="sakura"] .screen--home .page-header h1:not(.app-brand-name),
+[data-theme="yozakura"] .screen--home .page-header h1:not(.app-brand-name) {
   letter-spacing: -.02em;
 }
 

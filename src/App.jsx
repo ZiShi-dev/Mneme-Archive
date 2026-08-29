@@ -21,6 +21,7 @@ import { SakuraBranches } from "./components/atmosphere/SakuraBranches";
 import { MoonSnowfall } from "./components/atmosphere/MoonSnowfall";
 import { SakuraIcon } from "./components/atmosphere/SakuraIcon";
 import { MnemeMark } from "./components/brand/MnemeMark";
+import { AppBrandName } from "./components/brand/AppBrandName";
 import { isSakuraTheme, isSnowTheme, hasAtmosphereEffect } from "./lib/theme/appearance";
 import { isChromebookApp } from "./config/appFlavor";
 import { isDesktopAppLayout } from "./lib/platform/desktopAppLayout";
@@ -59,6 +60,7 @@ export function App() {
   const settings = normalizeSettings(rawSettings);
   const { pushToast } = useToast();
   const { t, dir } = useI18n();
+  const brand = getAppBrandText(t);
   const desktopScrollerRef = useRef(null);
   const pwaInstall = usePwaInstall();
   const desktopLayout = isDesktopAppLayout();
@@ -261,7 +263,9 @@ export function App() {
             ) : (
               <>
                 <span>{t("app.kicker")}</span>
-                <h2>{t("app.name")}</h2>
+                <AppBrandName as="h2" variant="desktop" lead={brand.nameLead} tail={brand.nameTail}>
+                  {brand.name}
+                </AppBrandName>
               </>
             )}
             <p>{t("app.tagline")}</p>

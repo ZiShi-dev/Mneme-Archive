@@ -1,0 +1,82 @@
+.app-brand-name {
+  display: inline-block;
+  max-width: 100%;
+  margin: 0;
+  font-family: var(--font-arabic);
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1.38;
+  text-wrap: balance;
+  color: var(--ink);
+}
+
+.app-brand-name__lead,
+.app-brand-name__accent {
+  display: inline;
+}
+
+.app-brand-name__accent {
+  margin-inline-start: 0.2em;
+  color: var(--brand);
+}
+
+.app-brand-name--header {
+  font-size: clamp(22px, 5.6vw, 28px);
+  line-height: 1.42;
+}
+
+.app-brand-name--profile {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.app-brand-name--desktop {
+  font-size: clamp(28px, 4.2vw, 38px);
+  line-height: 1.28;
+}
+
+.app-brand-name--nav {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+[dir="ltr"] .app-brand-name {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+[dir="rtl"] .app-brand-name {
+  font-family: "Reem Kufi", var(--font-arabic);
+}
+
+.screen--home .page-header h1.app-brand-name--header {
+  margin: 0;
+}
+
+.settings-profile .app-brand-name--profile {
+  display: block;
+}
+
+.desktop-note .app-brand-name--desktop {
+  margin: 14px 0 12px;
+}
+
+.game-nav__brand-copy .app-brand-name--nav {
+  display: block;
+}
+
+[data-theme="ink"] .app-brand-name__accent,
+.app-shell--dark .app-brand-name__accent {
+  color: color-mix(in srgb, var(--brand) 82%, white);
+}
+
+[data-theme="sakura"] .app-brand-name__accent,
+[data-theme="yozakura"] .app-brand-name__accent {
+  color: var(--kobai);
+}
+
+[data-theme="lune-neige"] .app-brand-name__accent {
+  color: var(--frost, var(--brand));
+}

@@ -1,6 +1,8 @@
 export const ar = {
   app: {
     name: "أرشيف منيمي",
+    nameLead: "أرشيف",
+    nameTail: "منيمي",
     nameDesktop: "CineVault",
     nameSakura: "桜 أرشيف منيمي",
     tagline: "كل حكاياتك، وكل تقدمك، في أثر واحد من الضوء.",

@@ -12,6 +12,7 @@ import {
 } from "../lib/readingProgress";
 import { isChromebookApp, VISIBLE_MEDIA_TYPES } from "../config/appFlavor";
 import { useI18n } from "../i18n/I18nProvider";
+import { getAppBrandText } from "../lib/brand/appBrand";
 
 const MEDIA_FILTERS = VISIBLE_MEDIA_TYPES;
 
@@ -55,6 +56,7 @@ export function HomeScreen({
 }) {
   const [mediaFilter, setMediaFilter] = useState(() => resolveInitialMediaFilter(readingHistory, liveFavorites));
   const { t } = useI18n();
+  const brand = getAppBrandText(t);
 
   const historyCounts = useMemo(
     () => countHistoryByType(readingHistory, { demoCatalog, liveFavorites }),
@@ -110,8 +112,11 @@ export function HomeScreen({
     <div className="screen screen--home">
       {!isChromebookApp && (
         <Header
-          title={t("home.title")}
+          title={brand.name}
+          titleLead={brand.nameLead}
+          titleTail={brand.nameTail}
           eyebrow={t("home.eyebrow")}
+          brandTitle
           showBrand
           appearance={appearance}
           onSearch={() => navigate("search")}

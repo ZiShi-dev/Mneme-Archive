@@ -3,9 +3,12 @@ import { ArrowRight, Bell, History, Search } from "lucide-react";
 import { isChromebookApp } from "../../config/appFlavor";
 import { useI18n } from "../../i18n/I18nProvider";
 import { MnemeMark } from "../brand/MnemeMark";
+import { AppBrandName } from "../brand/AppBrandName";
 
 export function Header({
   title,
+  titleLead,
+  titleTail,
   eyebrow,
   onBack,
   actions = true,
@@ -13,6 +16,7 @@ export function Header({
   onReadingHistory,
   onNotifications,
   showBrand = false,
+  brandTitle = false,
   appearance,
 }) {
   const { t } = useI18n();
@@ -30,7 +34,16 @@ export function Header({
             decorative
           />
         )}
-        <div>{eyebrow && <span className="eyebrow">{eyebrow}</span>}<h1>{title}</h1></div>
+        <div>
+          {eyebrow && <span className="eyebrow">{eyebrow}</span>}
+          {brandTitle ? (
+            <AppBrandName as="h1" variant="header" lead={titleLead} tail={titleTail}>
+              {title}
+            </AppBrandName>
+          ) : (
+            <h1>{title}</h1>
+          )}
+        </div>
       </div>
       {showActions && (
         <div className="header-actions">

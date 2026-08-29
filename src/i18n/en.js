@@ -1,7 +1,11 @@
 export const en = {
   app: {
     name: "Mneme Archive",
+    nameLead: "Mneme",
+    nameTail: "Archive",
     nameDesktop: "CineVault",
+    nameDesktopLead: "Cine",
+    nameDesktopTail: "Vault",
     nameSakura: "桜 Mneme Archive",
     tagline: "Every story, and all your progress, in one trace of light.",
     kicker: "MNEME ARCHIVE",
