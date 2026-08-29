@@ -5,7 +5,6 @@ import { responseJson } from "../lib/response.js";
 import { applyRecentChapterFields, normalizeRecentChapters } from "../lib/catalogChapters.js";
 import { parseMadaraChapters, resolveMadaraChapters } from "../lib/madaraChapters.js";
 import { enrichSourceDetails } from "../lib/detailEnrichment.js";
-import { extractChapterNumber } from "../lib/chapterOrdering.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
 
 const DEFAULT_BASE_URL = "https://mangalik.net";
@@ -71,14 +70,6 @@ async function proxyImage(rawUrl, ctx) {
   return fetchProxiedImage(target, `${ctx.baseUrl}/`, "MangaLik");
 }
 
-function imageFromTag(tag = "") {
-  const direct = tag.match(/(?:data-src|data-lazy-src|data-original|src)="\s*([^"]+)"/i)?.[1]?.trim() ?? "";
-  if (direct && !/^data:/i.test(direct)) return direct;
-  const srcset = tag.match(/srcset="\s*([^"]+)"/i)?.[1] ?? "";
-  const first = srcset.split(",")[0]?.trim().split(/\s+/)[0] ?? "";
-  return first || "";
-}
-
 function parseCatalog(html) {
   const results = [];
   const seen = new Set();
@@ -92,11 +83,10 @@ function parseCatalog(html) {
     const title = textOnly(block.match(/<div[^>]*class="[^"]*post-title[^"]*"[^>]*>[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/i)?.[1] ?? link[2] ?? "");
     if (!title) return;
     const imageTag = block.match(/<img[^>]*class="[^"]*img-responsive[^"]*"[^>]*>/i)?.[0] ?? block.match(/<img[^>]*>/i)?.[0] ?? "";
-    const cover = imageFromTag(imageTag);
+    const cover = imageTag.match(/(?:src|data-src)="\s*([^\"]+)"/i)?.[1]?.trim() ?? "";
     const chapters = normalizeRecentChapters([...block.matchAll(/<span[^>]*class="[^"]*chapter[^"]*"[^>]*>[\s\S]*?<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi)].map((entry) => {
-      const name = textOnly(entry[2]);
-      const number = extractChapterNumber(name, entry[1]) || name.replace(/^(?:Chapter|الفصل)\s*/i, "").trim();
-      return { url: entry[1], name, number };
+      const name = textOnly(entry[2]).replace(/^(?:Chapter|الفصل)\s*/i, "");
+      return { url: entry[1], name, number: name };
     }));
     seen.add(normalizedUrl);
     results.push(applyRecentChapterFields({ id: new URL(normalizedUrl).pathname.split("/").filter(Boolean).pop(), title, url: normalizedUrl, cover, source: "MangaLik", sourceId: "mangalik", mediaType: "manga", mediaTypeLabel: "مانغا" }, chapters));
@@ -190,7 +180,7 @@ function parseSearch(html) {
     if (seen.has(url)) return;
     const title = textOnly(block.match(/<div[^>]*class="[^"]*post-title[^"]*"[^>]*>[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/i)?.[1] ?? link[2] ?? "");
     const imageTag = block.match(/<div[^>]*class="[^"]*tab-thumb[^"]*"[^>]*>[\s\S]*?<img[^>]*>/i)?.[0] ?? "";
-    const cover = imageFromTag(imageTag);
+    const cover = imageTag.match(/(?:src|data-src)="\s*([^\"]+)"/i)?.[1]?.trim() ?? "";
     if (!title) return;
     seen.add(url);
     results.push({ id: new URL(url).pathname.split("/").filter(Boolean).pop(), title, url, cover, latestChapter: "—", latestChapterUrl: null, recentChapters: [], source: "MangaLik", sourceId: "mangalik", mediaType: "manga", mediaTypeLabel: "مانغا" });
@@ -201,7 +191,7 @@ function parseSearch(html) {
 function parseManga(html, url, ctx = DEFAULT_CTX) {
   const title = textOnly(html.match(/<div[^>]*class="[^"]*post-title[^"]*"[^>]*>[\s\S]*?<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ?? "");
   const coverBlock = html.match(/<div[^>]*class="[^"]*summary_image[^"]*"[^>]*>([\s\S]*?)<\/div>/i)?.[1] ?? "";
-  const cover = imageFromTag(coverBlock.match(/<img[^>]*>/)?.[0] ?? "");
+  const cover = coverBlock.match(/<img[^>]*(?:src|data-src)="\s*([^\"]+)"/i)?.[1]?.trim() ?? "";
   const altTitle = textOnly(html.match(/<div[^>]*class="[^"]*post-content_item[^"]*mg_alternative[^"]*"[^>]*>[\s\S]*?<div[^>]*class="[^"]*summary-content[^"]*"[^>]*>([\s\S]*?)<\/div>/i)?.[1] ?? "");
   const summary = textOnly(html.match(/<div[^>]*class="[^"]*summary__content[^"]*"[^>]*>([\s\S]*?)<\/div>/i)?.[1] ?? "");
   const chapters = parseMadaraChapters(html, {
