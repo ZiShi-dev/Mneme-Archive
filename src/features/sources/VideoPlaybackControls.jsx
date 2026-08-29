@@ -72,7 +72,7 @@ export function VideoPlaybackControls({
   className = "",
   compact = false,
 }) {
-  const { t } = useI18n();
+  const { t, dir } = useI18n();
   const resolvedUnitLabel = unitLabel || t("media.theEpisode");
   const [volumeOpen, setVolumeOpen] = useState(false);
   const showChapterNav = Boolean(previousChapter || nextChapter);
@@ -81,6 +81,7 @@ export function VideoPlaybackControls({
   return (
     <section
       className={`reader-playback reader-playback--video${compact ? " reader-playback--compact" : ""}${navOnly ? " reader-playback--nav-only" : ""}${showChapterNav ? "" : " reader-playback--no-nav"}${className ? ` ${className}` : ""}`}
+      dir={dir}
       aria-label={t("reader.playback.watchUnit", { unit: resolvedUnitLabel })}
       onMouseLeave={() => setVolumeOpen(false)}
     >
@@ -122,12 +123,12 @@ export function VideoPlaybackControls({
         {showChapterNav && (
           <button
             type="button"
-            className={`reader-playback__chapter${navOnly ? " reader-playback__chapter--icon-only" : ""}`}
+            className={`reader-playback__chapter reader-playback__chapter--prev${navOnly ? " reader-playback__chapter--icon-only" : ""}`}
             onClick={onPrevious}
             disabled={!previousChapter}
             aria-label={t("reader.playback.previousUnit", { unit: resolvedUnitLabel })}
           >
-            <ChevronRight size={19} />
+            <ChevronLeft size={19} aria-hidden="true" />
             {!navOnly && (
               <span>
                 <small>{t("reader.playback.previousUnit", { unit: resolvedUnitLabel })}</small>
@@ -186,7 +187,7 @@ export function VideoPlaybackControls({
                 {!compact && nextChapter && <b dir="auto">{nextChapter.name || nextChapter.number}</b>}
               </span>
             )}
-            <ChevronLeft size={19} />
+            <ChevronRight size={19} aria-hidden="true" />
           </button>
         )}
 

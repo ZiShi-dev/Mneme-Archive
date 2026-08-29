@@ -30,6 +30,7 @@ const EXACT_KEYS = new Set([
   "cromebook:nav-collapsed",
   "cromebook:locale",
   "living-archive:locale",
+  "living-archive:onboarding-complete",
   "cinevault:pwa-install-dismissed",
   STORAGE_META_MIGRATED,
   STORAGE_META_CHAPTER_LOG_BACKFILL,

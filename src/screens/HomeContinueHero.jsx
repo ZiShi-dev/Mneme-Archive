@@ -125,11 +125,23 @@ export function HomeContinueHero({
         </div>
 
         <h2 dir="auto">{record.title}</h2>
-        {subtitle && <p className="hero-card__subtitle" dir="auto">{subtitle}</p>}
+        <p
+          className={`hero-card__subtitle${subtitle ? "" : " hero-card__subtitle--placeholder"}`}
+          dir="auto"
+          aria-hidden={!subtitle}
+        >
+          {subtitle || "\u00a0"}
+        </p>
 
         <div className="hero-card__status">
           <span className="hero-card__chapter-badge">{badge}</span>
-          {chapterName && <span className="hero-card__chapter-name" dir="auto">{chapterName}</span>}
+          <span
+            className={`hero-card__chapter-name${chapterName ? "" : " hero-card__chapter-name--placeholder"}`}
+            dir="auto"
+            aria-hidden={!chapterName}
+          >
+            {chapterName || "\u00a0"}
+          </span>
           <div className="hero-card__progress-wrap">
             <div className="progress hero-card__progress" aria-hidden="true">
               <span style={{ width: `${completed ? 100 : progress}%` }} />

@@ -32,11 +32,14 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
     private static final String USER_AGENT =
         "Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36";
     private static final int POLL_INTERVAL_MS = 800;
-    private static final int MAX_POLLS = 60;
+    private static final int MAX_POLLS = 90;
+    private static final int MAX_FETCH_RETRIES = 1;
     private static final String EXTRACT_JS =
         "(function(){try{"
             + "var html=document.documentElement?document.documentElement.outerHTML:'';"
             + "var body=document.body?document.body.innerHTML:'';"
+            + "var hasCatalog=/wp-manga|page-item-detail|item[^\"']*wp-manga|dooplay/i.test(body);"
+            + "if(hasCatalog&&body.length>1200){return JSON.stringify({ready:true,html:html});}"
             + "if(/Just a moment|cf-chl-|challenges\\.cloudflare\\.com/i.test(body)){return JSON.stringify({ready:false,blocked:true});}"
             + "if(!body||body.length<400){return JSON.stringify({ready:false});}"
             + "if(document.readyState!=='complete'){return JSON.stringify({ready:false});}"
@@ -57,11 +60,15 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
 
     private static final SourceHost[] SOURCE_HOSTS = {
         new SourceHost("mangalik.net", "https://mangalik.net/manga/", "https://mangalik.net/"),
+        new SourceHost("hentairead.com", "https://hentairead.com/hentai/", "https://hentairead.com/"),
         new SourceHost("azorafly.com", "https://azorafly.com/", "https://azorafly.com/"),
         new SourceHost("galaxynovels.com", "https://galaxynovels.com/", "https://galaxynovels.com/"),
+        new SourceHost("wtr-lab.com", "https://wtr-lab.com/en/novel-list", "https://wtr-lab.com/"),
     };
 
+    private static final String HENCOVER_HOST = "hencover.xyz";
     private static final String AZORA_STORAGE_HOST = "storage.azorafly.com";
+    private static final String MANGALIK_APEX = "mangalik.net";
 
     private enum Stage {
         WARMUP,
@@ -80,13 +87,38 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
     }
 
     private final Handler handler = new Handler(Looper.getMainLooper());
+    private enum FetchMode {
+        HTML,
+        WTR_READER,
+    }
+
+    private static final class PendingWtrlabRequest {
+        final PluginCall call;
+        final int rawId;
+        final int chapterNo;
+        final String slug;
+        final String translate;
+
+        PendingWtrlabRequest(PluginCall call, int rawId, int chapterNo, String slug, String translate) {
+            this.call = call;
+            this.rawId = rawId;
+            this.chapterNo = chapterNo;
+            this.slug = slug;
+            this.translate = translate;
+        }
+    }
+
+    private final ArrayDeque<PendingWtrlabRequest> pendingWtrlabRequests = new ArrayDeque<>();
     private final ArrayDeque<PendingHtmlRequest> pendingHtmlRequests = new ArrayDeque<>();
+    private FetchMode fetchMode = FetchMode.HTML;
+    private String pendingWtrlabReaderJs = "";
     private final Runnable timeoutRunnable = () -> failActiveCall("انتهت مهلة تحميل الصفحة");
     private WebView activeWebView;
     private PluginCall activeCall;
     private int pollCount;
     private String pendingTargetUrl;
     private String pendingWarmupUrl = SOURCE_HOSTS[0].warmupUrl;
+    private int activeFetchRetries = 0;
     private Stage stage = Stage.WARMUP;
 
     @PluginMethod
@@ -104,6 +136,50 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
         }
 
         beginHtmlFetch(call, url);
+    }
+
+    @PluginMethod
+    public void fetchWtrlabChapter(PluginCall call) {
+        int rawId = call.getInt("rawId", 0);
+        int chapterNo = call.getInt("chapterNo", 0);
+        String slug = call.getString("slug", "").trim();
+        String translate = call.getString("translate", "web").trim();
+        if (rawId <= 0 || chapterNo <= 0 || slug.isEmpty()) {
+            call.reject("فصل WTR-LAB غير صالح");
+            return;
+        }
+        if (!"web".equals(translate) && !"ai".equals(translate)) {
+            translate = "web";
+        }
+
+        if (activeCall != null) {
+            call.setKeepAlive(true);
+            pendingWtrlabRequests.addLast(new PendingWtrlabRequest(call, rawId, chapterNo, slug, translate));
+            return;
+        }
+
+        beginWtrlabFetch(call, rawId, chapterNo, slug, translate);
+    }
+
+    private void beginWtrlabFetch(PluginCall call, int rawId, int chapterNo, String slug, String translate) {
+        activeCall = call;
+        pollCount = 0;
+        fetchMode = FetchMode.WTR_READER;
+        pendingWtrlabReaderJs = buildWtrlabReaderJs(rawId, chapterNo, translate);
+        pendingTargetUrl = "https://wtr-lab.com/en/novel/" + rawId + "/" + slug + "/" + chapterNo;
+        pendingWarmupUrl = "https://wtr-lab.com/en/novel-list";
+        stage = Stage.WARMUP;
+        getActivity().runOnUiThread(() -> startHtmlFetch(pendingTargetUrl));
+    }
+
+    private String buildWtrlabReaderJs(int rawId, int chapterNo, String translate) {
+        return "(function(){try{return fetch('/api/reader/get',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({translate:'"
+            + translate
+            + "',language:'en',raw_id:"
+            + rawId
+            + ",chapter_no:"
+            + chapterNo
+            + ",retry:false,force_retry:false})}).then(function(response){return response.json();}).then(function(payload){if(payload&&payload.success){return JSON.stringify({ready:true,payload:payload});}return JSON.stringify({ready:false,blocked:/turnstile|logged in/i.test(String(payload.error||payload.message||'')),error:payload.error||payload.message||'reader_failed'});}).catch(function(error){return JSON.stringify({ready:false,error:String(error)});});}catch(error){return JSON.stringify({ready:false,error:String(error)});}})();";
     }
 
     @PluginMethod
@@ -152,6 +228,7 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
     private void beginHtmlFetch(PluginCall call, String url) {
         activeCall = call;
         pollCount = 0;
+        fetchMode = FetchMode.HTML;
         pendingTargetUrl = url;
         pendingWarmupUrl = warmupUrlFor(url);
         stage = Stage.WARMUP;
@@ -215,8 +292,9 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
             return;
         }
         pollCount += 1;
+        final String script = fetchMode == FetchMode.WTR_READER ? pendingWtrlabReaderJs : EXTRACT_JS;
         webView.evaluateJavascript(
-            EXTRACT_JS,
+            script,
             value -> {
                 if (activeWebView != webView || activeCall == null || stage != Stage.POLL) {
                     return;
@@ -227,11 +305,15 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
                     return;
                 }
                 if (payload.optBoolean("blocked", false)) {
-                    failActiveCall("حماية الموقع تمنع الاتصال (Cloudflare)");
+                    scheduleNextPoll(webView);
                     return;
                 }
                 if (!payload.optBoolean("ready", false)) {
                     scheduleNextPoll(webView);
+                    return;
+                }
+                if (fetchMode == FetchMode.WTR_READER) {
+                    resolveWtrlabCall(payload.optJSONObject("payload"));
                     return;
                 }
                 resolveActiveCall(payload.optString("html", ""));
@@ -241,7 +323,7 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
 
     private void scheduleNextPoll(WebView webView) {
         if (pollCount >= MAX_POLLS) {
-            failActiveCall("تعذر تحميل محتوى الصفحة");
+            failActiveCall("حماية الموقع تمنع الاتصال (Cloudflare)");
             return;
         }
         handler.postDelayed(() -> pollHtml(webView), POLL_INTERVAL_MS);
@@ -264,9 +346,38 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
         startNextQueuedHtmlFetch();
     }
 
+    private void resolveWtrlabCall(JSONObject payload) {
+        PluginCall call = activeCall;
+        if (call == null) {
+            return;
+        }
+        if (payload == null) {
+            failActiveCall("تعذر تحميل فصل WTR-LAB");
+            return;
+        }
+        JSObject result = new JSObject();
+        result.put("payload", payload.toString());
+        cleanupActiveRequest();
+        call.resolve(result);
+        startNextQueuedHtmlFetch();
+    }
+
     private void failActiveCall(String message) {
         PluginCall call = activeCall;
+        String retryUrl = pendingTargetUrl;
+        int retries = activeFetchRetries;
+        boolean canRetry = retries < MAX_FETCH_RETRIES
+            && retryUrl != null
+            && !retryUrl.isEmpty()
+            && (message.contains("Cloudflare")
+                || message.contains("مهلة")
+                || message.contains("تعذر"));
         cleanupActiveRequest();
+        if (canRetry && call != null) {
+            activeFetchRetries = retries + 1;
+            beginHtmlFetch(call, retryUrl);
+            return;
+        }
         if (call != null) {
             call.reject(message);
         }
@@ -274,6 +385,11 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
     }
 
     private void startNextQueuedHtmlFetch() {
+        PendingWtrlabRequest wtrlabNext = pendingWtrlabRequests.pollFirst();
+        if (wtrlabNext != null) {
+            beginWtrlabFetch(wtrlabNext.call, wtrlabNext.rawId, wtrlabNext.chapterNo, wtrlabNext.slug, wtrlabNext.translate);
+            return;
+        }
         PendingHtmlRequest next = pendingHtmlRequests.pollFirst();
         if (next == null) {
             return;
@@ -284,8 +400,11 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
     private void cleanupActiveRequest() {
         pendingTargetUrl = null;
         pendingWarmupUrl = SOURCE_HOSTS[0].warmupUrl;
+        pendingWtrlabReaderJs = "";
+        fetchMode = FetchMode.HTML;
         activeCall = null;
         pollCount = 0;
+        activeFetchRetries = 0;
         stage = Stage.WARMUP;
         handler.removeCallbacks(timeoutRunnable);
         cleanupWebView();
@@ -364,6 +483,10 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
         return normalized;
     }
 
+    private boolean isMangalikHost(String host) {
+        return MANGALIK_APEX.equals(host) || host.endsWith("." + MANGALIK_APEX);
+    }
+
     private SourceHost sourceHostFor(String url) {
         try {
             String host = normalizeHost(new URI(url).getHost());
@@ -385,6 +508,12 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
     private String refererFor(String url) {
         try {
             String host = normalizeHost(new URI(url).getHost());
+            if (HENCOVER_HOST.equals(host)) {
+                return "https://hentairead.com/";
+            }
+            if (isMangalikHost(host)) {
+                return "https://mangalik.net/";
+            }
             if (AZORA_STORAGE_HOST.equals(host)) {
                 return "https://azorafly.com/";
             }
@@ -420,17 +549,29 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
             }
             String host = normalizeHost(uri.getHost());
             String path = uri.getPath() == null ? "" : uri.getPath();
-            if (AZORA_STORAGE_HOST.equals(host)) {
+            if (HENCOVER_HOST.equals(host) || AZORA_STORAGE_HOST.equals(host)) {
                 return true;
+            }
+            if (isMangalikHost(host)) {
+                return path.startsWith("/manga/") || path.startsWith("/wp-content/uploads/");
             }
             if (!isAllowedUrl(url)) {
                 return false;
+            }
+            if ("hentairead.com".equals(host)) {
+                return path.startsWith("/wp-content/uploads/") || path.startsWith("/hentai/");
+            }
+            if ("hencover.xyz".equals(host)) {
+                return true;
             }
             if ("azorafly.com".equals(host)) {
                 return path.startsWith("/upload/") || path.startsWith("/public/upload/");
             }
             if ("galaxynovels.com".equals(host)) {
                 return path.startsWith("/wp-content/uploads/");
+            }
+            if ("wtr-lab.com".equals(host)) {
+                return path.startsWith("/cdn/") || path.startsWith("/assets/");
             }
             return path.startsWith("/manga/") || path.startsWith("/wp-content/uploads/");
         } catch (Exception error) {

@@ -3,8 +3,10 @@
 .screen--live-details.screen--details-cinematic-manga .details-content,
 .screen--live-details.screen--details-cinematic-novel .details-content,
 .screen--live-details.screen--details-cinematic-movie .details-content {
-  margin-top: 14px;
-  padding-top: 22px;
+  margin-top: 8px;
+  padding: 24px 20px 32px;
+  border-radius: 22px 22px 0 0;
+  background: var(--paper);
 }
 
 .screen--live-details.screen--details-movie .details-content--movie {

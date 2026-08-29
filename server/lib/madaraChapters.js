@@ -1,4 +1,5 @@
 import { parseChapterDateString, enrichChapterDates as enrichServerChapterDates } from "./chapterDates.js";
+import { extractChapterNumber, normalizeChapterList } from "./chapterOrdering.js";
 import { textOnly } from "./htmlUtils.js";
 
 export function extractMadaraMangaId(html = "") {
@@ -17,12 +18,12 @@ export function parseMadaraChapters(html = "", { normalizeUrl = (url) => url } =
     if (!url || seen.has(url)) continue;
     const date = textOnly(match[1].match(/<span[^>]*class="[^"]*chapter-release-date[^"]*"[^>]*>([\s\S]*?)<\/span>/i)?.[1] ?? "");
     const name = textOnly(link[2]);
+    const number = extractChapterNumber(name, url) || name.replace(/^(?:Chapter|الفصل)\s*/i, "").trim();
     const publishedAt = parseChapterDateString(date);
     seen.add(url);
     chapters.push({
       url,
-      name,
-      number: name.replace(/^(?:Chapter|الفصل)\s*/i, ""),
+      number,
       date,
       ...(publishedAt ? { publishedAt } : {}),
     });
@@ -62,5 +63,5 @@ export async function resolveMadaraChapters(html, { baseUrl, refererUrl, normali
       chapters = inlineChapters;
     }
   }
-  return enrichServerChapterDates(chapters);
+  return enrichServerChapterDates(normalizeChapterList(chapters));
 }

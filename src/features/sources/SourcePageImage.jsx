@@ -1,14 +1,19 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ImageOff, RefreshCw } from "lucide-react";
 import { useI18n } from "../../i18n/I18nProvider";
 import { resolveSourceImageUrl } from "./sourceApi";
 
-export function SourcePageImage({ sourceId, page, index }) {
+export function SourcePageImage({ sourceId, page, index, onSettled }) {
   const { t } = useI18n();
   const [src, setSrc] = useState("");
   const [status, setStatus] = useState("loading");
   const [retryCount, setRetryCount] = useState(0);
+  const onSettledRef = useRef(onSettled);
   const pageNumber = index + 1;
+
+  useEffect(() => {
+    onSettledRef.current = onSettled;
+  }, [onSettled]);
 
   useEffect(() => {
     let active = true;
@@ -22,7 +27,10 @@ export function SourcePageImage({ sourceId, page, index }) {
         setStatus("ready");
       })
       .catch(() => {
-        if (active) setStatus("error");
+        if (active) {
+          setStatus("error");
+          onSettledRef.current?.();
+        }
       });
 
     return () => { active = false; };
@@ -63,10 +71,15 @@ export function SourcePageImage({ sourceId, page, index }) {
       src={src}
       alt={page.alt || t("reader.page.alt", { n: pageNumber })}
       className="live-reader-pages__image"
-      loading={index < 2 ? "eager" : "lazy"}
+      loading="eager"
       decoding="async"
+      fetchPriority={index === 0 ? "high" : "auto"}
       referrerPolicy="no-referrer"
-      onError={() => setStatus("error")}
+      onLoad={() => onSettledRef.current?.()}
+      onError={() => {
+        setStatus("error");
+        onSettledRef.current?.();
+      }}
     />
   );
 }

@@ -7,6 +7,7 @@ import { initMangalikNative } from "./lib/platform/mangalikNative";
 import { initSafeAreaInsets } from "./lib/platform/safeAreaInsets";
 
 import { markNativeAppShell } from "./lib/platform/nativeAppLayout";
+import { shouldSkipOnboarding } from "./lib/onboarding/constants";
 
 export async function initCapacitor() {
   if (!Capacitor.isNativePlatform()) return;
@@ -19,7 +20,9 @@ export async function initCapacitor() {
     if (!isChromebookApp) {
       await initMangalikNative();
     }
-    await SplashScreen.hide();
+    if (shouldSkipOnboarding()) {
+      await SplashScreen.hide();
+    }
   } catch {
     // Plugins optionnels selon la plateforme.
   }

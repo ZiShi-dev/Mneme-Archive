@@ -1,44 +1,35 @@
 import React from "react";
-import { Bell, Bookmark, ChevronLeft, ChevronRight, Compass, History, Home, Search, Settings2, Sparkles } from "lucide-react";
+import { Bell, ChevronLeft, ChevronRight, History, Search } from "lucide-react";
 import { useI18n } from "../../i18n/I18nProvider";
 import { AppMark } from "../brand/AppMark";
 import { getAppBrandText } from "../../lib/brand/appBrand";
 import { usePersistedState } from "../../hooks/usePersistedState";
+import { isNavScreenActive, navItems } from "./bottomNavItems";
 
-export function navItems(t) {
-  return [
-    ["home", Home, t("nav.home"), t("nav.homeAria")],
-    ["sources", Compass, t("nav.discover"), t("nav.discoverAria")],
-    ["favorites", Bookmark, t("nav.favorites"), t("nav.favoritesAria")],
-    ["updates", Sparkles, t("nav.updates"), t("nav.updatesAria")],
-    ["settings", Settings2, t("nav.settings"), t("nav.settingsAria")],
-  ];
-}
-
-function isNavScreenActive(screenId, current) {
-  if (screenId === "sources") {
-    return current === "sources" || current === "source-catalog";
-  }
-  return current === screenId;
-}
+export { navItems } from "./bottomNavItems";
 
 export function BottomNav({ current, navigate }) {
   const { t } = useI18n();
   return (
     <nav className="bottom-nav" aria-label={t("nav.aria")}>
-      {navItems(t).map(([id, Icon, label, ariaLabel]) => (
-        <button
-          className={isNavScreenActive(id, current) ? "active" : ""}
-          key={id}
-          type="button"
-          aria-label={ariaLabel}
-          aria-current={isNavScreenActive(id, current) ? "page" : undefined}
-          onClick={() => navigate(id)}
-        >
-          <Icon size={21} aria-hidden="true" />
-          <span>{label}</span>
-        </button>
-      ))}
+      {navItems(t).map(([id, Icon, label, ariaLabel]) => {
+        const active = isNavScreenActive(id, current);
+        return (
+          <button
+            className={`bottom-nav__tab${active ? " is-active active" : ""}`}
+            key={id}
+            type="button"
+            aria-label={ariaLabel}
+            aria-current={active ? "page" : undefined}
+            onClick={() => navigate(id)}
+          >
+            <span className="bottom-nav__icon-wrap" aria-hidden="true">
+              <Icon size={22} strokeWidth={active ? 2.25 : 1.85} />
+            </span>
+            <span className="bottom-nav__label">{label}</span>
+          </button>
+        );
+      })}
     </nav>
   );
 }

@@ -2,9 +2,10 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import sharp from "sharp";
+import { renderMnemeMarkSvgForTheme } from "./render-mneme-mark-svg.mjs";
+import { THEME_INK } from "../src/lib/theme/appearance.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const svgPath = path.join(root, "public", "pwa", "icon.svg");
 const resDir = path.join(root, "android", "app", "src", "main", "res");
 
 const DENSITIES = [
@@ -19,7 +20,7 @@ const BACKGROUND = { r: 9, g: 10, b: 18, alpha: 1 };
 
 async function writePng(svg, size, target, padding = 0) {
   const inner = size - padding * 2;
-  const buffer = await sharp(svg)
+  const buffer = await sharp(Buffer.from(svg))
     .resize(inner, inner, { fit: "contain", background: BACKGROUND })
     .extend({
       top: padding,
@@ -34,7 +35,7 @@ async function writePng(svg, size, target, padding = 0) {
 }
 
 async function main() {
-  const svg = await fs.readFile(svgPath);
+  const svg = renderMnemeMarkSvgForTheme(THEME_INK, 512);
 
   for (const { folder, launcher, foreground } of DENSITIES) {
     const dir = path.join(resDir, folder);
@@ -48,7 +49,7 @@ async function main() {
     await writePng(svg, foreground, path.join(dir, "ic_launcher_foreground.png"), foregroundPadding);
   }
 
-  console.log("Android launcher icons generated in android/app/src/main/res/mipmap-*/");
+  console.log("Android launcher icons generated from themed Mneme mark SVG (ink)");
 }
 
 main().catch((error) => {

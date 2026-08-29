@@ -6,6 +6,7 @@ import { AccessibleSearchField } from "../../components/ui/AccessibleSearchField
 import { ChipFilterBar, ChipFilterButton } from "../../components/ui/ChipFilterBar";
 import { isChromebookApp, isNotifiableMediaType, PREFERRED_AUDIO_LANGUAGE } from "../../config/appFlavor";
 import { fetchSourceDetails } from "./sourceApi";
+import { normalizeChapterList, chapterSortKey } from "../../../server/lib/chapterOrdering.js";
 import { DetailsActionHub } from "./DetailsActionHub";
 import { DetailsCinematicHero } from "./details/DetailsCinematicHero";
 import { DetailsHeroMeta } from "./details/DetailsHeroMeta";
@@ -19,10 +20,12 @@ import {
 } from "./details/detailsLayout";
 import { MovieWatchActions } from "./details/MovieWatchActions";
 import { RemoteCover } from "./RemoteCover";
+import { usesContainCover } from "./coverDisplay";
 import { CoverAudioBadge } from "./CatalogCard";
 import { useResolvedCoverUrl } from "./useResolvedCoverUrl";
 import { findChapterByRecord } from "../../lib/readingProgress";
 import {
+  ChapterListSkeleton,
   DetailsContentSkeleton,
 } from "../../components/ui/ContentSkeleton";
 import { FollowAlertSheet } from "../updates/FollowAlertSheet";
@@ -179,6 +182,7 @@ function RelatedMoviesRow({ items, onOpen, mediaType, layout = "scroll" }) {
               title={item.title}
               sourceId={item.sourceId}
               video
+              contain={usesContainCover(item.sourceId)}
             />
             <span className="details-related__copy">
               <strong dir="auto">{item.title}</strong>
@@ -224,7 +228,12 @@ export function LiveMangaDetails({
       const data = await fetchSourceDetails(sourceId, seed.url);
       const badCover = !data.cover || /\/images\.png$|Anime4up-Icon/i.test(data.cover);
       const seedCover = seed.cover && !/\/images\.png$|Anime4up-Icon/i.test(seed.cover) ? seed.cover : "";
-      setItem({ ...seed, ...data, cover: badCover ? (seedCover || data.cover) : data.cover });
+      setItem({
+        ...seed,
+        ...data,
+        cover: badCover ? (seedCover || data.cover) : data.cover,
+        chapters: data.chapters?.length ? normalizeChapterList(data.chapters) : data.chapters,
+      });
       setStatus("ready");
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : t("details.loadFailed");
@@ -263,9 +272,9 @@ export function LiveMangaDetails({
       ? matches.filter((chapter) => (chapter.author || item.author || "") === chapterAuthor)
       : matches;
     const sorted = [...byAuthor].sort((a, b) => {
-      const diff = Number(b.number) - Number(a.number);
-      if (Number.isFinite(diff) && diff !== 0) return diff;
-      return String(b.url || "").localeCompare(String(a.url || ""), "ar");
+      const diff = chapterSortKey(b) - chapterSortKey(a);
+      if (diff !== 0) return diff;
+      return String(b.url || "").localeCompare(String(a.url || ""), undefined, { numeric: true });
     });
     return chapterOrder === "desc" ? sorted : [...sorted].reverse();
   }, [chapterAuthor, chapterOrder, chapterQuery, chapters, item.author]);
@@ -345,6 +354,7 @@ export function LiveMangaDetails({
   const isFollowing = Boolean(followPreference?.enabled);
   const canFollowUpdates = Boolean(chapterFollow) && isNotifiableMediaType(mediaType);
   const showChapterList = shouldShowChapterList(mediaType, chapters.length);
+  const showChapterListSection = showChapterList || (status === "loading" && !isMoviePage);
   const showAbout = Boolean(item.summary) || categories.length > 0 || tags.length > 0;
   const showActionHubInDock = status === "ready" && !isMoviePage;
   const showMovieActionsInDock = status === "ready" && isMoviePage;
@@ -388,6 +398,7 @@ export function LiveMangaDetails({
         hero
         novel={isNovel}
         video={isVideo}
+        contain={usesContainCover(sourceId)}
         priority
       />
       <CoverAudioBadge label={availableAudioLanguages.length ? audioLanguage : item.audioLabel} />
@@ -489,7 +500,7 @@ export function LiveMangaDetails({
             label={presentation.loadingList}
             isMovie={isMoviePage}
             showSidebar={isVideo || isNovel || Boolean(seed.summary)}
-            chapterCount={showChapterList ? 8 : 0}
+            chapterCount={showChapterListSection ? 0 : (showChapterList ? 8 : 0)}
           />
         ) : status === "error" ? <div className="live-error"><Wifi size={30} /><h2>{t("details.loadDetailsFailed")}</h2><p>{error}</p><button className="button button--primary" onClick={load}><RefreshCw size={17} /> {t("common.retry")}</button></div> : <>
           {(showAbout || (isVideo && onOpenRelated)) && (
@@ -544,12 +555,17 @@ export function LiveMangaDetails({
           )}
             </div>
           )}
-          {showChapterList && (
-          <section className={`details-chapters${isChromebookApp ? " details-chapters--desktop" : ""}`} aria-labelledby="details-chapters-title">
+        </>}
+        {showChapterListSection && status !== "error" && (
+          <section className={`details-chapters${isChromebookApp ? " details-chapters--desktop" : ""}${status === "loading" ? " details-chapters--loading" : ""}`} aria-labelledby="details-chapters-title" aria-busy={status === "loading"}>
             <div className="details-section-heading">
               <h2 id="details-chapters-title">{presentation.sectionTitle}</h2>
-              <strong>{filteredChapters.length}</strong>
+              <strong>{status === "loading" ? "…" : filteredChapters.length}</strong>
             </div>
+            {status === "loading" ? (
+              <ChapterListSkeleton count={8} label={presentation.loadingList} />
+            ) : (
+              <>
             {chapters.length > 15 && <div className="chapter-tools"><AccessibleSearchField className="global-search chapter-search" value={chapterQuery} onChange={setChapterQuery} placeholder={presentation.searchPlaceholder} ariaLabel={t("details.searchInUnits", { units: presentation.units })} /><button className="chapter-order" onClick={() => setChapterOrder((order) => order === "desc" ? "asc" : "desc")}><ArrowUpDown size={16} /><span>{chapterOrder === "desc" ? t("details.newestFirst") : t("details.oldestFirst")}</span></button></div>}
             {chapterAuthors.length > 0 && (
               <ChipFilterBar variant="segmented" className="details-chapter-author-filter" role="group" ariaLabel={t("details.authorFilterAria")}>
@@ -580,9 +596,10 @@ export function LiveMangaDetails({
               </div>
             ) : chapters.length ? <div className="empty-state empty-state--compact"><Search size={29} /><h2>{presentation.noMatch}</h2><p>{t("details.tryDifferentSearch")}</p><button onClick={() => setChapterQuery("")}>{t("common.clearSearch")}</button></div> : <div className="empty-state empty-state--compact"><BookOpen size={31} /><h2>{presentation.emptyList}</h2></div>}
             {filteredChapters.length > chapterPageSize && <nav className="chapter-pagination" aria-label={presentation.paginationAria}><button onClick={() => setChapterPage((page) => Math.max(1, page - 1))} disabled={chapterPage === 1} aria-label={t("common.previous")}><ChevronRight size={17} /></button><span><small>{t("common.page")}</small><strong>{chapterPage}</strong><small>{t("common.of", { total: totalChapterPages })}</small></span><button onClick={() => setChapterPage((page) => Math.min(totalChapterPages, page + 1))} disabled={chapterPage === totalChapterPages} aria-label={t("common.next")}><ChevronLeft size={17} /></button></nav>}
+              </>
+            )}
           </section>
-          )}
-        </>}
+        )}
       </main>
     </div>
       {followSheetOpen && chapterFollow && (

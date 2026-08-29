@@ -1,6 +1,6 @@
 import { isChromebookApp } from "../../config/appFlavor.js";
 
-const MOBILE_GRID_COLUMNS = 3;
+const MOBILE_GRID_COLUMNS = 2;
 const DESKTOP_TILE_MIN_PX = 155;
 const DESKTOP_GRID_GAP_PX = 16;
 const DESKTOP_CONTENT_PADDING_PX = 72;

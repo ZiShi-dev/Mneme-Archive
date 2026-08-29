@@ -45,8 +45,6 @@ export function useReaderPagePreload({
       });
     };
 
-    runPreload(-1);
-
     const container = containerRef?.current;
     if (!container) {
       return () => abortController.abort();

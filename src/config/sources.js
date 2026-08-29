@@ -10,11 +10,14 @@ export const ANIMEDAR_LOGO_URL = "https://animedar.net/wp-content/uploads/2023/1
 export const CENELE_LOGO_URL = "https://cenele.com/wp-content/uploads/2026/08/cropped-%D9%81%D8%B6%D8%A7%D8%A1-%D8%B1%D9%88%D8%A7%D9%8A%D8%A7%D8%AA-192x192.png";
 export const KOLNOVEL_LOGO_URL = "https://kolnovel.com/wp-content/uploads/2026/07/cropped-%D8%A8%D8%AF%D9%88%D9%86-%D8%A7%D8%B3%D9%8596_20260720234820-1-192x192.png";
 export const ANIME4UP_LOGO_URL = "https://4h.b9p2m6c.shop/wp-content/uploads/2019/03/Anime4up-Icon-1.png";
+export const HENTAIREAD_LOGO_URL = "https://hentairead.com/favicon.ico";
 export const ANIMESAMA_LOGO_URL = "https://anime-sama.to/img/icon.png";
 export const FRENCH_STREAM_LOGO_URL = "https://french-stream.one/apple-touch-icon.png";
 export const WIFLIX_LOGO_URL = "https://www.wiflix.tv/static/templates/wiflixnew/images/favicon.png";
 export const COFLIX_LOGO_URL = "https://coflix.esq/wp-content/uploads/2022/10/cropped-coflix-180x180-1-150x150.png";
 export const DILAR_LOGO_URL = "https://dilar.tube/favicon.ico";
+export const WTR_LAB_LOGO_URL = "https://wtr-lab.com/assets/favicon/apple-touch-icon.png";
+export const NOVELPHOENIX_LOGO_URL = "https://novelphoenix.com/apple-touch-icon.png?v=4.2";
 
 export const sourceProfiles = {
   mangalik: {
@@ -185,7 +188,66 @@ export const sourceProfiles = {
     contentTypes: ["manga"],
     languages: ["ar"],
   },
+  hentairead: {
+    id: "hentairead",
+    name: "HentaiRead",
+    arabicName: "هنتاي ريد",
+    domain: "hentairead.com",
+    url: "https://hentairead.com/hentai/",
+    logo: HENTAIREAD_LOGO_URL,
+    initials: "HR",
+    contentLabel: "مانغا إنجليزية",
+    contentTypes: ["manga"],
+    languages: ["en"],
+  },
+  wtrlab: {
+    id: "wtrlab",
+    name: "WTR-LAB",
+    arabicName: "دبليو تي آر لاب",
+    domain: "wtr-lab.com",
+    url: "https://wtr-lab.com/en/library",
+    logo: WTR_LAB_LOGO_URL,
+    initials: "WL",
+    contentLabel: "روايات MTL",
+    contentTypes: ["novel"],
+    languages: ["en"],
+  },
+  novelphoenix: {
+    id: "novelphoenix",
+    name: "Novel Phoenix",
+    arabicName: "نوفل فينيكس",
+    domain: "novelphoenix.com",
+    url: "https://novelphoenix.com/",
+    logo: NOVELPHOENIX_LOGO_URL,
+    initials: "NP",
+    contentLabel: "روايات إنجليزية",
+    contentTypes: ["novel"],
+    languages: ["en"],
+  },
 };
+
+/** Sources retirées de l'app — données persistées nettoyées au démarrage. */
+export const REMOVED_SOURCE_IDS = new Set([
+  "realmnovel",
+  "skynovel",
+]);
+
+export function isKnownSourceId(sourceId) {
+  if (!sourceId || REMOVED_SOURCE_IDS.has(sourceId)) return false;
+  return Object.prototype.hasOwnProperty.call(sourceProfiles, sourceId);
+}
+
+export function sanitizeSourcesList(current) {
+  const known = (Array.isArray(current) ? current : []).filter((entry) => isKnownSourceId(entry.id));
+  return initialSources.map((fallback) => ({ ...fallback, ...(known.find((entry) => entry.id === fallback.id) || {}) }));
+}
+
+export function sanitizeActiveSourceId(sourceId, sourceList = initialSources) {
+  if (isKnownSourceId(sourceId) && sourceList.some((entry) => entry.id === sourceId && entry.enabled !== false)) {
+    return sourceId;
+  }
+  return sourceList.find((entry) => entry.enabled !== false && isKnownSourceId(entry.id))?.id || DEFAULT_SOURCE_ID;
+}
 
 const listedProfiles = (isChromebookApp && ALLOWED_SOURCE_IDS
   ? ALLOWED_SOURCE_IDS.map((id) => sourceProfiles[id]).filter(Boolean)
@@ -282,6 +344,39 @@ export function defaultContentKinds(sourceId) {
     return [{ slug: "all", name: "الكل", filterPath: "/all/" }];
   }
 
+  if (sourceId === "hentairead") {
+    return [
+      { slug: "all", name: "الكل", type: "kind" },
+      { slug: "new", name: "جديد", type: "kind", queryValue: "new" },
+      { slug: "views", name: "الأكثر مشاهدة", type: "kind", queryValue: "views" },
+      { slug: "rating", name: "الأعلى تقييماً", type: "kind", queryValue: "rating" },
+    ];
+  }
+
+  if (sourceId === "wtrlab") {
+    return [
+      { slug: "all", name: "الكل", type: "kind" },
+      { slug: "popular", name: "الأكثر قراءة", type: "kind", queryValue: "popular" },
+      { slug: "trending", name: "رائج", type: "kind", queryValue: "trending" },
+      { slug: "latest", name: "الأحدث", type: "kind", queryValue: "latest" },
+      { slug: "ongoing", name: "مستمر", type: "kind", queryValue: "ongoing" },
+      { slug: "completed", name: "مكتمل", type: "kind", queryValue: "completed" },
+      { slug: "ranking", name: "التصنيف", type: "kind", queryValue: "ranking" },
+    ];
+  }
+
+  if (sourceId === "novelphoenix") {
+    return [
+      { slug: "all", name: "الكل", type: "kind" },
+      { slug: "popular", name: "الأكثر شعبية", type: "kind", queryValue: "popular" },
+      { slug: "updates", name: "التحديثات", type: "kind", queryValue: "updates" },
+      { slug: "latest", name: "إصدارات حديثة", type: "kind", queryValue: "latest" },
+      { slug: "ongoing", name: "مستمر", type: "kind", queryValue: "ongoing" },
+      { slug: "completed", name: "مكتمل", type: "kind", queryValue: "completed" },
+      { slug: "ranking", name: "التصنيف", type: "kind", queryValue: "ranking" },
+    ];
+  }
+
   const profile = sourceProfiles[sourceId];
   if (profile?.contentTypes?.includes("manga") && profile?.contentTypes?.includes("novel")) {
     return [
@@ -320,5 +415,11 @@ export function resolveSourceId(item) {
   if (item?.sourceId === "coflix") return "coflix";
   if (item?.source === "Dilar") return "dilar";
   if (item?.sourceId === "dilar") return "dilar";
+  if (item?.source === "HentaiRead") return "hentairead";
+  if (item?.sourceId === "hentairead") return "hentairead";
+  if (item?.source === "WTR-LAB") return "wtrlab";
+  if (item?.sourceId === "wtrlab") return "wtrlab";
+  if (item?.source === "Novel Phoenix") return "novelphoenix";
+  if (item?.sourceId === "novelphoenix") return "novelphoenix";
   return DEFAULT_SOURCE_ID;
 }

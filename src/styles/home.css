@@ -599,10 +599,11 @@
   border: 0;
   border-radius: 0;
   box-shadow: none;
-  min-height: 0;
+  min-height: 204px;
   padding: 18px 16px 14px;
   grid-template-columns: 96px minmax(0, 1fr);
   gap: 16px;
+  align-items: stretch;
 }
 
 .home-hero-panel__track {
@@ -675,6 +676,66 @@
 .content .home-hero-panel .hero-card--continue,
 .content .home-hero-panel .hero-card--empty {
   margin-bottom: 0;
+}
+
+.content .home-hero-panel .hero-card__visual {
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.content .home-hero-panel .hero-card__copy {
+  min-height: 136px;
+}
+
+.content .home-hero-panel .hero-card--continue h2,
+.content .home-hero-panel .hero-card--empty h2 {
+  min-height: calc(19px * 1.38 * 2);
+}
+
+.content .home-hero-panel .hero-card__subtitle {
+  min-height: calc(13px * 1.5);
+  margin-top: 6px;
+}
+
+.content .home-hero-panel .hero-card__subtitle--placeholder {
+  visibility: hidden;
+}
+
+.content .home-hero-panel .hero-card__status {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 8px 10px;
+  min-height: 54px;
+  margin-top: 10px;
+}
+
+.content .home-hero-panel .hero-card__chapter-badge {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.content .home-hero-panel .hero-card__chapter-name {
+  grid-column: 2;
+  grid-row: 1;
+  min-height: 17px;
+}
+
+.content .home-hero-panel .hero-card__chapter-name--placeholder {
+  visibility: hidden;
+}
+
+.content .home-hero-panel .hero-card__progress-wrap {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  width: 100%;
+  flex: initial;
+}
+
+.content .home-hero-panel .hero-card__footer {
+  margin-top: auto;
+  padding-top: 12px;
 }
 
 .content .hero-card--continue:hover {

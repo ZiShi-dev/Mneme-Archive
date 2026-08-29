@@ -227,6 +227,18 @@
   object-fit: cover;
 }
 
+.search-result-row__media--contain {
+  width: 48px;
+  height: 68px;
+}
+
+.search-result-row__media--contain .remote-cover,
+.search-result-row__media--contain .remote-cover--fallback {
+  object-fit: contain;
+  object-position: center top;
+  background: var(--outside);
+}
+
 .search-result-row__type {
   position: absolute;
   top: 6px;

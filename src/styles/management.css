@@ -347,8 +347,11 @@ html[dir="rtl"] .source-config-panel__header h2 { text-align: right; }
 }
 
 @media (max-width: 360px) {
-  .content { padding-left: 16px; padding-right: 16px; }
-  .page-header { padding-left: 16px; padding-right: 16px; }
+  :root {
+    --content-padding-x: 16px;
+    --page-header-padding-x: 16px;
+  }
+
   .details-hero { padding-left: 16px; padding-right: 16px; }
 }
 

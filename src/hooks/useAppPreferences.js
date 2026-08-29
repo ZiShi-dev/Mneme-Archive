@@ -1,6 +1,14 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { DEFAULT_SOURCE_ID, isChromebookApp } from "../config/appFlavor";
-import { initialSourcePreferences, initialSources, resolveSourceId } from "../config/sources";
+import {
+  initialSourcePreferences,
+  initialSources,
+  isKnownSourceId,
+  REMOVED_SOURCE_IDS,
+  resolveSourceId,
+  sanitizeActiveSourceId,
+  sanitizeSourcesList,
+} from "../config/sources";
 import {
   buildReadingRecord,
   getTitleReadingKey,
@@ -17,7 +25,7 @@ import { applyTypeface, FONT_SANS, normalizeTypefaceId } from "../lib/theme/type
 import { usePersistedState } from "./usePersistedState";
 
 export function useAppPreferences() {
-  const [favorites, setFavorites] = usePersistedState("mangashelf:favorites", isChromebookApp ? [] : ["sword", "night", "core"]);
+  const [favorites, setFavorites] = usePersistedState("mangashelf:favorites", []);
   const [liveFavorites, setLiveFavorites] = usePersistedState("living-archive:live-favorites", []);
   const [sources, setSources] = usePersistedState("mangashelf:v4:sources", initialSources);
   const [activeSourceId, setActiveSourceId] = usePersistedState("living-archive:active-source", DEFAULT_SOURCE_ID);
@@ -60,13 +68,42 @@ export function useAppPreferences() {
   }, []);
 
   useEffect(() => {
-    setSources((current) => initialSources.map((fallback) => ({ ...fallback, ...(current.find((entry) => entry.id === fallback.id) || {}) })));
+    setSources((current) => sanitizeSourcesList(current));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (!sources.some((entry) => entry.id === activeSourceId && entry.enabled !== false)) {
-      const next = sources.find((entry) => entry.enabled !== false)?.id || DEFAULT_SOURCE_ID;
+    setSourcePreferences((current) => {
+      let changed = false;
+      const next = { ...current };
+      for (const sourceId of REMOVED_SOURCE_IDS) {
+        if (sourceId in next) {
+          delete next[sourceId];
+          changed = true;
+        }
+      }
+      for (const key of Object.keys(next)) {
+        if (!isKnownSourceId(key)) {
+          delete next[key];
+          changed = true;
+        }
+      }
+      return changed ? next : current;
+    });
+
+    setLiveFavorites((current) => {
+      if (!current.length) return current;
+      const next = current.filter((item) => isKnownSourceId(resolveSourceId(item)));
+      return next.length === current.length ? current : next;
+    });
+
+    setActiveSourceId((current) => (isKnownSourceId(current) ? current : DEFAULT_SOURCE_ID));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!isKnownSourceId(activeSourceId) || !sources.some((entry) => entry.id === activeSourceId && entry.enabled !== false)) {
+      const next = sources.find((entry) => entry.enabled !== false && isKnownSourceId(entry.id))?.id || DEFAULT_SOURCE_ID;
       if (next && next !== activeSourceId) setActiveSourceId(next);
     }
   }, [activeSourceId, setActiveSourceId, sources]);
@@ -156,11 +193,17 @@ export function useAppPreferences() {
     setChapterReadLog({});
   };
 
+  const visibleSources = useMemo(() => sanitizeSourcesList(sources), [sources]);
+  const safeActiveSourceId = useMemo(
+    () => sanitizeActiveSourceId(activeSourceId, visibleSources),
+    [activeSourceId, visibleSources],
+  );
+
   return {
     favorites,
     liveFavorites,
-    sources,
-    activeSourceId,
+    sources: visibleSources,
+    activeSourceId: safeActiveSourceId,
     setActiveSourceId,
     sourcePreferences,
     darkMode,

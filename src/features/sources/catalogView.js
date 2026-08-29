@@ -101,6 +101,7 @@ export function shouldUseCatalogScopedSearch(sourceId, kind, taxonomy, query) {
     "novelsparadise",
     "kolnovel",
     "nightnovel",
+    "novelphoenix",
   ].includes(sourceId);
 }
 

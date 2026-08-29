@@ -319,7 +319,13 @@ html[dir="ltr"] .catalog-source-picker__footer > span:last-child { text-align: l
 
 [data-theme="ink"] .bottom-nav,
 .app-shell--dark .bottom-nav {
-  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  --bottom-nav-bg: color-mix(in srgb, var(--surface) 90%, transparent);
+  --bottom-nav-border: color-mix(in srgb, var(--line) 55%, transparent);
+  --bottom-nav-shadow: 0 -12px 36px color-mix(in srgb, #000 28%, transparent);
+  --bottom-nav-inactive: color-mix(in srgb, var(--text-muted) 88%, var(--text));
+  --bottom-nav-active-bg: color-mix(in srgb, var(--brand) 24%, var(--surface));
+  --bottom-nav-halo: color-mix(in srgb, var(--brand) 78%, #f8f6f2);
+  --bottom-nav-halo-glow: color-mix(in srgb, var(--brand) 42%, transparent);
 }
 
 .catalog-mode-indicator span, .filter-pill, .filter-icon, .source-mode-cards > button { border-radius: 12px; background: var(--white); }
@@ -1019,6 +1025,35 @@ html[dir="ltr"] .catalog-source-picker__footer > span:last-child { text-align: l
 .reader--font-serif .novel-reader-content > p { font-family: "Amiri", "Literata", serif; }
 .reader--align-right .novel-reader-content > p { text-align: end; }
 .reader--align-justify .novel-reader-content > p { text-align: justify; text-justify: inter-word; }
+.reader--content-ltr .novel-reader-content,
+.reader--content-ltr .novel-reader-content > p {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+.reader--content-rtl .novel-reader-content,
+.reader--content-rtl .novel-reader-content > p {
+  direction: rtl;
+  unicode-bidi: isolate;
+}
+.reader--content-ltr .novel-reader-content > p {
+  font-family: "Literata", "Georgia", "Times New Roman", serif;
+}
+.reader--content-ltr.reader--font-sans .novel-reader-content > p {
+  font-family: "Instrument Sans", system-ui, sans-serif;
+}
+.reader--content-ltr.reader--font-serif .novel-reader-content > p {
+  font-family: "Literata", "Georgia", serif;
+}
+.reader--content-ltr.reader--font-naskh .novel-reader-content > p {
+  font-family: "Literata", "Georgia", serif;
+}
+[dir="rtl"] .reader--content-ltr .novel-reader-content,
+[dir="rtl"] .reader--content-ltr .novel-reader-content *:not(svg):not(path) {
+  font-family: "Literata", "Georgia", "Times New Roman", serif;
+}
+[dir="rtl"] .reader--content-ltr.reader--font-sans .novel-reader-content > p {
+  font-family: "Instrument Sans", system-ui, sans-serif;
+}
 .reader--width-narrow .novel-reader-content { max-width: 600px; }
 .reader--width-normal .novel-reader-content { max-width: 760px; }
 .reader--width-wide .novel-reader-content { max-width: 900px; }
@@ -1356,6 +1391,14 @@ html.native-app[dir="rtl"] .app-shell__view > * {
 
 .native-app .page-header {
   padding-top: max(16px, calc(var(--safe-top) + 10px));
+  padding-left: max(var(--page-header-padding-x), calc(var(--safe-left) + 16px));
+  padding-right: max(var(--page-header-padding-x), calc(var(--safe-right) + 16px));
+}
+
+.native-app .content {
+  padding-left: max(var(--content-padding-x), calc(var(--safe-left) + 16px));
+  padding-right: max(var(--content-padding-x), calc(var(--safe-right) + 16px));
+  padding-bottom: max(var(--content-padding-bottom), calc(var(--safe-bottom) + 12px));
 }
 
 .native-app .screen {
@@ -1369,24 +1412,26 @@ html.native-app[dir="rtl"] .app-shell__view > * {
   max-width: 100dvw;
   margin: 0;
   box-sizing: border-box;
-  padding-left: var(--safe-left);
-  padding-right: var(--safe-right);
-  padding-bottom: max(8px, var(--safe-bottom));
+  padding:
+    6px max(4px, var(--safe-right))
+    max(10px, var(--safe-bottom))
+    max(4px, var(--safe-left));
   min-height: calc(var(--bottom-nav-height) + var(--safe-bottom));
   z-index: 30;
-  backdrop-filter: blur(14px);
-  box-shadow: 0 -8px 24px color-mix(in srgb, var(--ink) 6%, transparent);
 }
 
+.native-app .bottom-nav__tab,
 .native-app .bottom-nav button {
   cursor: default;
   user-select: none;
   -webkit-user-select: none;
 }
 
-.native-app .bottom-nav button:active:not(.active) {
-  opacity: 0.72;
-  transform: scale(0.96);
+.native-app .bottom-nav__tab:active:not(.is-active):not(.active)::before,
+.native-app .bottom-nav button:active:not(.active)::before {
+  opacity: 1;
+  background: color-mix(in srgb, var(--brand) 14%, transparent);
+  transform: translateX(-50%) scale(0.96);
 }
 
 .native-app .live-reader-pages__placeholder {

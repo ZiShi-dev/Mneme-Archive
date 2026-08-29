@@ -42,6 +42,7 @@
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
+  overflow-anchor: none;
 }
 
 .live-reader-pages__page {
@@ -434,6 +435,10 @@
   width: 128px;
   height: 186px;
   flex-basis: 128px;
+}
+.remote-cover--contain:not(.remote-cover--hero):not(.remote-cover--large) {
+  object-fit: contain;
+  object-position: center top;
 }
 .remote-cover--loading {
   background: linear-gradient(105deg, rgba(255, 255, 255, 0.06) 35%, rgba(255, 255, 255, 0.18) 48%, rgba(255, 255, 255, 0.06) 61%);

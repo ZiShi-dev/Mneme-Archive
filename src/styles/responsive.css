@@ -329,8 +329,9 @@
 }
 
 @media (max-width: 360px) {
-  .desktop-app .bottom-nav button span {
-    font-size: 7px;
+  .desktop-app .bottom-nav__label,
+  .desktop-app .bottom-nav button > span:not(.bottom-nav__icon) {
+    font-size: 8px;
   }
 
   .desktop-app .live-manga-grid {

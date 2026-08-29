@@ -13,8 +13,9 @@ import { usePersistedState } from "../../hooks/usePersistedState";
 import { useReaderPagePreload } from "../../hooks/useReaderPagePreload";
 import { DEFAULT_APP_SETTINGS } from "../../lib/settings/defaults";
 import { fetchSourceChapter, fetchSourceDetails, formatSourceError } from "./sourceApi";
+import { normalizeChapterList } from "../../../server/lib/chapterOrdering.js";
 import { resolveVideoPlayback } from "./mediaPresentation";
-import { SourcePageImage } from "./SourcePageImage";
+import { ReaderPageList } from "./ReaderPageList";
 import { ReaderHeader } from "./ReaderHeader";
 import { ReaderPlaybackControls } from "./ReaderPlaybackControls";
 import { ReaderSettingsSheet } from "./ReaderSettingsSheet";
@@ -22,6 +23,7 @@ import { EmbedPlayerFrame } from "./EmbedPlayerFrame";
 import { SourceLogo } from "./SourceLogo";
 import { installEmbedPopupGuards } from "../../lib/video/embedHosts";
 import { useI18n } from "../../i18n/I18nProvider";
+import { resolveNovelContentDirection } from "../../lib/text/contentDirection.js";
 import { NovelReaderSkeleton, ReaderPagesSkeleton, VideoStageSkeleton } from "../../components/ui/ContentSkeleton";
 
 const scrollSpeeds = [0.5, 1, 1.5, 2];
@@ -44,6 +46,7 @@ export function LiveReader({
   const profile = getSourceProfile(sourceId);
   const [activeChapter, setActiveChapter] = useState(chapter);
   const [chapters, setChapters] = useState(manga.recentChapters || [chapter]);
+  const [chaptersLoading, setChaptersLoading] = useState(() => !(manga.chapters?.length || manga.recentChapters?.length > 1));
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [progress, setProgress] = useState(0);
@@ -56,6 +59,7 @@ export function LiveReader({
   const launcherTimer = useRef(null);
   const manualScrollTimer = useRef(null);
   const pagesContainerRef = useRef(null);
+  const pendingSeekRef = useRef(null);
   const progressKey = `living-archive:chapter-progress:${sourceId}:${activeChapter.url}`;
 
   const handleChapterComplete = useCallback(() => {
@@ -86,16 +90,14 @@ export function LiveReader({
 
   useEffect(() => {
     let active = true;
+    setChaptersLoading(true);
     fetchSourceDetails(sourceId, manga.url).then((details) => {
       if (active && details.chapters?.length) {
-        const sorted = [...details.chapters].sort((a, b) => {
-          const diff = Number(b.number) - Number(a.number);
-          if (Number.isFinite(diff) && diff !== 0) return diff;
-          return String(b.url || "").localeCompare(String(a.url || ""), "ar");
-        });
-        setChapters(sorted);
+        setChapters(normalizeChapterList(details.chapters));
       }
-    }).catch(() => {});
+    }).catch(() => {}).finally(() => {
+      if (active) setChaptersLoading(false);
+    });
     return () => { active = false; };
   }, [manga.url, sourceId]);
 
@@ -109,6 +111,7 @@ export function LiveReader({
     setTouchPaused(false);
     setControlsMode("panel");
     window.scrollTo(0, 0);
+    pendingSeekRef.current = null;
     fetchSourceChapter(sourceId, activeChapter.url, {
       contentApi: activeChapter.contentApi,
       seriesUrl: sourceId === "novelsparadise" ? manga.url : "",
@@ -116,7 +119,9 @@ export function LiveReader({
       .then((result) => {
         if (!active) return;
         setData(result);
-        if (saved > 1 && saved < 100) setTimeout(() => seekTo(saved), 120);
+        if (saved > 1 && saved < 100 && result?.pages?.length) {
+          pendingSeekRef.current = saved;
+        }
       })
       .catch((reason) => {
         if (!active) return;
@@ -295,6 +300,14 @@ export function LiveReader({
     return installEmbedPopupGuards();
   }, [embedPlayback]);
   const isNovel = data?.kind === "novel";
+  const contentDir = useMemo(() => {
+    if (!isNovel) return dir;
+    return resolveNovelContentDirection({
+      contentLanguage: data?.contentLanguage,
+      languages: profile?.languages,
+      fallback: dir,
+    });
+  }, [data?.contentLanguage, dir, isNovel, profile?.languages]);
   const readerStyle = isNovel
     ? {
         "--reader-font-size": `${readerPreferences.fontSize}px`,
@@ -311,6 +324,7 @@ export function LiveReader({
     isNovel ? `reader--font-${readerPreferences.fontFamily}` : "",
     isNovel ? `reader--align-${readerPreferences.textAlign}` : "",
     isNovel ? `reader--width-${readerPreferences.contentWidth}` : "",
+    isNovel ? `reader--content-${contentDir}` : "",
   ].filter(Boolean).join(" ");
 
   return (
@@ -357,8 +371,28 @@ export function LiveReader({
             <video className="live-video-player" src={playback.url} controls playsInline preload="metadata" />
           )}
         </div>
-      ) : data.kind === "novel" ? <article className="novel-reader-content"><div className="novel-reader-content__source"><SourceLogo sourceId={sourceId} /><span>{t("reader.novelFromSource", { source: profile.name })}</span></div>{data.paragraphs.map((paragraph, index) => <p key={`${index}-${paragraph.slice(0, 16)}`} dir="auto">{paragraph}</p>)}{!data.paragraphs.length && <div className="reader-live-state"><BookOpen size={30} /><h2>{t("reader.textUnavailable")}</h2></div>}<div className="chapter-end"><Check size={25} /><h2>{t("media.endChapter")} {activeChapter.name}</h2></div></article> : <div className="live-reader-pages" ref={pagesContainerRef}>{data.pages.map((page, index) => <div key={page.src} className="live-reader-pages__page" data-page-index={index}><SourcePageImage sourceId={sourceId} page={page} index={index} /></div>)}{!data.pages.length && <div className="reader-live-state"><BookOpen size={30} /><h2>{data.locked ? t("reader.paidChapter") : t("reader.noChapterImages")}</h2>{data.paywallMessage ? <p>{data.paywallMessage}</p> : null}{data.locked ? <button type="button" className="primary-button" onClick={() => window.open(activeChapter.url, "_blank", "noopener,noreferrer")}>{t("reader.openOnSource", { source: profile.name })}</button> : null}</div>}<div className="chapter-end"><Check size={25} /><h2>{t("media.endChapter")} {activeChapter.name}</h2></div></div>}
-      {data?.kind !== "video" && !settingsOpen && (controlsMode === "panel" ? <ReaderPlaybackControls progress={progress} onSeek={seekTo} autoScroll={autoScroll} onToggleAutoScroll={toggleAutoScroll} speed={speed} onCycleSpeed={() => setSpeedIndex((index) => (index + 1) % scrollSpeeds.length)} previousChapter={previousChapter} nextChapter={nextChapter} onPrevious={() => changeChapter(previousChapter)} onNext={() => changeChapter(nextChapter)} onClose={closeControls} /> : controlsMode === "launcher" ? <button className="reader-playback-reopen" onClick={openControls} aria-label={t("reader.playback.showControls")}><Settings2 size={17} /><span>{progress}%</span></button> : null)}
+      ) : data.kind === "novel" ? (
+        <article className="novel-reader-content" dir={contentDir}>
+          <div className="novel-reader-content__source">
+            <SourceLogo sourceId={sourceId} />
+            <span>{t("reader.novelFromSource", { source: profile.name })}</span>
+          </div>
+          {data.paragraphs.map((paragraph, index) => (
+            <p key={`${index}-${paragraph.slice(0, 16)}`}>{paragraph}</p>
+          ))}
+          {!data.paragraphs.length && (
+            <div className="reader-live-state">
+              <BookOpen size={30} />
+              <h2>{t("reader.textUnavailable")}</h2>
+            </div>
+          )}
+          <div className="chapter-end">
+            <Check size={25} />
+            <h2>{t("media.endChapter")} {activeChapter.name}</h2>
+          </div>
+        </article>
+      ) : <div className="live-reader-pages" ref={pagesContainerRef}><ReaderPageList sourceId={sourceId} pages={data.pages} onFirstPageReady={() => { if (pendingSeekRef.current != null) { const saved = pendingSeekRef.current; pendingSeekRef.current = null; window.setTimeout(() => seekTo(saved), 80); } }} />{!data.pages.length && <div className="reader-live-state"><BookOpen size={30} /><h2>{data.locked ? t("reader.paidChapter") : t("reader.noChapterImages")}</h2>{data.paywallMessage ? <p>{data.paywallMessage}</p> : null}{data.locked ? <button type="button" className="primary-button" onClick={() => window.open(activeChapter.url, "_blank", "noopener,noreferrer")}>{t("reader.openOnSource", { source: profile.name })}</button> : null}</div>}<div className="chapter-end"><Check size={25} /><h2>{t("media.endChapter")} {activeChapter.name}</h2></div></div>}
+      {data?.kind !== "video" && !settingsOpen && (controlsMode === "panel" ? <ReaderPlaybackControls progress={progress} onSeek={seekTo} autoScroll={autoScroll} onToggleAutoScroll={toggleAutoScroll} speed={speed} onCycleSpeed={() => setSpeedIndex((index) => (index + 1) % scrollSpeeds.length)} previousChapter={previousChapter} nextChapter={nextChapter} chaptersLoading={chaptersLoading} onPrevious={() => changeChapter(previousChapter)} onNext={() => changeChapter(nextChapter)} onClose={closeControls} /> : controlsMode === "launcher" ? <button className="reader-playback-reopen" onClick={openControls} aria-label={t("reader.playback.showControls")}><Settings2 size={17} /><span>{progress}%</span></button> : null)}
       {settingsOpen && isNovel && <ReaderSettingsSheet preferences={readerPreferences} onChange={setReaderPreferences} onClose={closeSettings} onReset={() => setReaderPreferences(defaultReaderPreferences)} />}
     </div>
   );

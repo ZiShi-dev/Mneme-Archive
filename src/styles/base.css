@@ -8,7 +8,7 @@
 .mneme-mark {
   display: block;
   flex-shrink: 0;
-  border-radius: 28%;
+  border-radius: 24%;
   user-select: none;
   -webkit-user-drag: none;
 }
@@ -48,7 +48,7 @@ input:focus, input:focus-visible { outline: 0; box-shadow: none; }
 
 .screen { min-height: 100vh; padding-bottom: var(--screen-bottom-padding); }
 .screen--details { padding-bottom: max(20px, var(--safe-bottom)); }
-.page-header { display: flex; align-items: center; justify-content: space-between; padding: 28px 22px 16px; }
+.page-header { display: flex; align-items: center; justify-content: space-between; padding: 28px var(--page-header-padding-x) 16px; }
 .page-header__title { display: flex; align-items: center; gap: 10px; }
 .page-header__mark { flex: 0 0 auto; border-radius: 11px; }
 .page-header h1 { font: 800 24px/1.15 "Shippori Mincho"; margin: 5px 0 0; letter-spacing: -.035em; }
@@ -56,7 +56,7 @@ input:focus, input:focus-visible { outline: 0; box-shadow: none; }
 .header-actions { display: flex; gap: 8px; }
 .icon-button { border: 1px solid var(--line); background: var(--white); width: 40px; height: 40px; display: grid; place-items: center; border-radius: 13px; cursor: pointer; position: relative; }
 .icon-button.has-dot::after { content: ""; width: 7px; height: 7px; position: absolute; right: 8px; top: 8px; border-radius: 1px; transform: rotate(4deg); background: var(--stamp); border: 2px solid var(--white); }
-.content { padding: 8px 22px 24px; }
+.content { padding: var(--content-padding-top) var(--content-padding-x) var(--content-padding-bottom); }
 
 .hero-card {
   min-height: 244px;
@@ -169,15 +169,20 @@ input:focus, input:focus-visible { outline: 0; box-shadow: none; }
   max-width: 100%;
   min-height: var(--bottom-nav-height);
   height: auto;
-  padding-bottom: max(8px, var(--safe-bottom));
-  padding-left: var(--safe-left);
-  padding-right: var(--safe-right);
+  padding:
+    6px max(4px, var(--safe-right))
+    max(10px, var(--safe-bottom))
+    max(4px, var(--safe-left));
   box-sizing: border-box;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  background: color-mix(in srgb, var(--white) 96%, transparent);
-  border-top: 1px solid var(--line);
-  backdrop-filter: blur(14px);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 2px;
+  background: var(--bottom-nav-bg);
+  border-top: 1px solid var(--bottom-nav-border);
+  backdrop-filter: blur(18px) saturate(1.15);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  box-shadow: var(--bottom-nav-shadow);
   z-index: 30;
   transition: transform var(--motion-standard), opacity var(--motion-standard);
   will-change: transform;
@@ -192,37 +197,239 @@ input:focus, input:focus-visible { outline: 0; box-shadow: none; }
   }
 }
 
+.bottom-nav__tab,
 .bottom-nav button {
   min-width: 0;
-  min-height: 52px;
+  min-height: 58px;
   border: 0;
   background: transparent;
-  color: var(--disabled);
+  color: var(--bottom-nav-inactive);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  font-size: 10px;
-  line-height: 1.2;
+  gap: 3px;
+  padding: 6px 4px 4px;
+  font: 600 10px/1.15 var(--font-sans);
+  letter-spacing: 0.01em;
   cursor: pointer;
   position: relative;
   touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    color var(--motion-standard),
+    transform var(--motion-quick, 0.14s ease);
 }
 
-.bottom-nav button span { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bottom-nav button.active { color: var(--brand); font-weight: 700; }
-
-.bottom-nav button.active::before {
+.bottom-nav__tab::before,
+.bottom-nav button::before {
   content: "";
-  width: 32px;
-  height: 3px;
-  border-radius: 999px;
-  background: var(--brand);
-  border: 0;
-  box-shadow: none;
   position: absolute;
-  top: 0;
+  top: 10px;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  transform: translateX(-50%) scale(0.88);
+  opacity: 0;
+  background: var(--bottom-nav-active-bg);
+  transition:
+    opacity var(--motion-standard),
+    transform var(--motion-standard),
+    background-color var(--motion-standard);
+  pointer-events: none;
+}
+
+.bottom-nav__icon-wrap {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 22px;
+  margin-top: 7px;
+  flex-shrink: 0;
+}
+
+.bottom-nav__icon-wrap::before,
+.bottom-nav__icon-wrap::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  border-radius: 50%;
+  pointer-events: none;
+  transition:
+    opacity var(--motion-standard),
+    transform var(--motion-standard),
+    box-shadow var(--motion-standard),
+    border-color var(--motion-standard);
+}
+
+/* Anneau principal — auréole d’ange */
+.bottom-nav__icon-wrap::before {
+  top: -10px;
+  width: 20px;
+  height: 5px;
+  border: 1.5px solid var(--bottom-nav-halo);
+  transform: translateX(-50%) rotate(-10deg);
+  opacity: 0.32;
+  box-shadow: 0 0 0 0 transparent;
+}
+
+/* Anneau extérieur — halo lumineux */
+.bottom-nav__icon-wrap::after {
+  top: -14px;
+  width: 26px;
+  height: 7px;
+  border: 1px solid color-mix(in srgb, var(--bottom-nav-halo) 55%, transparent);
+  transform: translateX(-50%) rotate(8deg);
+  opacity: 0.18;
+}
+
+.bottom-nav__tab > svg,
+.bottom-nav button > svg,
+.bottom-nav__icon-wrap > svg {
+  position: relative;
+  z-index: 1;
+  display: block;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  transition: transform var(--motion-standard), color var(--motion-standard);
+}
+
+.bottom-nav__label,
+.bottom-nav button > span:not(.bottom-nav__icon) {
+  position: relative;
+  z-index: 1;
+  max-width: 100%;
+  padding-inline: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: font-weight var(--motion-standard), color var(--motion-standard);
+}
+
+.bottom-nav__tab.is-active,
+.bottom-nav__tab.active,
+.bottom-nav button.active {
+  color: var(--brand);
+  font-weight: 700;
+}
+
+.bottom-nav__tab.is-active::before,
+.bottom-nav__tab.active::before,
+.bottom-nav button.active::before {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
+.bottom-nav__tab.is-active > svg,
+.bottom-nav__tab.active > svg,
+.bottom-nav button.active > svg,
+.bottom-nav__tab.is-active .bottom-nav__icon-wrap > svg,
+.bottom-nav__tab.active .bottom-nav__icon-wrap > svg,
+.bottom-nav button.active .bottom-nav__icon-wrap > svg {
+  transform: none;
+}
+
+.bottom-nav__tab.is-active .bottom-nav__icon-wrap::before,
+.bottom-nav__tab.active .bottom-nav__icon-wrap::before,
+.bottom-nav button.active .bottom-nav__icon-wrap::before {
+  opacity: 0.95;
+  border-color: var(--bottom-nav-halo);
+  box-shadow:
+    0 0 7px var(--bottom-nav-halo-glow),
+    0 0 14px color-mix(in srgb, var(--bottom-nav-halo-glow) 55%, transparent);
+  animation: bottom-nav-halo-pulse 2.8s ease-in-out infinite;
+}
+
+.bottom-nav__tab.is-active .bottom-nav__icon-wrap::after,
+.bottom-nav__tab.active .bottom-nav__icon-wrap::after,
+.bottom-nav button.active .bottom-nav__icon-wrap::after {
+  opacity: 0.55;
+  border-color: color-mix(in srgb, var(--bottom-nav-halo) 75%, transparent);
+  animation: bottom-nav-halo-pulse-outer 2.8s ease-in-out infinite;
+}
+
+@keyframes bottom-nav-halo-pulse {
+  0%, 100% {
+    opacity: 0.78;
+    box-shadow:
+      0 0 5px color-mix(in srgb, var(--bottom-nav-halo-glow) 70%, transparent),
+      0 0 10px color-mix(in srgb, var(--bottom-nav-halo-glow) 35%, transparent);
+  }
+  50% {
+    opacity: 1;
+    box-shadow:
+      0 0 9px var(--bottom-nav-halo-glow),
+      0 0 16px color-mix(in srgb, var(--bottom-nav-halo-glow) 60%, transparent);
+  }
+}
+
+@keyframes bottom-nav-halo-pulse-outer {
+  0%, 100% { opacity: 0.42; }
+  50% { opacity: 0.68; }
+}
+
+.bottom-nav__tab:focus-visible,
+.bottom-nav button:focus-visible {
+  outline: 2px solid var(--bottom-nav-focus-ring);
+  outline-offset: 1px;
+  border-radius: 14px;
+}
+
+.bottom-nav__tab:focus-visible::before,
+.bottom-nav button:focus-visible::before {
+  box-shadow: none;
+}
+
+.bottom-nav__tab:focus-visible:not(.is-active):not(.active)::before,
+.bottom-nav button:focus-visible:not(.active)::before {
+  opacity: 0;
+}
+
+@media (hover: hover) {
+  .bottom-nav__tab:not(.is-active):not(.active):hover,
+  .bottom-nav button:not(.active):hover {
+    color: color-mix(in srgb, var(--brand) 55%, var(--bottom-nav-inactive));
+  }
+
+  .bottom-nav__tab:not(.is-active):not(.active):hover::before,
+  .bottom-nav button:not(.active):hover::before {
+    opacity: 1;
+    background: color-mix(in srgb, var(--brand) 10%, transparent);
+    transform: translateX(-50%) scale(1);
+  }
+
+  .bottom-nav__tab:not(.is-active):not(.active):hover .bottom-nav__icon-wrap::before,
+  .bottom-nav button:not(.active):hover .bottom-nav__icon-wrap::before {
+    opacity: 0.58;
+    box-shadow: 0 0 6px color-mix(in srgb, var(--bottom-nav-halo-glow) 45%, transparent);
+  }
+
+  .bottom-nav__tab:not(.is-active):not(.active):hover .bottom-nav__icon-wrap::after,
+  .bottom-nav button:not(.active):hover .bottom-nav__icon-wrap::after {
+    opacity: 0.34;
+  }
+}
+
+.bottom-nav__tab:active:not(.is-active):not(.active) > svg,
+.bottom-nav button:active:not(.active) > svg,
+.bottom-nav__tab:active:not(.is-active):not(.active) .bottom-nav__icon-wrap > svg,
+.bottom-nav button:active:not(.active) .bottom-nav__icon-wrap > svg {
+  transform: scale(0.92);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bottom-nav__tab.is-active .bottom-nav__icon-wrap::before,
+  .bottom-nav__tab.active .bottom-nav__icon-wrap::before,
+  .bottom-nav button.active .bottom-nav__icon-wrap::before,
+  .bottom-nav__tab.is-active .bottom-nav__icon-wrap::after,
+  .bottom-nav__tab.active .bottom-nav__icon-wrap::after,
+  .bottom-nav button.active .bottom-nav__icon-wrap::after {
+    animation: none;
+  }
 }
 
 html.bottom-nav-hidden .bottom-nav {
