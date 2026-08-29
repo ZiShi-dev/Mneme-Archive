@@ -37,7 +37,7 @@
     "android:docker:install": "bash scripts/android-docker-install.sh"
   },
   "dependencies": {
-    "@capacitor-community/sqlite": "^7.0.3",
+    "@capacitor-community/sqlite": "^8.1.1",
     "@capacitor/android": "^8.5.0",
     "@capacitor/app": "^8.1.1",
     "@capacitor/cli": "^8.5.0",
