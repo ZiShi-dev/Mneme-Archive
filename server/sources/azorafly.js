@@ -9,14 +9,26 @@ const DEFAULT_BASE_URL = "https://azorafly.com";
 const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
 const AZORA_API_URL = "https://api.azorafly.com";
 
+let nativeHtmlFetcher = null;
+let nativeImageFetcher = null;
+
+export function configureAzoraflyNativeFetch({ fetchHtml, fetchImage } = {}) {
+  nativeHtmlFetcher = fetchHtml ?? null;
+  nativeImageFetcher = fetchImage ?? null;
+}
+
 function createFetcher(baseUrl = DEFAULT_BASE_URL) {
-  return createCachedHtmlFetcher({
+  const fetchRemote = createCachedHtmlFetcher({
     ttlMs: 3 * 60_000,
     timeoutMs: 30_000,
     headers: { accept: "text/html,application/xhtml+xml", "accept-language": "ar,en;q=0.9", "user-agent": "Mozilla/5.0 (Android 14; Mobile) AppleWebKit/537.36 Chrome/124 Safari/537.36" },
     getVariants: (url) => [url],
     buildError: (lastStatus) => (lastStatus === 403 ? "حماية AzoraFly منعت الاتصال مؤقتًا" : `AzoraFly a répondu ${lastStatus}`),
   });
+  return async (url) => {
+    if (nativeHtmlFetcher) return nativeHtmlFetcher(url);
+    return fetchRemote(url);
+  };
 }
 
 function assertAzoraUrl(rawUrl, chapter = false, ctx = DEFAULT_CTX) {
@@ -40,7 +52,9 @@ function assertAzoraImageUrl(rawUrl) {
 }
 
 async function proxyAzoraImage(rawUrl, ctx = DEFAULT_CTX) {
-  return fetchProxiedImage(assertAzoraImageUrl(rawUrl), `${ctx.baseUrl}/`, "AzoraFly");
+  const target = assertAzoraImageUrl(rawUrl);
+  if (nativeImageFetcher) return nativeImageFetcher(target);
+  return fetchProxiedImage(target, `${ctx.baseUrl}/`, "AzoraFly");
 }
 
 function parseAzoraFilters(html) {

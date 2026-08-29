@@ -23,8 +23,16 @@ function appendSourceQueryParams(query, sourceId) {
 
 const sourcePath = (sourceId, resource) => `/api/sources/${sourceId}/${resource}`;
 const isNative = () => Capacitor.isNativePlatform();
-let mangalikNativeReady = false;
-let cloudflareNativeReady = false;
+const CLOUDFLARE_NATIVE_SOURCE_IDS = new Set([
+  "mangalik", "azorafly", "galaxynovels",
+]);
+
+function pathUsesCloudflareNative(path = "") {
+  for (const sourceId of CLOUDFLARE_NATIVE_SOURCE_IDS) {
+    if (path.includes(`/api/sources/${sourceId}/`)) return true;
+  }
+  return false;
+}
 
 const GENRE_FILTER_SOURCES = [
   "mangalik", "azorafly", "novelsparadise", "nightnovel",
@@ -35,12 +43,7 @@ const TAG_FILTER_SOURCES = [
   "kolnovel",
 ];
 
-async function ensureMangalikNative() {
-  if (!isNative() || mangalikNativeReady) return;
-  const { initMangalikNative } = await import("../../lib/platform/mangalikNative.js");
-  await initMangalikNative();
-  mangalikNativeReady = true;
-}
+let cloudflareNativeReady = false;
 
 async function ensureCloudflareNative() {
   if (!isNative() || cloudflareNativeReady) return;
@@ -64,7 +67,7 @@ async function requestJson(path, fallbackMessage, { ttlMs = 0 } = {}) {
 
   const data = isNative()
     ? await (async () => {
-      if (path.includes("/mangalik/")) await ensureMangalikNative();
+      if (pathUsesCloudflareNative(path)) await ensureCloudflareNative();
       const { handleSourceRequest } = await import("../../../server/mangaSourcesPlugin.js");
       const result = await handleSourceRequest(path);
       if (!result || result.kind !== "json") throw new Error(fallbackMessage);
@@ -109,7 +112,7 @@ async function fetchImagePayload(sourceId, url) {
       contentType: response.headers.get("content-type") || "image/jpeg",
     };
   }
-  if (sourceId === "mangalik") await ensureMangalikNative();
+  if (CLOUDFLARE_NATIVE_SOURCE_IDS.has(sourceId)) await ensureCloudflareNative();
   const { handleSourceRequest } = await import("../../../server/mangaSourcesPlugin.js");
   const result = await handleSourceRequest(sourceImageUrl(sourceId, url));
   if (!result || result.kind !== "image") throw new Error(t("errors.loadImage"));

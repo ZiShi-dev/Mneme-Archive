@@ -21,3 +21,15 @@ test("configureMangalikNativeFetch injects custom html fetcher", async () => {
   assert.equal(response.status, 200);
   configureMangalikNativeFetch({ fetchHtml: null, fetchImage: null });
 });
+
+test("configureAzoraflyNativeFetch injects custom html fetcher", async () => {
+  const { configureAzoraflyNativeFetch } = await import("../../server/sources/azorafly.js");
+  configureAzoraflyNativeFetch({
+    fetchHtml: async () => "<html><body><a href=\"/series/demo\" title=\"Demo\">Demo</a></body></html>",
+    fetchImage: null,
+  });
+  const { handleAzoraRequest } = await import("../../server/sources/azorafly.js");
+  const response = await handleAzoraRequest(new URL("http://localhost/api/sources/azorafly/filters"));
+  assert.equal(response.status, 200);
+  configureAzoraflyNativeFetch({ fetchHtml: null, fetchImage: null });
+});

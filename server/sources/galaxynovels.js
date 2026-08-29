@@ -22,14 +22,26 @@ const galaxyManifestCache = new Map();
 const galaxyNovelApiCache = new Map();
 let galaxyAuthorFiltersCache = null;
 
+let nativeHtmlFetcher = null;
+let nativeImageFetcher = null;
+
+export function configureGalaxynovelsNativeFetch({ fetchHtml, fetchImage } = {}) {
+  nativeHtmlFetcher = fetchHtml ?? null;
+  nativeImageFetcher = fetchImage ?? null;
+}
+
 function createFetcher(baseUrl = DEFAULT_BASE_URL) {
-  return createCachedHtmlFetcher({
+  const fetchRemote = createCachedHtmlFetcher({
     ttlMs: 3 * 60_000,
     timeoutMs: 30_000,
     headers: { accept: "text/html,application/xhtml+xml", "accept-language": "ar,en;q=0.8", referer: `${baseUrl}/`, "user-agent": "Mozilla/5.0 (Android 14; Mobile) AppleWebKit/537.36 Chrome/124 Safari/537.36" },
     getVariants: (url) => [url],
     buildError: (lastStatus) => (lastStatus === 403 ? "حماية Galaxy Novels منعت الاتصال مؤقتًا" : `Galaxy Novels a répondu ${lastStatus}`),
   });
+  return async (url) => {
+    if (nativeHtmlFetcher) return nativeHtmlFetcher(url);
+    return fetchRemote(url);
+  };
 }
 
 function toGalaxyAbsoluteUrl(rawUrl, ctx = DEFAULT_CTX) {
@@ -56,7 +68,9 @@ function assertGalaxyImageUrl(rawUrl, ctx = DEFAULT_CTX) {
 }
 
 async function proxyGalaxyImage(rawUrl, ctx = DEFAULT_CTX) {
-  return fetchProxiedImage(assertGalaxyImageUrl(rawUrl, ctx), `${ctx.baseUrl}/`, "Galaxy Novels");
+  const target = assertGalaxyImageUrl(rawUrl, ctx);
+  if (nativeImageFetcher) return nativeImageFetcher(target);
+  return fetchProxiedImage(target, `${ctx.baseUrl}/`, "Galaxy Novels");
 }
 
 async function fetchGalaxyNovelApi(novelId) {
