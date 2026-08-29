@@ -71,6 +71,10 @@
   --content-padding-top: 8px;
   --content-padding-bottom: 24px;
   --page-header-padding-x: 22px;
+  --sheet-height: min(94dvh, calc(100dvh - var(--safe-top)));
+  --sheet-width: 100%;
+  --sheet-max-width-desktop: min(92vw, 680px);
+  --sheet-backdrop-inset: 0px;
   --cta: var(--brand);
   --cta-text: #fff;
   --sakura-mist: var(--bg);

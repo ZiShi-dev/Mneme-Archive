@@ -1,0 +1,94 @@
+const HTML_CACHE_TTL_MS = 2 * 60_000;
+const htmlMemoryCache = new Map();
+const htmlInFlight = new Map();
+
+function stripTrailingSlash(pathname = "") {
+  return pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+}
+
+/**
+ * Réduit les doublons WebView (filtres + catalogue page 1, variantes d’URL).
+ */
+export function normalizeNativeHtmlUrl(url = "") {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+
+    if (host === "azorafly.com" || host === "www.azorafly.com") {
+      if (stripTrailingSlash(parsed.pathname) === "/series") {
+        const page = parsed.searchParams.get("page");
+        const hasQuery = parsed.searchParams.has("genres") || parsed.searchParams.has("searchTerm");
+        if (!hasQuery && (!page || page === "1")) {
+          parsed.pathname = "/series/";
+          parsed.search = "page=1";
+          parsed.hash = "";
+          return parsed.toString();
+        }
+      }
+    }
+
+    if (host === "mangalik.net" || host === "www.mangalik.net") {
+      if (stripTrailingSlash(parsed.pathname) === "/manga") {
+        parsed.search = "";
+        parsed.hash = "";
+        return `${parsed.origin}/manga/`;
+      }
+    }
+
+    if (host === "galaxynovels.com" || host === "www.galaxynovels.com") {
+      const path = stripTrailingSlash(parsed.pathname);
+      if (path === "/library") {
+        const page = parsed.searchParams.get("library_page");
+        if (!page || page === "1") {
+          parsed.search = "";
+          parsed.hash = "";
+          return `${parsed.origin}/library/`;
+        }
+      }
+    }
+  } catch {
+    return url;
+  }
+  return url;
+}
+
+function readCachedHtml(url) {
+  const entry = htmlMemoryCache.get(url);
+  if (!entry) return null;
+  if (Date.now() - entry.at > HTML_CACHE_TTL_MS) {
+    htmlMemoryCache.delete(url);
+    return null;
+  }
+  return entry.html;
+}
+
+function writeCachedHtml(url, html) {
+  if (!url || !html) return;
+  htmlMemoryCache.set(url, { html, at: Date.now() });
+}
+
+export function clearNativeHtmlCache() {
+  htmlMemoryCache.clear();
+  htmlInFlight.clear();
+}
+
+export async function fetchNativeHtmlWithCache(fetcher, url) {
+  const normalizedUrl = normalizeNativeHtmlUrl(url);
+  const cached = readCachedHtml(normalizedUrl);
+  if (cached) return cached;
+
+  if (htmlInFlight.has(normalizedUrl)) {
+    return htmlInFlight.get(normalizedUrl);
+  }
+
+  const pending = fetcher(normalizedUrl)
+    .then((html) => {
+      writeCachedHtml(normalizedUrl, html);
+      return html;
+    })
+    .finally(() => {
+      htmlInFlight.delete(normalizedUrl);
+    });
+  htmlInFlight.set(normalizedUrl, pending);
+  return pending;
+}

@@ -10,7 +10,6 @@ export const ANIMEDAR_LOGO_URL = "https://animedar.net/wp-content/uploads/2023/1
 export const CENELE_LOGO_URL = "https://cenele.com/wp-content/uploads/2026/08/cropped-%D9%81%D8%B6%D8%A7%D8%A1-%D8%B1%D9%88%D8%A7%D9%8A%D8%A7%D8%AA-192x192.png";
 export const KOLNOVEL_LOGO_URL = "https://kolnovel.com/wp-content/uploads/2026/07/cropped-%D8%A8%D8%AF%D9%88%D9%86-%D8%A7%D8%B3%D9%8596_20260720234820-1-192x192.png";
 export const ANIME4UP_LOGO_URL = "https://4h.b9p2m6c.shop/wp-content/uploads/2019/03/Anime4up-Icon-1.png";
-export const HENTAIREAD_LOGO_URL = "https://hentairead.com/favicon.ico";
 export const ANIMESAMA_LOGO_URL = "https://anime-sama.to/img/icon.png";
 export const FRENCH_STREAM_LOGO_URL = "https://french-stream.one/apple-touch-icon.png";
 export const WIFLIX_LOGO_URL = "https://www.wiflix.tv/static/templates/wiflixnew/images/favicon.png";
@@ -188,18 +187,6 @@ export const sourceProfiles = {
     contentTypes: ["manga"],
     languages: ["ar"],
   },
-  hentairead: {
-    id: "hentairead",
-    name: "HentaiRead",
-    arabicName: "هنتاي ريد",
-    domain: "hentairead.com",
-    url: "https://hentairead.com/hentai/",
-    logo: HENTAIREAD_LOGO_URL,
-    initials: "HR",
-    contentLabel: "مانغا إنجليزية",
-    contentTypes: ["manga"],
-    languages: ["en"],
-  },
   wtrlab: {
     id: "wtrlab",
     name: "WTR-LAB",
@@ -230,6 +217,7 @@ export const sourceProfiles = {
 export const REMOVED_SOURCE_IDS = new Set([
   "realmnovel",
   "skynovel",
+  "hentairead",
 ]);
 
 export function isKnownSourceId(sourceId) {
@@ -344,15 +332,6 @@ export function defaultContentKinds(sourceId) {
     return [{ slug: "all", name: "الكل", filterPath: "/all/" }];
   }
 
-  if (sourceId === "hentairead") {
-    return [
-      { slug: "all", name: "الكل", type: "kind" },
-      { slug: "new", name: "جديد", type: "kind", queryValue: "new" },
-      { slug: "views", name: "الأكثر مشاهدة", type: "kind", queryValue: "views" },
-      { slug: "rating", name: "الأعلى تقييماً", type: "kind", queryValue: "rating" },
-    ];
-  }
-
   if (sourceId === "wtrlab") {
     return [
       { slug: "all", name: "الكل", type: "kind" },
@@ -415,8 +394,6 @@ export function resolveSourceId(item) {
   if (item?.sourceId === "coflix") return "coflix";
   if (item?.source === "Dilar") return "dilar";
   if (item?.sourceId === "dilar") return "dilar";
-  if (item?.source === "HentaiRead") return "hentairead";
-  if (item?.sourceId === "hentairead") return "hentairead";
   if (item?.source === "WTR-LAB") return "wtrlab";
   if (item?.sourceId === "wtrlab") return "wtrlab";
   if (item?.source === "Novel Phoenix") return "novelphoenix";

@@ -49,6 +49,25 @@
   gap: 20px;
 }
 
+.onboarding__panel--theme {
+  width: min(100%, 460px);
+  max-height: min(94dvh, 760px);
+  overflow: auto;
+}
+
+.onboarding__theme-grid {
+  --line: color-mix(in srgb, var(--onboarding-fg, #f6f7f8) 16%, transparent);
+  --paper: color-mix(in srgb, var(--onboarding-fg, #f6f7f8) 8%, var(--onboarding-bg, #090a12));
+  --ink: var(--onboarding-fg, #f6f7f8);
+  --muted: color-mix(in srgb, var(--onboarding-fg, #f6f7f8) 62%, transparent);
+  --brand: var(--onboarding-star, #8b7cff);
+}
+
+.onboarding__theme-grid .theme-selector {
+  padding: 0;
+  border-bottom: 0;
+}
+
 .onboarding__splash {
   display: grid;
   justify-items: center;

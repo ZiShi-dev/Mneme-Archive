@@ -16,7 +16,7 @@ test("archive flavor exposes all sources and media types", () => {
   assert.deepEqual(VISIBLE_MEDIA_TYPES, ["manga", "novel", "anime", "movie", "series"]);
   assert.equal(DEFAULT_SOURCE_ID, "mangalik");
   assert.equal(PREFERRED_AUDIO_LANGUAGE, "VF");
-  assert.equal(initialSources.length, 17);
+  assert.equal(initialSources.length, 16);
   assert.ok(initialSources.some((entry) => entry.id === "mangalik"));
   assert.ok(initialSources.some((entry) => entry.id === "frenchstream"));
   assert.ok(initialSources.some((entry) => entry.id === "anime4up"));

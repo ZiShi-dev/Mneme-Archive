@@ -24,8 +24,23 @@
 .catalog-filters--loading span:nth-child(2) { width: 74%; }
 .catalog-filters--loading span:nth-child(3) { width: 48%; }
 @keyframes catalogFilterLoading { to { background-position: -220% 0; } }
-.catalog-filter-picker-backdrop { position: fixed; inset: 0; z-index: 100; display: flex; align-items: flex-end; justify-content: center; padding: 10px; background: rgba(3,4,10,.62); backdrop-filter: blur(10px); }
-.catalog-filter-picker { width: min(100%, 540px); max-height: min(84vh, 720px); overflow: hidden; display: flex; flex-direction: column; padding: 16px 16px 14px; border: 1px solid color-mix(in srgb, var(--border, var(--line)) 80%, transparent); border-radius: 22px 22px 16px 16px; background: var(--paper, var(--white)); box-shadow: 0 -18px 50px rgba(0,0,0,.28); animation: genrePickerIn 220ms cubic-bezier(.2,.8,.2,1); }
+.catalog-filter-picker-backdrop { position: fixed; inset: 0; z-index: 100; display: flex; align-items: flex-end; justify-content: center; padding: 0; background: rgba(3,4,10,.62); backdrop-filter: blur(10px); }
+.catalog-filter-picker {
+  width: var(--sheet-width);
+  max-width: 100%;
+  height: var(--sheet-height);
+  max-height: var(--sheet-height);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 16px max(14px, calc(var(--safe-bottom) + 8px));
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--border, var(--line)) 80%, transparent);
+  border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+  background: var(--paper, var(--white));
+  box-shadow: 0 -18px 50px rgba(0,0,0,.28);
+  animation: genrePickerIn 220ms cubic-bezier(.2,.8,.2,1);
+}
 .catalog-filter-picker::before { content: ""; width: 34px; height: 4px; margin: 0 auto 14px; border-radius: 999px; background: color-mix(in srgb, var(--border, var(--line)) 85%, transparent); }
 .catalog-filter-picker__header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .catalog-filter-picker__title { min-width: 0; display: flex; align-items: center; gap: 10px; }
@@ -75,7 +90,7 @@
 .catalog-filter-bar--loading .catalog-filter-bar__chips { gap: 6px; }
 .catalog-filter-bar--loading .catalog-filter-bar__chips > span { flex: 1; height: 28px; border-radius: 999px; background: linear-gradient(90deg, var(--surface, var(--outside)), color-mix(in srgb, var(--brand) 8%, var(--surface-raised, var(--white))), var(--surface, var(--outside))); background-size: 220% 100%; animation: catalogFilterLoading 1.3s linear infinite; }
 .genre-picker-backdrop { position: absolute; inset: 0; z-index: 80; display: flex; align-items: flex-end; background: rgba(3,4,10,.72); backdrop-filter: blur(8px); }
-.genre-picker { width: 100%; max-height: 82vh; display: flex; flex-direction: column; padding: 20px 18px 18px; border: 1px solid var(--border); border-bottom: 0; border-radius: 24px 24px 0 0; background: var(--paper); box-shadow: 0 -22px 55px rgba(0,0,0,.28); animation: genrePickerIn 220ms cubic-bezier(.2,.8,.2,1); }
+.genre-picker { width: 100%; max-height: var(--sheet-height); display: flex; flex-direction: column; padding: 20px 18px max(18px, calc(var(--safe-bottom) + 8px)); border: 1px solid var(--border); border-bottom: 0; border-radius: 24px 24px 0 0; background: var(--paper); box-shadow: 0 -22px 55px rgba(0,0,0,.28); animation: genrePickerIn 220ms cubic-bezier(.2,.8,.2,1); }
 .genre-picker::before { content: ""; width: 38px; height: 4px; border-radius: 999px; background: var(--border); margin: -9px auto 14px; }
 .genre-picker header { display: flex; justify-content: space-between; align-items: center; }
 .genre-picker header span { color: var(--brand-warm); font-size: 8px; }
@@ -175,10 +190,10 @@
 .catalog-source-toolbar__settings { width: 28px; height: 28px; flex: 0 0 28px; border: 0; border-radius: 999px; display: grid; place-items: center; background: transparent; color: var(--text-muted, var(--muted)); cursor: pointer; }
 .catalog-source-picker-backdrop { position: fixed; inset: 0; z-index: 100; display: flex; align-items: flex-end; justify-content: center; padding: 0; background: rgba(3,4,10,.62); backdrop-filter: blur(10px); }
 .catalog-source-picker {
-  width: 100%;
+  width: var(--sheet-width);
   max-width: 100%;
-  height: min(94dvh, calc(100dvh - var(--safe-top)));
-  max-height: min(94dvh, calc(100dvh - var(--safe-top)));
+  height: var(--sheet-height);
+  max-height: var(--sheet-height);
   overflow: hidden;
   display: flex;
   flex-direction: column;

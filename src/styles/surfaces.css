@@ -546,8 +546,9 @@
 .la-sheet,
 .catalog-source-picker,
 .management-source-picker {
-  width: min(100%, 620px);
-  max-height: min(88vh, 760px);
+  width: var(--sheet-width);
+  max-width: 100%;
+  max-height: var(--sheet-height);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -559,7 +560,7 @@
   animation: laSheetIn 220ms cubic-bezier(.2, .8, .2, 1);
 }
 
-.catalog-filter-picker { width: min(100%, 540px); max-height: min(84vh, 720px); }
+.catalog-filter-picker { width: var(--sheet-width); max-width: 100%; max-height: var(--sheet-height); }
 
 .la-sheet::before,
 .catalog-filter-picker::before,

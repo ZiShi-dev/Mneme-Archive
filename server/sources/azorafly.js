@@ -87,7 +87,8 @@ function parseAzoraCatalog(html) {
     const title = decodeHtml(link[2]);
     const cover = block.match(/<img[^>]*alt="[^"]*"[^>]*src="(https:\/\/storage\.azorafly\.com[^"]+)"/i)?.[1] ?? "";
     const mediaType = textOnly(block.match(/text-white[^>]*>([^<]+)<\/span>/i)?.[1] ?? "مانهوا");
-    const chapterPattern = new RegExp(`<a href="\\/series\\/${slug}\\/([^\"]+)"[\\s\\S]*?<span>([^<]*الفصل[^<]*)<\\/span>`, "gi");
+    const escapedSlug = slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const chapterPattern = new RegExp(`<a href="\\/series\\/${escapedSlug}\\/([^\"]+)"[\\s\\S]*?<span>([^<]*الفصل[^<]*)<\\/span>`, "gi");
     const chapters = normalizeRecentChapters([...block.matchAll(chapterPattern)].map((entry) => {
       const name = textOnly(entry[2]).replace(/^الفصل\s*/i, "");
       return { url: `${DEFAULT_BASE_URL}/series/${slug}/${entry[1]}`, name, number: name };

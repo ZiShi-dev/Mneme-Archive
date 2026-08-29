@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { SplashScreen } from "@capacitor/splash-screen";
 import { StatusBar, Style } from "@capacitor/status-bar";
-import { Check, Bell, FolderOpen, Languages } from "lucide-react";
+import { Check, Bell, Languages } from "lucide-react";
 import { isChromebookApp } from "../../config/appFlavor";
 import { AppMark } from "../brand/AppMark";
 import { useStorage } from "../storage/StorageProvider";
@@ -20,7 +20,13 @@ import {
 import { requestNotificationPermission } from "../../lib/notifications/pushNotifications";
 import { peekStorageString } from "../../lib/storage/peek";
 import { IMAGE_CACHE_DIR } from "../../lib/storage/constants";
-import { isDarkTheme, normalizeThemeId } from "../../lib/theme/appearance";
+import {
+  THEME_INK,
+  applyAppearance,
+  isDarkTheme,
+  normalizeThemeId,
+} from "../../lib/theme/appearance";
+import { ThemeSelector } from "../../screens/ThemeSettingsPanel";
 
 const SPLASH_MS = 2400;
 
@@ -36,22 +42,19 @@ function readBootAppearance() {
   }
 }
 
-function useOnboardingTheme() {
-  return useMemo(() => {
-    const appearance = readBootAppearance();
-    const palette = resolveMnemeMarkPalette("dark", appearance);
-    const dark = isDarkTheme(appearance);
-    return {
-      appearance,
-      palette,
-      className: dark ? "onboarding" : "onboarding onboarding--light",
-      style: {
-        "--onboarding-bg": palette.canvas,
-        "--onboarding-star": palette.starGlow,
-        "--onboarding-fg": dark ? "#F6F7F8" : "#171218",
-      },
-    };
-  }, []);
+function buildOnboardingTheme(appearance) {
+  const palette = resolveMnemeMarkPalette("dark", appearance);
+  const dark = isDarkTheme(appearance);
+  return {
+    appearance,
+    palette,
+    className: dark ? "onboarding" : "onboarding onboarding--light",
+    style: {
+      "--onboarding-bg": palette.canvas,
+      "--onboarding-star": palette.starGlow,
+      "--onboarding-fg": dark ? "#F6F7F8" : "#171218",
+    },
+  };
 }
 
 async function hideNativeSplash() {
@@ -183,29 +186,18 @@ function OnboardingLanguage({ theme, onContinue }) {
   );
 }
 
-function OnboardingPermissions({ theme, onDone }) {
+function OnboardingPermissions({ theme, onContinue }) {
   const { t, dir } = useI18n();
   const [notificationsDone, setNotificationsDone] = useState(false);
-  const [storageDone, setStorageDone] = useState(!Capacitor.isNativePlatform());
-  const [busy, setBusy] = useState(null);
+  const [busy, setBusy] = useState(false);
 
   const requestNotifications = async () => {
-    setBusy("notifications");
+    setBusy(true);
     try {
       const result = await requestNotificationPermission();
       setNotificationsDone(Boolean(result.granted));
     } finally {
-      setBusy(null);
-    }
-  };
-
-  const requestStorage = async () => {
-    setBusy("storage");
-    try {
-      const ok = await prepareLocalStorage();
-      setStorageDone(ok);
-    } finally {
-      setBusy(null);
+      setBusy(false);
     }
   };
 
@@ -229,37 +221,19 @@ function OnboardingPermissions({ theme, onDone }) {
             <button
               type="button"
               className="onboarding__secondary"
-              disabled={busy === "notifications" || notificationsDone}
+              disabled={busy || notificationsDone}
               onClick={() => void requestNotifications()}
             >
               {notificationsDone ? t("onboarding.notificationsGranted") : t("onboarding.notificationsAction")}
             </button>
           </article>
-
-          <article className={`onboarding__permission-card${storageDone ? " is-done" : ""}`}>
-            <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 12, alignItems: "start" }}>
-              <FolderOpen size={20} />
-              <div>
-                <strong>{t("onboarding.storageTitle")}</strong>
-                <p>{t("onboarding.storageHint")}</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              className="onboarding__secondary"
-              disabled={busy === "storage" || storageDone}
-              onClick={() => void requestStorage()}
-            >
-              {storageDone ? t("onboarding.storageReady") : t("onboarding.storageAction")}
-            </button>
-          </article>
         </div>
 
         <div className="onboarding__actions">
-          <button type="button" className="onboarding__primary" onClick={onDone}>
-            {t("onboarding.finish")}
+          <button type="button" className="onboarding__primary" onClick={onContinue}>
+            {t("onboarding.continue")}
           </button>
-          <button type="button" className="onboarding__ghost" onClick={onDone}>
+          <button type="button" className="onboarding__ghost" onClick={onContinue}>
             {t("onboarding.skip")}
           </button>
         </div>
@@ -268,15 +242,58 @@ function OnboardingPermissions({ theme, onDone }) {
   );
 }
 
+function OnboardingTheme({ theme, appearance, onSetAppearance, onDone }) {
+  const { t, dir } = useI18n();
+
+  return (
+    <OnboardingBackdrop theme={theme}>
+      <div className="onboarding__panel onboarding__panel--theme" dir={dir}>
+        <header className="onboarding__header">
+          <h1>{t("onboarding.themeTitle")}</h1>
+          <p>{t("onboarding.themeSubtitle")}</p>
+        </header>
+
+        <div className="onboarding__theme-grid">
+          <ThemeSelector appearance={appearance} onSetAppearance={onSetAppearance} />
+        </div>
+
+        <div className="onboarding__actions">
+          <button type="button" className="onboarding__primary" onClick={onDone}>
+            {t("onboarding.finish")}
+          </button>
+        </div>
+      </div>
+    </OnboardingBackdrop>
+  );
+}
+
 function OnboardingFlow({ onComplete }) {
-  const theme = useOnboardingTheme();
   const isNative = Capacitor.isNativePlatform();
   const [step, setStep] = useState("splash");
+  const [appearance, setAppearanceRaw] = usePersistedState("living-archive:appearance", readBootAppearance());
+  const appearanceId = normalizeThemeId(appearance ?? THEME_INK);
+  const theme = useMemo(() => buildOnboardingTheme(appearanceId), [appearanceId]);
+
+  const setAppearance = useCallback((next) => {
+    setAppearanceRaw(normalizeThemeId(next));
+  }, [setAppearanceRaw]);
+
+  useEffect(() => {
+    applyAppearance(appearanceId);
+    void syncNativeChrome(theme.palette.canvas, isDarkTheme(appearanceId));
+  }, [appearanceId, theme.palette.canvas]);
+
+  useEffect(() => {
+    if (!isNative) return;
+    void prepareLocalStorage();
+  }, [isNative]);
 
   const finish = useCallback(() => {
     void hideNativeSplash();
     onComplete();
   }, [onComplete]);
+
+  const goToTheme = useCallback(() => setStep("theme"), []);
 
   if (step === "splash") {
     return <OnboardingSplash theme={theme} onDone={() => setStep("language")} />;
@@ -288,14 +305,25 @@ function OnboardingFlow({ onComplete }) {
         theme={theme}
         onContinue={() => {
           if (isNative) setStep("permissions");
-          else finish();
+          else goToTheme();
         }}
       />
     );
   }
 
   if (step === "permissions") {
-    return <OnboardingPermissions theme={theme} onDone={finish} />;
+    return <OnboardingPermissions theme={theme} onContinue={goToTheme} />;
+  }
+
+  if (step === "theme") {
+    return (
+      <OnboardingTheme
+        theme={theme}
+        appearance={appearanceId}
+        onSetAppearance={setAppearance}
+        onDone={finish}
+      />
+    );
   }
 
   return null;

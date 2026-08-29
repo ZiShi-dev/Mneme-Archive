@@ -19,7 +19,7 @@ export function Header({
   const showMark = showBrand && !isChromebookApp;
   const showActions = actions && !isChromebookApp;
   return (
-    <header className="page-header">
+    <header className={`page-header${showMark ? " page-header--brand" : ""}`}>
       <div className="page-header__title">
         {onBack && <button className="icon-button" onClick={onBack} aria-label={t("common.back")}><ArrowRight size={20} /></button>}
         {showMark && (
@@ -30,7 +30,10 @@ export function Header({
             decorative
           />
         )}
-        <div>{eyebrow && <span className="eyebrow">{eyebrow}</span>}<h1>{title}</h1></div>
+        <div className="page-header__copy">
+          {eyebrow && <span className="eyebrow">{eyebrow}</span>}
+          <h1>{title}</h1>
+        </div>
       </div>
       {showActions && (
         <div className="header-actions">

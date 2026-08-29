@@ -28,7 +28,7 @@ function ThemeOptionIcon({ Icon }) {
   return <Icon size={19} />;
 }
 
-function ThemeSelector({ appearance, onSetAppearance }) {
+export function ThemeSelector({ appearance, onSetAppearance }) {
   const { t } = useI18n();
   return (
     <div className="theme-selector theme-selector--five" role="group" aria-label={t("settings.appearance")}>
