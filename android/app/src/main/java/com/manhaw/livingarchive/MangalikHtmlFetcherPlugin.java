@@ -22,19 +22,13 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
+import java.util.ArrayDeque;
 import java.util.Locale;
 import org.json.JSONObject;
 
 @CapacitorPlugin(name = "MangalikHtmlFetcher")
 public class MangalikHtmlFetcherPlugin extends Plugin {
 
-    private static final String MANGALIK_HOST = "mangalik.net";
-    private static final String ARABS_HENTAI_HOST = "arabshentai.com";
-    private static final String HENTAIREAD_HOST = "hentairead.com";
-    private static final String HENCOVER_HOST = "hencover.xyz";
-    private static final String MANGALIK_WARMUP_URL = "https://mangalik.net/manga/";
-    private static final String ARABS_HENTAI_WARMUP_URL = "https://arabshentai.com/manga/";
-    private static final String HENTAIREAD_WARMUP_URL = "https://hentairead.com/hentai/";
     private static final String USER_AGENT =
         "Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36";
     private static final int POLL_INTERVAL_MS = 800;
@@ -49,19 +43,53 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
             + "return JSON.stringify({ready:true,html:html});"
             + "}catch(error){return JSON.stringify({ready:false,error:String(error)});}})();";
 
+    private static final class SourceHost {
+        final String host;
+        final String warmupUrl;
+        final String referer;
+
+        SourceHost(String host, String warmupUrl, String referer) {
+            this.host = host;
+            this.warmupUrl = warmupUrl;
+            this.referer = referer;
+        }
+    }
+
+    private static final SourceHost[] SOURCE_HOSTS = {
+        new SourceHost("mangalik.net", "https://mangalik.net/manga/", "https://mangalik.net/"),
+        new SourceHost("arabshentai.com", "https://arabshentai.com/manga/", "https://arabshentai.com/"),
+        new SourceHost("hentairead.com", "https://hentairead.com/hentai/", "https://hentairead.com/"),
+        new SourceHost("azorafly.com", "https://azorafly.com/", "https://azorafly.com/"),
+        new SourceHost("galaxynovels.com", "https://galaxynovels.com/", "https://galaxynovels.com/"),
+    };
+
+    private static final String HENCOVER_HOST = "hencover.xyz";
+    private static final String AZORA_STORAGE_HOST = "storage.azorafly.com";
+
     private enum Stage {
         WARMUP,
         TARGET,
         POLL,
     }
 
+    private static final class PendingHtmlRequest {
+        final PluginCall call;
+        final String url;
+
+        PendingHtmlRequest(PluginCall call, String url) {
+            this.call = call;
+            this.url = url;
+        }
+    }
+
     private final Handler handler = new Handler(Looper.getMainLooper());
+    private final ArrayDeque<PendingHtmlRequest> pendingHtmlRequests = new ArrayDeque<>();
     private final Runnable timeoutRunnable = () -> failActiveCall("انتهت مهلة تحميل الصفحة");
     private WebView activeWebView;
     private PluginCall activeCall;
     private int pollCount;
     private String pendingTargetUrl;
-    private String pendingWarmupUrl = MANGALIK_WARMUP_URL;
+    private String pendingWarmupUrl = SOURCE_HOSTS[0].warmupUrl;
     private Stage stage = Stage.WARMUP;
 
     @PluginMethod
@@ -71,17 +99,14 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
             call.reject("رابط المصدر غير مسموح");
             return;
         }
+
         if (activeCall != null) {
-            call.reject("جاري تحميل صفحة أخرى");
+            call.setKeepAlive(true);
+            pendingHtmlRequests.addLast(new PendingHtmlRequest(call, url));
             return;
         }
 
-        activeCall = call;
-        pollCount = 0;
-        pendingTargetUrl = url;
-        pendingWarmupUrl = warmupUrlFor(url);
-        stage = Stage.WARMUP;
-        getActivity().runOnUiThread(() -> startHtmlFetch(url));
+        beginHtmlFetch(call, url);
     }
 
     @PluginMethod
@@ -125,6 +150,15 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
                 }
             )
             .start();
+    }
+
+    private void beginHtmlFetch(PluginCall call, String url) {
+        activeCall = call;
+        pollCount = 0;
+        pendingTargetUrl = url;
+        pendingWarmupUrl = warmupUrlFor(url);
+        stage = Stage.WARMUP;
+        getActivity().runOnUiThread(() -> startHtmlFetch(url));
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -196,7 +230,7 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
                     return;
                 }
                 if (payload.optBoolean("blocked", false)) {
-                    failActiveCall("حماية MangaLik تمنع الاتصال (Cloudflare)");
+                    failActiveCall("حماية الموقع تمنع الاتصال (Cloudflare)");
                     return;
                 }
                 if (!payload.optBoolean("ready", false)) {
@@ -230,6 +264,7 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
         result.put("url", pendingTargetUrl);
         cleanupActiveRequest();
         call.resolve(result);
+        startNextQueuedHtmlFetch();
     }
 
     private void failActiveCall(String message) {
@@ -238,11 +273,20 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
         if (call != null) {
             call.reject(message);
         }
+        startNextQueuedHtmlFetch();
+    }
+
+    private void startNextQueuedHtmlFetch() {
+        PendingHtmlRequest next = pendingHtmlRequests.pollFirst();
+        if (next == null) {
+            return;
+        }
+        beginHtmlFetch(next.call, next.url);
     }
 
     private void cleanupActiveRequest() {
         pendingTargetUrl = null;
-        pendingWarmupUrl = MANGALIK_WARMUP_URL;
+        pendingWarmupUrl = SOURCE_HOSTS[0].warmupUrl;
         activeCall = null;
         pollCount = 0;
         stage = Stage.WARMUP;
@@ -323,34 +367,37 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
         return normalized;
     }
 
-    private String warmupUrlFor(String url) {
+    private SourceHost sourceHostFor(String url) {
         try {
             String host = normalizeHost(new URI(url).getHost());
-            if (ARABS_HENTAI_HOST.equals(host)) {
-                return ARABS_HENTAI_WARMUP_URL;
-            }
-            if (HENTAIREAD_HOST.equals(host)) {
-                return HENTAIREAD_WARMUP_URL;
+            for (SourceHost sourceHost : SOURCE_HOSTS) {
+                if (sourceHost.host.equals(host)) {
+                    return sourceHost;
+                }
             }
         } catch (Exception ignored) {
-            return MANGALIK_WARMUP_URL;
+            return SOURCE_HOSTS[0];
         }
-        return MANGALIK_WARMUP_URL;
+        return SOURCE_HOSTS[0];
+    }
+
+    private String warmupUrlFor(String url) {
+        return sourceHostFor(url).warmupUrl;
     }
 
     private String refererFor(String url) {
         try {
             String host = normalizeHost(new URI(url).getHost());
-            if (ARABS_HENTAI_HOST.equals(host)) {
-                return "https://arabshentai.com/";
-            }
-            if (HENTAIREAD_HOST.equals(host) || HENCOVER_HOST.equals(host)) {
+            if (HENCOVER_HOST.equals(host)) {
                 return "https://hentairead.com/";
             }
+            if (AZORA_STORAGE_HOST.equals(host)) {
+                return "https://azorafly.com/";
+            }
+            return sourceHostFor(url).referer;
         } catch (Exception ignored) {
-            return "https://mangalik.net/";
+            return SOURCE_HOSTS[0].referer;
         }
-        return "https://mangalik.net/";
     }
 
     private boolean isAllowedUrl(String url) {
@@ -360,9 +407,12 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
                 return false;
             }
             String host = normalizeHost(uri.getHost());
-            return MANGALIK_HOST.equals(host)
-                || ARABS_HENTAI_HOST.equals(host)
-                || HENTAIREAD_HOST.equals(host);
+            for (SourceHost sourceHost : SOURCE_HOSTS) {
+                if (sourceHost.host.equals(host)) {
+                    return true;
+                }
+            }
+            return false;
         } catch (Exception error) {
             return false;
         }
@@ -376,17 +426,23 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
             }
             String host = normalizeHost(uri.getHost());
             String path = uri.getPath() == null ? "" : uri.getPath();
-            if (HENCOVER_HOST.equals(host)) {
+            if (HENCOVER_HOST.equals(host) || AZORA_STORAGE_HOST.equals(host)) {
                 return true;
             }
             if (!isAllowedUrl(url)) {
                 return false;
             }
-            if (ARABS_HENTAI_HOST.equals(host)) {
+            if ("arabshentai.com".equals(host)) {
                 return path.startsWith("/wp-content/uploads/");
             }
-            if (HENTAIREAD_HOST.equals(host)) {
+            if ("hentairead.com".equals(host)) {
                 return path.startsWith("/wp-content/uploads/") || path.startsWith("/hentai/");
+            }
+            if ("azorafly.com".equals(host)) {
+                return path.startsWith("/upload/") || path.startsWith("/public/upload/");
+            }
+            if ("galaxynovels.com".equals(host)) {
+                return path.startsWith("/wp-content/uploads/");
             }
             return path.startsWith("/manga/") || path.startsWith("/wp-content/uploads/");
         } catch (Exception error) {

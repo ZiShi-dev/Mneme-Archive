@@ -2,6 +2,8 @@ import { Capacitor } from "@capacitor/core";
 import { configureMangalikNativeFetch } from "../../../server/sources/mangalik.js";
 import { configureArabshentaiNativeFetch } from "../../../server/sources/arabshentai.js";
 import { configureHentaireadNativeFetch } from "../../../server/sources/hentairead.js";
+import { configureAzoraflyNativeFetch } from "../../../server/sources/azorafly.js";
+import { configureGalaxynovelsNativeFetch } from "../../../server/sources/galaxynovels.js";
 import { t } from "../../i18n/runtime.js";
 
 function decodeBase64(base64) {
@@ -13,14 +15,22 @@ function decodeBase64(base64) {
   return bytes;
 }
 
+let htmlFetchChain = Promise.resolve();
+
+function queueHtmlFetch(run) {
+  const next = htmlFetchChain.then(run);
+  htmlFetchChain = next.catch(() => {});
+  return next;
+}
+
 async function createCloudflareNativeFetchers() {
   const { MangalikHtmlFetcher } = await import("../../plugins/mangalikHtmlFetcher.js");
   return {
-    fetchHtml: async (url) => {
+    fetchHtml: async (url) => queueHtmlFetch(async () => {
       const result = await MangalikHtmlFetcher.fetchHtml({ url });
       if (!result?.html) throw new Error(t("errors.loadPage"));
       return result.html;
-    },
+    }),
     fetchImage: async (url) => {
       const result = await MangalikHtmlFetcher.fetchImage({ url });
       if (!result?.base64) throw new Error(t("errors.loadImage"));
@@ -41,6 +51,8 @@ export async function initCloudflareNative() {
   configureMangalikNativeFetch(fetchers);
   configureArabshentaiNativeFetch(fetchers);
   configureHentaireadNativeFetch(fetchers);
+  configureAzoraflyNativeFetch(fetchers);
+  configureGalaxynovelsNativeFetch(fetchers);
   cloudflareNativeReady = true;
 }
 

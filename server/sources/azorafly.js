@@ -7,13 +7,26 @@ import { applyRecentChapterFields, normalizeRecentChapters } from "../lib/catalo
 const AZORA_URL = "https://azorafly.com";
 const AZORA_API_URL = "https://api.azorafly.com";
 
-const fetchAzoraHtml = createCachedHtmlFetcher({
+let nativeHtmlFetcher = null;
+let nativeImageFetcher = null;
+
+export function configureAzoraflyNativeFetch({ fetchHtml, fetchImage } = {}) {
+  nativeHtmlFetcher = fetchHtml ?? null;
+  nativeImageFetcher = fetchImage ?? null;
+}
+
+const fetchAzoraHtmlRemote = createCachedHtmlFetcher({
   ttlMs: 3 * 60_000,
   timeoutMs: 30_000,
   headers: { accept: "text/html,application/xhtml+xml", "accept-language": "ar,en;q=0.9", "user-agent": "Mozilla/5.0 (Android 14; Mobile) AppleWebKit/537.36 Chrome/124 Safari/537.36" },
   getVariants: (url) => [url],
   buildError: (lastStatus) => (lastStatus === 403 ? "حماية AzoraFly منعت الاتصال مؤقتًا" : `AzoraFly a répondu ${lastStatus}`),
 });
+
+async function resolveAzoraHtml(url) {
+  if (nativeHtmlFetcher) return nativeHtmlFetcher(url);
+  return fetchAzoraHtmlRemote(url);
+}
 
 function assertAzoraUrl(rawUrl, chapter = false) {
   const url = new URL(rawUrl);
@@ -36,7 +49,9 @@ function assertAzoraImageUrl(rawUrl) {
 }
 
 async function proxyAzoraImage(rawUrl) {
-  return fetchProxiedImage(assertAzoraImageUrl(rawUrl), `${AZORA_URL}/`, "AzoraFly");
+  const target = assertAzoraImageUrl(rawUrl);
+  if (nativeImageFetcher) return nativeImageFetcher(target);
+  return fetchProxiedImage(target, `${AZORA_URL}/`, "AzoraFly");
 }
 
 function parseAzoraFilters(html) {
@@ -261,7 +276,7 @@ function parseAzoraChapter(html, url) {
 export async function handleAzoraRequest(requestUrl) {
   if (requestUrl.pathname.endsWith("/image")) return await proxyAzoraImage(requestUrl.searchParams.get("url") ?? "");
   if (requestUrl.pathname.endsWith("/filters")) {
-    const html = await fetchAzoraHtml(`${AZORA_URL}/series/`);
+    const html = await resolveAzoraHtml(`${AZORA_URL}/series/`);
     return responseJson(200, {
       ...mergeFilterGroups([
         parseAzoraFilters(html),
@@ -280,24 +295,24 @@ export async function handleAzoraRequest(requestUrl) {
     const upstreamPage = Math.floor(offset / upstreamPageSize) + 1;
     const start = offset % upstreamPageSize;
     const genreQuery = genre ? `&genres=${encodeURIComponent(`+${genre}`)}` : "";
-    let pool = parseAzoraCatalog(await fetchAzoraHtml(`${AZORA_URL}/series/?page=${upstreamPage}${genreQuery}`));
-    if (start + appPageSize > pool.length && pool.length >= upstreamPageSize) pool = pool.concat(parseAzoraCatalog(await fetchAzoraHtml(`${AZORA_URL}/series/?page=${upstreamPage + 1}${genreQuery}`)));
+    let pool = parseAzoraCatalog(await resolveAzoraHtml(`${AZORA_URL}/series/?page=${upstreamPage}${genreQuery}`));
+    if (start + appPageSize > pool.length && pool.length >= upstreamPageSize) pool = pool.concat(parseAzoraCatalog(await resolveAzoraHtml(`${AZORA_URL}/series/?page=${upstreamPage + 1}${genreQuery}`)));
     const items = pool.slice(start, start + appPageSize);
     return responseJson(200, { items, page, genre, hasMore: items.length === appPageSize, fetchedAt: new Date().toISOString() });
   }
   if (requestUrl.pathname.endsWith("/search")) {
     const { query, valid } = normalizeSearchQuery(requestUrl.searchParams.get("q"));
     if (!valid) return responseJson(200, { items: [] });
-    const html = await fetchAzoraHtml(`${AZORA_URL}/series/?searchTerm=${encodeURIComponent(query)}`);
+    const html = await resolveAzoraHtml(`${AZORA_URL}/series/?searchTerm=${encodeURIComponent(query)}`);
     return responseJson(200, { items: parseAzoraCatalog(html).slice(0, 40) });
   }
   if (requestUrl.pathname.endsWith("/manga")) {
     const target = assertAzoraUrl(requestUrl.searchParams.get("url") ?? "");
-    return responseJson(200, await parseAzoraDetails(await fetchAzoraHtml(target), target));
+    return responseJson(200, await parseAzoraDetails(await resolveAzoraHtml(target), target));
   }
   if (requestUrl.pathname.endsWith("/chapter")) {
     const target = assertAzoraUrl(requestUrl.searchParams.get("url") ?? "", true);
-    return responseJson(200, parseAzoraChapter(await fetchAzoraHtml(target), target));
+    return responseJson(200, parseAzoraChapter(await resolveAzoraHtml(target), target));
   }
   return responseJson(404, { error: "Route AzoraFly inconnue" });
 }

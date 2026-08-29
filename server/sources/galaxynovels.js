@@ -20,13 +20,26 @@ const galaxyManifestCache = new Map();
 const galaxyNovelApiCache = new Map();
 let galaxyAuthorFiltersCache = null;
 
-const fetchGalaxyHtml = createCachedHtmlFetcher({
+let nativeHtmlFetcher = null;
+let nativeImageFetcher = null;
+
+export function configureGalaxynovelsNativeFetch({ fetchHtml, fetchImage } = {}) {
+  nativeHtmlFetcher = fetchHtml ?? null;
+  nativeImageFetcher = fetchImage ?? null;
+}
+
+const fetchGalaxyHtmlRemote = createCachedHtmlFetcher({
   ttlMs: 3 * 60_000,
   timeoutMs: 30_000,
   headers: { accept: "text/html,application/xhtml+xml", "accept-language": "ar,en;q=0.8", referer: `${GALAXY_URL}/`, "user-agent": "Mozilla/5.0 (Android 14; Mobile) AppleWebKit/537.36 Chrome/124 Safari/537.36" },
   getVariants: (url) => [url],
   buildError: (lastStatus) => (lastStatus === 403 ? "حماية Galaxy Novels منعت الاتصال مؤقتًا" : `Galaxy Novels a répondu ${lastStatus}`),
 });
+
+async function resolveGalaxyHtml(url) {
+  if (nativeHtmlFetcher) return nativeHtmlFetcher(url);
+  return fetchGalaxyHtmlRemote(url);
+}
 
 function toGalaxyAbsoluteUrl(rawUrl) {
   const url = new URL(decodeHtml(String(rawUrl || "")), GALAXY_URL);
@@ -52,7 +65,9 @@ function assertGalaxyImageUrl(rawUrl) {
 }
 
 async function proxyGalaxyImage(rawUrl) {
-  return fetchProxiedImage(assertGalaxyImageUrl(rawUrl), `${GALAXY_URL}/`, "Galaxy Novels");
+  const target = assertGalaxyImageUrl(rawUrl);
+  if (nativeImageFetcher) return nativeImageFetcher(target);
+  return fetchProxiedImage(target, `${GALAXY_URL}/`, "Galaxy Novels");
 }
 
 async function fetchGalaxyNovelApi(novelId) {
@@ -131,7 +146,7 @@ async function mapWithConcurrency(items, concurrency, mapper) {
 async function collectGalaxyLibraryNovelIds() {
   const novelIds = new Set();
   for (let page = 1; page <= 200; page += 1) {
-    const html = await fetchGalaxyHtml(`${GALAXY_URL}/library/?library_page=${page}`);
+    const html = await resolveGalaxyHtml(`${GALAXY_URL}/library/?library_page=${page}`);
     const pageIds = parseGalaxyCatalogNovelIds(html);
     if (!pageIds.length) break;
     pageIds.forEach((novelId) => novelIds.add(novelId));
@@ -368,7 +383,7 @@ export function parseGalaxyChapterApi(payload, fallbackUrl) {
 export async function handleGalaxyRequest(requestUrl) {
   if (requestUrl.pathname.endsWith("/image")) return await proxyGalaxyImage(requestUrl.searchParams.get("url") ?? "");
   if (requestUrl.pathname.endsWith("/filters")) {
-    const html = await fetchGalaxyHtml(`${GALAXY_URL}/library/`);
+    const html = await resolveGalaxyHtml(`${GALAXY_URL}/library/`);
     const authors = await buildGalaxyAuthorFilters();
     return responseJson(200, {
       ...mergeFilterGroups([parseTaxonomyFilterLinks(html, GALAXY_URL, ["galaxynovels.com", "www.galaxynovels.com"])]),
@@ -392,7 +407,7 @@ export async function handleGalaxyRequest(requestUrl) {
       filterTarget.searchParams.set("library_page", String(page));
       target = filterTarget.toString();
     }
-    const html = await fetchGalaxyHtml(target);
+    const html = await resolveGalaxyHtml(target);
     const items = parseGalaxyCatalog(html);
     await enrichGalaxyCatalog(items, { concurrency: 6 });
     const nextPagePattern = new RegExp(`library_page=(?:${page + 1})(?:[&\"'])`, "i");
@@ -401,14 +416,14 @@ export async function handleGalaxyRequest(requestUrl) {
   if (requestUrl.pathname.endsWith("/search")) {
     const { query, valid } = normalizeSearchQuery(requestUrl.searchParams.get("q"));
     if (!valid) return responseJson(200, { items: [] });
-    const html = await fetchGalaxyHtml(`${GALAXY_URL}/library/?q=${encodeURIComponent(query)}`);
+    const html = await resolveGalaxyHtml(`${GALAXY_URL}/library/?q=${encodeURIComponent(query)}`);
     const items = parseGalaxyCatalog(html);
     await enrichGalaxyCatalog(items, { concurrency: 4 });
     return responseJson(200, { items });
   }
   if (requestUrl.pathname.endsWith("/manga")) {
     const target = assertGalaxyUrl(requestUrl.searchParams.get("url") ?? "");
-    return responseJson(200, await parseGalaxyDetails(await fetchGalaxyHtml(target), target));
+    return responseJson(200, await parseGalaxyDetails(await resolveGalaxyHtml(target), target));
   }
   if (requestUrl.pathname.endsWith("/chapter")) {
     const target = assertGalaxyUrl(requestUrl.searchParams.get("url") ?? "", true);
@@ -419,7 +434,7 @@ export async function handleGalaxyRequest(requestUrl) {
         if (parsed.paragraphs.length) return responseJson(200, parsed);
       } catch { /* La page HTML publique reste le repli. */ }
     }
-    const parsed = parseGalaxyChapter(await fetchGalaxyHtml(target), target);
+    const parsed = parseGalaxyChapter(await resolveGalaxyHtml(target), target);
     if (!parsed.paragraphs.length) throw new Error("تعذر استخراج نص الفصل");
     return responseJson(200, parsed);
   }
