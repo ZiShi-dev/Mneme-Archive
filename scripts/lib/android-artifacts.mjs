@@ -16,8 +16,8 @@ export function readBuildFlavorMeta(androidDir) {
 }
 
 export function resolveAndroidArtifactDir(root, kind, flavor) {
-  const safeFlavor = flavor === "chromebook" ? "chromebook" : "archive";
-  return path.join(root, kind, safeFlavor);
+  const folder = ["chromebook", "user", "archive"].includes(flavor) ? flavor : "archive";
+  return path.join(root, kind, folder);
 }
 
 export function copyAndroidArtifact({ sourcePath, root, kind, flavor, fileName }) {

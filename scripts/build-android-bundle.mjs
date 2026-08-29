@@ -10,10 +10,17 @@ const FLAVORS = {
   archive: {
     appName: "Mneme Archive",
     artifactPrefix: "Mneme-Archive",
+    viteFlavor: "archive",
+  },
+  user: {
+    appName: "Mneme Archive",
+    artifactPrefix: "Mneme-User",
+    viteFlavor: "archive",
   },
   chromebook: {
     appName: "CinéVault",
     artifactPrefix: "CineVault-Chromebook",
+    viteFlavor: "chromebook",
   },
 };
 
@@ -85,7 +92,7 @@ function run(command, args, env = process.env) {
 
 patchAndroidLabels();
 
-const viteEnv = { ...process.env, VITE_APP_FLAVOR: flavor };
+const viteEnv = { ...process.env, VITE_APP_FLAVOR: config.viteFlavor || flavor };
 run("npx", ["vite", "build"], viteEnv);
 run("npx", ["cap", "sync", "android"], viteEnv);
 applyChromebookNativePatch();
