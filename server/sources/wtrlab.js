@@ -1,4 +1,3 @@
-import { createDecipheriv } from "node:crypto";
 import { textOnly } from "../lib/htmlUtils.js";
 import { fetchProxiedImage } from "../lib/httpUtils.js";
 import { normalizeSearchQuery } from "../lib/queryLimits.js";
@@ -11,7 +10,7 @@ const SOURCE_NAME = "WTR-LAB";
 const SOURCE_ID = "wtrlab";
 const ALLOWED_HOSTS = new Set(["wtr-lab.com", "www.wtr-lab.com", "img.wtr-lab.com"]);
 const PAGE_SIZE = 10;
-const READER_KEY = Buffer.from("IJAFUUxjM25hyzL2AZrn0wl7cESED6Ru");
+const READER_KEY_BYTES = new TextEncoder().encode("IJAFUUxjM25hyzL2AZrn0wl7cESED6Ru");
 const API_HEADERS = {
   accept: "application/json, text/html",
   "accept-language": "en,ar;q=0.8",
@@ -157,7 +156,41 @@ function assertWtrlabImageUrl(rawUrl = "") {
   return url.toString();
 }
 
-export function decryptWtrlabChapterBody(encrypted) {
+function decodeBase64ToBytes(value = "") {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
+}
+
+async function decryptEncryptedPayload(payload, asArray) {
+  const [ivPart, tagPart, cipherPart] = payload.split(":");
+  if (!ivPart || !tagPart || !cipherPart) throw new Error("تعذر فك محتوى الفصل");
+  const iv = decodeBase64ToBytes(ivPart);
+  const tag = decodeBase64ToBytes(tagPart);
+  const cipher = decodeBase64ToBytes(cipherPart);
+  const combined = new Uint8Array(cipher.length + tag.length);
+  combined.set(cipher);
+  combined.set(tag, cipher.length);
+  const key = await crypto.subtle.importKey(
+    "raw",
+    READER_KEY_BYTES,
+    { name: "AES-GCM" },
+    false,
+    ["decrypt"],
+  );
+  const plain = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv, tagLength: 128 },
+    key,
+    combined,
+  );
+  const text = new TextDecoder().decode(plain);
+  return asArray ? JSON.parse(text) : [text];
+}
+
+export async function decryptWtrlabChapterBody(encrypted) {
   if (Array.isArray(encrypted)) return encrypted;
   if (typeof encrypted !== "string" || !encrypted) {
     throw new Error("تعذر فك محتوى الفصل");
@@ -172,20 +205,11 @@ export function decryptWtrlabChapterBody(encrypted) {
   } else {
     return [payload];
   }
-  const [ivPart, tagPart, cipherPart] = payload.split(":");
-  if (!ivPart || !tagPart || !cipherPart) throw new Error("تعذر فك محتوى الفصل");
-  const iv = Buffer.from(ivPart, "base64");
-  const tag = Buffer.from(tagPart, "base64");
-  const cipher = Buffer.from(cipherPart, "base64");
-  const combined = Buffer.concat([cipher, tag]);
-  const decipher = createDecipheriv("aes-256-gcm", READER_KEY, iv);
-  decipher.setAuthTag(tag);
-  const plain = Buffer.concat([decipher.update(cipher), decipher.final()]).toString("utf8");
-  return asArray ? JSON.parse(plain) : [plain];
+  return decryptEncryptedPayload(payload, asArray);
 }
 
-export function parseWtrlabChapterParagraphs(body, glossaryTerms = []) {
-  const lines = decryptWtrlabChapterBody(body);
+export async function parseWtrlabChapterParagraphs(body, glossaryTerms = []) {
+  const lines = await decryptWtrlabChapterBody(body);
   const paragraphs = [];
   for (const line of lines) {
     if (line === "[image]") continue;
@@ -369,7 +393,7 @@ async function fetchChapterContent(target, { forceRaw = false } = {}) {
   }
 
   const glossaryTerms = payload?.data?.data?.glossary_data?.terms || [];
-  const paragraphs = parseWtrlabChapterParagraphs(payload?.data?.data?.body, glossaryTerms);
+  const paragraphs = await parseWtrlabChapterParagraphs(payload?.data?.data?.body, glossaryTerms);
   return {
     title: payload?.chapter?.title || `Chapter ${chapterNo}`,
     url: buildWtrlabChapterUrl(rawId, slug, chapterNo),

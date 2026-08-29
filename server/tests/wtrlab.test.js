@@ -60,12 +60,12 @@ test("extractNextData and parseWtrlabCatalogPayload read SSR catalog", () => {
   assert.equal(items[0].slug, "sample-novel");
 });
 
-test("decryptWtrlabChapterBody handles plain arrays", () => {
-  assert.deepEqual(decryptWtrlabChapterBody(["Line one", "Line two"]), ["Line one", "Line two"]);
+test("decryptWtrlabChapterBody handles plain arrays", async () => {
+  assert.deepEqual(await decryptWtrlabChapterBody(["Line one", "Line two"]), ["Line one", "Line two"]);
 });
 
-test("parseWtrlabChapterParagraphs filters glossary markers", () => {
-  const paragraphs = parseWtrlabChapterParagraphs(["Hello ※0⛬ world"], [["Lake"]]);
+test("parseWtrlabChapterParagraphs filters glossary markers", async () => {
+  const paragraphs = await parseWtrlabChapterParagraphs(["Hello ※0⛬ world"], [["Lake"]]);
   assert.deepEqual(paragraphs, ["Hello Lake world"]);
 });
 
