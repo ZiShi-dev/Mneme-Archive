@@ -7,6 +7,7 @@ import { MAX_SEARCH_QUERY_LENGTH } from "../../../server/lib/queryLimits.js";
 import { Capacitor } from "@capacitor/core";
 import { getRuntimeSettings } from "../../lib/settings/runtimeSettings.js";
 import { getDefaultSourceBaseUrl, getEffectiveSourceBaseUrl } from "../../lib/settings/sourceBaseUrls.js";
+import { WEBVIEW_SOURCE_ID_SET } from "../../lib/platform/webViewSources.js";
 
 const FILTER_PATH_SOURCES = new Set([
   "galaxynovels", "cenele", "anime4up", "animedar", "animesama", "frenchstream", "wiflix", "coflix",
@@ -23,12 +24,9 @@ function appendSourceQueryParams(query, sourceId) {
 
 const sourcePath = (sourceId, resource) => `/api/sources/${sourceId}/${resource}`;
 const isNative = () => Capacitor.isNativePlatform();
-const CLOUDFLARE_NATIVE_SOURCE_IDS = new Set([
-  "mangalik", "azorafly", "galaxynovels",
-]);
 
 function pathUsesCloudflareNative(path = "") {
-  for (const sourceId of CLOUDFLARE_NATIVE_SOURCE_IDS) {
+  for (const sourceId of WEBVIEW_SOURCE_ID_SET) {
     if (path.includes(`/api/sources/${sourceId}/`)) return true;
   }
   return false;
@@ -112,7 +110,7 @@ async function fetchImagePayload(sourceId, url) {
       contentType: response.headers.get("content-type") || "image/jpeg",
     };
   }
-  if (CLOUDFLARE_NATIVE_SOURCE_IDS.has(sourceId)) await ensureCloudflareNative();
+  if (WEBVIEW_SOURCE_ID_SET.has(sourceId)) await ensureCloudflareNative();
   const { handleSourceRequest } = await import("../../../server/mangaSourcesPlugin.js");
   const result = await handleSourceRequest(sourceImageUrl(sourceId, url));
   if (!result || result.kind !== "image") throw new Error(t("errors.loadImage"));

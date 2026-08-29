@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Capacitor } from "@capacitor/core";
 import { ChevronDown, ChevronLeft, ChevronRight, RefreshCw, Search, Wifi, X } from "lucide-react";
 import { useToast } from "../../components/ui/ToastProvider";
 import { defaultContentKinds, enrichKindWithFilterPath, getSourceProfile, initialSourcePreferences, initialSources } from "../../config/sources";
@@ -30,6 +31,7 @@ import {
 import { fetchCatalogBatch, resolvePopulatedCatalogPage } from "./catalogPaging";
 import { getCatalogSkeletonCount } from "../../lib/catalog/catalogLayout";
 import { scrollAppToElement } from "../../lib/platform/scrollRoot";
+import { shouldDeferCatalogFilters } from "../../lib/platform/webViewSources";
 
 const CATALOG_STATE_KEY = "living-archive:catalog-state";
 const EMPTY_CATALOG_STATE = { pages: {}, filters: {}, kinds: {}, queries: {}, hasMore: {}, audioFilters: {} };
@@ -559,6 +561,13 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
       return undefined;
     }
 
+    const shouldDeferFilters = Capacitor.isNativePlatform()
+      && shouldDeferCatalogFilters(activeSource.id)
+      && status === "loading";
+    if (shouldDeferFilters) {
+      return undefined;
+    }
+
     const cached = catalogFiltersCache.get(activeSource.id);
     if (cached) {
       catalogFiltersCache.set(activeSource.id, cached);
@@ -584,7 +593,7 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
       if (!cancelled) setFiltersLoading(false);
     });
     return () => { cancelled = true; };
-  }, [activeSource.enabled, activeSource.id, effectiveMode]);
+  }, [activeSource.enabled, activeSource.id, effectiveMode, status]);
 
   useEffect(() => () => {
     if (queryTimer.current) clearTimeout(queryTimer.current);

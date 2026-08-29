@@ -109,8 +109,23 @@ html[dir="rtl"] .source-directory-card__identity small { text-align: right; }
 .source-directory__empty .button { margin-top: 6px; min-height: 42px; font: 600 12px/1.35 var(--font-sans); }
 .source-directory__empty strong { color: var(--ink); font: 600 15px/1.4 var(--font-display); }
 .source-directory__empty span { font: 500 13px/1.55 var(--font-sans); }
-.management-source-picker-backdrop { position: fixed; inset: 0; z-index: 101; display: flex; align-items: flex-end; justify-content: center; padding: 10px; background: rgba(3,4,10,.62); backdrop-filter: blur(10px); }
-.management-source-picker { width: min(100%, 620px); max-height: min(88vh, 760px); overflow: hidden; display: flex; flex-direction: column; padding: 16px 16px 14px; border: 1px solid color-mix(in srgb, var(--border, var(--line)) 80%, transparent); border-radius: 22px 22px 16px 16px; background: var(--paper, var(--white)); box-shadow: 0 -18px 50px rgba(0,0,0,.28); animation: genrePickerIn 220ms cubic-bezier(.2,.8,.2,1); }
+.management-source-picker-backdrop { position: fixed; inset: 0; z-index: 101; display: flex; align-items: flex-end; justify-content: center; padding: 0; background: rgba(3,4,10,.62); backdrop-filter: blur(10px); }
+.management-source-picker {
+  width: var(--sheet-width);
+  max-width: 100%;
+  height: var(--sheet-height);
+  max-height: var(--sheet-height);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 16px max(14px, calc(var(--safe-bottom) + 8px));
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--border, var(--line)) 80%, transparent);
+  border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+  background: var(--paper, var(--white));
+  box-shadow: 0 -18px 50px rgba(0,0,0,.28);
+  animation: genrePickerIn 220ms cubic-bezier(.2,.8,.2,1);
+}
 .management-source-picker::before { content: ""; width: 34px; height: 4px; margin: 0 auto 14px; border-radius: 999px; background: color-mix(in srgb, var(--border, var(--line)) 85%, transparent); }
 .management-source-picker__header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .management-source-picker__title { min-width: 0; display: flex; align-items: center; gap: 10px; }
@@ -347,8 +362,11 @@ html[dir="rtl"] .source-config-panel__header h2 { text-align: right; }
 }
 
 @media (max-width: 360px) {
-  .content { padding-left: 16px; padding-right: 16px; }
-  .page-header { padding-left: 16px; padding-right: 16px; }
+  :root {
+    --content-padding-x: 16px;
+    --page-header-padding-x: 16px;
+  }
+
   .details-hero { padding-left: 16px; padding-right: 16px; }
 }
 

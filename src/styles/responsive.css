@@ -329,8 +329,9 @@
 }
 
 @media (max-width: 360px) {
-  .desktop-app .bottom-nav button span {
-    font-size: 7px;
+  .desktop-app .bottom-nav__label,
+  .desktop-app .bottom-nav button > span:not(.bottom-nav__icon) {
+    font-size: 8px;
   }
 
   .desktop-app .live-manga-grid {
@@ -350,5 +351,43 @@
 
   .desktop-app .live-reader--watch .video-watch-playlist {
     max-height: min(38vh, 240px);
+  }
+}
+
+/* Feuilles à contenu dense — pleine largeur mobile, centrées sur grands écrans */
+@media (min-width: 821px) {
+  :is(
+    .catalog-filter-picker-backdrop,
+    .catalog-source-picker-backdrop,
+    .management-source-picker-backdrop,
+    .notify-sheet-backdrop,
+    .follow-sheet-backdrop,
+    .la-sheet-backdrop
+  ) {
+    align-items: center;
+    padding: 24px;
+  }
+
+  :is(
+    .catalog-filter-picker,
+    .catalog-source-picker,
+    .management-source-picker,
+    .la-sheet,
+    .notify-sheet,
+    .follow-sheet,
+    .genre-picker
+  ) {
+    width: var(--sheet-max-width-desktop);
+    max-width: var(--sheet-max-width-desktop);
+    height: auto;
+    max-height: min(88vh, 820px);
+    border: 1px solid color-mix(in srgb, var(--border, var(--line)) 80%, transparent);
+    border-radius: var(--radius-sheet);
+    padding: 16px 16px 14px;
+  }
+
+  .notify-sheet,
+  .follow-sheet {
+    border-top: 1px solid color-mix(in srgb, var(--border, var(--line)) 80%, transparent);
   }
 }

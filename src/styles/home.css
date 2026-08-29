@@ -1,38 +1,3 @@
-/* ── En-tête accueil ── */
-.screen--home .page-header {
-  align-items: flex-start;
-  gap: 10px;
-  padding-top: max(24px, env(safe-area-inset-top, 0px) + 12px);
-}
-
-.screen--home .page-header__title {
-  flex: 1;
-  min-width: 0;
-  align-items: flex-start;
-}
-
-.screen--home .page-header__title > div {
-  min-width: 0;
-  display: grid;
-  gap: 6px;
-}
-
-.screen--home .page-header .eyebrow {
-  display: block;
-  line-height: 1.5;
-  max-width: 22ch;
-}
-
-.screen--home .header-actions {
-  flex: 0 0 auto;
-  padding-top: 2px;
-}
-
-.screen--home .header-actions .icon-button {
-  width: 38px;
-  height: 38px;
-}
-
 .home-discovery {
   margin-top: 0;
   margin-bottom: 0;
@@ -634,10 +599,11 @@
   border: 0;
   border-radius: 0;
   box-shadow: none;
-  min-height: 0;
+  min-height: 204px;
   padding: 18px 16px 14px;
   grid-template-columns: 96px minmax(0, 1fr);
   gap: 16px;
+  align-items: stretch;
 }
 
 .home-hero-panel__track {
@@ -710,6 +676,66 @@
 .content .home-hero-panel .hero-card--continue,
 .content .home-hero-panel .hero-card--empty {
   margin-bottom: 0;
+}
+
+.content .home-hero-panel .hero-card__visual {
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.content .home-hero-panel .hero-card__copy {
+  min-height: 136px;
+}
+
+.content .home-hero-panel .hero-card--continue h2,
+.content .home-hero-panel .hero-card--empty h2 {
+  min-height: calc(19px * 1.38 * 2);
+}
+
+.content .home-hero-panel .hero-card__subtitle {
+  min-height: calc(13px * 1.5);
+  margin-top: 6px;
+}
+
+.content .home-hero-panel .hero-card__subtitle--placeholder {
+  visibility: hidden;
+}
+
+.content .home-hero-panel .hero-card__status {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 8px 10px;
+  min-height: 54px;
+  margin-top: 10px;
+}
+
+.content .home-hero-panel .hero-card__chapter-badge {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.content .home-hero-panel .hero-card__chapter-name {
+  grid-column: 2;
+  grid-row: 1;
+  min-height: 17px;
+}
+
+.content .home-hero-panel .hero-card__chapter-name--placeholder {
+  visibility: hidden;
+}
+
+.content .home-hero-panel .hero-card__progress-wrap {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  width: 100%;
+  flex: initial;
+}
+
+.content .home-hero-panel .hero-card__footer {
+  margin-top: auto;
+  padding-top: 12px;
 }
 
 .content .hero-card--continue:hover {
@@ -1016,13 +1042,37 @@
 
 /* ── أرشيف منيمي · respiration globale ── */
 .screen--home .page-header {
-  padding-bottom: 20px;
+  padding-bottom: 18px;
 }
 
-.screen--home .page-header .eyebrow {
-  display: inline-block;
-  margin-bottom: 2px;
-  line-height: 1.5;
+.screen--home .page-header__title {
+  gap: 12px;
+}
+
+.screen--home .header-actions {
+  gap: 6px;
+}
+
+.screen--home .header-actions .icon-button {
+  width: 38px;
+  height: 38px;
+}
+
+.page-header--brand h1 {
+  white-space: nowrap;
+  font-size: clamp(21px, 5.6vw, 26px);
+  line-height: 1.15;
+  margin-top: 4px;
+}
+
+.page-header--brand .eyebrow {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.35;
+  font-size: 10px;
 }
 
 .screen--home .content {

@@ -446,7 +446,10 @@
 }
 
 .history-chapter-sheet {
-  max-height: min(82vh, 560px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: var(--sheet-height);
 }
 
 .history-chapter-sheet__head {

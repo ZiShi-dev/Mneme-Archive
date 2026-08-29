@@ -85,6 +85,19 @@ export const en = {
     series: "Series",
     seriesSingular: "series"
   },
+  onboarding: {
+    permissionsTitle: "Prepare your device",
+    permissionsSubtitle: "Allow notifications to get alerts for new chapters. You can change this later in settings.",
+    notificationsTitle: "Notifications",
+    notificationsHint: "Get notified when a new chapter is released for a title you follow.",
+    notificationsAction: "Allow notifications",
+    notificationsGranted: "Notifications enabled",
+    themeTitle: "Choose your theme",
+    themeSubtitle: "Customize how the app looks. You can change it later in settings.",
+    continue: "Continue",
+    skip: "Later",
+    finish: "Enter the archive",
+  },
   settings: {
     title: "Settings",
     eyebrow: "Reading experience",
