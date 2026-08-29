@@ -109,7 +109,7 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .desktop-app .screen--details-desktop .details-content {
+  .desktop-app .screen--details-desktop:not(.screen--details-cinematic) .details-content {
     grid-template-columns: 1fr;
     padding-inline: 16px;
   }
@@ -249,6 +249,18 @@
 
   .desktop-app .screen--details-desktop .live-details-hero__aside {
     width: 100%;
+  }
+
+  .desktop-app .screen--details-desktop.screen--details-cinematic .live-details-hero__dock {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .desktop-app .screen--details-desktop.screen--details-cinematic .live-details-hero__cover .remote-cover--hero,
+  .desktop-app .screen--details-desktop.screen--details-cinematic .live-details-hero__cover .remote-cover--hero.remote-cover--video {
+    width: 110px;
+    height: 162px;
+    flex-basis: 110px;
   }
 }
 

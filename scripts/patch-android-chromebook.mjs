@@ -2,6 +2,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+const flavorArg = process.argv[2];
+const flavor = String(flavorArg || process.env.APP_FLAVOR || "archive").trim().toLowerCase();
+if (flavor !== "chromebook") {
+  console.log(`Android Chromebook patch skipped (APP_FLAVOR=${flavor}).`);
+  process.exit(0);
+}
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const androidDir = path.join(root, "android");
 

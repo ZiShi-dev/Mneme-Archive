@@ -198,6 +198,7 @@ export function CatalogFilters({
       )}
       {!loading && (categories.length > 0 || tags.length > 0 || authors.length > 0) && (
       <ChipFilterBar
+        className="catalog-taxonomy-filters"
         label={t("sources.filter")}
         role="group"
         ariaLabel={t("sources.catalogFilters")}
@@ -208,7 +209,11 @@ export function CatalogFilters({
           active={multiSelect ? Boolean(selectedTaxonomies.category) : selected?.type === "category"}
           disabled={!categories.length}
           icon={LayoutGrid}
+          bordered
+          picker
           count={!selectedTaxonomies.category && categories.length > 0 ? categories.length : undefined}
+          aria-haspopup="dialog"
+          aria-expanded={pickerOpen && activeKind === "category"}
           onClick={() => openPicker("category")}
         >
           {selectedTaxonomies.category ? selectedTaxonomies.category.name : t("sources.genres")}
@@ -217,7 +222,11 @@ export function CatalogFilters({
           active={multiSelect ? Boolean(selectedTaxonomies.tag) : selected?.type === "tag"}
           disabled={!tags.length}
           icon={Tag}
+          bordered
+          picker
           count={!selectedTaxonomies.tag && tags.length > 0 ? tags.length : undefined}
+          aria-haspopup="dialog"
+          aria-expanded={pickerOpen && activeKind === "tag"}
           onClick={() => openPicker("tag")}
         >
           {selectedTaxonomies.tag ? `#${selectedTaxonomies.tag.name}` : t("sources.tags")}
@@ -227,7 +236,11 @@ export function CatalogFilters({
             active={multiSelect ? Boolean(selectedTaxonomies.author) : selected?.type === "author"}
             disabled={!authors.length}
             icon={UserRound}
+            bordered
+            picker
             count={!selectedTaxonomies.author && authors.length > 0 ? authors.length : undefined}
+            aria-haspopup="dialog"
+            aria-expanded={pickerOpen && activeKind === "author"}
             onClick={() => openPicker("author")}
           >
             {selectedTaxonomies.author ? selectedTaxonomies.author.name : t("sources.authors")}

@@ -1,5 +1,5 @@
 import React from "react";
-import { X } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 import { t } from "../../i18n/runtime";
 
 export function ChipFilterBar({
@@ -47,24 +47,30 @@ export function ChipFilterButton({
   count,
   icon: Icon,
   bordered,
+  picker,
   type = "button",
   ariaPressed,
   role,
   ariaSelected,
+  "aria-haspopup": ariaHaspopup,
+  "aria-expanded": ariaExpanded,
 }) {
   return (
     <button
       type={type}
       role={role}
-      className={`la-chip${active ? " active" : ""}${bordered ? " la-chip--bordered" : ""}`}
+      className={`la-chip${active ? " active" : ""}${bordered ? " la-chip--bordered" : ""}${picker ? " la-chip--picker" : ""}`}
       disabled={disabled}
       aria-pressed={ariaPressed ?? (role === "tab" ? undefined : active)}
       aria-selected={ariaSelected ?? (role === "tab" ? active : undefined)}
+      aria-haspopup={ariaHaspopup}
+      aria-expanded={ariaExpanded}
       onClick={onClick}
     >
       {Icon && <Icon size={12} aria-hidden="true" />}
       {typeof children === "string" || typeof children === "number" ? <span>{children}</span> : children}
       {count !== undefined && <small>{count}</small>}
+      {picker && <ChevronDown size={12} className="la-chip__chevron" aria-hidden="true" />}
     </button>
   );
 }

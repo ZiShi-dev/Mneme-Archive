@@ -3,8 +3,10 @@ import { createCachedHtmlFetcher, fetchProxiedImage } from "../lib/httpUtils.js"
 import { normalizeSearchQuery } from "../lib/queryLimits.js";
 import { responseJson } from "../lib/response.js";
 import { applyRecentChapterFields, normalizeRecentChapters } from "../lib/catalogChapters.js";
+import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
 
-const AZORA_URL = "https://azorafly.com";
+const DEFAULT_BASE_URL = "https://azorafly.com";
+const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
 const AZORA_API_URL = "https://api.azorafly.com";
 
 let nativeHtmlFetcher = null;
@@ -15,22 +17,23 @@ export function configureAzoraflyNativeFetch({ fetchHtml, fetchImage } = {}) {
   nativeImageFetcher = fetchImage ?? null;
 }
 
-const fetchAzoraHtmlRemote = createCachedHtmlFetcher({
-  ttlMs: 3 * 60_000,
-  timeoutMs: 30_000,
-  headers: { accept: "text/html,application/xhtml+xml", "accept-language": "ar,en;q=0.9", "user-agent": "Mozilla/5.0 (Android 14; Mobile) AppleWebKit/537.36 Chrome/124 Safari/537.36" },
-  getVariants: (url) => [url],
-  buildError: (lastStatus) => (lastStatus === 403 ? "حماية AzoraFly منعت الاتصال مؤقتًا" : `AzoraFly a répondu ${lastStatus}`),
-});
-
-async function resolveAzoraHtml(url) {
-  if (nativeHtmlFetcher) return nativeHtmlFetcher(url);
-  return fetchAzoraHtmlRemote(url);
+function createFetcher(baseUrl = DEFAULT_BASE_URL) {
+  const fetchRemote = createCachedHtmlFetcher({
+    ttlMs: 3 * 60_000,
+    timeoutMs: 30_000,
+    headers: { accept: "text/html,application/xhtml+xml", "accept-language": "ar,en;q=0.9", "user-agent": "Mozilla/5.0 (Android 14; Mobile) AppleWebKit/537.36 Chrome/124 Safari/537.36" },
+    getVariants: (url) => [url],
+    buildError: (lastStatus) => (lastStatus === 403 ? "حماية AzoraFly منعت الاتصال مؤقتًا" : `AzoraFly a répondu ${lastStatus}`),
+  });
+  return async (url) => {
+    if (nativeHtmlFetcher) return nativeHtmlFetcher(url);
+    return fetchRemote(url);
+  };
 }
 
-function assertAzoraUrl(rawUrl, chapter = false) {
+function assertAzoraUrl(rawUrl, chapter = false, ctx = DEFAULT_CTX) {
   const url = new URL(rawUrl);
-  if (url.protocol !== "https:" || url.hostname !== "azorafly.com") throw new Error("المصدر غير مسموح");
+  if (url.protocol !== "https:" || !ctx.allowedHosts.has(url.hostname.toLowerCase())) throw new Error("المصدر غير مسموح");
   const parts = url.pathname.split("/").filter(Boolean);
   if (parts[0] !== "series" || parts.length < (chapter ? 3 : 2)) throw new Error("رابط AzoraFly غير صالح");
   return url.toString();
@@ -48,10 +51,10 @@ function assertAzoraImageUrl(rawUrl) {
   return url.toString();
 }
 
-async function proxyAzoraImage(rawUrl) {
+async function proxyAzoraImage(rawUrl, ctx = DEFAULT_CTX) {
   const target = assertAzoraImageUrl(rawUrl);
   if (nativeImageFetcher) return nativeImageFetcher(target);
-  return fetchProxiedImage(target, `${AZORA_URL}/`, "AzoraFly");
+  return fetchProxiedImage(target, `${ctx.baseUrl}/`, "AzoraFly");
 }
 
 function parseAzoraFilters(html) {
@@ -61,7 +64,7 @@ function parseAzoraFilters(html) {
     if (!/itemprop\s*=\s*["']genre["']/i.test(match[1])) continue;
     const href = decodeHtml(match[1].match(/href\s*=\s*["']([^"']+)["']/i)?.[1] ?? "");
     let genre = "";
-    try { genre = new URL(href, AZORA_URL).searchParams.get("genres")?.replace(/^\+/, "") ?? ""; } catch { continue; }
+    try { genre = new URL(href, DEFAULT_BASE_URL).searchParams.get("genres")?.replace(/^\+/, "") ?? ""; } catch { continue; }
     const name = textOnly(match[2]);
     if (!genre || !name || seen.has(genre)) continue;
     seen.add(genre);
@@ -86,10 +89,10 @@ function parseAzoraCatalog(html) {
     const chapterPattern = new RegExp(`<a href="\\/series\\/${slug}\\/([^\"]+)"[\\s\\S]*?<span>([^<]*الفصل[^<]*)<\\/span>`, "gi");
     const chapters = normalizeRecentChapters([...block.matchAll(chapterPattern)].map((entry) => {
       const name = textOnly(entry[2]).replace(/^الفصل\s*/i, "");
-      return { url: `${AZORA_URL}/series/${slug}/${entry[1]}`, name, number: name };
+      return { url: `${DEFAULT_BASE_URL}/series/${slug}/${entry[1]}`, name, number: name };
     }));
     seen.add(slug);
-    results.push(applyRecentChapterFields({ id: slug, title, url: `${AZORA_URL}/series/${slug}`, cover, source: "AzoraFly", sourceId: "azorafly", mediaType: /رواية/.test(mediaType) ? "novel" : "manga", mediaTypeLabel: mediaType || "مانهوا" }, chapters));
+    results.push(applyRecentChapterFields({ id: slug, title, url: `${DEFAULT_BASE_URL}/series/${slug}`, cover, source: "AzoraFly", sourceId: "azorafly", mediaType: /رواية/.test(mediaType) ? "novel" : "manga", mediaTypeLabel: mediaType || "مانهوا" }, chapters));
   });
   return results;
 }
@@ -116,7 +119,7 @@ function extractAzoraPostId(html, slug) {
 
 function mapAzoraChapter(slug, chapter) {
   return {
-    url: `${AZORA_URL}/series/${slug}/${chapter.slug}`,
+    url: `${DEFAULT_BASE_URL}/series/${slug}/${chapter.slug}`,
     name: `${chapter.number}${chapter.title ? ` · ${chapter.title}` : ""}`,
     number: String(chapter.number),
     date: chapter.createdAt ? new Date(chapter.createdAt).toLocaleDateString("ar-EG") : "",
@@ -145,7 +148,7 @@ function parseAzoraChaptersFromHtml(html, slug) {
     const label = textOnly(match[2]);
     const number = chapterSlug.replace(/^chapter-/, "");
     chapters.push({
-      url: `${AZORA_URL}/series/${slug}/${chapterSlug}`,
+      url: `${DEFAULT_BASE_URL}/series/${slug}/${chapterSlug}`,
       name: label || number,
       number,
       date: "",
@@ -234,7 +237,7 @@ async function parseAzoraDetails(html, url) {
   let chapters = [];
 
   if (postId) {
-    const response = await fetch(`${AZORA_API_URL}/api/chapters?postId=${postId}&skip=0&take=all&order=desc`, { headers: { accept: "application/json", referer: `${AZORA_URL}/` }, signal: AbortSignal.timeout(25_000) });
+    const response = await fetch(`${AZORA_API_URL}/api/chapters?postId=${postId}&skip=0&take=all&order=desc`, { headers: { accept: "application/json", referer: `${DEFAULT_BASE_URL}/` }, signal: AbortSignal.timeout(25_000) });
     if (response.ok) {
       const data = await response.json();
       chapters = (data.post?.chapters || []).map((chapter) => mapAzoraChapter(slug, chapter));
@@ -245,7 +248,7 @@ async function parseAzoraDetails(html, url) {
     chapters = parseAzoraChaptersFromHtml(html, slug);
   }
 
-  const taxonomies = parseDetailTaxonomies(html, AZORA_URL);
+  const taxonomies = parseDetailTaxonomies(html, DEFAULT_BASE_URL);
   return { id: slug, title, altTitle: "", cover, summary, url, source: "AzoraFly", sourceId: "azorafly", mediaType, mediaTypeLabel: mediaType === "novel" ? "رواية" : textOnly(typeBlock), ...taxonomies, chapters };
 }
 
@@ -274,13 +277,16 @@ function parseAzoraChapter(html, url) {
 }
 
 export async function handleAzoraRequest(requestUrl) {
-  if (requestUrl.pathname.endsWith("/image")) return await proxyAzoraImage(requestUrl.searchParams.get("url") ?? "");
+  const ctx = resolveSourceRequestContext(requestUrl, DEFAULT_BASE_URL, { label: "AzoraFly" });
+  const fetchAzoraHtml = createFetcher(ctx.baseUrl);
+
+  if (requestUrl.pathname.endsWith("/image")) return await proxyAzoraImage(requestUrl.searchParams.get("url") ?? "", ctx);
   if (requestUrl.pathname.endsWith("/filters")) {
-    const html = await resolveAzoraHtml(`${AZORA_URL}/series/`);
+    const html = await fetchAzoraHtml(`${ctx.baseUrl}/series/`);
     return responseJson(200, {
       ...mergeFilterGroups([
         parseAzoraFilters(html),
-        parseTaxonomyFilterLinks(html, AZORA_URL, ["azorafly.com"]),
+        parseTaxonomyFilterLinks(html, ctx.baseUrl, [ctx.apex, ctx.hostname]),
       ]),
       fetchedAt: new Date().toISOString(),
     });
@@ -295,24 +301,24 @@ export async function handleAzoraRequest(requestUrl) {
     const upstreamPage = Math.floor(offset / upstreamPageSize) + 1;
     const start = offset % upstreamPageSize;
     const genreQuery = genre ? `&genres=${encodeURIComponent(`+${genre}`)}` : "";
-    let pool = parseAzoraCatalog(await resolveAzoraHtml(`${AZORA_URL}/series/?page=${upstreamPage}${genreQuery}`));
-    if (start + appPageSize > pool.length && pool.length >= upstreamPageSize) pool = pool.concat(parseAzoraCatalog(await resolveAzoraHtml(`${AZORA_URL}/series/?page=${upstreamPage + 1}${genreQuery}`)));
+    let pool = parseAzoraCatalog(await fetchAzoraHtml(`${ctx.baseUrl}/series/?page=${upstreamPage}${genreQuery}`));
+    if (start + appPageSize > pool.length && pool.length >= upstreamPageSize) pool = pool.concat(parseAzoraCatalog(await fetchAzoraHtml(`${ctx.baseUrl}/series/?page=${upstreamPage + 1}${genreQuery}`)));
     const items = pool.slice(start, start + appPageSize);
     return responseJson(200, { items, page, genre, hasMore: items.length === appPageSize, fetchedAt: new Date().toISOString() });
   }
   if (requestUrl.pathname.endsWith("/search")) {
     const { query, valid } = normalizeSearchQuery(requestUrl.searchParams.get("q"));
     if (!valid) return responseJson(200, { items: [] });
-    const html = await resolveAzoraHtml(`${AZORA_URL}/series/?searchTerm=${encodeURIComponent(query)}`);
+    const html = await fetchAzoraHtml(`${ctx.baseUrl}/series/?searchTerm=${encodeURIComponent(query)}`);
     return responseJson(200, { items: parseAzoraCatalog(html).slice(0, 40) });
   }
   if (requestUrl.pathname.endsWith("/manga")) {
     const target = assertAzoraUrl(requestUrl.searchParams.get("url") ?? "");
-    return responseJson(200, await parseAzoraDetails(await resolveAzoraHtml(target), target));
+    return responseJson(200, await parseAzoraDetails(await fetchAzoraHtml(target), target));
   }
   if (requestUrl.pathname.endsWith("/chapter")) {
     const target = assertAzoraUrl(requestUrl.searchParams.get("url") ?? "", true);
-    return responseJson(200, parseAzoraChapter(await resolveAzoraHtml(target), target));
+    return responseJson(200, parseAzoraChapter(await fetchAzoraHtml(target), target));
   }
   return responseJson(404, { error: "Route AzoraFly inconnue" });
 }

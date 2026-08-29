@@ -4,14 +4,16 @@ import { normalizeSearchQuery } from "../lib/queryLimits.js";
 import { responseJson } from "../lib/response.js";
 import { applyRecentChapterFields, enrichCatalogItems } from "../lib/catalogChapters.js";
 import { enrichSourceDetails } from "../lib/detailEnrichment.js";
+import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
 
-const GALAXY_URL = "https://galaxynovels.com";
-const GALAXY_JSON_HEADERS = {
+const DEFAULT_BASE_URL = "https://galaxynovels.com";
+const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
+const GALAXY_JSON_HEADERS = (baseUrl = DEFAULT_BASE_URL) => ({
   accept: "application/json",
   "accept-language": "ar,en;q=0.8",
-  referer: `${GALAXY_URL}/`,
+  referer: `${baseUrl}/`,
   "user-agent": "Mozilla/5.0 (Android 14; Mobile) AppleWebKit/537.36 Chrome/124 Safari/537.36",
-};
+});
 const GALAXY_AUTHOR_FILTERS_TTL_MS = 30 * 60_000;
 const GALAXY_AUTHOR_FETCH_CONCURRENCY = 10;
 const GALAXY_INVALID_AUTHORS = new Set(["غير متوفر", "n/a", "na", "unknown", "—", "-"]);
@@ -28,29 +30,30 @@ export function configureGalaxynovelsNativeFetch({ fetchHtml, fetchImage } = {})
   nativeImageFetcher = fetchImage ?? null;
 }
 
-const fetchGalaxyHtmlRemote = createCachedHtmlFetcher({
-  ttlMs: 3 * 60_000,
-  timeoutMs: 30_000,
-  headers: { accept: "text/html,application/xhtml+xml", "accept-language": "ar,en;q=0.8", referer: `${GALAXY_URL}/`, "user-agent": "Mozilla/5.0 (Android 14; Mobile) AppleWebKit/537.36 Chrome/124 Safari/537.36" },
-  getVariants: (url) => [url],
-  buildError: (lastStatus) => (lastStatus === 403 ? "حماية Galaxy Novels منعت الاتصال مؤقتًا" : `Galaxy Novels a répondu ${lastStatus}`),
-});
-
-async function resolveGalaxyHtml(url) {
-  if (nativeHtmlFetcher) return nativeHtmlFetcher(url);
-  return fetchGalaxyHtmlRemote(url);
+function createFetcher(baseUrl = DEFAULT_BASE_URL) {
+  const fetchRemote = createCachedHtmlFetcher({
+    ttlMs: 3 * 60_000,
+    timeoutMs: 30_000,
+    headers: { accept: "text/html,application/xhtml+xml", "accept-language": "ar,en;q=0.8", referer: `${baseUrl}/`, "user-agent": "Mozilla/5.0 (Android 14; Mobile) AppleWebKit/537.36 Chrome/124 Safari/537.36" },
+    getVariants: (url) => [url],
+    buildError: (lastStatus) => (lastStatus === 403 ? "حماية Galaxy Novels منعت الاتصال مؤقتًا" : `Galaxy Novels a répondu ${lastStatus}`),
+  });
+  return async (url) => {
+    if (nativeHtmlFetcher) return nativeHtmlFetcher(url);
+    return fetchRemote(url);
+  };
 }
 
-function toGalaxyAbsoluteUrl(rawUrl) {
-  const url = new URL(decodeHtml(String(rawUrl || "")), GALAXY_URL);
-  url.hostname = "galaxynovels.com";
+function toGalaxyAbsoluteUrl(rawUrl, ctx = DEFAULT_CTX) {
+  const url = new URL(decodeHtml(String(rawUrl || "")), ctx.baseUrl);
+  url.hostname = ctx.apex;
   url.hash = "";
   return url.toString();
 }
 
-function assertGalaxyUrl(rawUrl, chapter = false) {
-  const url = new URL(toGalaxyAbsoluteUrl(rawUrl));
-  if (url.protocol !== "https:" || !["galaxynovels.com", "www.galaxynovels.com"].includes(url.hostname)) throw new Error("المصدر غير مسموح");
+function assertGalaxyUrl(rawUrl, chapter = false, ctx = DEFAULT_CTX) {
+  const url = new URL(toGalaxyAbsoluteUrl(rawUrl, ctx));
+  if (url.protocol !== "https:" || !ctx.allowedHosts.has(url.hostname.toLowerCase())) throw new Error("المصدر غير مسموح");
   const parts = url.pathname.split("/").filter(Boolean);
   const validNovel = parts[0] === "novel" && parts.length === 2;
   const validChapter = parts[0] === "novel" && parts.length >= 3 && /^chapter-[\w.-]+$/i.test(parts[2]);
@@ -58,24 +61,24 @@ function assertGalaxyUrl(rawUrl, chapter = false) {
   return url.toString();
 }
 
-function assertGalaxyImageUrl(rawUrl) {
+function assertGalaxyImageUrl(rawUrl, ctx = DEFAULT_CTX) {
   const url = new URL(rawUrl);
-  if (url.protocol !== "https:" || url.hostname !== "galaxynovels.com" || !url.pathname.startsWith("/wp-content/uploads/")) throw new Error("رابط الصورة غير مسموح");
+  if (url.protocol !== "https:" || !ctx.hostPattern.test(url.hostname) || !url.pathname.startsWith("/wp-content/uploads/")) throw new Error("رابط الصورة غير مسموح");
   return url.toString();
 }
 
-async function proxyGalaxyImage(rawUrl) {
-  const target = assertGalaxyImageUrl(rawUrl);
+async function proxyGalaxyImage(rawUrl, ctx = DEFAULT_CTX) {
+  const target = assertGalaxyImageUrl(rawUrl, ctx);
   if (nativeImageFetcher) return nativeImageFetcher(target);
-  return fetchProxiedImage(target, `${GALAXY_URL}/`, "Galaxy Novels");
+  return fetchProxiedImage(target, `${ctx.baseUrl}/`, "Galaxy Novels");
 }
 
 async function fetchGalaxyNovelApi(novelId) {
-  const cacheKey = `${GALAXY_URL}/wp-json/wor-reader-app/v1/novels/${novelId}`;
+  const cacheKey = `${DEFAULT_BASE_URL}/wp-json/wor-reader-app/v1/novels/${novelId}`;
   const cached = galaxyNovelApiCache.get(cacheKey);
   if (cached && Date.now() - cached.at < 10 * 60_000) return cached.data;
   const response = await fetch(cacheKey, {
-    headers: GALAXY_JSON_HEADERS,
+    headers: GALAXY_JSON_HEADERS(),
     signal: AbortSignal.timeout(12_000),
   });
   if (!response.ok) throw new Error(`واجهة رواية Galaxy Novels غير متاحة (${response.status})`);
@@ -146,7 +149,7 @@ async function mapWithConcurrency(items, concurrency, mapper) {
 async function collectGalaxyLibraryNovelIds() {
   const novelIds = new Set();
   for (let page = 1; page <= 200; page += 1) {
-    const html = await resolveGalaxyHtml(`${GALAXY_URL}/library/?library_page=${page}`);
+    const html = await fetchGalaxyHtml(`${DEFAULT_BASE_URL}/library/?library_page=${page}`);
     const pageIds = parseGalaxyCatalogNovelIds(html);
     if (!pageIds.length) break;
     pageIds.forEach((novelId) => novelIds.add(novelId));
@@ -178,11 +181,11 @@ async function buildGalaxyAuthorFilters() {
 }
 
 async function fetchGalaxyChapterManifest(novelId) {
-  const cacheKey = `${GALAXY_URL}/wp-content/uploads/wor-reader-cache/chapters/manifest/novel-${novelId}.json`;
+  const cacheKey = `${DEFAULT_BASE_URL}/wp-content/uploads/wor-reader-cache/chapters/manifest/novel-${novelId}.json`;
   const cached = galaxyManifestCache.get(cacheKey);
   if (cached && Date.now() - cached.at < 5 * 60_000) return cached.data;
   const response = await fetch(cacheKey, {
-    headers: GALAXY_JSON_HEADERS,
+    headers: GALAXY_JSON_HEADERS(),
     signal: AbortSignal.timeout(12_000),
   });
   if (!response.ok) throw new Error(`manifeste Galaxy Novels indisponible (${response.status})`);
@@ -218,13 +221,13 @@ function recentChaptersFromManifest(manifest) {
 }
 
 async function fetchGalaxyChapterIndex(novelId, rawIndexUrl = "") {
-  const target = rawIndexUrl || `${GALAXY_URL}/wp-content/uploads/wor-reader-cache/chapters/novel-${novelId}.json`;
+  const target = rawIndexUrl || `${DEFAULT_BASE_URL}/wp-content/uploads/wor-reader-cache/chapters/novel-${novelId}.json`;
   const url = new URL(decodeHtml(target));
   if (url.protocol !== "https:" || url.hostname !== "galaxynovels.com" || !/^\/wp-content\/uploads\/wor-reader-cache\/chapters\/novel-\d+\.json$/i.test(url.pathname)) throw new Error("فهرس فصول Galaxy Novels غير صالح");
   const cacheKey = url.toString();
   const cached = galaxyIndexCache.get(cacheKey);
   if (cached && Date.now() - cached.at < 5 * 60_000) return cached.data;
-  const response = await fetch(cacheKey, { headers: GALAXY_JSON_HEADERS, signal: AbortSignal.timeout(25_000) });
+  const response = await fetch(cacheKey, { headers: GALAXY_JSON_HEADERS(), signal: AbortSignal.timeout(25_000) });
   if (!response.ok) throw new Error(`فهرس فصول Galaxy Novels غير متاح (${response.status})`);
   const data = await response.json();
   galaxyIndexCache.set(cacheKey, { at: Date.now(), data });
@@ -232,9 +235,9 @@ async function fetchGalaxyChapterIndex(novelId, rawIndexUrl = "") {
 }
 
 async function fetchGalaxyChapterApi(rawApiUrl) {
-  const url = new URL(rawApiUrl, GALAXY_URL);
+  const url = new URL(rawApiUrl, DEFAULT_BASE_URL);
   if (url.protocol !== "https:" || url.hostname !== "galaxynovels.com" || !/^\/wp-json\/wor-reader-app\/v1\/chapters\/\d+\/?$/i.test(url.pathname)) throw new Error("واجهة فصل Galaxy Novels غير صالحة");
-  const response = await fetch(url, { headers: GALAXY_JSON_HEADERS, signal: AbortSignal.timeout(25_000) });
+  const response = await fetch(url, { headers: GALAXY_JSON_HEADERS(), signal: AbortSignal.timeout(25_000) });
   if (!response.ok) throw new Error(`واجهة فصل Galaxy Novels غير متاحة (${response.status})`);
   return response.json();
 }
@@ -334,7 +337,7 @@ async function parseGalaxyDetails(html, url) {
   if (author) {
     chapters = chapters.map((chapter) => ({ ...chapter, author }));
   }
-  const taxonomies = parseDetailTaxonomies(html, GALAXY_URL);
+  const taxonomies = parseDetailTaxonomies(html, DEFAULT_BASE_URL);
   return enrichSourceDetails({
     id: slug,
     novelId,
@@ -381,12 +384,15 @@ export function parseGalaxyChapterApi(payload, fallbackUrl) {
 }
 
 export async function handleGalaxyRequest(requestUrl) {
-  if (requestUrl.pathname.endsWith("/image")) return await proxyGalaxyImage(requestUrl.searchParams.get("url") ?? "");
+  const ctx = resolveSourceRequestContext(requestUrl, DEFAULT_BASE_URL, { label: "Galaxy Novels" });
+  const fetchGalaxyHtml = createFetcher(ctx.baseUrl);
+
+  if (requestUrl.pathname.endsWith("/image")) return await proxyGalaxyImage(requestUrl.searchParams.get("url") ?? "", ctx);
   if (requestUrl.pathname.endsWith("/filters")) {
-    const html = await resolveGalaxyHtml(`${GALAXY_URL}/library/`);
+    const html = await fetchGalaxyHtml(`${ctx.baseUrl}/library/`);
     const authors = await buildGalaxyAuthorFilters();
     return responseJson(200, {
-      ...mergeFilterGroups([parseTaxonomyFilterLinks(html, GALAXY_URL, ["galaxynovels.com", "www.galaxynovels.com"])]),
+      ...mergeFilterGroups([parseTaxonomyFilterLinks(html, ctx.baseUrl, [ctx.apex, ctx.hostname])]),
       authors,
       fetchedAt: new Date().toISOString(),
     });
@@ -400,14 +406,14 @@ export async function handleGalaxyRequest(requestUrl) {
     if (queryParam && !new Set(["genres", "genre", "category", "tags", "tag", "author"]).has(queryParam)) throw new Error("فلتر Galaxy Novels غير صالح");
     let target;
     if (queryParam === "author" && queryValue) {
-      target = `${GALAXY_URL}/library/?q=${encodeURIComponent(queryValue)}&library_page=${page}`;
+      target = `${ctx.baseUrl}/library/?q=${encodeURIComponent(queryValue)}&library_page=${page}`;
     } else {
-      const filterTarget = new URL(filterPath || "/library/", GALAXY_URL);
+      const filterTarget = new URL(filterPath || "/library/", ctx.baseUrl);
       if (queryParam && queryValue) filterTarget.searchParams.set(queryParam, queryValue);
       filterTarget.searchParams.set("library_page", String(page));
       target = filterTarget.toString();
     }
-    const html = await resolveGalaxyHtml(target);
+    const html = await fetchGalaxyHtml(target);
     const items = parseGalaxyCatalog(html);
     await enrichGalaxyCatalog(items, { concurrency: 6 });
     const nextPagePattern = new RegExp(`library_page=(?:${page + 1})(?:[&\"'])`, "i");
@@ -416,14 +422,14 @@ export async function handleGalaxyRequest(requestUrl) {
   if (requestUrl.pathname.endsWith("/search")) {
     const { query, valid } = normalizeSearchQuery(requestUrl.searchParams.get("q"));
     if (!valid) return responseJson(200, { items: [] });
-    const html = await resolveGalaxyHtml(`${GALAXY_URL}/library/?q=${encodeURIComponent(query)}`);
+    const html = await fetchGalaxyHtml(`${ctx.baseUrl}/library/?q=${encodeURIComponent(query)}`);
     const items = parseGalaxyCatalog(html);
     await enrichGalaxyCatalog(items, { concurrency: 4 });
     return responseJson(200, { items });
   }
   if (requestUrl.pathname.endsWith("/manga")) {
     const target = assertGalaxyUrl(requestUrl.searchParams.get("url") ?? "");
-    return responseJson(200, await parseGalaxyDetails(await resolveGalaxyHtml(target), target));
+    return responseJson(200, await parseGalaxyDetails(await fetchGalaxyHtml(target), target));
   }
   if (requestUrl.pathname.endsWith("/chapter")) {
     const target = assertGalaxyUrl(requestUrl.searchParams.get("url") ?? "", true);
@@ -434,7 +440,7 @@ export async function handleGalaxyRequest(requestUrl) {
         if (parsed.paragraphs.length) return responseJson(200, parsed);
       } catch { /* La page HTML publique reste le repli. */ }
     }
-    const parsed = parseGalaxyChapter(await resolveGalaxyHtml(target), target);
+    const parsed = parseGalaxyChapter(await fetchGalaxyHtml(target), target);
     if (!parsed.paragraphs.length) throw new Error("تعذر استخراج نص الفصل");
     return responseJson(200, parsed);
   }

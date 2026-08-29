@@ -41,7 +41,7 @@ function sendFile(res, filePath) {
 export function startProductionServer(options = {}) {
   const root = options.root ?? defaultRoot;
   const port = options.port ?? defaultPort;
-  const host = options.host ?? "0.0.0.0";
+  const host = options.host ?? process.env.HOST ?? "127.0.0.1";
   const checkRateLimit = createRateLimiter();
 
   const server = http.createServer(async (req, res) => {

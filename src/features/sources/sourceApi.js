@@ -6,22 +6,25 @@ import { t } from "../../i18n/runtime.js";
 import { MAX_SEARCH_QUERY_LENGTH } from "../../../server/lib/queryLimits.js";
 import { Capacitor } from "@capacitor/core";
 import { getRuntimeSettings } from "../../lib/settings/runtimeSettings.js";
+import { getDefaultSourceBaseUrl, getEffectiveSourceBaseUrl } from "../../lib/settings/sourceBaseUrls.js";
 
 const FILTER_PATH_SOURCES = new Set([
-  "galaxynovels", "cenele", "anime4up", "frenchstream", "wiflix", "coflix",
+  "galaxynovels", "cenele", "anime4up", "animedar", "animesama", "frenchstream", "wiflix", "coflix",
 ]);
 
 function appendSourceQueryParams(query, sourceId) {
-  if (sourceId === "coflix") {
-    const baseUrl = getRuntimeSettings().coflixBaseUrl;
-    if (baseUrl) query.set("baseUrl", baseUrl);
+  const settings = getRuntimeSettings();
+  const effective = getEffectiveSourceBaseUrl(sourceId, settings.sourceBaseUrls);
+  const defaultUrl = getDefaultSourceBaseUrl(sourceId);
+  if (effective && defaultUrl && effective !== defaultUrl) {
+    query.set("baseUrl", effective);
   }
 }
 
 const sourcePath = (sourceId, resource) => `/api/sources/${sourceId}/${resource}`;
 const isNative = () => Capacitor.isNativePlatform();
 const CLOUDFLARE_NATIVE_SOURCE_IDS = new Set([
-  "mangalik", "arabshentai", "hentairead", "azorafly", "galaxynovels",
+  "mangalik", "azorafly", "galaxynovels",
 ]);
 
 function pathUsesCloudflareNative(path = "") {
@@ -32,12 +35,12 @@ function pathUsesCloudflareNative(path = "") {
 }
 
 const GENRE_FILTER_SOURCES = [
-  "mangalik", "mangaforfree", "azorafly", "novelsparadise", "nightnovel",
-  "realmnovel", "kolnovel", "dilar", "arabshentai", "hentairead", "hentaigasm",
+  "mangalik", "azorafly", "novelsparadise", "nightnovel",
+  "kolnovel", "dilar",
 ];
 const TAG_FILTER_SOURCES = [
-  "mangalik", "mangaforfree", "novelsparadise", "nightnovel",
-  "realmnovel", "kolnovel", "hentairead", "hentaigasm",
+  "mangalik", "novelsparadise", "nightnovel",
+  "kolnovel",
 ];
 
 let cloudflareNativeReady = false;
@@ -144,7 +147,6 @@ export function fetchCatalog(sourceId, { page = 1, genre = "", tag = "", tagPath
     query.set("tag", tag);
     if (tagPath) query.set("tagPath", tagPath);
   }
-  if (sourceId === "arabshentai" && queryParam === "type" && queryValue) query.set("type", queryValue);
   if (FILTER_PATH_SOURCES.has(sourceId) && filterPath) {
     query.set("filterPath", filterPath);
     if (queryParam && queryValue) {
@@ -182,7 +184,6 @@ export function searchSource(sourceId, query, {
     params.set("tag", tag);
     if (tagPath) params.set("tagPath", tagPath);
   }
-  if (sourceId === "arabshentai" && queryParam === "type" && queryValue) params.set("type", queryValue);
   if (FILTER_PATH_SOURCES.has(sourceId) && filterPath) {
     params.set("filterPath", filterPath);
     if (queryParam && queryValue) {

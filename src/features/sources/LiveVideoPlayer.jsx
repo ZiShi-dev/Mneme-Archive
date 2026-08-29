@@ -28,6 +28,7 @@ import {
 } from "./liveVideo/constants";
 import { useVideoChapterSession } from "./liveVideo/useVideoChapterSession";
 import { useVideoCinemaChrome } from "./liveVideo/useVideoCinemaChrome";
+import { VideoStageSkeleton } from "../../components/ui/ContentSkeleton";
 import { VideoEpisodePlaylist } from "./liveVideo/VideoEpisodePlaylist";
 
 export function LiveVideoPlayer({
@@ -646,10 +647,7 @@ export function LiveVideoPlayer({
             <p>{error}</p>
           </div>
         ) : !data ? (
-          <div className="reader-live-state live-video-state">
-            <RefreshCw size={28} />
-            <h2>{presentation.loadingContent}</h2>
-          </div>
+          <VideoStageSkeleton label={presentation.loadingContent} />
         ) : !playback ? (
           <div className="reader-live-state live-video-state">
             <Clapperboard size={30} />

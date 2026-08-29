@@ -57,13 +57,10 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
 
     private static final SourceHost[] SOURCE_HOSTS = {
         new SourceHost("mangalik.net", "https://mangalik.net/manga/", "https://mangalik.net/"),
-        new SourceHost("arabshentai.com", "https://arabshentai.com/manga/", "https://arabshentai.com/"),
-        new SourceHost("hentairead.com", "https://hentairead.com/hentai/", "https://hentairead.com/"),
         new SourceHost("azorafly.com", "https://azorafly.com/", "https://azorafly.com/"),
         new SourceHost("galaxynovels.com", "https://galaxynovels.com/", "https://galaxynovels.com/"),
     };
 
-    private static final String HENCOVER_HOST = "hencover.xyz";
     private static final String AZORA_STORAGE_HOST = "storage.azorafly.com";
 
     private enum Stage {
@@ -388,9 +385,6 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
     private String refererFor(String url) {
         try {
             String host = normalizeHost(new URI(url).getHost());
-            if (HENCOVER_HOST.equals(host)) {
-                return "https://hentairead.com/";
-            }
             if (AZORA_STORAGE_HOST.equals(host)) {
                 return "https://azorafly.com/";
             }
@@ -426,17 +420,11 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
             }
             String host = normalizeHost(uri.getHost());
             String path = uri.getPath() == null ? "" : uri.getPath();
-            if (HENCOVER_HOST.equals(host) || AZORA_STORAGE_HOST.equals(host)) {
+            if (AZORA_STORAGE_HOST.equals(host)) {
                 return true;
             }
             if (!isAllowedUrl(url)) {
                 return false;
-            }
-            if ("arabshentai.com".equals(host)) {
-                return path.startsWith("/wp-content/uploads/");
-            }
-            if ("hentairead.com".equals(host)) {
-                return path.startsWith("/wp-content/uploads/") || path.startsWith("/hentai/");
             }
             if ("azorafly.com".equals(host)) {
                 return path.startsWith("/upload/") || path.startsWith("/public/upload/");

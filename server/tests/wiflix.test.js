@@ -4,6 +4,7 @@ import {
   assertChapterUrl,
   assertFilterPath,
   assertWatchUrl,
+  assertWiflixStreamReferer,
   catalogHasMore,
   episodeNumberFromUrl,
   normalizeWiflixAudioLabel,
@@ -122,6 +123,17 @@ const FILTERS_HTML = `
   <a href="/film-en-streaming?page=2">2</a>
 </span>
 `;
+
+test("assertWiflixStreamReferer accepts wiflix pages only", () => {
+  assert.equal(
+    assertWiflixStreamReferer("https://www.wiflix.tv/watch/jack-reacher-film-streaming-complet-vf"),
+    "https://www.wiflix.tv/watch/jack-reacher-film-streaming-complet-vf",
+  );
+  assert.throws(
+    () => assertWiflixStreamReferer("https://evil.example/watch/jack"),
+    /غير صالح/,
+  );
+});
 
 test("normalizeWiflixUrl keeps watch links on wiflix.tv", () => {
   assert.equal(

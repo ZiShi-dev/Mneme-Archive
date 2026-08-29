@@ -7,39 +7,43 @@ import {
   enrichCatalogItems,
   normalizeRecentChapters,
 } from "../lib/catalogChapters.js";
+import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
 
-const BASE_URL = "https://novelsparadise.site";
+const DEFAULT_BASE_URL = "https://novelsparadise.site";
+const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
 const SOURCE_NAME = "Novels Paradise";
 const SOURCE_ID = "novelsparadise";
 
-const fetchParadiseHtml = createCachedHtmlFetcher({
-  ttlMs: 3 * 60_000,
-  timeoutMs: 35_000,
-  headers: {
-    accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "accept-language": "ar,en-US;q=0.9,en;q=0.8",
-    referer: `${BASE_URL}/`,
-    "sec-ch-ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
-    "sec-ch-ua-mobile": "?0",
-    "sec-ch-ua-platform": '"Windows"',
-    "sec-fetch-dest": "document",
-    "sec-fetch-mode": "navigate",
-    "sec-fetch-site": "same-origin",
-    "upgrade-insecure-requests": "1",
-    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-  },
-  getVariants: (url) => [url],
-  buildError: (lastStatus) => (lastStatus === 403
-    ? "حماية Novels Paradise تمنع الاتصال (Cloudflare)"
-    : `Novels Paradise a répondu ${lastStatus}`),
-});
+function createFetcher(baseUrl = DEFAULT_BASE_URL) {
+  return createCachedHtmlFetcher({
+    ttlMs: 3 * 60_000,
+    timeoutMs: 35_000,
+    headers: {
+      accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "accept-language": "ar,en-US;q=0.9,en;q=0.8",
+      referer: `${baseUrl}/`,
+      "sec-ch-ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+      "sec-ch-ua-mobile": "?0",
+      "sec-ch-ua-platform": '"Windows"',
+      "sec-fetch-dest": "document",
+      "sec-fetch-mode": "navigate",
+      "sec-fetch-site": "same-origin",
+      "upgrade-insecure-requests": "1",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    },
+    getVariants: (url) => [url],
+    buildError: (lastStatus) => (lastStatus === 403
+      ? "حماية Novels Paradise تمنع الاتصال (Cloudflare)"
+      : `Novels Paradise a répondu ${lastStatus}`),
+  });
+}
 
-function assertParadiseHost(rawUrl) {
+function assertParadiseHost(rawUrl, ctx = DEFAULT_CTX) {
   const url = new URL(rawUrl);
-  if (url.protocol !== "https:" || !["novelsparadise.site", "www.novelsparadise.site"].includes(url.hostname)) {
+  if (url.protocol !== "https:" || !ctx.allowedHosts.has(url.hostname.toLowerCase())) {
     throw new Error("المصدر غير مسموح");
   }
-  url.hostname = "novelsparadise.site";
+  url.hostname = ctx.apex;
   url.hash = "";
   return url;
 }
@@ -54,8 +58,8 @@ export function seriesSlugFromSlug(slug) {
   return slug.replace(/-\d+$/, "");
 }
 
-export function buildSeriesUrl(seriesSlug) {
-  return `${BASE_URL}/series/${seriesSlug}/`;
+export function buildSeriesUrl(seriesSlug, baseUrl = DEFAULT_BASE_URL) {
+  return `${baseUrl}/series/${seriesSlug}/`;
 }
 
 export function normalizeSeriesUrl(rawUrl) {
@@ -70,7 +74,7 @@ export function normalizeChapterUrl(rawUrl) {
   const slug = slugFromPath(url.pathname);
   if (!slug || slug === "series") throw new Error("رابط فصل Novels Paradise غير صالح");
   if (!/-\d+$/.test(slug)) throw new Error("رابط فصل Novels Paradise غير صالح");
-  return `${BASE_URL}/${slug}/`;
+  return `${DEFAULT_BASE_URL}/${slug}/`;
 }
 
 export function isParadiseChapterSlug(slug) {
@@ -88,9 +92,9 @@ export function resolveParadiseSeriesUrl(chapterUrl, seriesUrl = "") {
   return normalizeSeriesUrl(chapterUrl);
 }
 
-function assertParadiseImageUrl(rawUrl) {
+function assertParadiseImageUrl(rawUrl, ctx = DEFAULT_CTX) {
   const url = new URL(rawUrl);
-  if (url.protocol !== "https:" || !["novelsparadise.site", "www.novelsparadise.site"].includes(url.hostname)) {
+  if (url.protocol !== "https:" || !ctx.allowedHosts.has(url.hostname.toLowerCase())) {
     throw new Error("رابط الصورة غير مسموح");
   }
   return url.toString();
@@ -153,7 +157,7 @@ function defaultExtractCatalogChapterNumber(text = "") {
   return textOnly(text).match(/(\d+(?:\.\d+)?)/)?.[1] ?? "—";
 }
 
-export function parseCatalogChaptersFromArticle(article, baseUrl = BASE_URL, extractNumber = defaultExtractCatalogChapterNumber) {
+export function parseCatalogChaptersFromArticle(article, baseUrl = DEFAULT_BASE_URL, extractNumber = defaultExtractCatalogChapterNumber) {
   const chapters = [];
   for (const match of article.matchAll(/class="[^"]*nchapter[^"]*"[^>]*>[\s\S]*?<a[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
     const chapterUrl = new URL(decodeHtml(match[1]), baseUrl).toString();
@@ -266,8 +270,8 @@ function assertParadiseFilterSlug(value, label) {
   return slug;
 }
 
-function buildParadiseCatalogUrl(page, { status = "", order = "latest", genre = "", tag = "" } = {}) {
-  const query = new URL(`${BASE_URL}/series/`);
+function buildParadiseCatalogUrl(page, { status = "", order = "latest", genre = "", tag = "" } = {}, baseUrl = DEFAULT_BASE_URL) {
+  const query = new URL(`${baseUrl}/series/`);
   query.searchParams.set("page", String(page));
   query.searchParams.set("status", status);
   query.searchParams.set("order", order);
@@ -277,7 +281,7 @@ function buildParadiseCatalogUrl(page, { status = "", order = "latest", genre = 
 }
 
 function mapCatalogItem(rawTitle, href, cover, article = "") {
-  const slug = seriesSlugFromSlug(slugFromPath(new URL(href, BASE_URL).pathname));
+  const slug = seriesSlugFromSlug(slugFromPath(new URL(href, DEFAULT_BASE_URL).pathname));
   const alter = article.match(/<span class="alter">([\s\S]*?)<\/span>/i)?.[1] ?? "";
   const excerptTitle = parseCatalogArabicTitleFromExcerpt(article);
   const { title, altTitle } = resolveParadiseTitles(rawTitle, alter || excerptTitle);
@@ -333,7 +337,7 @@ export function parseParadiseChapters(html, seriesUrl) {
     const link = block.match(/<a\b[^>]*href=["']([^"']+)["']/i);
     if (!link) continue;
     const chapterUrl = decodeHtml(link[1]);
-    const chapterSlug = slugFromPath(new URL(chapterUrl, BASE_URL).pathname);
+    const chapterSlug = slugFromPath(new URL(chapterUrl, DEFAULT_BASE_URL).pathname);
     if (!isParadiseChapterSlug(chapterSlug)) continue;
     if (seen.has(chapterUrl)) continue;
     seen.add(chapterUrl);
@@ -345,7 +349,7 @@ export function parseParadiseChapters(html, seriesUrl) {
       || String(chapters.length + 1);
     const name = eplTitle || eplNum || number;
     chapters.push({
-      url: new URL(chapterUrl, BASE_URL).toString(),
+      url: new URL(chapterUrl, DEFAULT_BASE_URL).toString(),
       name: locked ? `🔒 ${name}` : name,
       number,
       date,
@@ -370,14 +374,14 @@ const PARADISE_BROWSER_HEADERS = {
   "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
 };
 
-async function fetchParadiseChapterHtml(chapterUrl, seriesUrl = "") {
+async function fetchParadiseChapterHtml(chapterUrl, seriesUrl = "", ctx = DEFAULT_CTX) {
   const refererSeriesUrl = resolveParadiseSeriesUrl(chapterUrl, seriesUrl);
   const headers = {
     ...PARADISE_BROWSER_HEADERS,
     referer: refererSeriesUrl,
   };
   await fetch(refererSeriesUrl, {
-    headers: { ...PARADISE_BROWSER_HEADERS, referer: `${BASE_URL}/series/` },
+    headers: { ...PARADISE_BROWSER_HEADERS, referer: `${ctx.baseUrl}/series/` },
     redirect: "follow",
     signal: AbortSignal.timeout(35_000),
   }).catch(() => {});
@@ -413,7 +417,7 @@ function parseParadiseDetails(html, url) {
     ?? "",
   );
   const chapters = parseParadiseChapters(html, url);
-  const taxonomies = parseDetailTaxonomies(html, BASE_URL);
+  const taxonomies = parseDetailTaxonomies(html, DEFAULT_BASE_URL);
   const seriesSlug = seriesSlugFromSlug(slugFromPath(new URL(url).pathname));
   return {
     id: seriesSlug,
@@ -608,11 +612,14 @@ export function parseParadiseChapter(html, url) {
 }
 
 export async function handleNovelsParadiseRequest(requestUrl) {
+  const ctx = resolveSourceRequestContext(requestUrl, DEFAULT_BASE_URL, { label: SOURCE_NAME });
+  const fetchParadiseHtml = createFetcher(ctx.baseUrl);
+
   if (requestUrl.pathname.endsWith("/image")) {
-    return fetchProxiedImage(assertParadiseImageUrl(requestUrl.searchParams.get("url") ?? ""), `${BASE_URL}/`, SOURCE_NAME);
+    return fetchProxiedImage(assertParadiseImageUrl(requestUrl.searchParams.get("url") ?? "", ctx), `${ctx.baseUrl}/`, SOURCE_NAME);
   }
   if (requestUrl.pathname.endsWith("/filters")) {
-    const html = await fetchParadiseHtml(buildParadiseCatalogUrl(1));
+    const html = await fetchParadiseHtml(buildParadiseCatalogUrl(1, {}, ctx.baseUrl));
     return responseJson(200, { ...parseParadiseFilters(html), fetchedAt: new Date().toISOString() });
   }
   if (requestUrl.pathname.endsWith("/catalog")) {
@@ -625,7 +632,7 @@ export async function handleNovelsParadiseRequest(requestUrl) {
       order,
       genre,
       tag,
-    }));
+    }, ctx.baseUrl));
     const items = parseParadiseCatalog(html);
     return responseJson(200, {
       items,
@@ -642,7 +649,7 @@ export async function handleNovelsParadiseRequest(requestUrl) {
     const page = Math.min(Math.max(Number(requestUrl.searchParams.get("page")) || 1, 1), 1000);
     const genre = assertParadiseFilterSlug(requestUrl.searchParams.get("genre"), "تصنيف");
     const tag = assertParadiseFilterSlug(requestUrl.searchParams.get("tag"), "وسم");
-    const target = new URL(`${BASE_URL}/series/`);
+    const target = new URL(`${ctx.baseUrl}/series/`);
     target.searchParams.set("page", String(page));
     target.searchParams.set("s", query);
     if (genre) target.searchParams.append("genre[]", genre);
@@ -658,7 +665,7 @@ export async function handleNovelsParadiseRequest(requestUrl) {
   if (requestUrl.pathname.endsWith("/chapter")) {
     const target = normalizeChapterUrl(requestUrl.searchParams.get("url") ?? "");
     const seriesUrl = requestUrl.searchParams.get("series") ?? "";
-    const html = await fetchParadiseChapterHtml(target, seriesUrl);
+    const html = await fetchParadiseChapterHtml(target, seriesUrl, ctx);
     return responseJson(200, parseParadiseChapter(html, target));
   }
   return responseJson(404, { error: "Route Novels Paradise inconnue" });

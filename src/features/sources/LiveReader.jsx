@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Capacitor } from "@capacitor/core";
-import { ArrowRight, BookOpen, Check, RefreshCw, Settings2, Wifi } from "lucide-react";
+import { ArrowRight, BookOpen, Check, Settings2, Wifi } from "lucide-react";
 import { useToast } from "../../components/ui/ToastProvider";
 import { getSourceProfile, resolveSourceId } from "../../config/sources";
 import { useChapterCompletion } from "../../hooks/useChapterCompletion";
@@ -22,6 +22,7 @@ import { EmbedPlayerFrame } from "./EmbedPlayerFrame";
 import { SourceLogo } from "./SourceLogo";
 import { installEmbedPopupGuards } from "../../lib/video/embedHosts";
 import { useI18n } from "../../i18n/I18nProvider";
+import { NovelReaderSkeleton, ReaderPagesSkeleton, VideoStageSkeleton } from "../../components/ui/ContentSkeleton";
 
 const scrollSpeeds = [0.5, 1, 1.5, 2];
 const defaultReaderPreferences = { theme: "night", fontSize: 18, lineHeight: 1.9, fontFamily: "naskh", textAlign: "right", paragraphSpacing: 1.25, contentWidth: "normal" };
@@ -331,7 +332,11 @@ export function LiveReader({
         unitLabel={data?.kind === "video" ? t("media.theEpisode") : t("media.theChapter")}
         hideSettings={!isNovel}
       />
-      {error ? <div className="reader-live-state"><Wifi size={30} /><h2>{t("reader.loadChapterFailed")}</h2><p>{error}</p></div> : !data ? <div className="reader-live-state"><RefreshCw size={28} /><h2>{t("reader.loadingChapter")}</h2></div> : data.kind === "video" ? (
+      {error ? <div className="reader-live-state"><Wifi size={30} /><h2>{t("reader.loadChapterFailed")}</h2><p>{error}</p></div> : !data ? (
+        isNovel
+          ? <NovelReaderSkeleton label={t("reader.loadingChapter")} />
+          : <ReaderPagesSkeleton label={t("reader.loadingChapter")} />
+      ) : data.kind === "video" ? (
         <div className="live-video-stage">
           {!playback ? (
             <div className="reader-live-state live-video-state">

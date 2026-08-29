@@ -2,6 +2,20 @@ html.desktop-app,
 body.desktop-app {
   min-height: 100%;
   overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (display-mode: standalone) {
+  html.desktop-app,
+  body.desktop-app {
+    user-select: none;
+  }
+
+  .desktop-app .app-shell--desktop {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
 
 .desktop-app .app-shell--desktop {
@@ -2103,6 +2117,24 @@ html[dir="ltr"] .desktop-app .live-catalog {
   min-height: 84px;
 }
 
+.desktop-app .theme-selector__option--sakura,
+.desktop-app .theme-selector__option--yozakura,
+.desktop-app .theme-selector__option--lune-neige {
+  min-height: 112px;
+}
+
+.desktop-app .theme-selector__option--sakura strong,
+.desktop-app .theme-selector__option--yozakura strong,
+.desktop-app .theme-selector__option--lune-neige strong {
+  font-size: 16px;
+}
+
+.desktop-app .theme-selector__option--sakura small,
+.desktop-app .theme-selector__option--yozakura small,
+.desktop-app .theme-selector__option--lune-neige small {
+  font-size: 13px;
+}
+
 .desktop-app .theme-selector strong {
   font-size: 13px;
 }
@@ -2475,8 +2507,22 @@ html[dir="ltr"] .desktop-app .live-catalog {
   font-size: 14px;
 }
 
-.desktop-app .reader-theme-options > button {
-  min-height: 68px;
+.desktop-app .reader-settings__preview {
+  padding: 16px 18px;
+}
+
+.desktop-app .reader-theme-options > button,
+.desktop-app .reader-theme-option {
+  min-height: 80px;
+  font-size: 13px;
+}
+
+.desktop-app .reader-segmented > button {
+  font-size: 12px;
+  min-height: 46px;
+}
+
+.desktop-app .reader-stepper > button {
   font-size: 12px;
 }
 
@@ -2680,8 +2726,75 @@ html[dir="ltr"] .desktop-app .live-catalog {
   font-size: 12px;
 }
 
-.desktop-app .screen--details-desktop .live-details-hero .details-hub {
+.desktop-app .screen--details-desktop .live-details-hero:not(.live-details-hero--reading) .details-hub {
   display: none;
+}
+
+.desktop-app .screen--details-desktop .live-details-hero--reading.live-details-hero--cinematic {
+  padding: 16px 24px 18px;
+}
+
+.desktop-app .screen--details-desktop .live-details-hero__content--reading {
+  margin-top: 10px;
+  gap: 18px;
+}
+
+.desktop-app .screen--details-desktop .live-details-hero--reading .live-details-hero__cover .remote-cover--hero,
+.desktop-app .screen--details-desktop .live-details-hero--reading .live-details-hero__cover .remote-cover--hero.remote-cover--novel {
+  width: 124px;
+  height: 186px;
+  flex-basis: 124px;
+}
+
+.desktop-app .screen--details-desktop.screen--details-cinematic .live-details-hero.live-details-hero--cinematic:not(.live-details-hero--reading) {
+  padding: 16px 24px 0;
+  border-bottom: 0;
+  overflow: visible;
+  align-content: start;
+}
+
+.desktop-app .screen--details-desktop.screen--details-cinematic .live-details-hero__head {
+  max-width: none;
+  margin-inline: 0;
+  padding-bottom: 6px;
+}
+
+.desktop-app .screen--details-desktop.screen--details-cinematic .live-details-hero__title {
+  font-size: clamp(24px, 2.4vw, 34px);
+  line-height: 1.14;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.45);
+}
+
+.desktop-app .screen--details-desktop.screen--details-cinematic .live-details-hero__dock {
+  gap: 18px;
+  margin-top: 0;
+  padding-bottom: 18px;
+}
+
+.desktop-app .screen--details-desktop.screen--details-cinematic .live-details-hero__cover .remote-cover--hero,
+.desktop-app .screen--details-desktop.screen--details-cinematic .live-details-hero__cover .remote-cover--hero.remote-cover--video {
+  width: 132px;
+  height: 196px;
+  flex-basis: 132px;
+  border-radius: 16px;
+  box-shadow: 0 16px 34px rgba(9, 10, 18, 0.34);
+}
+
+.desktop-app .screen--details-desktop.screen--details-cinematic .live-details-hero__dock .details-hub {
+  display: grid;
+}
+
+.desktop-app .screen--details-desktop.screen--details-cinematic .live-details-hero__dock .details-hub__primary {
+  min-height: 64px;
+}
+
+.desktop-app .screen--details-desktop.screen--details-cinematic .live-details-hero__dock-panel .details-movie-hero-actions .details-movie-watch {
+  min-height: 64px;
+}
+
+.desktop-app .screen--details-desktop.screen--details-cinematic .live-details-hero {
+  z-index: 1;
+  padding-bottom: 0;
 }
 
 .desktop-app .screen--details-desktop .details-movie-hero-actions {
@@ -3159,7 +3272,7 @@ html[dir="ltr"] .desktop-app .live-catalog {
   height: 38px;
 }
 
-.desktop-app .screen--details-desktop .details-content {
+.desktop-app .screen--details-desktop:not(.screen--details-cinematic) .details-content {
   margin-top: 0;
   padding: 16px 20px 20px;
   border-radius: 0 0 22px 22px;

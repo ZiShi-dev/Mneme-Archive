@@ -309,9 +309,62 @@
   background: var(--white);
 }
 
+.la-chip--bordered:not(:disabled):hover {
+  border-color: color-mix(in srgb, var(--brand) 32%, var(--line));
+  background: color-mix(in srgb, var(--brand) 5%, var(--white));
+  color: var(--ink);
+}
+
+.la-chip--bordered:not(:disabled):hover > svg {
+  opacity: 1;
+  color: var(--brand);
+}
+
 .la-chip--bordered.active {
   border-color: color-mix(in srgb, var(--brand) 40%, var(--line));
   background: color-mix(in srgb, var(--brand) 8%, var(--white));
+  color: var(--brand);
+}
+
+.la-chip--picker {
+  padding-inline-end: 8px;
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--ink) 6%, transparent);
+  transition: color var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), transform 0.12s ease, box-shadow var(--motion-standard);
+}
+
+.la-chip--picker:not(.active) {
+  color: var(--ink);
+}
+
+.la-chip--picker:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.la-chip__chevron {
+  flex: 0 0 auto;
+  opacity: 0.55;
+  margin-inline-start: 1px;
+}
+
+.la-chip--picker:not(:disabled):hover .la-chip__chevron,
+.la-chip--picker.active .la-chip__chevron {
+  opacity: 0.85;
+  color: var(--brand);
+}
+
+.la-chip--picker small {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--outside) 75%, var(--white));
+  font: 600 9px/1 var(--font-sans);
+  opacity: 1;
+  color: var(--muted);
+}
+
+.la-chip--picker.active small {
+  background: color-mix(in srgb, var(--brand) 12%, var(--white));
   color: var(--brand);
 }
 
@@ -612,11 +665,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-top: 10px;
-  padding-top: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
   border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
   color: var(--muted);
-  font: 500 7px/1 "Alexandria";
+  font: 500 12px/1.35 var(--font-sans);
 }
 
 .management-source-picker__tabs,
@@ -632,18 +685,18 @@
 
 .management-source-picker__tabs > button,
 .catalog-filter-picker__tabs > button {
-  min-height: 30px;
+  min-height: 38px;
   flex: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  padding: 0 8px;
+  gap: 6px;
+  padding: 0 10px;
   border: 0;
   border-radius: var(--radius-pill);
   background: transparent;
   color: var(--muted);
-  font: 600 7px/1 "Alexandria";
+  font: 600 12px/1.25 var(--font-sans);
   cursor: pointer;
 }
 
@@ -656,13 +709,14 @@
 
 .management-source-picker__tabs > button small,
 .catalog-filter-picker__tabs > button small {
-  min-width: 14px;
-  height: 14px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
   display: grid;
   place-items: center;
   border-radius: var(--radius-pill);
-  font: 600 6px/1 "Fragment Mono";
-  opacity: .75;
+  font: 600 10px/1 var(--font-sans);
+  opacity: 1;
 }
 
 .management-source-picker__tabs > button.active small,

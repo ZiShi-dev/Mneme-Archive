@@ -33,17 +33,3 @@ test("configureAzoraflyNativeFetch injects custom html fetcher", async () => {
   assert.equal(response.status, 200);
   configureAzoraflyNativeFetch({ fetchHtml: null, fetchImage: null });
 });
-
-test("configureHentaireadNativeFetch injects custom html fetcher", async () => {
-  const { configureHentaireadNativeFetch } = await import("../../server/sources/hentairead.js");
-  const catalogCard = `<article class="manga-item"><a class="manga-item__link" href="https://hentairead.com/hentai/demo/" title="Demo"><img class="manga-item__img-inner" src="https://hencover.xyz/covers/demo.webp" alt="Demo" /></a></article>`;
-  configureHentaireadNativeFetch({
-    fetchHtml: async () => `<html><body>${catalogCard}</body></html>`,
-    fetchImage: null,
-  });
-  const { handleHentaireadRequest } = await import("../../server/sources/hentairead.js");
-  const response = await handleHentaireadRequest(new URL("http://localhost/api/sources/hentairead/catalog?page=1"));
-  assert.equal(response.status, 200);
-  assert.equal(response.body.items.length, 1);
-  configureHentaireadNativeFetch({ fetchHtml: null, fetchImage: null });
-});

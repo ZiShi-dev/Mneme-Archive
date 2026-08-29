@@ -6,10 +6,10 @@ import {
 import { normalizeSearchQuery } from "../lib/queryLimits.js";
 import { responseJson } from "../lib/response.js";
 import { applyRecentChapterFields, recentChaptersFromCount } from "../lib/catalogChapters.js";
+import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
 
-const BASE_URL = "https://dilar.tube";
-const API_URL = `${BASE_URL}/api`;
-const CDN_URL = `${BASE_URL}/uploads`;
+const DEFAULT_BASE_URL = "https://dilar.tube";
+const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
 const SOURCE_NAME = "Dilar";
 const SOURCE_ID = "dilar";
 const UNLOCK_FREE_HEADER = "X-Unlock-Free-Chapter";
@@ -20,20 +20,22 @@ const API_HEADERS = {
 };
 
 async function fetchDilarJson(path, {
+  baseUrl = DEFAULT_BASE_URL,
   method = "GET",
   headers = {},
   unlockHeader = "",
   body = null,
 } = {}) {
+  const apiUrl = `${baseUrl}/api`;
   const requestHeaders = {
     ...API_HEADERS,
-    ...await buildDilarRequestHeaders(API_URL),
+    ...await buildDilarRequestHeaders(apiUrl),
     ...headers,
   };
   if (unlockHeader) requestHeaders[UNLOCK_FREE_HEADER] = unlockHeader;
   if (body != null) requestHeaders["Content-Type"] = "application/json";
 
-  const response = await fetch(`${API_URL}${path}`, {
+  const response = await fetch(`${apiUrl}${path}`, {
     method,
     redirect: "follow",
     headers: requestHeaders,
@@ -50,12 +52,12 @@ async function fetchDilarJson(path, {
   return payload;
 }
 
-function assertDilarHost(rawUrl) {
+function assertDilarHost(rawUrl, ctx = DEFAULT_CTX) {
   const url = new URL(rawUrl);
-  if (url.protocol !== "https:" || !["dilar.tube", "www.dilar.tube"].includes(url.hostname)) {
+  if (url.protocol !== "https:" || !ctx.allowedHosts.has(url.hostname.toLowerCase())) {
     throw new Error("المصدر غير مسموح");
   }
-  url.hostname = "dilar.tube";
+  url.hostname = ctx.apex;
   url.hash = "";
   return url;
 }
@@ -67,16 +69,16 @@ function assertDilarImageUrl(rawUrl) {
   return url.toString();
 }
 
-export function buildSeriesUrl(seriesId) {
-  return `${BASE_URL}/mangas/${seriesId}/-`;
+export function buildSeriesUrl(seriesId, baseUrl = DEFAULT_BASE_URL) {
+  return `${baseUrl}/mangas/${seriesId}/-`;
 }
 
-export function buildChapterUrl(releaseId) {
-  return `${BASE_URL}/chapter/${releaseId}`;
+export function buildChapterUrl(releaseId, baseUrl = DEFAULT_BASE_URL) {
+  return `${baseUrl}/chapter/${releaseId}`;
 }
 
-export function buildReaderUrl(seriesId, chapterNumber) {
-  return `${BASE_URL}/reader/${seriesId}/-/${encodeURIComponent(chapterNumber)}`;
+export function buildReaderUrl(seriesId, chapterNumber, baseUrl = DEFAULT_BASE_URL) {
+  return `${baseUrl}/reader/${seriesId}/-/${encodeURIComponent(chapterNumber)}`;
 }
 
 export function seriesIdFromUrl(rawUrl) {
@@ -106,9 +108,9 @@ export function releaseIdFromUrl(rawUrl) {
   return parseChapterTarget(rawUrl).releaseId;
 }
 
-export function buildCoverUrl(seriesId, coverFile) {
+export function buildCoverUrl(seriesId, coverFile, baseUrl = DEFAULT_BASE_URL) {
   if (!seriesId || !coverFile) return "";
-  return `${CDN_URL}/manga/cover/${seriesId}/${coverFile}`;
+  return `${baseUrl}/uploads/manga/cover/${seriesId}/${coverFile}`;
 }
 
 function mapMediaType(series = {}) {
@@ -142,10 +144,10 @@ function splitStorageKey(storageKey = "") {
   return { teamId, storageKey: key };
 }
 
-export function buildReleasePageUrl({ teamId, storageKey, pageName, quality = "hq", mediaToken = "" }) {
+export function buildReleasePageUrl({ teamId, storageKey, pageName, quality = "hq", mediaToken = "" }, baseUrl = DEFAULT_BASE_URL) {
   if (!teamId || !storageKey || !pageName) return "";
   if (/^https?:\/\//i.test(pageName) || pageName.startsWith("//")) return pageName;
-  let url = `${CDN_URL}/releases/${teamId}/${storageKey}/${quality}/${pageName}`;
+  let url = `${baseUrl}/uploads/releases/${teamId}/${storageKey}/${quality}/${pageName}`;
   if (mediaToken) url += `${url.includes("?") ? "&" : "?"}t=${encodeURIComponent(mediaToken)}`;
   return url;
 }
@@ -284,9 +286,9 @@ export function parseDilarChapter(payload, url) {
   };
 }
 
-async function resolveReleaseId(target) {
+async function resolveReleaseId(target, baseUrl = DEFAULT_BASE_URL) {
   if (target.releaseId) return target.releaseId;
-  const chaptersPayload = await fetchDilarJson(`/series/${target.seriesId}/chapters`);
+  const chaptersPayload = await fetchDilarJson(`/series/${target.seriesId}/chapters`, { baseUrl });
   const chapters = chaptersPayload.chapters || [];
   const needle = formatChapterNumber(target.chapterNumber);
   const match = chapters.find((entry) => formatChapterNumber(entry.chapter) === needle);
@@ -295,15 +297,16 @@ async function resolveReleaseId(target) {
   return String(release.id);
 }
 
-async function requestFreePass(releaseId) {
-  const payload = await fetchDilarJson(`/chapters/${releaseId}/unlock/free`, { method: "POST", body: {} });
+async function requestFreePass(releaseId, baseUrl = DEFAULT_BASE_URL) {
+  const payload = await fetchDilarJson(`/chapters/${releaseId}/unlock/free`, { baseUrl, method: "POST", body: {} });
   const token = typeof payload?.token === "string" ? payload.token.trim() : "";
   if (!token) throw new Error("تعذر فتح الفصل المجاني على Dilar");
   return token;
 }
 
-async function requestMediaGrant(releaseId, freePassToken) {
+async function requestMediaGrant(releaseId, freePassToken, baseUrl = DEFAULT_BASE_URL) {
   return fetchDilarJson(`/releases/${releaseId}/grant`, {
+    baseUrl,
     method: "POST",
     body: {},
     headers: {
@@ -314,19 +317,20 @@ async function requestMediaGrant(releaseId, freePassToken) {
   });
 }
 
-async function fetchChapterPayload(releaseId) {
-  let payload = await fetchDilarJson(`/chapters/${releaseId}`);
+async function fetchChapterPayload(releaseId, baseUrl = DEFAULT_BASE_URL) {
+  let payload = await fetchDilarJson(`/chapters/${releaseId}`, { baseUrl });
   if (payload.pages?.length) return payload;
 
   const needsUnlock = payload.free_pass_required || payload.encoded || !payload.storage_key;
   if (!needsUnlock) return payload;
 
-  const freePassToken = await requestFreePass(releaseId);
-  const grant = await requestMediaGrant(releaseId, freePassToken);
+  const freePassToken = await requestFreePass(releaseId, baseUrl);
+  const grant = await requestMediaGrant(releaseId, freePassToken, baseUrl);
   const mediaGrant = typeof grant.grant === "string" ? grant.grant : "";
   if (!mediaGrant) throw new Error("تعذر الحصول على حق قراءة Dilar");
 
   payload = await fetchDilarJson(`/chapters/${releaseId}`, {
+    baseUrl,
     headers: {
       "X-Media-Grant": mediaGrant,
       "X-Unlock-Free-Chapter": freePassToken,
@@ -347,10 +351,10 @@ async function fetchChapterPayload(releaseId) {
   return payload;
 }
 
-async function fetchSeriesList({ page = 1, path = "/series" } = {}) {
+async function fetchSeriesList({ page = 1, path = "/series", baseUrl = DEFAULT_BASE_URL } = {}) {
   const query = new URLSearchParams({ page: String(page) });
   const suffix = `${path}?${query}`;
-  const payload = await fetchDilarJson(suffix.startsWith("/") ? suffix : `/${suffix}`);
+  const payload = await fetchDilarJson(suffix.startsWith("/") ? suffix : `/${suffix}`, { baseUrl });
   const series = payload.series || payload.data?.series || payload.data || [];
   const items = Array.isArray(series) ? series.map((entry) => mapCatalogItem(entry)) : [];
   const totalPages = Number(payload.totalPages || payload.total_pages || 0);
@@ -360,12 +364,15 @@ async function fetchSeriesList({ page = 1, path = "/series" } = {}) {
 }
 
 export async function handleDilarRequest(requestUrl) {
+  const ctx = resolveSourceRequestContext(requestUrl, DEFAULT_BASE_URL, { label: SOURCE_NAME });
+  const { baseUrl } = ctx;
+
   if (requestUrl.pathname.endsWith("/image")) {
-    return fetchProxiedImage(assertDilarImageUrl(requestUrl.searchParams.get("url") ?? ""), `${BASE_URL}/`, SOURCE_NAME);
+    return fetchProxiedImage(assertDilarImageUrl(requestUrl.searchParams.get("url") ?? ""), `${baseUrl}/`, SOURCE_NAME);
   }
 
   if (requestUrl.pathname.endsWith("/filters")) {
-    const payload = await fetchDilarJson("/categories");
+    const payload = await fetchDilarJson("/categories", { baseUrl });
     const groups = Array.isArray(payload) ? payload : payload.data || payload.categories || [];
     const categories = [];
     for (const group of groups) {
@@ -385,7 +392,7 @@ export async function handleDilarRequest(requestUrl) {
     const page = Math.min(Math.max(Number(requestUrl.searchParams.get("page")) || 1, 1), 1000);
     const genre = requestUrl.searchParams.get("genre")?.trim() || "";
     const path = genre ? `/series/category/${encodeURIComponent(genre)}` : "/series";
-    const result = await fetchSeriesList({ page, path });
+    const result = await fetchSeriesList({ page, path, baseUrl });
     return responseJson(200, {
       items: result.items,
       page: result.page,
@@ -399,7 +406,7 @@ export async function handleDilarRequest(requestUrl) {
     const { query, valid } = normalizeSearchQuery(requestUrl.searchParams.get("q"));
     if (!valid) return responseJson(200, { items: [] });
     const page = Math.min(Math.max(Number(requestUrl.searchParams.get("page")) || 1, 1), 100);
-    const payload = await fetchDilarJson(`/series/search?q=${encodeURIComponent(query)}&page=${page}`);
+    const payload = await fetchDilarJson(`/series/search?q=${encodeURIComponent(query)}&page=${page}`, { baseUrl });
     const series = payload.series || payload.data?.series || payload.data || [];
     const items = Array.isArray(series) ? series.map((entry) => mapCatalogItem(entry)) : [];
     const totalPages = Number(payload.totalPages || payload.total_pages || 0);
@@ -415,8 +422,8 @@ export async function handleDilarRequest(requestUrl) {
   if (requestUrl.pathname.endsWith("/manga")) {
     const seriesId = seriesIdFromUrl(requestUrl.searchParams.get("url") ?? "");
     const [seriesPayload, chaptersPayload] = await Promise.all([
-      fetchDilarJson(`/series/${seriesId}`),
-      fetchDilarJson(`/series/${seriesId}/chapters`),
+      fetchDilarJson(`/series/${seriesId}`, { baseUrl }),
+      fetchDilarJson(`/series/${seriesId}/chapters`, { baseUrl }),
     ]);
     const series = seriesPayload.series || seriesPayload.data || seriesPayload;
     const chapters = chaptersPayload.chapters || chaptersPayload.data?.chapters || [];
@@ -427,8 +434,8 @@ export async function handleDilarRequest(requestUrl) {
   if (requestUrl.pathname.endsWith("/chapter")) {
     const chapterUrl = requestUrl.searchParams.get("url") ?? "";
     const target = parseChapterTarget(chapterUrl);
-    const releaseId = await resolveReleaseId(target);
-    const payload = await fetchChapterPayload(releaseId);
+    const releaseId = await resolveReleaseId(target, baseUrl);
+    const payload = await fetchChapterPayload(releaseId, baseUrl);
     const resolvedUrl = chapterUrl.includes("/chapter/")
       ? buildChapterUrl(releaseId)
       : buildReaderUrl(target.seriesId || payload.series_id, formatChapterNumber(payload.chapter?.chapter ?? target.chapterNumber));

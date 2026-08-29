@@ -10,7 +10,7 @@ import { mergeCatalogByRecency } from "../lib/catalogMerge.js";
 import { normalizeSearchQuery } from "../lib/queryLimits.js";
 import { responseJson } from "../lib/response.js";
 import { applyRecentChapterFields } from "../lib/catalogChapters.js";
-import { assertPublicHttpsUrl } from "../lib/urlSecurity.js";
+import { resolveRequestBaseUrl } from "../lib/sourceBaseUrl.js";
 import { videoHostRank } from "../lib/videoHosts.js";
 
 export const DEFAULT_COFLEX_BASE_URL = "https://coflix.esq";
@@ -26,10 +26,14 @@ const IMAGE_HOSTS = new Set([
   "www.themoviedb.org",
 ]);
 
+const COFLIX_MIRROR_HOST_PATTERN = /^coflix\.[a-z0-9.-]+$/i;
+
 export function resolveCoflixContext(requestUrl) {
-  const raw = requestUrl.searchParams.get("baseUrl")?.trim() || DEFAULT_COFLEX_BASE_URL;
-  const normalized = assertPublicHttpsUrl(raw, { label: "URL Coflix" }).replace(/\/+$/, "");
-  const parsed = new URL(normalized);
+  const baseUrl = resolveRequestBaseUrl(requestUrl, DEFAULT_COFLEX_BASE_URL, {
+    label: "URL Coflix",
+    allowedHostPattern: COFLIX_MIRROR_HOST_PATTERN,
+  });
+  const parsed = new URL(baseUrl);
   return {
     baseUrl: parsed.origin,
     baseHost: parsed.hostname.toLowerCase(),
@@ -55,6 +59,22 @@ function createCoflixFetcher(ctx) {
 function isAllowedHost(hostname = "", ctx) {
   const host = String(hostname).toLowerCase();
   return host === ctx.baseHost || host === `www.${ctx.baseHost}` || host.replace(/^www\./, "") === ctx.baseHost.replace(/^www\./, "");
+}
+
+export function assertCoflixStreamReferer(rawUrl = "", ctx) {
+  const decoded = decodeHtml(String(rawUrl || "").trim());
+  if (!decoded) throw new Error("مرجع البث غير صالح");
+  let url;
+  try {
+    url = new URL(decoded, `${ctx.baseUrl}/`);
+  } catch {
+    throw new Error("مرجع البث غير صالح");
+  }
+  if (url.protocol !== "https:" || !isAllowedHost(url.hostname, ctx)) {
+    throw new Error("مرجع البث غير صالح");
+  }
+  url.hash = "";
+  return url.toString();
 }
 
 export function normalizeCoflixUrl(rawUrl = "", ctx) {
@@ -450,7 +470,7 @@ export async function handleCoflixRequest(requestUrl) {
 
   if (requestUrl.pathname.endsWith("/stream")) {
     const target = assertProxiedStreamUrl(requestUrl.searchParams.get("url") ?? "");
-    const referer = String(requestUrl.searchParams.get("referer") ?? `${ctx.baseUrl}/`).trim();
+    const referer = assertCoflixStreamReferer(requestUrl.searchParams.get("referer") ?? `${ctx.baseUrl}/`, ctx);
     return fetchProxiedHlsResource({
       target,
       referer,

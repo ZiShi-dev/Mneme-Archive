@@ -91,19 +91,16 @@ export function shouldUseCatalogScopedSearch(sourceId, kind, taxonomy, query) {
   if (["frenchstream", "wiflix", "coflix"].includes(sourceId) && primary.filterPath) return true;
   return [
     "mangalik",
-    "mangaforfree",
     "dilar",
-    "arabshentai",
-    "hentairead",
-    "hentaigasm",
     "azorafly",
     "anime4up",
+    "animedar",
+    "animesama",
     "cenele",
     "galaxynovels",
     "novelsparadise",
     "kolnovel",
     "nightnovel",
-    "realmnovel",
   ].includes(sourceId);
 }
 

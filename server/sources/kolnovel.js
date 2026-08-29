@@ -10,34 +10,38 @@ import {
   parseCatalogChaptersFromArticle,
   extractEplisterListBlocks,
 } from "./novelsparadise.js";
+import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
 
-const BASE_URL = "https://kolnovel.com";
+const DEFAULT_BASE_URL = "https://kolnovel.com";
+const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
 const SOURCE_NAME = "Kol Novel";
 const SOURCE_ID = "kolnovel";
 const CHAPTER_SLUG_PREFIX = "shaag24";
 const CHAPTER_SLUG_MARKER = "z435ggye-";
 
-const fetchKolnovelHtml = createCachedHtmlFetcher({
-  ttlMs: 3 * 60_000,
-  timeoutMs: 35_000,
-  headers: {
-    accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "accept-language": "ar,en-US;q=0.9,en;q=0.8",
-    referer: `${BASE_URL}/series/`,
-    "sec-ch-ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
-    "sec-ch-ua-mobile": "?0",
-    "sec-ch-ua-platform": '"Windows"',
-    "sec-fetch-dest": "document",
-    "sec-fetch-mode": "navigate",
-    "sec-fetch-site": "same-origin",
-    "upgrade-insecure-requests": "1",
-    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-  },
-  getVariants: (url) => [url],
-  buildError: (lastStatus) => (lastStatus === 403
-    ? "حماية Kol Novel تمنع الاتصال (Cloudflare)"
-    : `Kol Novel a répondu ${lastStatus}`),
-});
+function createFetcher(baseUrl = DEFAULT_BASE_URL) {
+  return createCachedHtmlFetcher({
+    ttlMs: 3 * 60_000,
+    timeoutMs: 35_000,
+    headers: {
+      accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "accept-language": "ar,en-US;q=0.9,en;q=0.8",
+      referer: `${baseUrl}/series/`,
+      "sec-ch-ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+      "sec-ch-ua-mobile": "?0",
+      "sec-ch-ua-platform": '"Windows"',
+      "sec-fetch-dest": "document",
+      "sec-fetch-mode": "navigate",
+      "sec-fetch-site": "same-origin",
+      "upgrade-insecure-requests": "1",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    },
+    getVariants: (url) => [url],
+    buildError: (lastStatus) => (lastStatus === 403
+      ? "حماية Kol Novel تمنع الاتصال (Cloudflare)"
+      : `Kol Novel a répondu ${lastStatus}`),
+  });
+}
 
 const KOLNOVEL_BROWSER_HEADERS = {
   accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -52,19 +56,19 @@ const KOLNOVEL_BROWSER_HEADERS = {
   "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
 };
 
-function assertKolnovelHost(rawUrl) {
+function assertKolnovelHost(rawUrl, ctx = DEFAULT_CTX) {
   const url = new URL(rawUrl);
-  if (url.protocol !== "https:" || !["kolnovel.com", "www.kolnovel.com"].includes(url.hostname)) {
+  if (url.protocol !== "https:" || !ctx.allowedHosts.has(url.hostname.toLowerCase())) {
     throw new Error("المصدر غير مسموح");
   }
-  url.hostname = "kolnovel.com";
+  url.hostname = ctx.apex;
   url.hash = "";
   return url;
 }
 
-function assertKolnovelImageUrl(rawUrl) {
+function assertKolnovelImageUrl(rawUrl, ctx = DEFAULT_CTX) {
   const url = new URL(rawUrl);
-  if (url.protocol !== "https:" || !["kolnovel.com", "www.kolnovel.com"].includes(url.hostname)) {
+  if (url.protocol !== "https:" || !ctx.allowedHosts.has(url.hostname.toLowerCase())) {
     throw new Error("رابط الصورة غير مسموح");
   }
   return url.toString();
@@ -80,8 +84,8 @@ export function seriesSlugFromSlug(slug) {
   return slug.replace(/-\d+$/, "");
 }
 
-export function buildSeriesUrl(seriesSlug) {
-  return `${BASE_URL}/series/${seriesSlug}/`;
+export function buildSeriesUrl(seriesSlug, baseUrl = DEFAULT_BASE_URL) {
+  return `${baseUrl}/series/${seriesSlug}/`;
 }
 
 export function normalizeSeriesUrl(rawUrl) {
@@ -98,7 +102,7 @@ export function normalizeChapterUrl(rawUrl) {
   if (!slug || slug === "series" || !/^shaag24/i.test(slug)) {
     throw new Error("رابط فصل Kol Novel غير صالح");
   }
-  return `${BASE_URL}/${slug}/`;
+  return `${DEFAULT_BASE_URL}/${slug}/`;
 }
 
 function isKolnovelChapterSlug(slug, seriesSlug) {
@@ -133,7 +137,7 @@ function parseArticleTitleAndHref(article) {
 }
 
 function parseCatalogChapterFromArticle(article) {
-  return parseCatalogChaptersFromArticle(article, BASE_URL, extractKolnovelChapterNumber);
+  return parseCatalogChaptersFromArticle(article, DEFAULT_BASE_URL, extractKolnovelChapterNumber);
 }
 
 export function extractKolnovelChapterNumber(primaryText, secondaryText = "", fallback = "") {
@@ -159,8 +163,8 @@ export function extractKolnovelChapterNumber(primaryText, secondaryText = "", fa
   return fallback;
 }
 
-function buildKolnovelCatalogUrl(page, { status = "", order = "latest", genre = "", tag = "" } = {}) {
-  const query = new URL(`${BASE_URL}/series/`);
+function buildKolnovelCatalogUrl(page, { status = "", order = "latest", genre = "", tag = "" } = {}, baseUrl = DEFAULT_BASE_URL) {
+  const query = new URL(`${baseUrl}/series/`);
   query.searchParams.set("page", String(page));
   query.searchParams.set("status", status);
   query.searchParams.set("order", order);
@@ -177,7 +181,7 @@ function assertKolnovelFilterSlug(value, label) {
 }
 
 function mapCatalogItem(rawTitle, href, cover, article = "") {
-  const slug = seriesSlugFromSlug(slugFromPath(new URL(href, BASE_URL).pathname));
+  const slug = seriesSlugFromSlug(slugFromPath(new URL(href, DEFAULT_BASE_URL).pathname));
   const alter = article.match(/<span class="alter">([\s\S]*?)<\/span>/i)?.[1] ?? "";
   const excerptTitle = parseCatalogArabicTitleFromExcerpt(article);
   const { title, altTitle } = resolveParadiseTitles(rawTitle, alter || excerptTitle);
@@ -216,7 +220,7 @@ export function parseKolnovelCatalog(html) {
 export function parseKolnovelChapters(html, seriesUrl) {
   const chapters = [];
   const seen = new Set();
-  const seriesSlug = seriesSlugFromSlug(slugFromPath(new URL(seriesUrl, BASE_URL).pathname));
+  const seriesSlug = seriesSlugFromSlug(slugFromPath(new URL(seriesUrl, DEFAULT_BASE_URL).pathname));
   const eplisterBlocks = extractEplisterListBlocks(html);
   if (!eplisterBlocks.length) return chapters;
 
@@ -227,9 +231,9 @@ export function parseKolnovelChapters(html, seriesUrl) {
     if (!link) continue;
     const chapterUrl = decodeHtml(link[1]);
     if (/\/pdf\/?$/i.test(chapterUrl)) continue;
-    const chapterSlug = slugFromPath(new URL(chapterUrl, BASE_URL).pathname);
+    const chapterSlug = slugFromPath(new URL(chapterUrl, DEFAULT_BASE_URL).pathname);
     if (!isKolnovelChapterSlug(chapterSlug, seriesSlug)) continue;
-    const normalizedUrl = new URL(chapterUrl, BASE_URL).toString();
+    const normalizedUrl = new URL(chapterUrl, DEFAULT_BASE_URL).toString();
     if (seen.has(normalizedUrl)) continue;
     seen.add(normalizedUrl);
     const eplNum = block.match(/class="[^"]*epl-num[^"]*"[^>]*>([\s\S]*?)<\//i)?.[1] ?? "";
@@ -250,11 +254,11 @@ export function parseKolnovelChapters(html, seriesUrl) {
   return chapters;
 }
 
-async function fetchKolnovelChapterHtml(chapterUrl) {
+async function fetchKolnovelChapterHtml(chapterUrl, ctx = DEFAULT_CTX) {
   const seriesUrl = seriesUrlFromChapterUrl(chapterUrl);
   const headers = { ...KOLNOVEL_BROWSER_HEADERS, referer: seriesUrl };
   await fetch(seriesUrl, {
-    headers: { ...KOLNOVEL_BROWSER_HEADERS, referer: `${BASE_URL}/series/` },
+    headers: { ...KOLNOVEL_BROWSER_HEADERS, referer: `${ctx.baseUrl}/series/` },
     redirect: "follow",
     signal: AbortSignal.timeout(35_000),
   }).catch(() => {});
@@ -272,7 +276,7 @@ async function fetchKolnovelChapterHtml(chapterUrl) {
 }
 
 function seriesUrlFromChapterUrl(chapterUrl) {
-  const slug = slugFromPath(new URL(chapterUrl, BASE_URL).pathname);
+  const slug = slugFromPath(new URL(chapterUrl, DEFAULT_BASE_URL).pathname);
   const match = slug.match(/^shaag24(.+?)z435ggye-\d+$/i);
   if (!match?.[1]) throw new Error("رابط فصل Kol Novel غير صالح");
   return buildSeriesUrl(match[1]);
@@ -297,7 +301,7 @@ function parseKolnovelDetails(html, url) {
     ?? "",
   );
   const chapters = parseKolnovelChapters(html, url);
-  const taxonomies = parseDetailTaxonomies(html, BASE_URL);
+  const taxonomies = parseDetailTaxonomies(html, DEFAULT_BASE_URL);
   const seriesSlug = seriesSlugFromSlug(slugFromPath(new URL(url).pathname));
   const latest = chapters[0];
   return {
@@ -320,12 +324,15 @@ function parseKolnovelDetails(html, url) {
 }
 
 export async function handleKolnovelRequest(requestUrl) {
+  const ctx = resolveSourceRequestContext(requestUrl, DEFAULT_BASE_URL, { label: SOURCE_NAME });
+  const fetchKolnovelHtml = createFetcher(ctx.baseUrl);
+
   if (requestUrl.pathname.endsWith("/image")) {
-    return fetchProxiedImage(assertKolnovelImageUrl(requestUrl.searchParams.get("url") ?? ""), `${BASE_URL}/`, SOURCE_NAME);
+    return fetchProxiedImage(assertKolnovelImageUrl(requestUrl.searchParams.get("url") ?? "", ctx), `${ctx.baseUrl}/`, SOURCE_NAME);
   }
 
   if (requestUrl.pathname.endsWith("/filters")) {
-    const html = await fetchKolnovelHtml(buildKolnovelCatalogUrl(1));
+    const html = await fetchKolnovelHtml(buildKolnovelCatalogUrl(1, {}, ctx.baseUrl));
     return responseJson(200, { ...parseParadiseFilters(html), fetchedAt: new Date().toISOString() });
   }
 
@@ -339,7 +346,7 @@ export async function handleKolnovelRequest(requestUrl) {
       order,
       genre,
       tag,
-    }));
+    }, ctx.baseUrl));
     const items = parseKolnovelCatalog(html);
     return responseJson(200, {
       items,
@@ -357,7 +364,7 @@ export async function handleKolnovelRequest(requestUrl) {
     const page = Math.min(Math.max(Number(requestUrl.searchParams.get("page")) || 1, 1), 1000);
     const genre = assertKolnovelFilterSlug(requestUrl.searchParams.get("genre"), "تصنيف");
     const tag = assertKolnovelFilterSlug(requestUrl.searchParams.get("tag"), "وسم");
-    const target = new URL(`${BASE_URL}/series/`);
+    const target = new URL(`${ctx.baseUrl}/series/`);
     target.searchParams.set("page", String(page));
     target.searchParams.set("s", query);
     if (genre) target.searchParams.append("genre[]", genre);
@@ -376,11 +383,11 @@ export async function handleKolnovelRequest(requestUrl) {
     const target = normalizeChapterUrl(requestUrl.searchParams.get("url") ?? "");
     let html;
     try {
-      html = await fetchKolnovelChapterHtml(target);
+      html = await fetchKolnovelChapterHtml(target, ctx);
     } catch {
       const seriesUrl = seriesUrlFromChapterUrl(target);
       await fetchKolnovelHtml(seriesUrl).catch(() => {});
-      html = await fetchKolnovelChapterHtml(target);
+      html = await fetchKolnovelChapterHtml(target, ctx);
     }
     return responseJson(200, parseParadiseChapter(html, target));
   }

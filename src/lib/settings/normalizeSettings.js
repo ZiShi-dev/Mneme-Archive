@@ -1,5 +1,6 @@
 import { DEFAULT_APP_SETTINGS, PRELOAD_PAGES_MAX, PRELOAD_PAGES_MIN } from "./defaults.js";
 import { normalizeCoflixBaseUrl } from "./coflixBaseUrl.js";
+import { getEffectiveSourceBaseUrl, normalizeSourceBaseUrlOverrides } from "./sourceBaseUrls.js";
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -13,6 +14,10 @@ export function normalizeSettings(raw) {
   const parsedPages = Number(raw.preloadPages);
   const parsedPoll = Number(raw.followPollMinutes);
   const parsedBackgroundInterval = Number(raw.backgroundIntervalMinutes);
+
+  const sourceBaseUrls = normalizeSourceBaseUrlOverrides(raw.sourceBaseUrls, {
+    legacyCoflixBaseUrl: raw.coflixBaseUrl,
+  });
 
   return {
     ...DEFAULT_APP_SETTINGS,
@@ -38,6 +43,7 @@ export function normalizeSettings(raw) {
       15,
       120,
     ),
-    coflixBaseUrl: normalizeCoflixBaseUrl(raw.coflixBaseUrl),
+    sourceBaseUrls,
+    coflixBaseUrl: getEffectiveSourceBaseUrl("coflix", sourceBaseUrls) || normalizeCoflixBaseUrl(raw.coflixBaseUrl),
   };
 }

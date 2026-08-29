@@ -1,0 +1,190 @@
+/* Live details hero — layout modes in src/features/sources/details/detailsLayout.js */
+
+.screen--live-details.screen--details-cinematic-manga .details-content,
+.screen--live-details.screen--details-cinematic-novel .details-content,
+.screen--live-details.screen--details-cinematic-movie .details-content {
+  margin-top: 14px;
+  padding-top: 22px;
+}
+
+.screen--live-details.screen--details-movie .details-content--movie {
+  padding-inline: 18px;
+  padding-bottom: 28px;
+}
+
+/* Anime / série — hero cinématique + synopsis */
+.screen--live-details.screen--details-cinematic-anime .live-details-hero--cinematic:not(.live-details-hero--reading),
+.screen--live-details.screen--details-cinematic-series .live-details-hero--cinematic:not(.live-details-hero--reading) {
+  padding: 16px 20px 0;
+}
+
+.screen--live-details.screen--details-cinematic-anime .details-hero__nav,
+.screen--live-details.screen--details-cinematic-series .details-hero__nav {
+  margin-bottom: 6px;
+}
+
+.screen--live-details.screen--details-cinematic-anime .live-details-hero__head,
+.screen--live-details.screen--details-cinematic-series .live-details-hero__head {
+  padding-bottom: 10px;
+}
+
+.screen--live-details.screen--details-cinematic-anime .live-details-hero__head .live-details-hero__meta,
+.screen--live-details.screen--details-cinematic-series .live-details-hero__head .live-details-hero__meta {
+  gap: 10px;
+}
+
+.screen--live-details.screen--details-cinematic-anime .live-details-hero__head .live-details-hero__title,
+.screen--live-details.screen--details-cinematic-series .live-details-hero__head .live-details-hero__title {
+  line-height: 1.32;
+}
+
+.screen--live-details.screen--details-cinematic-anime .live-details-hero__head .live-details-hero__subtitle,
+.screen--live-details.screen--details-cinematic-series .live-details-hero__head .live-details-hero__subtitle {
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.screen--live-details.screen--details-cinematic-anime .live-details-hero__head .live-details-hero__facts,
+.screen--live-details.screen--details-cinematic-series .live-details-hero__head .live-details-hero__facts {
+  margin-top: 2px;
+  line-height: 1.45;
+}
+
+.screen--live-details.screen--details-cinematic-anime .live-details-hero__head .live-details-hero__source,
+.screen--live-details.screen--details-cinematic-series .live-details-hero__head .live-details-hero__source {
+  margin-top: 4px;
+}
+
+.screen--live-details.screen--details-cinematic-anime .live-details-hero__dock,
+.screen--live-details.screen--details-cinematic-series .live-details-hero__dock {
+  gap: 16px;
+  padding: 10px 0 20px;
+}
+
+.screen--live-details.screen--details-cinematic-anime .live-details-hero__dock-panel,
+.screen--live-details.screen--details-cinematic-series .live-details-hero__dock-panel {
+  gap: 14px;
+}
+
+.screen--live-details.screen--details-cinematic-anime .details-content,
+.screen--live-details.screen--details-cinematic-series .details-content {
+  margin-top: -6px;
+  padding: 28px 20px 32px;
+  border-radius: 22px 22px 0 0;
+  background: var(--paper);
+}
+
+.screen--live-details.screen--details-cinematic-anime .details-sidebar,
+.screen--live-details.screen--details-cinematic-series .details-sidebar {
+  display: grid;
+  gap: 18px;
+}
+
+.screen--live-details.screen--details-cinematic-anime .details-about,
+.screen--live-details.screen--details-cinematic-series .details-about {
+  margin: 0;
+  padding: 16px 18px;
+  border: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--ink) 2.5%, var(--paper));
+}
+
+.screen--live-details.screen--details-cinematic-anime .details-about .details-section-heading,
+.screen--live-details.screen--details-cinematic-series .details-about .details-section-heading {
+  margin-bottom: 12px;
+}
+
+.screen--live-details.screen--details-cinematic-anime .details-about p,
+.screen--live-details.screen--details-cinematic-series .details-about p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.65;
+  color: color-mix(in srgb, var(--ink) 88%, transparent);
+  -webkit-line-clamp: 6;
+}
+
+.screen--live-details.screen--details-cinematic-anime .details-about__toggle,
+.screen--live-details.screen--details-cinematic-series .details-about__toggle {
+  margin-top: 10px;
+}
+
+.screen--live-details.screen--details-cinematic-anime .details-about__tags,
+.screen--live-details.screen--details-cinematic-series .details-about__tags {
+  margin-top: 14px;
+}
+
+.screen--live-details.screen--details-cinematic-anime .details-chapters,
+.screen--live-details.screen--details-cinematic-series .details-chapters {
+  margin-top: 4px;
+  padding-top: 0;
+}
+
+.screen--live-details.screen--details-cinematic-anime .details-section-heading h2,
+.screen--live-details.screen--details-cinematic-series .details-section-heading h2 {
+  font-size: 17px;
+  line-height: 1.4;
+}
+
+.screen--live-details.screen--details-cinematic-anime .details-related,
+.screen--live-details.screen--details-cinematic-series .details-related {
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--ink) 2.5%, var(--paper));
+}
+
+/* Android / Capacitor : encoches, barre de navigation et zones tactiles Material (48dp) */
+.native-app .screen--live-details {
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
+  scroll-padding-bottom: max(24px, env(safe-area-inset-bottom));
+}
+
+.native-app .live-details-hero--reading.live-details-hero--cinematic {
+  padding-top: max(12px, env(safe-area-inset-top));
+  padding-inline:
+    max(18px, env(safe-area-inset-left))
+    max(18px, env(safe-area-inset-right));
+}
+
+.native-app .live-details-hero--cinematic:not(.live-details-hero--reading) {
+  padding-top: max(14px, env(safe-area-inset-top));
+  padding-inline:
+    max(20px, env(safe-area-inset-left))
+    max(20px, env(safe-area-inset-right));
+}
+
+.native-app .details-hero__nav .icon-button {
+  min-width: 48px;
+  min-height: 48px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.native-app .details-movie-watch,
+.native-app .live-details-hero--reading .details-hub__primary,
+.native-app .live-details-hero--reading .details-hub__latest:not(.details-hub__latest--secondary),
+.native-app .live-details-hero--cinematic .live-details-hero__dock .details-hub__primary,
+.native-app .live-details-hero--cinematic .live-details-hero__dock .details-hub__latest:not(.details-hub__latest--secondary) {
+  min-height: 48px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.native-app .screen--live-details .details-content {
+  padding-inline:
+    max(18px, env(safe-area-inset-left))
+    max(18px, env(safe-area-inset-right));
+}
+
+.native-app .screen--live-details .details-related__scroller,
+.native-app .screen--live-details .chapter-list {
+  scroll-padding-inline: max(18px, env(safe-area-inset-left));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-details-hero--cinematic .live-details-hero__head,
+  .live-details-hero--cinematic .live-details-hero__dock {
+    transition: none;
+  }
+}

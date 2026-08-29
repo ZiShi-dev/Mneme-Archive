@@ -74,20 +74,20 @@
 
 .favorites-hero__eyebrow {
   color: var(--favorite);
-  font: 600 8px/1 "Alexandria";
+  font: 600 11px/1.35 var(--font-sans);
   letter-spacing: .02em;
 }
 
 .favorites-hero__copy h2 {
   margin: 0;
   color: var(--ink);
-  font: 700 15px/1.35 "Reem Kufi", "Alexandria";
+  font: 700 17px/1.4 var(--font-display);
 }
 
 .favorites-hero__copy p {
   margin: 0;
   color: var(--muted);
-  font: 500 9px/1.65 "Alexandria";
+  font: 500 13px/1.55 var(--font-sans);
 }
 
 .favorites-hero__stats {
@@ -102,27 +102,29 @@
 .favorites-hero__stats li {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px 9px;
+  gap: 6px;
+  padding: 6px 10px;
   border-radius: var(--radius-pill);
   color: var(--muted);
   background: color-mix(in srgb, var(--outside) 80%, var(--white));
-  font: 500 8px/1 "Alexandria";
+  font: 500 11px/1.35 var(--font-sans);
 }
 
 .favorites-hero__stats svg {
   color: var(--favorite);
   flex-shrink: 0;
+  width: 14px;
+  height: 14px;
 }
 
 .favorites-hero__stats strong {
   color: var(--ink);
-  font: 700 9px/1 "Fragment Mono", monospace;
+  font: 700 12px/1 "Fragment Mono", monospace;
 }
 
 .favorites-hero__action {
   grid-column: 1 / -1;
-  min-height: 40px;
+  min-height: 44px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -132,7 +134,7 @@
   border-radius: var(--radius-control);
   color: var(--favorite);
   background: color-mix(in srgb, var(--favorite) 7%, var(--white));
-  font: 600 9px/1 "Alexandria";
+  font: 600 12px/1.35 var(--font-sans);
   cursor: pointer;
   transition: border-color var(--motion-standard), background var(--motion-standard);
 }
@@ -145,9 +147,9 @@
 /* ── Filtres ── */
 .bookmarks-controls {
   display: grid;
-  gap: 10px;
-  margin-bottom: 14px;
-  padding: 12px;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px;
   border: 1px solid var(--line);
   border-radius: var(--radius-card);
   background: var(--white);
@@ -161,11 +163,40 @@
 }
 
 .bookmarks-controls__search input {
-  font-size: 10px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.bookmarks-controls__search .accessible-search__icon {
+  width: 18px;
+  height: 18px;
 }
 
 .bookmarks-controls__types {
   margin: 0;
+  min-height: 36px;
+}
+
+.bookmarks-controls__types .la-chip-bar__label {
+  font: 500 11px/1.35 var(--font-sans);
+}
+
+.bookmarks-controls__types .la-chip {
+  min-height: 34px;
+  padding: 0 12px;
+  font: 600 12px/1.25 var(--font-sans);
+  gap: 5px;
+}
+
+.bookmarks-controls__types .la-chip > svg {
+  width: 14px;
+  height: 14px;
+}
+
+.bookmarks-controls__types .la-chip small {
+  min-width: 18px;
+  height: 18px;
+  font: 600 10px/1 var(--font-sans);
 }
 
 .bookmarks-controls__sources {
@@ -181,24 +212,24 @@
 }
 
 .bookmarks-controls__sources > button {
-  min-height: 34px;
+  min-height: 38px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 11px;
+  gap: 7px;
+  padding: 0 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius-pill);
   color: var(--muted);
   background: var(--outside);
-  font: 600 8px/1 "Alexandria";
+  font: 600 12px/1.25 var(--font-sans);
   white-space: nowrap;
   cursor: pointer;
   transition: border-color var(--motion-standard), color var(--motion-standard), background var(--motion-standard);
 }
 
 .bookmarks-controls__sources > button .source-logo {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   padding: 2px;
 }
 
@@ -213,9 +244,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  min-height: 28px;
+  min-height: 32px;
   color: var(--muted);
-  font: 500 8px/1 "Alexandria";
+  font: 500 12px/1.35 var(--font-sans);
 }
 
 .bookmarks-controls__actions {
@@ -229,21 +260,22 @@
   padding: 0;
   color: var(--brand);
   background: transparent;
-  font: 600 8px/1 "Alexandria";
+  font: 600 12px/1.35 var(--font-sans);
   cursor: pointer;
+  min-height: 36px;
 }
 
 .bookmarks-controls__sort {
-  min-height: 30px;
+  min-height: 36px;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 0 10px;
+  gap: 6px;
+  padding: 0 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius-pill);
   color: var(--muted);
   background: var(--outside);
-  font: 600 8px/1 "Alexandria";
+  font: 600 12px/1.25 var(--font-sans);
   cursor: pointer;
 }
 
@@ -279,8 +311,8 @@
   width: 100%;
   display: flex;
   align-items: stretch;
-  gap: 12px;
-  padding: 10px 10px 10px 12px;
+  gap: 14px;
+  padding: 12px 12px 12px 14px;
   border: 0;
   background: transparent;
   color: inherit;
@@ -328,14 +360,14 @@
   position: absolute;
   top: 6px;
   right: 6px;
-  min-height: 20px;
+  min-height: 22px;
   display: inline-flex;
   align-items: center;
-  padding: 0 6px;
+  padding: 0 7px;
   border-radius: 6px;
   color: #fff;
   background: rgba(9, 10, 18, .72);
-  font: 600 7px/1 "Alexandria";
+  font: 600 10px/1.2 var(--font-sans);
   backdrop-filter: blur(6px);
 }
 
@@ -356,7 +388,7 @@
   flex: 1;
   display: grid;
   align-content: center;
-  gap: 5px;
+  gap: 6px;
   padding-block: 2px;
 }
 
@@ -366,13 +398,13 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
   color: var(--ink);
-  font: 700 11px/1.45 "Instrument Sans", "Alexandria";
+  font: 700 14px/1.45 var(--font-display);
 }
 
 .bookmark-row__subtitle {
   overflow: hidden;
   color: var(--muted);
-  font: 500 8px/1.35 "Alexandria";
+  font: 500 12px/1.4 var(--font-sans);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -380,16 +412,16 @@
 .bookmark-row__source {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   width: fit-content;
   max-width: 100%;
   color: var(--brand);
-  font: 600 8px/1 "Alexandria";
+  font: 600 11px/1.25 var(--font-sans);
 }
 
 .bookmark-row__source .source-logo {
-  width: 15px;
-  height: 15px;
+  width: 17px;
+  height: 17px;
   padding: 2px;
   flex-shrink: 0;
 }
@@ -406,7 +438,7 @@
   justify-content: space-between;
   gap: 8px;
   color: var(--muted);
-  font-size: 8px;
+  font: 500 11px/1.35 var(--font-sans);
 }
 
 .bookmark-row__reading em {
@@ -419,7 +451,7 @@
 
 .bookmark-row__reading b {
   color: var(--ink);
-  font: 600 8px/1 "Fragment Mono", monospace;
+  font: 600 11px/1 "Fragment Mono", monospace;
 }
 
 .bookmark-row__progress {
@@ -428,8 +460,8 @@
 
 .bookmark-row__progress .progress {
   margin: 0;
-  height: 3px;
-  border-radius: 3px;
+  height: 4px;
+  border-radius: 4px;
 }
 
 .bookmark-row__chevron {
@@ -444,12 +476,12 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 0 10px 10px;
+  padding: 0 12px 12px;
 }
 
 .bookmark-row__remove {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   display: grid;
   place-items: center;
   padding: 0;
@@ -466,18 +498,18 @@
 }
 
 .bookmark-row__continue {
-  min-height: 34px;
+  min-height: 40px;
   flex: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 0 12px;
+  gap: 7px;
+  padding: 0 14px;
   border: 0;
   border-radius: 10px;
   color: #fff;
   background: linear-gradient(135deg, var(--brand), color-mix(in srgb, var(--brand) 75%, #2a1f6e));
-  font: 600 8px/1 "Alexandria";
+  font: 600 12px/1.35 var(--font-sans);
   cursor: pointer;
   box-shadow: 0 6px 16px color-mix(in srgb, var(--brand) 28%, transparent);
 }
@@ -503,4 +535,19 @@
 [dir="rtl"] .bookmark-row__body > strong {
   direction: inherit;
   text-align: start;
+}
+
+/* État vide */
+.bookmarks-page .la-empty h2 {
+  font: 700 15px/1.4 var(--font-display);
+}
+
+.bookmarks-page .la-empty p {
+  font: 500 13px/1.55 var(--font-sans);
+  max-width: 34ch;
+}
+
+.bookmarks-page .la-empty .button {
+  min-height: 42px;
+  font: 600 12px/1.35 var(--font-sans);
 }

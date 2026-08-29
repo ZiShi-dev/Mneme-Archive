@@ -12,9 +12,10 @@ import { normalizeSearchQuery } from "../lib/queryLimits.js";
 import { responseJson } from "../lib/response.js";
 import { applyRecentChapterFields } from "../lib/catalogChapters.js";
 import { sortSourcesByVideoHost } from "../lib/videoHosts.js";
+import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
 
-const BASE_URL = "https://french-stream.one";
-const BASE_HOST = "french-stream.one";
+const DEFAULT_BASE_URL = "https://french-stream.one";
+const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
 const SOURCE_NAME = "French Stream";
 const SOURCE_ID = "frenchstream";
 const CATALOG_PATH = "/films/";
@@ -23,8 +24,9 @@ const MIXED_PATH = "/all/";
 const BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
 const IMAGE_HOSTS = new Set([
-  BASE_HOST,
-  `www.${BASE_HOST}`,
+  DEFAULT_CTX.apex,
+  DEFAULT_CTX.hostname,
+  `www.${DEFAULT_CTX.apex}`,
   "image.tmdb.org",
   "i.imgur.com",
   "imgur.com",
@@ -61,22 +63,24 @@ const LANG_LABELS = {
   vo: "VO",
 };
 
-const fetchFrenchStreamHtml = createCachedHtmlFetcher({
-  ttlMs: 3 * 60_000,
-  timeoutMs: 40_000,
-  retries: 2,
-  headers: {
-    accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "accept-language": "fr-FR,fr;q=0.9,en;q=0.6",
-    referer: `${BASE_URL}/`,
-    "user-agent": BROWSER_UA,
-  },
-  getVariants: (url) => [url],
-  buildError: (lastStatus) => `French Stream a répondu ${lastStatus || "sans réponse"}`,
-});
+function createFrenchStreamFetcher(baseUrl = DEFAULT_BASE_URL) {
+  return createCachedHtmlFetcher({
+    ttlMs: 3 * 60_000,
+    timeoutMs: 40_000,
+    retries: 2,
+    headers: {
+      accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "accept-language": "fr-FR,fr;q=0.9,en;q=0.6",
+      referer: `${baseUrl}/`,
+      "user-agent": BROWSER_UA,
+    },
+    getVariants: (url) => [url],
+    buildError: (lastStatus) => `French Stream a répondu ${lastStatus || "sans réponse"}`,
+  });
+}
 
-function isAllowedHost(hostname = "") {
-  return String(hostname).toLowerCase() === BASE_HOST || String(hostname).toLowerCase() === `www.${BASE_HOST}`;
+function isAllowedHost(hostname = "", ctx = DEFAULT_CTX) {
+  return ctx.allowedHosts.has(String(hostname).toLowerCase());
 }
 
 function buildFrenchStreamStreamProxyPath(targetUrl, referer = "") {
@@ -104,13 +108,13 @@ export async function resolveFrenchStreamDirectStream(embedUrl = "") {
   return resolveEmbedDirectStream(embedUrl);
 }
 
-export function normalizeFrenchStreamUrl(rawUrl = "") {
+export function normalizeFrenchStreamUrl(rawUrl = "", ctx = DEFAULT_CTX) {
   const decoded = decodeHtml(rawUrl);
   if (!decoded) return "";
   try {
-    const url = new URL(decoded, BASE_URL);
-    if (url.protocol !== "https:" || !isAllowedHost(url.hostname)) return "";
-    url.hostname = BASE_HOST;
+    const url = new URL(decoded, ctx.baseUrl);
+    if (url.protocol !== "https:" || !isAllowedHost(url.hostname, ctx)) return "";
+    url.hostname = ctx.apex;
     url.hash = "";
     return url.toString();
   } catch {
@@ -136,7 +140,7 @@ export function assertMovieUrl(rawUrl) {
   const url = assertFrenchStreamHost(rawUrl);
   const newsId = newsIdFromUrl(url.toString());
   if (!newsId) throw new Error("رابط French Stream غير صالح");
-  return `${BASE_URL}/index.php?newsid=${newsId}`;
+  return `${DEFAULT_BASE_URL}/index.php?newsid=${newsId}`;
 }
 
 export function episodeNumberFromUrl(rawUrl = "") {
@@ -328,7 +332,7 @@ export function parseFrenchStreamFilters(html = "", { includeSeriesGenres = fals
     const href = decodeHtml(match[1].match(/href\s*=\s*["']([^"']+)["']/i)?.[1] ?? "");
     if (!href) continue;
     let target;
-    try { target = new URL(href, BASE_URL); } catch { continue; }
+    try { target = new URL(href, DEFAULT_BASE_URL); } catch { continue; }
     if (!isAllowedHost(target.hostname)) continue;
     const path = `${target.pathname}${target.pathname.endsWith("/") ? "" : "/"}`;
     const name = textOnly(match[2]).replace(/^#/, "").trim();
@@ -462,13 +466,13 @@ function catalogHasMore(html, page) {
 
 function buildCatalogUrl(page, filterPath = CATALOG_PATH) {
   const path = assertFilterPath(filterPath);
-  if (page <= 1) return `${BASE_URL}${path}`;
+  if (page <= 1) return `${DEFAULT_BASE_URL}${path}`;
   if (path.startsWith("/xfsearch/")) {
     const trimmed = path.endsWith("/") ? path : `${path}/`;
-    return `${BASE_URL}${trimmed}page/${page}/`;
+    return `${DEFAULT_BASE_URL}${trimmed}page/${page}/`;
   }
   const category = path.replace(/^\/+|\/+$/g, "").split("/").pop() || "films";
-  return `${BASE_URL}/index.php?cstart=${page}&do=cat&category=${encodeURIComponent(category)}`;
+  return `${DEFAULT_BASE_URL}/index.php?cstart=${page}&do=cat&category=${encodeURIComponent(category)}`;
 }
 
 export function parseFrenchStreamDetails(html, url) {
@@ -688,7 +692,7 @@ export function episodeToPlayers(episodeData, episodeNumber) {
 }
 
 function firstPlayableEpisode(episodeData) {
-  const chapters = parseFrenchStreamSeriesChapters(episodeData, `${BASE_URL}/index.php?newsid=1`);
+  const chapters = parseFrenchStreamSeriesChapters(episodeData, `${DEFAULT_BASE_URL}/index.php?newsid=1`);
   return chapters[0]?.number || "";
 }
 
@@ -800,10 +804,10 @@ async function enrichFrenchStreamPlayback(api, details, language = "") {
 }
 
 async function fetchFilmApi(newsId) {
-  const response = await fetchWithRetries(`${BASE_URL}/engine/ajax/film_api.php?id=${encodeURIComponent(newsId)}`, {
+  const response = await fetchWithRetries(`${DEFAULT_BASE_URL}/engine/ajax/film_api.php?id=${encodeURIComponent(newsId)}`, {
     headers: {
       accept: "application/json, text/javascript, */*; q=0.01",
-      referer: `${BASE_URL}/index.php?newsid=${newsId}`,
+      referer: `${DEFAULT_BASE_URL}/index.php?newsid=${newsId}`,
       "user-agent": BROWSER_UA,
       "x-requested-with": "XMLHttpRequest",
     },
@@ -815,10 +819,10 @@ async function fetchFilmApi(newsId) {
 
 async function fetchEpisodeData(newsId) {
   const paths = [
-    `${BASE_URL}/static/series/${newsId}.js`,
-    `${BASE_URL}/assets/poster_${newsId}.json`,
-    `${BASE_URL}/data/eps_${newsId}.txt`,
-    `${BASE_URL}/ep-data.php?id=${encodeURIComponent(newsId)}&format=js`,
+    `${DEFAULT_BASE_URL}/static/series/${newsId}.js`,
+    `${DEFAULT_BASE_URL}/assets/poster_${newsId}.json`,
+    `${DEFAULT_BASE_URL}/data/eps_${newsId}.txt`,
+    `${DEFAULT_BASE_URL}/ep-data.php?id=${encodeURIComponent(newsId)}&format=js`,
   ];
   let lastError = null;
   for (const path of paths) {
@@ -826,7 +830,7 @@ async function fetchEpisodeData(newsId) {
       const response = await fetchWithRetries(path, {
         headers: {
           accept: "application/json, text/javascript, */*; q=0.01",
-          referer: `${BASE_URL}/index.php?newsid=${newsId}`,
+          referer: `${DEFAULT_BASE_URL}/index.php?newsid=${newsId}`,
           "user-agent": BROWSER_UA,
         },
         timeoutMs: 25_000,
@@ -848,11 +852,11 @@ async function fetchRelatedSeasons(serieTag, currentId) {
   if (!serieTag) return [];
   try {
     const response = await fetchWithRetries(
-      `${BASE_URL}/engine/ajax/get_seasons.php?serie_tag=${encodeURIComponent(serieTag)}&news_id=${encodeURIComponent(currentId)}`,
+      `${DEFAULT_BASE_URL}/engine/ajax/get_seasons.php?serie_tag=${encodeURIComponent(serieTag)}&news_id=${encodeURIComponent(currentId)}`,
       {
         headers: {
           accept: "application/json, text/javascript, */*; q=0.01",
-          referer: `${BASE_URL}/index.php?newsid=${currentId}`,
+          referer: `${DEFAULT_BASE_URL}/index.php?newsid=${currentId}`,
           "user-agent": BROWSER_UA,
           "x-requested-with": "XMLHttpRequest",
         },
@@ -867,13 +871,13 @@ async function fetchRelatedSeasons(serieTag, currentId) {
   }
 }
 
-async function fetchSearchHtml(query) {
-  const response = await fetchWithRetries(`${BASE_URL}/engine/ajax/search.php`, {
+async function fetchSearchHtml(query, baseUrl = DEFAULT_BASE_URL) {
+  const response = await fetchWithRetries(`${baseUrl}/engine/ajax/search.php`, {
     method: "POST",
     headers: {
       accept: "text/html, */*; q=0.01",
       "content-type": "application/x-www-form-urlencoded",
-      referer: `${BASE_URL}/`,
+      referer: `${baseUrl}/`,
       "user-agent": BROWSER_UA,
       "x-requested-with": "XMLHttpRequest",
     },
@@ -885,8 +889,11 @@ async function fetchSearchHtml(query) {
 }
 
 export async function handleFrenchStreamRequest(requestUrl) {
+  const ctx = resolveSourceRequestContext(requestUrl, DEFAULT_BASE_URL, { label: SOURCE_NAME });
+  const fetchFrenchStreamHtml = createFrenchStreamFetcher(ctx.baseUrl);
+
   if (requestUrl.pathname.endsWith("/image")) {
-    return fetchProxiedImage(assertFrenchStreamImageUrl(requestUrl.searchParams.get("url") ?? ""), `${BASE_URL}/`, SOURCE_NAME);
+    return fetchProxiedImage(assertFrenchStreamImageUrl(requestUrl.searchParams.get("url") ?? ""), `${ctx.baseUrl}/`, SOURCE_NAME);
   }
 
   if (requestUrl.pathname.endsWith("/stream")) {
@@ -902,8 +909,8 @@ export async function handleFrenchStreamRequest(requestUrl) {
 
   if (requestUrl.pathname.endsWith("/filters")) {
     const [filmsHtml, seriesHtml] = await Promise.all([
-      fetchFrenchStreamHtml(`${BASE_URL}${CATALOG_PATH}`),
-      fetchFrenchStreamHtml(`${BASE_URL}${SERIES_PATH}`),
+      fetchFrenchStreamHtml(`${ctx.baseUrl}${CATALOG_PATH}`),
+      fetchFrenchStreamHtml(`${ctx.baseUrl}${SERIES_PATH}`),
     ]);
     const films = parseFrenchStreamFilters(filmsHtml);
     const series = parseFrenchStreamFilters(seriesHtml, { includeSeriesGenres: true });
@@ -951,7 +958,7 @@ export async function handleFrenchStreamRequest(requestUrl) {
   if (requestUrl.pathname.endsWith("/search")) {
     const { query, valid } = normalizeSearchQuery(requestUrl.searchParams.get("q"));
     if (!valid) return responseJson(200, { items: [] });
-    const html = await fetchSearchHtml(query);
+    const html = await fetchSearchHtml(query, ctx.baseUrl);
     return responseJson(200, { items: parseFrenchStreamSearch(html) });
   }
 

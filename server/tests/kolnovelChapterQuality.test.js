@@ -33,13 +33,12 @@ test("extractParadiseParagraphs produces healthy kolnovel hash chapters", () => 
 test("other novel parsers do not use paradise hash extraction", async () => {
   const sources = [
     "../sources/nightnovel.js",
-    "../sources/realmnovel.js",
+    "../sources/animedar.js",
     "../sources/dilar.js",
     "../sources/galaxynovels.js",
     "../sources/cenele.js",
     "../sources/azorafly.js",
     "../sources/mangalik.js",
-    "../sources/mangaforfree.js",
   ];
   for (const sourcePath of sources) {
     const source = await import(sourcePath);
