@@ -3,6 +3,7 @@ import { Check, ChevronLeft, Moon, Snowflake, Sun } from "lucide-react";
 import { SheetCloseButton } from "../components/ui/SheetCloseButton";
 import { SheetPortal } from "../components/ui/SheetPortal";
 import { SakuraIcon } from "../components/atmosphere/SakuraIcon";
+import { LuneNeigeThemePreview } from "../components/atmosphere/LuneNeigeThemePreview";
 import { useI18n } from "../i18n/I18nProvider";
 import {
   THEME_INK,
@@ -37,10 +38,17 @@ function ThemeSelector({ appearance, onSetAppearance }) {
           <button
             key={id}
             type="button"
-            className={active ? "active" : ""}
+            className={[
+              "theme-selector__option",
+              active ? "active" : "",
+              id === THEME_YOZAKURA ? "theme-selector__option--yozakura" : "",
+              id === THEME_SAKURA ? "theme-selector__option--sakura" : "",
+              id === THEME_LUNE_NEIGE ? "theme-selector__option--lune-neige" : "",
+            ].filter(Boolean).join(" ")}
             aria-pressed={active}
             onClick={() => onSetAppearance(id)}
           >
+            {id === THEME_LUNE_NEIGE ? <LuneNeigeThemePreview /> : null}
             <ThemeOptionIcon Icon={Icon} />
             <span>
               <strong>{t(themeNameKey(id))}</strong>
@@ -85,7 +93,11 @@ export function ThemeSettingsSheet({ open, onClose, appearance, onSetAppearance 
       }}
     >
       <section
-        className="notify-sheet theme-sheet"
+        className={[
+          "notify-sheet",
+          "theme-sheet",
+          appearance === THEME_LUNE_NEIGE ? "theme-sheet--lune-neige" : "",
+        ].filter(Boolean).join(" ")}
         role="dialog"
         aria-modal="true"
         aria-labelledby="theme-sheet-title"

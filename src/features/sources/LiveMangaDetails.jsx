@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowRight, ArrowUpDown, Bell, BellRing, BookOpen, Bookmark, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clapperboard, ExternalLink, Lock, RefreshCw, Search, Wifi } from "lucide-react";
+import { ArrowRight, ArrowUpDown, Bell, BellRing, BookOpen, Bookmark, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ExternalLink, Lock, RefreshCw, Search, Wifi } from "lucide-react";
 import { useToast } from "../../components/ui/ToastProvider";
 import { getSourceProfile, resolveSourceId } from "../../config/sources";
 import { AccessibleSearchField } from "../../components/ui/AccessibleSearchField";
@@ -7,11 +7,24 @@ import { ChipFilterBar, ChipFilterButton } from "../../components/ui/ChipFilterB
 import { isChromebookApp, isNotifiableMediaType, PREFERRED_AUDIO_LANGUAGE } from "../../config/appFlavor";
 import { fetchSourceDetails } from "./sourceApi";
 import { DetailsActionHub } from "./DetailsActionHub";
+import { DetailsCinematicHero } from "./details/DetailsCinematicHero";
+import { DetailsHeroMeta } from "./details/DetailsHeroMeta";
+import {
+  buildDetailsHeroClasses,
+  buildDetailsScreenClasses,
+  buildMovieFactChips,
+  getDetailsHeroLayout,
+  isMovieMediaType,
+  shouldShowChapterList,
+} from "./details/detailsLayout";
+import { MovieWatchActions } from "./details/MovieWatchActions";
 import { RemoteCover } from "./RemoteCover";
 import { CoverAudioBadge } from "./CatalogCard";
 import { useResolvedCoverUrl } from "./useResolvedCoverUrl";
-import { findChapterByRecord, formatHistoryUnitLabel, getRecordProgress, isReadToday, isRecordCompleted } from "../../lib/readingProgress";
-import { SourceLogo } from "./SourceLogo";
+import { findChapterByRecord } from "../../lib/readingProgress";
+import {
+  DetailsContentSkeleton,
+} from "../../components/ui/ContentSkeleton";
 import { FollowAlertSheet } from "../updates/FollowAlertSheet";
 import { contentTypes, resolveBookmarkType } from "./contentTypes";
 import { burstSakuraFrom } from "../../lib/sakura/burst";
@@ -83,61 +96,6 @@ function AudioLanguagePicker({ languages, value, onChange, className = "" }) {
           </ChipFilterButton>
         ))}
       </ChipFilterBar>
-    </div>
-  );
-}
-
-function MovieDesktopActions({
-  presentation,
-  latestChapter,
-  continueChapter,
-  readingProgress,
-  audioLanguage,
-  onOpen,
-  audioPicker,
-}) {
-  const { t } = useI18n();
-  const hasContinue = Boolean(readingProgress && continueChapter);
-  const targetChapter = hasContinue ? continueChapter : latestChapter;
-  if (!targetChapter) return audioPicker ? <div className="details-movie-hero-actions">{audioPicker}</div> : null;
-
-  const progress = hasContinue ? getRecordProgress(readingProgress) : 0;
-  const readToday = hasContinue && isReadToday(readingProgress);
-  const completed = hasContinue && isRecordCompleted(readingProgress);
-  const hint = hasContinue
-    ? (completed ? (readToday ? presentation.watchedToday : presentation.lastUnitComplete) : presentation.continueAction)
-    : t("media.readyToPlay");
-  const title = hasContinue
-    ? formatHistoryUnitLabel(readingProgress)
-    : presentation.watchLatest;
-
-  return (
-    <div className="details-movie-hero-actions">
-      <button
-        type="button"
-        className={`details-movie-watch${readToday ? " details-movie-watch--today" : ""}`}
-        onClick={() => onOpen(targetChapter)}
-      >
-        <span className="details-movie-watch__icon" aria-hidden="true">
-          <Clapperboard size={20} />
-        </span>
-        <span className="details-movie-watch__copy">
-          <small>{hint}</small>
-          <strong>{title}</strong>
-        </span>
-        {hasContinue && !completed ? (
-          <em className="details-movie-watch__progress">{progress}%</em>
-        ) : (
-          <span className="details-movie-watch__badge">{audioLanguage || t("media.movieHd")}</span>
-        )}
-        <ChevronLeft size={18} className="details-movie-watch__arrow" aria-hidden="true" />
-        {hasContinue && !completed ? (
-          <span className="details-movie-watch__track" aria-hidden="true">
-            <span style={{ width: `${progress}%` }} />
-          </span>
-        ) : null}
-      </button>
-      {audioPicker}
     </div>
   );
 }
@@ -348,7 +306,7 @@ export function LiveMangaDetails({
     ? t(`details.status.${publicationStatusKey}`)
     : (item.publicationStatusLabel || "");
   const mediaType = resolveBookmarkType(item);
-  const isMovieDesktop = isChromebookApp && mediaType === "movie";
+  const isMoviePage = isMovieMediaType(mediaType);
   const presentation = getMediaPresentation(mediaType);
   const isNovel = presentation.isNovel;
   const isVideo = presentation.isVideo;
@@ -376,17 +334,20 @@ export function LiveMangaDetails({
     mediaType !== "movie" ? countLabel : null,
     sourceId === "galaxynovels" && item.author ? `${t("details.authorLabel")}: ${item.author}` : null,
   ].filter(Boolean);
-  const movieFactChips = isMovieDesktop
-    ? [item.year, item.duration, item.audioLabel].filter(Boolean)
-    : heroFacts;
+  const movieFactChips = buildMovieFactChips({
+    year: item.year,
+    duration: item.duration,
+    audioLanguage,
+    audioLabel: item.audioLabel,
+  });
+  const heroLayout = getDetailsHeroLayout({ isVideo, mediaType });
   const followPreference = chapterFollow?.getPreference(item);
   const isFollowing = Boolean(followPreference?.enabled);
   const canFollowUpdates = Boolean(chapterFollow) && isNotifiableMediaType(mediaType);
-  const showChapterList = mediaType !== "movie" || chapters.length !== 1;
+  const showChapterList = shouldShowChapterList(mediaType, chapters.length);
   const showAbout = Boolean(item.summary) || categories.length > 0 || tags.length > 0;
-  const showActionHubInHero = status === "ready" && !isChromebookApp;
-  const showActionHubInChapters = status === "ready" && isChromebookApp && showChapterList;
-  const showMovieHeroActions = status === "ready" && isMovieDesktop && Boolean(latestChapter);
+  const showActionHubInDock = status === "ready" && !isMoviePage;
+  const showMovieActionsInDock = status === "ready" && isMoviePage;
   const relatedItems = item.relatedItems || [];
 
   function resolveChapter(chapter) {
@@ -418,10 +379,78 @@ export function LiveMangaDetails({
     />
   ) : null;
 
+  const heroCover = (
+    <figure className="live-details-hero__cover">
+      <RemoteCover
+        src={item.cover}
+        title={item.title}
+        sourceId={sourceId}
+        hero
+        novel={isNovel}
+        video={isVideo}
+        priority
+      />
+      <CoverAudioBadge label={availableAudioLanguages.length ? audioLanguage : item.audioLabel} />
+    </figure>
+  );
+
+  const heroMeta = (
+    <DetailsHeroMeta
+      isLoading={status === "loading"}
+      mediaType={mediaType}
+      typeLabel={typeLabel}
+      publicationStatusKey={publicationStatusKey}
+      publicationStatusLabel={publicationStatusLabel}
+      title={item.title}
+      altTitle={altTitle}
+      showAltTitle={!altIsMeta}
+      factChips={movieFactChips}
+      factLine={heroFacts}
+      useFactChips={isMoviePage}
+      sourceId={sourceId}
+      sourceName={profile.name}
+    />
+  );
+
+  const heroActions = showMovieActionsInDock ? (
+    <MovieWatchActions
+      presentation={presentation}
+      latestChapter={latestChapter ? resolveChapter(latestChapter) : null}
+      continueChapter={continueChapter}
+      readingProgress={readingProgress}
+      audioLanguage={audioLanguage}
+      onOpen={openChapter}
+      audioPicker={audioLanguagePicker}
+    />
+  ) : (
+    <>
+      {showActionHubInDock && detailsActionHub}
+      {status === "ready" && audioLanguagePicker}
+    </>
+  );
+
+  const screenClassName = buildDetailsScreenClasses({
+    isVideo,
+    isNovel,
+    isManga: !isVideo && !isNovel,
+    isChromebookApp,
+    isMoviePage,
+    mediaType,
+  });
+
+  const heroClassName = buildDetailsHeroClasses({
+    presentation,
+    heroLayout,
+    isLoading: status === "loading",
+  });
+
   return (
     <>
-    <div dir={dir} className={`screen screen--live-details${isVideo ? " screen--live-video screen--live-anime" : ""}${isChromebookApp ? " screen--details-desktop" : ""}${isMovieDesktop ? " screen--details-movie" : ""}`}>
-      <div className={`live-details-hero${presentation.heroClass ? ` ${presentation.heroClass}` : ""}`}>
+    <div
+      dir={dir}
+      className={screenClassName}
+    >
+      <div className={heroClassName}>
         {coverBackdropUrl && (
           <div className="live-details-hero__backdrop" aria-hidden="true">
             <img src={coverBackdropUrl} alt="" />
@@ -446,84 +475,22 @@ export function LiveMangaDetails({
             <a className="icon-button icon-button--glass" href={seed.url} target="_blank" rel="noopener noreferrer" aria-label={t("details.openInSource")}><ExternalLink size={19} /></a>
           </div>
         </div>
-        <div className="live-details-hero__content">
-          <figure className="live-details-hero__cover">
-            <RemoteCover
-              src={item.cover}
-              title={item.title}
-              sourceId={sourceId}
-              hero
-              novel={isNovel}
-              video={isVideo}
-              priority
-            />
-            <CoverAudioBadge label={availableAudioLanguages.length ? audioLanguage : item.audioLabel} />
-          </figure>
-          <div className="live-details-hero__meta">
-            <div className="details-source-line">
-              <span className={`media-type-badge media-type-badge--${mediaType}`}>{typeLabel}</span>
-              {publicationStatusLabel ? (
-                <span className={`publication-status publication-status--${publicationStatusKey || "unknown"}`}>
-                  {publicationStatusLabel}
-                </span>
-              ) : null}
-            </div>
-            <h1 className="live-details-hero__title" dir="auto">{item.title}</h1>
-            {!altIsMeta && altTitle ? <p className="live-details-hero__subtitle" dir="auto">{altTitle}</p> : null}
-            {heroFacts.length ? (
-              isMovieDesktop ? (
-                <ul className="live-details-hero__facts live-details-hero__facts--chips">
-                  {movieFactChips.map((fact) => <li key={fact}>{fact}</li>)}
-                </ul>
-              ) : (
-                <p className="live-details-hero__facts">{heroFacts.join(" · ")}</p>
-              )
-            ) : null}
-            <div className="live-details-hero__source">
-              <SourceLogo sourceId={sourceId} />
-              <span>{profile.name}</span>
-            </div>
-            {!showMovieHeroActions && (
-              <>
-                {showActionHubInHero && detailsActionHub}
-                {status === "ready" && audioLanguagePicker}
-              </>
-            )}
-          </div>
-          {showMovieHeroActions && (
-            <aside className="live-details-hero__aside">
-              <MovieDesktopActions
-                presentation={presentation}
-                latestChapter={latestChapter ? resolveChapter(latestChapter) : null}
-                continueChapter={continueChapter}
-                readingProgress={readingProgress}
-                audioLanguage={audioLanguage}
-                onOpen={openChapter}
-                audioPicker={audioLanguagePicker}
-              />
-            </aside>
-          )}
-        </div>
+        <DetailsCinematicHero
+          heroLayout={heroLayout}
+          status={status}
+          heroCover={heroCover}
+          heroMeta={heroMeta}
+          heroActions={heroActions}
+        />
       </div>
-      <main className={`content details-content${isMovieDesktop ? " details-content--movie" : ""}`}>
+      <main className={`content details-content${isMoviePage ? " details-content--movie" : ""}`}>
         {status === "loading" ? (
-          <>
-            <div className="catalog-reload" role="status" aria-live="polite">
-              <RefreshCw size={15} aria-hidden="true" />
-              <span>
-                <strong>{presentation.loadingList}</strong>
-                <small>{t("sources.connecting")}</small>
-              </span>
-            </div>
-            <div className="chapter-list live-chapter-list" aria-hidden="true">
-              {Array.from({ length: 6 }, (_, index) => (
-                <div className="chapter-row-skeleton" key={index}>
-                  <span />
-                  <span />
-                </div>
-              ))}
-            </div>
-          </>
+          <DetailsContentSkeleton
+            label={presentation.loadingList}
+            isMovie={isMoviePage}
+            showSidebar={isVideo || isNovel || Boolean(seed.summary)}
+            chapterCount={showChapterList ? 8 : 0}
+          />
         ) : status === "error" ? <div className="live-error"><Wifi size={30} /><h2>{t("details.loadDetailsFailed")}</h2><p>{error}</p><button className="button button--primary" onClick={load}><RefreshCw size={17} /> {t("common.retry")}</button></div> : <>
           {(showAbout || (isVideo && onOpenRelated)) && (
             <div className="details-sidebar">
@@ -572,26 +539,17 @@ export function LiveMangaDetails({
               items={relatedItems}
               onOpen={onOpenRelated}
               mediaType={mediaType}
-              layout={isMovieDesktop ? "movie-strip" : "scroll"}
+              layout={isMoviePage ? "movie-strip" : "scroll"}
             />
           )}
             </div>
           )}
           {showChapterList && (
           <section className={`details-chapters${isChromebookApp ? " details-chapters--desktop" : ""}`} aria-labelledby="details-chapters-title">
-            {showActionHubInChapters && detailsActionHub}
             <div className="details-section-heading">
               <h2 id="details-chapters-title">{presentation.sectionTitle}</h2>
               <strong>{filteredChapters.length}</strong>
             </div>
-            {status === "ready" && availableAudioLanguages.length > 0 && (
-              <AudioLanguagePicker
-                className="details-audio-language--chapters"
-                languages={availableAudioLanguages}
-                value={audioLanguage}
-                onChange={setAudioLanguage}
-              />
-            )}
             {chapters.length > 15 && <div className="chapter-tools"><AccessibleSearchField className="global-search chapter-search" value={chapterQuery} onChange={setChapterQuery} placeholder={presentation.searchPlaceholder} ariaLabel={t("details.searchInUnits", { units: presentation.units })} /><button className="chapter-order" onClick={() => setChapterOrder((order) => order === "desc" ? "asc" : "desc")}><ArrowUpDown size={16} /><span>{chapterOrder === "desc" ? t("details.newestFirst") : t("details.oldestFirst")}</span></button></div>}
             {chapterAuthors.length > 0 && (
               <ChipFilterBar variant="segmented" className="details-chapter-author-filter" role="group" ariaLabel={t("details.authorFilterAria")}>

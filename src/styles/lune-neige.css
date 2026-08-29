@@ -1,4 +1,220 @@
-/* Lune Mère · neige sous la lune */
+/* Lune Mer · neige de verre sous la lune sur la mer */
+
+.theme-selector--five > .theme-selector__option--lune-neige {
+  grid-column: 1 / -1;
+  min-height: 108px;
+}
+
+.lune-neige-preview {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.lune-neige-preview__sky {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 78% 14%, rgba(214, 230, 255, .24), transparent 36%),
+    linear-gradient(180deg, #1a2d4a 0%, #0d1522 54%, #101a2a 100%);
+}
+
+.lune-neige-preview__aurora {
+  position: absolute;
+  inset: -20% -10% auto;
+  height: 58%;
+  opacity: .42;
+  background:
+    radial-gradient(ellipse 70% 45% at 22% 40%, rgba(142, 180, 232, .22), transparent 68%),
+    radial-gradient(ellipse 55% 38% at 68% 28%, rgba(200, 218, 245, .14), transparent 72%);
+  filter: blur(8px);
+}
+
+.lune-neige-preview__stars {
+  position: absolute;
+  inset: 0;
+  opacity: .78;
+  background:
+    radial-gradient(circle at 12% 20%, rgba(238, 244, 255, .62) 0 1px, transparent 2px),
+    radial-gradient(circle at 34% 14%, rgba(214, 230, 255, .48) 0 1px, transparent 2px),
+    radial-gradient(circle at 56% 24%, rgba(238, 244, 255, .42) 0 1px, transparent 2px),
+    radial-gradient(circle at 22% 38%, rgba(200, 218, 245, .36) 0 1px, transparent 2px),
+    radial-gradient(circle at 74% 18%, rgba(238, 244, 255, .4) 0 1px, transparent 2px),
+    radial-gradient(circle at 88% 30%, rgba(214, 230, 255, .34) 0 1px, transparent 2px);
+  animation: lune-neige-preview-twinkle 4.8s ease-in-out infinite alternate;
+}
+
+@keyframes lune-neige-preview-twinkle {
+  0% { opacity: .55; }
+  100% { opacity: .92; }
+}
+
+.lune-neige-preview__moon {
+  position: absolute;
+  top: 9%;
+  right: 9%;
+  width: 38px;
+  height: 38px;
+  animation: lune-neige-preview-moon-pulse 5.5s ease-in-out infinite;
+}
+
+@keyframes lune-neige-preview-moon-pulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.08); }
+}
+
+.lune-neige-preview__moon-disc {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 32%, #fffef8 0%, #eef4ff 58%, #d6e6ff 100%);
+  box-shadow: 0 0 18px rgba(214, 230, 255, .62);
+}
+
+.lune-neige-preview__moon-glow {
+  position: absolute;
+  inset: -48%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(214, 230, 255, .38), transparent 68%);
+}
+
+.lune-neige-preview__sea {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 44%;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, transparent 0%, rgba(78, 120, 180, .14) 24%, rgba(36, 64, 108, .38) 100%);
+  border-top: 1px solid rgba(214, 230, 255, .18);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: inset 0 10px 22px rgba(214, 230, 255, .1);
+}
+
+.lune-neige-preview__sea-wave {
+  position: absolute;
+  left: -8%;
+  right: -8%;
+  top: 14%;
+  height: 42%;
+  border-radius: 45%;
+  background: linear-gradient(180deg, rgba(214, 230, 255, .08), rgba(142, 180, 232, .16));
+  animation: lune-neige-preview-wave 6s ease-in-out infinite;
+}
+
+@keyframes lune-neige-preview-wave {
+  0%, 100% { transform: translateX(-3%) translateY(0); }
+  50% { transform: translateX(3%) translateY(2px); }
+}
+
+.lune-neige-preview__moon-reflection {
+  position: absolute;
+  top: 22%;
+  right: 11%;
+  width: 18px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, rgba(214, 230, 255, .34), transparent 88%);
+  filter: blur(1px);
+  opacity: .72;
+  animation: lune-neige-preview-reflection 5.5s ease-in-out infinite;
+}
+
+@keyframes lune-neige-preview-reflection {
+  0%, 100% { opacity: .55; transform: scaleY(1); }
+  50% { opacity: .82; transform: scaleY(1.08); }
+}
+
+.lune-neige-preview__snow {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.lune-neige-preview__snow--far {
+  z-index: 1;
+  opacity: .85;
+}
+
+.lune-neige-preview__snow--near {
+  z-index: 3;
+}
+
+.lune-neige-preview__veil {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: linear-gradient(90deg, transparent 18%, rgba(13, 21, 34, .42) 42%, rgba(13, 21, 34, .42) 68%, transparent 88%);
+  pointer-events: none;
+}
+
+@keyframes lune-neige-preview-fall {
+  0% {
+    transform: translate3d(calc(-50% - var(--flake-drift, 0px)), -16%, 0);
+    opacity: 0;
+  }
+
+  8% {
+    opacity: var(--flake-opacity, .65);
+  }
+
+  90% {
+    opacity: var(--flake-opacity, .65);
+  }
+
+  100% {
+    transform: translate3d(calc(-50% + var(--flake-drift, 0px)), 114%, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes lune-neige-preview-spin {
+  to { transform: rotate(360deg); }
+}
+
+.lune-neige-preview__flake {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 0 5px rgba(214, 230, 255, .38));
+  animation: lune-neige-preview-fall var(--flake-duration, 4.2s) linear infinite;
+  animation-delay: var(--flake-delay, 0s);
+  will-change: transform, opacity;
+}
+
+.lune-neige-preview__flake--near .lune-neige-preview__flake-art {
+  animation: lune-neige-preview-spin var(--flake-spin, 6s) linear infinite;
+  transform-origin: center;
+}
+
+.lune-neige-preview__flake--far {
+  filter: blur(.2px) drop-shadow(0 0 2px rgba(214, 230, 255, .22));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lune-neige-preview__stars,
+  .lune-neige-preview__moon,
+  .lune-neige-preview__sea-wave,
+  .lune-neige-preview__moon-reflection {
+    animation: none;
+  }
+
+  .lune-neige-preview__flake {
+    top: var(--flake-rest-top, 32%);
+    animation: none;
+    opacity: var(--flake-opacity, .6);
+    transform: translate(-50%, -50%);
+  }
+
+  .lune-neige-preview__flake--near .lune-neige-preview__flake-art {
+    animation: none;
+  }
+}
 
 [data-theme="lune-neige"] .phone-frame,
 .app-shell--lune-neige .phone-frame {
@@ -136,7 +352,7 @@ body[data-theme="lune-neige"] {
   border-color: color-mix(in srgb, #c8daf5 40%, transparent);
 }
 
-[data-theme="lune-neige"] .theme-selector > button.active {
+[data-theme="lune-neige"] .theme-selector > button.active:not(.theme-selector__option--lune-neige) {
   border-color: var(--brand);
   background: color-mix(in srgb, var(--brand) 12%, var(--paper));
 }

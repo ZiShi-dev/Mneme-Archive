@@ -8,6 +8,6 @@ test("toPublicSourceError returns generic message", () => {
 });
 
 test("toPublicSourceError preserves Arabic messages", () => {
-  const message = toPublicSourceError(new Error("حماية Arabs Hentai منعت الاتصال مؤقتًا"));
-  assert.equal(message, "حماية Arabs Hentai منعت الاتصال مؤقتًا");
+  const message = toPublicSourceError(new Error("حماية HentaiRead منعت الاتصال مؤقتًا"));
+  assert.equal(message, "حماية HentaiRead منعت الاتصال مؤقتًا");
 });

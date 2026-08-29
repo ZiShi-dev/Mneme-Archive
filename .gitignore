@@ -3,6 +3,8 @@ dist/
 release/
 electron-dist/
 release-new/
+apk/
+aab/
 *.apk
 *.aab
 *.xapk
@@ -23,6 +25,7 @@ android/.gradle/
 android/app/build/
 android/build/
 android/captures/
+android/.build-flavor
 
 # Third-party APK dumps used only for local emulator experiments
 docker/android-emulator/apk/

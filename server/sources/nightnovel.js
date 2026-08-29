@@ -4,9 +4,10 @@ import { splitNightNovelParagraphs } from "../lib/nightNovelText.js";
 import { normalizeSearchQuery } from "../lib/queryLimits.js";
 import { responseJson } from "../lib/response.js";
 import { applyRecentChapterFields, recentChaptersFromCount } from "../lib/catalogChapters.js";
+import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
 
-const BASE_URL = "https://nightnovelapp.tech";
-const API_URL = `${BASE_URL}/api`;
+const DEFAULT_BASE_URL = "https://nightnovelapp.tech";
+const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
 const SOURCE_NAME = "Night Novel";
 const SOURCE_ID = "nightnovel";
 const LANG = "ar";
@@ -20,8 +21,8 @@ const API_HEADERS = {
   "user-agent": "Mozilla/5.0 (Android 14; Mobile) AppleWebKit/537.36 Chrome/124 Safari/537.36",
 };
 
-async function fetchJson(path, { headers = {}, method = "GET" } = {}) {
-  const response = await fetch(`${API_URL}${path}`, {
+async function fetchJson(path, { baseUrl = DEFAULT_BASE_URL, headers = {}, method = "GET" } = {}) {
+  const response = await fetch(`${baseUrl}/api${path}`, {
     method,
     redirect: "follow",
     headers: { ...API_HEADERS, ...headers },
@@ -35,12 +36,12 @@ async function fetchJson(path, { headers = {}, method = "GET" } = {}) {
   return data;
 }
 
-function assertNightNovelHost(rawUrl) {
+function assertNightNovelHost(rawUrl, ctx = DEFAULT_CTX) {
   const url = new URL(rawUrl);
-  if (url.protocol !== "https:" || !["nightnovelapp.tech", "www.nightnovelapp.tech"].includes(url.hostname)) {
+  if (url.protocol !== "https:" || !ctx.allowedHosts.has(url.hostname.toLowerCase())) {
     throw new Error("المصدر غير مسموح");
   }
-  url.hostname = "nightnovelapp.tech";
+  url.hostname = ctx.apex;
   url.hash = "";
   return url;
 }
@@ -51,12 +52,12 @@ function assertNightNovelImageUrl(rawUrl) {
   return url.toString();
 }
 
-function buildNovelUrl(slug) {
-  return `${BASE_URL}/novel/${slug}?lang=${LANG}`;
+function buildNovelUrl(slug, baseUrl = DEFAULT_BASE_URL) {
+  return `${baseUrl}/novel/${slug}?lang=${LANG}`;
 }
 
-function buildChapterUrl(novelId, chapterNumber) {
-  return `${BASE_URL}/read/${novelId}/chapter/${chapterNumber}?lang=${LANG}`;
+function buildChapterUrl(novelId, chapterNumber, baseUrl = DEFAULT_BASE_URL) {
+  return `${baseUrl}/read/${novelId}/chapter/${chapterNumber}?lang=${LANG}`;
 }
 
 export function slugFromNovelUrl(rawUrl) {
@@ -111,18 +112,18 @@ function latestChapterFromList(chapters = []) {
   };
 }
 
-function mapCatalogItem(novel) {
+function mapCatalogItem(novel, baseUrl = DEFAULT_BASE_URL) {
   const slug = novel.slug || String(novel.id || "");
   const totalChapters = Number(novel.totalChapters ?? novel.chapters ?? 0) || 0;
   const novelId = Number(novel.id) || null;
   const recentChapters = recentChaptersFromCount(totalChapters, (number) => (
-    novelId ? buildChapterUrl(novelId, number) : null
+    novelId ? buildChapterUrl(novelId, number, baseUrl) : null
   ));
   return applyRecentChapterFields({
     id: slug,
     title: novel.title || "",
     altTitle: novel.altTitle || "",
-    url: buildNovelUrl(slug),
+    url: buildNovelUrl(slug, baseUrl),
     cover: novel.coverPath || novel.image || "",
     source: SOURCE_NAME,
     sourceId: SOURCE_ID,
@@ -133,10 +134,10 @@ function mapCatalogItem(novel) {
   }, recentChapters);
 }
 
-function mapChapterEntry(chapter, novelId, slug) {
+function mapChapterEntry(chapter, novelId, slug, baseUrl = DEFAULT_BASE_URL) {
   const number = Number(chapter.number);
   return {
-    url: buildChapterUrl(novelId, number),
+    url: buildChapterUrl(novelId, number, baseUrl),
     name: chapter.title || String(number),
     number: String(number),
     date: chapter.publishedAt || chapter.published_at || "",
@@ -158,37 +159,37 @@ function parseChapterParagraphs(chapter = {}) {
   return [];
 }
 
-async function fetchChapterAccessToken(slug, chapterNumber) {
-  const data = await fetchJson(`/novels/${encodeURIComponent(slug)}/chapters/${chapterNumber}/read-access?lang=${LANG}`);
+async function fetchChapterAccessToken(slug, chapterNumber, baseUrl = DEFAULT_BASE_URL) {
+  const data = await fetchJson(`/novels/${encodeURIComponent(slug)}/chapters/${chapterNumber}/read-access?lang=${LANG}`, { baseUrl });
   const token = data?.data?.accessToken;
   if (!token || typeof token !== "string") throw new Error("تعذر الحصول على حق القراءة");
   return token;
 }
 
-async function fetchChapterPayload(slug, chapterNumber) {
-  const accessToken = await fetchChapterAccessToken(slug, chapterNumber);
+async function fetchChapterPayload(slug, chapterNumber, baseUrl = DEFAULT_BASE_URL) {
+  const accessToken = await fetchChapterAccessToken(slug, chapterNumber, baseUrl);
   const data = await fetchJson(
     `/novels/${encodeURIComponent(slug)}/chapters/${chapterNumber}?lang=${LANG}`,
-    { headers: { "X-Chapter-Read-Access": accessToken } },
+    { baseUrl, headers: { "X-Chapter-Read-Access": accessToken } },
   );
   return data?.data?.chapter || data?.chapter || data?.data || data;
 }
 
-async function resolveChapterSlug(target) {
+async function resolveChapterSlug(target, baseUrl = DEFAULT_BASE_URL) {
   if (target.slug) return target.slug;
-  const data = await fetchJson(`/novels/${target.novelId}/details?lang=${LANG}`);
+  const data = await fetchJson(`/novels/${target.novelId}/details?lang=${LANG}`, { baseUrl });
   const slug = data?.data?.novel?.slug || data?.novel?.slug;
   if (!slug) throw new Error("رواية Night Novel غير موجودة");
   return slug;
 }
 
-export async function parseNightNovelDetails(slug) {
-  const data = await fetchJson(`/novels/${encodeURIComponent(slug)}/details?lang=${LANG}`);
+export async function parseNightNovelDetails(slug, baseUrl = DEFAULT_BASE_URL) {
+  const data = await fetchJson(`/novels/${encodeURIComponent(slug)}/details?lang=${LANG}`, { baseUrl });
   const novel = data?.data?.novel || data?.novel || {};
   const chapters = data?.data?.chapters || data?.chapters || [];
   const novelId = Number(novel.id);
   const mappedChapters = chapters
-    .map((chapter) => mapChapterEntry(chapter, novelId, slug))
+    .map((chapter) => mapChapterEntry(chapter, novelId, slug, baseUrl))
     .filter((chapter) => chapter.number)
     .sort((a, b) => Number(b.number) - Number(a.number));
 
@@ -198,7 +199,7 @@ export async function parseNightNovelDetails(slug) {
     altTitle: novel.altTitle || "",
     cover: novel.image || novel.coverPath || "",
     summary: novel.description || "",
-    url: buildNovelUrl(slug),
+    url: buildNovelUrl(slug, baseUrl),
     source: SOURCE_NAME,
     sourceId: SOURCE_ID,
     mediaType: "novel",
@@ -220,8 +221,8 @@ export function parseNightNovelChapter(chapter, url) {
   };
 }
 
-async function fetchRecentCatalogPage(page, limit = CATALOG_PAGE_SIZE) {
-  const data = await fetchJson(`/novels/recent?lang=${LANG}&limit=${limit}&page=${page}`);
+async function fetchRecentCatalogPage(page, limit = CATALOG_PAGE_SIZE, baseUrl = DEFAULT_BASE_URL) {
+  const data = await fetchJson(`/novels/recent?lang=${LANG}&limit=${limit}&page=${page}`, { baseUrl });
   const novels = data.novels || data?.data?.novels || [];
   const items = [];
   const seen = new Set();
@@ -229,7 +230,7 @@ async function fetchRecentCatalogPage(page, limit = CATALOG_PAGE_SIZE) {
     const slug = novel.slug || String(novel.id || "");
     if (!slug || seen.has(slug)) continue;
     seen.add(slug);
-    items.push(mapCatalogItem(novel));
+    items.push(mapCatalogItem(novel, baseUrl));
   }
   return {
     items,
@@ -237,22 +238,22 @@ async function fetchRecentCatalogPage(page, limit = CATALOG_PAGE_SIZE) {
   };
 }
 
-async function fetchAllCatalogNovels() {
-  if (catalogCache && Date.now() - catalogCache.at < CATALOG_CACHE_TTL_MS) {
+async function fetchAllCatalogNovels(baseUrl = DEFAULT_BASE_URL) {
+  if (catalogCache && catalogCache.baseUrl === baseUrl && Date.now() - catalogCache.at < CATALOG_CACHE_TTL_MS) {
     return catalogCache.items;
   }
   const seen = new Set();
   const items = [];
   for (let page = 1; page <= 8; page += 1) {
     try {
-      const data = await fetchJson(`/novels/recent?lang=${LANG}&limit=50&page=${page}`);
+      const data = await fetchJson(`/novels/recent?lang=${LANG}&limit=50&page=${page}`, { baseUrl });
       const novels = data.novels || data?.data?.novels || [];
       if (!novels.length) break;
       for (const novel of novels) {
         const slug = novel.slug || String(novel.id || "");
         if (!slug || seen.has(slug)) continue;
         seen.add(slug);
-        items.push(mapCatalogItem(novel));
+        items.push(mapCatalogItem(novel, baseUrl));
       }
       if (novels.length < 50) break;
     } catch {
@@ -260,19 +261,22 @@ async function fetchAllCatalogNovels() {
       break;
     }
   }
-  catalogCache = { at: Date.now(), items };
+  catalogCache = { at: Date.now(), baseUrl, items };
   return items;
 }
 
 export async function handleNightNovelRequest(requestUrl) {
+  const ctx = resolveSourceRequestContext(requestUrl, DEFAULT_BASE_URL, { label: SOURCE_NAME });
+  const { baseUrl } = ctx;
+
   if (requestUrl.pathname.endsWith("/image")) {
-    return fetchProxiedImage(assertNightNovelImageUrl(requestUrl.searchParams.get("url") ?? ""), `${BASE_URL}/`, SOURCE_NAME);
+    return fetchProxiedImage(assertNightNovelImageUrl(requestUrl.searchParams.get("url") ?? ""), `${baseUrl}/`, SOURCE_NAME);
   }
 
   if (requestUrl.pathname.endsWith("/filters")) {
     const [categoriesData, tagsData] = await Promise.all([
-      fetchJson(`/library/categories?lang=${LANG}`),
-      fetchJson(`/library/tags?lang=${LANG}`),
+      fetchJson(`/library/categories?lang=${LANG}`, { baseUrl }),
+      fetchJson(`/library/tags?lang=${LANG}`, { baseUrl }),
     ]);
     const categories = (categoriesData.data || []).map((entry) => ({
       slug: entry.slug || String(entry.id || ""),
@@ -293,7 +297,7 @@ export async function handleNightNovelRequest(requestUrl) {
     const tag = requestUrl.searchParams.get("tag")?.trim() || "";
 
     if (!genre && !tag) {
-      const { items, hasMore } = await fetchRecentCatalogPage(page);
+      const { items, hasMore } = await fetchRecentCatalogPage(page, CATALOG_PAGE_SIZE, baseUrl);
       return responseJson(200, {
         items,
         page,
@@ -304,7 +308,7 @@ export async function handleNightNovelRequest(requestUrl) {
       });
     }
 
-    let items = await fetchAllCatalogNovels();
+    let items = await fetchAllCatalogNovels(baseUrl);
 
     if (genre) {
       const needle = genre.toLocaleLowerCase("ar");
@@ -341,15 +345,15 @@ export async function handleNightNovelRequest(requestUrl) {
 
   if (requestUrl.pathname.endsWith("/manga")) {
     const slug = slugFromNovelUrl(requestUrl.searchParams.get("url") ?? "");
-    const details = await parseNightNovelDetails(slug);
+    const details = await parseNightNovelDetails(slug, baseUrl);
     return responseJson(200, details);
   }
 
   if (requestUrl.pathname.endsWith("/chapter")) {
     const target = parseChapterTarget(requestUrl.searchParams.get("url") ?? "");
-    const slug = await resolveChapterSlug(target);
-    const chapter = await fetchChapterPayload(slug, target.chapterNumber);
-    const url = buildChapterUrl(Number(chapter.novelId || target.novelId), target.chapterNumber);
+    const slug = await resolveChapterSlug(target, baseUrl);
+    const chapter = await fetchChapterPayload(slug, target.chapterNumber, baseUrl);
+    const url = buildChapterUrl(Number(chapter.novelId || target.novelId), target.chapterNumber, baseUrl);
     return responseJson(200, parseNightNovelChapter(chapter, url));
   }
 

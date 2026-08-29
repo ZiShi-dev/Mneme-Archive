@@ -5,8 +5,10 @@ import { responseJson } from "../lib/response.js";
 import { applyRecentChapterFields, normalizeRecentChapters } from "../lib/catalogChapters.js";
 import { parseMadaraChapters, resolveMadaraChapters } from "../lib/madaraChapters.js";
 import { enrichSourceDetails } from "../lib/detailEnrichment.js";
+import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
 
-const BASE_URL = "https://mangalik.net";
+const DEFAULT_BASE_URL = "https://mangalik.net";
+const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
 
 let nativeHtmlFetcher = null;
 let nativeImageFetcher = null;
@@ -16,44 +18,56 @@ export function configureMangalikNativeFetch({ fetchHtml, fetchImage } = {}) {
   nativeImageFetcher = fetchImage ?? null;
 }
 
-const fetchHtml = createCachedHtmlFetcher({
-  ttlMs: 5 * 60_000,
-  headers: {
-    accept: "text/html,application/xhtml+xml",
-    "accept-language": "ar,en;q=0.9",
-    "cache-control": "no-cache",
-    "user-agent": "Mozilla/5.0 (Android 14; Mobile) AppleWebKit/537.36 Chrome/124 Safari/537.36",
-  },
-  getVariants: (url) => [url, url.replace("https://mangalik.net", "https://www.mangalik.net")],
-  buildError: (lastStatus) => (lastStatus === 403 ? "حماية MangaLik المؤقتة منعت الاتصال، أعد المحاولة بعد قليل" : `MangaLik a répondu ${lastStatus}`),
-});
+function createFetcher(baseUrl = DEFAULT_BASE_URL) {
+  const hostCtx = createHostContext(baseUrl);
+  return createCachedHtmlFetcher({
+    ttlMs: 5 * 60_000,
+    headers: {
+      accept: "text/html,application/xhtml+xml",
+      "accept-language": "ar,en;q=0.9",
+      "cache-control": "no-cache",
+      "user-agent": "Mozilla/5.0 (Android 14; Mobile) AppleWebKit/537.36 Chrome/124 Safari/537.36",
+    },
+    getVariants: (url) => {
+      try {
+        const parsed = new URL(url);
+        const alt = new URL(url);
+        alt.hostname = parsed.hostname === `www.${hostCtx.apex}` ? hostCtx.apex : `www.${hostCtx.apex}`;
+        return alt.toString() === url ? [url] : [url, alt.toString()];
+      } catch {
+        return [url];
+      }
+    },
+    buildError: (lastStatus) => (lastStatus === 403 ? "حماية MangaLik المؤقتة منعت الاتصال، أعد المحاولة بعد قليل" : `MangaLik a répondu ${lastStatus}`),
+  });
+}
 
-async function resolveHtml(url) {
+async function resolveHtml(url, fetchHtml) {
   if (nativeHtmlFetcher) return nativeHtmlFetcher(url);
   return fetchHtml(url);
 }
 
-function assertMangaLikUrl(rawUrl, chapter = false) {
+function assertMangaLikUrl(rawUrl, chapter = false, ctx = DEFAULT_CTX) {
   const url = new URL(rawUrl);
-  if (url.protocol !== "https:" || !["mangalik.net", "www.mangalik.net"].includes(url.hostname)) throw new Error("المصدر غير مسموح");
+  if (url.protocol !== "https:" || !ctx.allowedHosts.has(url.hostname.toLowerCase())) throw new Error("المصدر غير مسموح");
   const parts = url.pathname.split("/").filter(Boolean);
   if (parts[0] !== "manga" || parts.length < (chapter ? 3 : 2)) throw new Error("رابط MangaLik غير صالح");
-  url.hostname = "mangalik.net";
+  url.hostname = ctx.apex;
   return url.toString();
 }
 
-function assertMangaLikImageUrl(rawUrl) {
+function assertMangaLikImageUrl(rawUrl, ctx = DEFAULT_CTX) {
   const url = new URL(rawUrl);
-  const allowedHost = url.hostname === "mangalik.net" || url.hostname.endsWith(".mangalik.net");
+  const allowedHost = ctx.hostPattern.test(url.hostname) || url.hostname.endsWith(`.${ctx.apex}`);
   const allowedPath = url.pathname.startsWith("/manga/") || url.pathname.startsWith("/wp-content/uploads/");
   if (url.protocol !== "https:" || !allowedHost || !allowedPath) throw new Error("رابط الصورة غير مسموح");
   return url.toString();
 }
 
-async function proxyImage(rawUrl) {
-  const target = assertMangaLikImageUrl(rawUrl);
+async function proxyImage(rawUrl, ctx) {
+  const target = assertMangaLikImageUrl(rawUrl, ctx);
   if (nativeImageFetcher) return nativeImageFetcher(target);
-  return fetchProxiedImage(target, `${BASE_URL}/`, "MangaLik");
+  return fetchProxiedImage(target, `${ctx.baseUrl}/`, "MangaLik");
 }
 
 function parseCatalog(html) {
@@ -62,9 +76,9 @@ function parseCatalog(html) {
   const starts = [...html.matchAll(/<div[^>]*class="[^"]*page-item-detail[^"]*manga[^"]*"[^>]*>/gi)];
   starts.forEach((match, index) => {
     const block = html.slice(match.index, starts[index + 1]?.index ?? html.length);
-    const link = block.match(/<a[^>]*href="(https?:\/\/(?:www\.)?mangalik\.net\/manga\/[^\"]+\/?)"[^>]*(?:title="([^"]*)")?[^>]*>/i);
+    const link = block.match(/<a[^>]*href="(https?:\/\/[^"/]+\/manga\/[^\"]+\/?)"[^>]*(?:title="([^"]*)")?[^>]*>/i);
     if (!link) return;
-    const normalizedUrl = link[1].replace("www.mangalik.net", "mangalik.net");
+    const normalizedUrl = link[1].replace(/^https?:\/\/www\./i, "https://");
     if (seen.has(normalizedUrl)) return;
     const title = textOnly(block.match(/<div[^>]*class="[^"]*post-title[^"]*"[^>]*>[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/i)?.[1] ?? link[2] ?? "");
     if (!title) return;
@@ -83,7 +97,7 @@ function parseCatalog(html) {
 function parseGenres(html) {
   const genres = [];
   const seen = new Set();
-  for (const match of html.matchAll(/<a[^>]*href="https?:\/\/(?:www\.)?mangalik\.net\/manga-genre\/([^"\/?#]+)\/?"[^>]*>([\s\S]*?)<\/a>/gi)) {
+  for (const match of html.matchAll(/<a[^>]*href="https?:\/\/[^"/]+\/manga-genre\/([^"\/?#]+)\/?"[^>]*>([\s\S]*?)<\/a>/gi)) {
     const slug = decodeURIComponent(match[1]);
     if (seen.has(slug)) continue;
     const label = textOnly(match[2]);
@@ -96,15 +110,15 @@ function parseGenres(html) {
   return genres.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "ar"));
 }
 
-function parseMangaTags(html) {
+function parseMangaTags(html = "", ctx = DEFAULT_CTX) {
   const tags = [];
   const seen = new Set();
   for (const match of html.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)) {
     const href = decodeHtml(match[1].match(/href\s*=\s*["']([^"']+)["']/i)?.[1] ?? "");
     const itemProp = match[1].match(/itemprop\s*=\s*["']([^"']+)["']/i)?.[1]?.toLowerCase() ?? "";
     let target;
-    try { target = new URL(href, BASE_URL); } catch { continue; }
-    if (!["mangalik.net", "www.mangalik.net"].includes(target.hostname)) continue;
+    try { target = new URL(href, ctx.baseUrl); } catch { continue; }
+    if (!ctx.allowedHosts.has(target.hostname.toLowerCase())) continue;
     const parts = target.pathname.split("/").filter(Boolean);
     const taxonomyIndex = parts.findIndex((part) => /^(?:manga-|novel-)?tags?$/i.test(part));
     if (taxonomyIndex < 0 && !["tag", "keywords"].includes(itemProp)) continue;
@@ -118,15 +132,15 @@ function parseMangaTags(html) {
   return tags;
 }
 
-async function fetchMangaTagIndex() {
+async function fetchMangaTagIndex(baseUrl, fetchHtml) {
   const endpoints = ["tags", "manga-tag", "wp-manga-tag"];
   for (const endpoint of endpoints) {
     try {
-      const raw = await resolveHtml(`${BASE_URL}/wp-json/wp/v2/${endpoint}?per_page=40&orderby=count&order=desc`);
+      const raw = await resolveHtml(`${baseUrl}/wp-json/wp/v2/${endpoint}?per_page=40&orderby=count&order=desc`, fetchHtml);
       const data = JSON.parse(raw);
       if (!Array.isArray(data) || !data.length) continue;
       return data.map((entry) => {
-        const parts = (() => { try { return new URL(entry.link || "", BASE_URL).pathname.split("/").filter(Boolean); } catch { return []; } })();
+        const parts = (() => { try { return new URL(entry.link || "", baseUrl).pathname.split("/").filter(Boolean); } catch { return []; } })();
         return { slug: String(entry.slug || "").trim(), name: textOnly(String(entry.name || "")), count: Number(entry.count) || 0, archivePath: parts.slice(0, -1).join("/") || endpoint };
       }).filter((entry) => entry.slug && entry.name);
     } catch { /* Essayez la taxonomie WordPress suivante. */ }
@@ -134,14 +148,14 @@ async function fetchMangaTagIndex() {
   return [];
 }
 
-async function fetchMangaTagSitemap() {
+async function fetchMangaTagSitemap(baseUrl, fetchHtml) {
   const candidates = ["wp-sitemap-taxonomies-wp-manga-tag-1.xml", "wp-sitemap-taxonomies-manga-tag-1.xml", "manga-tag-sitemap.xml"];
   for (const filename of candidates) {
     try {
-      const xml = await resolveHtml(`${BASE_URL}/${filename}`);
+      const xml = await resolveHtml(`${baseUrl}/${filename}`, fetchHtml);
       const tags = [];
       const seen = new Set();
-      for (const match of xml.matchAll(/<loc>https?:\/\/(?:www\.)?mangalik\.net\/(manga-tag|tag|tags)\/([^<\/?#]+)\/?<\/loc>/gi)) {
+      for (const match of xml.matchAll(/<loc>https?:\/\/[^/]+\/(manga-tag|tag|tags)\/([^<\/?#]+)\/?<\/loc>/gi)) {
         const slug = decodeURIComponent(match[2]);
         if (!slug || seen.has(slug)) continue;
         seen.add(slug);
@@ -162,7 +176,7 @@ function parseSearch(html) {
     const block = html.slice(match.index, starts[index + 1]?.index ?? html.length);
     const link = block.match(/<a[^>]*href="(https?:\/\/(?:www\.)?mangalik\.net\/manga\/[^\"]+\/?)"[^>]*(?:title="([^"]*)")?[^>]*>/i);
     if (!link) return;
-    const url = link[1].replace("www.mangalik.net", "mangalik.net");
+    const url = link[1].replace(/^https?:\/\/www\./i, "https://");
     if (seen.has(url)) return;
     const title = textOnly(block.match(/<div[^>]*class="[^"]*post-title[^"]*"[^>]*>[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/i)?.[1] ?? link[2] ?? "");
     const imageTag = block.match(/<div[^>]*class="[^"]*tab-thumb[^"]*"[^>]*>[\s\S]*?<img[^>]*>/i)?.[0] ?? "";
@@ -174,17 +188,17 @@ function parseSearch(html) {
   return results;
 }
 
-function parseManga(html, url) {
+function parseManga(html, url, ctx = DEFAULT_CTX) {
   const title = textOnly(html.match(/<div[^>]*class="[^"]*post-title[^"]*"[^>]*>[\s\S]*?<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ?? "");
   const coverBlock = html.match(/<div[^>]*class="[^"]*summary_image[^"]*"[^>]*>([\s\S]*?)<\/div>/i)?.[1] ?? "";
   const cover = coverBlock.match(/<img[^>]*(?:src|data-src)="\s*([^\"]+)"/i)?.[1]?.trim() ?? "";
   const altTitle = textOnly(html.match(/<div[^>]*class="[^"]*post-content_item[^"]*mg_alternative[^"]*"[^>]*>[\s\S]*?<div[^>]*class="[^"]*summary-content[^"]*"[^>]*>([\s\S]*?)<\/div>/i)?.[1] ?? "");
   const summary = textOnly(html.match(/<div[^>]*class="[^"]*summary__content[^"]*"[^>]*>([\s\S]*?)<\/div>/i)?.[1] ?? "");
   const chapters = parseMadaraChapters(html, {
-    normalizeUrl: (rawUrl) => rawUrl.replace("www.mangalik.net", "mangalik.net"),
+    normalizeUrl: (rawUrl) => rawUrl.replace(/^https?:\/\/www\./i, "https://"),
   });
-  const taxonomies = parseDetailTaxonomies(html, BASE_URL);
-  const tagFilters = parseMangaTags(html);
+  const taxonomies = parseDetailTaxonomies(html, ctx.baseUrl);
+  const tagFilters = parseMangaTags(html, ctx);
   return enrichSourceDetails({
     id: new URL(url).pathname.split("/").filter(Boolean).pop(),
     title,
@@ -213,20 +227,24 @@ function parseChapter(html, url) {
   return { title, url, pages };
 }
 
-async function resolveMangaDetails(url) {
-  const html = await resolveHtml(url);
-  const details = parseManga(html, url);
+async function resolveMangaDetails(url, ctx, fetchHtml) {
+  const html = await resolveHtml(url, fetchHtml);
+  const details = parseManga(html, url, ctx);
   details.chapters = await resolveMadaraChapters(html, {
-    baseUrl: BASE_URL,
+    baseUrl: ctx.baseUrl,
     refererUrl: url,
-    normalizeUrl: (rawUrl) => rawUrl.replace("www.mangalik.net", "mangalik.net"),
+    normalizeUrl: (rawUrl) => rawUrl.replace(/^https?:\/\/www\./i, "https://"),
   });
   return details;
 }
 
 export async function handleMangalikRequest(requestUrl) {
+  const ctx = resolveSourceRequestContext(requestUrl, DEFAULT_BASE_URL, { label: "MangaLik" });
+  const fetchHtml = createFetcher(ctx.baseUrl);
+  const { baseUrl } = ctx;
+
   if (requestUrl.pathname.endsWith("/image")) {
-    return await proxyImage(requestUrl.searchParams.get("url") ?? "");
+    return await proxyImage(requestUrl.searchParams.get("url") ?? "", ctx);
   }
   if (requestUrl.pathname.endsWith("/catalog")) {
     const page = Math.min(Math.max(Number(requestUrl.searchParams.get("page")) || 1, 1), 1000);
@@ -238,27 +256,27 @@ export async function handleMangalikRequest(requestUrl) {
     if (!/^[a-z0-9/-]+$/i.test(tagPath) || tagPath.includes("..") || tagPath.startsWith("/") || tagPath.endsWith("/")) throw new Error("مسار وسم MangaLik غير صالح");
     if (genre && tag) throw new Error("اختر تصنيفًا أو وسمًا واحدًا");
     const basePath = genre ? `/manga-genre/${encodeURIComponent(genre)}` : tag ? `/${tagPath}/${encodeURIComponent(tag)}` : "/manga";
-    const target = page === 1 ? `${BASE_URL}${basePath}/` : `${BASE_URL}${basePath}/page/${page}/`;
-    const html = await resolveHtml(target);
+    const target = page === 1 ? `${baseUrl}${basePath}/` : `${baseUrl}${basePath}/page/${page}/`;
+    const html = await resolveHtml(target, fetchHtml);
     const items = parseCatalog(html);
     const nextPath = `${basePath}/page/${page + 1}/`;
     return responseJson(200, { items, page, genre, tag, hasMore: html.includes(nextPath) || html.includes(encodeURI(nextPath)), fetchedAt: new Date().toISOString() });
   }
   if (requestUrl.pathname.endsWith("/filters")) {
-    const html = await resolveHtml(`${BASE_URL}/manga/`);
-    let tags = parseMangaTags(html);
+    const html = await resolveHtml(`${baseUrl}/manga/`, fetchHtml);
+    let tags = parseMangaTags(html, ctx);
     if (!tags.length) {
-      try { tags = await fetchMangaTagIndex(); } catch { /* Repliez-vous sur les fiches récentes. */ }
+      try { tags = await fetchMangaTagIndex(baseUrl, fetchHtml); } catch { /* Repliez-vous sur les fiches récentes. */ }
     }
-    if (!tags.length) tags = await fetchMangaTagSitemap();
+    if (!tags.length) tags = await fetchMangaTagSitemap(baseUrl, fetchHtml);
     if (!tags.length) {
-      try { tags = parseMangaTags(await resolveHtml(`${BASE_URL}/manga/eleceed/`)); } catch { /* Continuez avec les fiches récentes. */ }
+      try { tags = parseMangaTags(await resolveHtml(`${baseUrl}/manga/eleceed/`, fetchHtml), ctx); } catch { /* Continuez avec les fiches récentes. */ }
     }
     if (!tags.length) {
       const samples = parseCatalog(html).slice(0, 6);
-      const pages = await Promise.allSettled(samples.map((item) => resolveHtml(item.url)));
+      const pages = await Promise.allSettled(samples.map((item) => resolveHtml(item.url, fetchHtml)));
       const merged = new Map();
-      for (const result of pages) if (result.status === "fulfilled") for (const tag of parseMangaTags(result.value)) if (!merged.has(tag.slug)) merged.set(tag.slug, tag);
+      for (const result of pages) if (result.status === "fulfilled") for (const tag of parseMangaTags(result.value, ctx)) if (!merged.has(tag.slug)) merged.set(tag.slug, tag);
       tags = [...merged.values()].slice(0, 40);
     }
     return responseJson(200, { categories: parseGenres(html), tags, fetchedAt: new Date().toISOString() });
@@ -274,8 +292,8 @@ export async function handleMangalikRequest(requestUrl) {
     if (tag && !/^[\p{L}\p{N}+_-]+$/u.test(tag)) throw new Error("وسم MangaLik غير صالح");
     if (genre || tag) {
       const basePath = genre ? `/manga-genre/${encodeURIComponent(genre)}` : `/${tagPath}/${encodeURIComponent(tag)}`;
-      const target = page === 1 ? `${BASE_URL}${basePath}/` : `${BASE_URL}${basePath}/page/${page}/`;
-      const html = await resolveHtml(target);
+      const target = page === 1 ? `${baseUrl}${basePath}/` : `${baseUrl}${basePath}/page/${page}/`;
+      const html = await resolveHtml(target, fetchHtml);
       const needle = query.toLocaleLowerCase("ar");
       const items = parseCatalog(html).filter((item) => item.title.toLocaleLowerCase("ar").includes(needle));
       const nextPath = `${basePath}/page/${page + 1}/`;
@@ -285,16 +303,16 @@ export async function handleMangalikRequest(requestUrl) {
         hasMore: html.includes(nextPath) || html.includes(encodeURI(nextPath)),
       });
     }
-    const html = await resolveHtml(`${BASE_URL}/?s=${encodeURIComponent(query)}&post_type=wp-manga`);
+    const html = await resolveHtml(`${baseUrl}/?s=${encodeURIComponent(query)}&post_type=wp-manga`, fetchHtml);
     return responseJson(200, { items: parseSearch(html).slice(0, 40), page: 1, hasMore: false });
   }
   if (requestUrl.pathname.endsWith("/manga")) {
-    const target = assertMangaLikUrl(requestUrl.searchParams.get("url") ?? "");
-    return responseJson(200, await resolveMangaDetails(target));
+    const target = assertMangaLikUrl(requestUrl.searchParams.get("url") ?? "", false, ctx);
+    return responseJson(200, await resolveMangaDetails(target, ctx, fetchHtml));
   }
   if (requestUrl.pathname.endsWith("/chapter")) {
-    const target = assertMangaLikUrl(requestUrl.searchParams.get("url") ?? "", true);
-    return responseJson(200, parseChapter(await resolveHtml(target), target));
+    const target = assertMangaLikUrl(requestUrl.searchParams.get("url") ?? "", true, ctx);
+    return responseJson(200, parseChapter(await resolveHtml(target, fetchHtml), target));
   }
   return responseJson(404, { error: "Route inconnue" });
 }

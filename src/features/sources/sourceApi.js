@@ -6,15 +6,18 @@ import { t } from "../../i18n/runtime.js";
 import { MAX_SEARCH_QUERY_LENGTH } from "../../../server/lib/queryLimits.js";
 import { Capacitor } from "@capacitor/core";
 import { getRuntimeSettings } from "../../lib/settings/runtimeSettings.js";
+import { getDefaultSourceBaseUrl, getEffectiveSourceBaseUrl } from "../../lib/settings/sourceBaseUrls.js";
 
 const FILTER_PATH_SOURCES = new Set([
-  "galaxynovels", "cenele", "anime4up", "frenchstream", "wiflix", "coflix",
+  "galaxynovels", "cenele", "anime4up", "animedar", "animesama", "frenchstream", "wiflix", "coflix",
 ]);
 
 function appendSourceQueryParams(query, sourceId) {
-  if (sourceId === "coflix") {
-    const baseUrl = getRuntimeSettings().coflixBaseUrl;
-    if (baseUrl) query.set("baseUrl", baseUrl);
+  const settings = getRuntimeSettings();
+  const effective = getEffectiveSourceBaseUrl(sourceId, settings.sourceBaseUrls);
+  const defaultUrl = getDefaultSourceBaseUrl(sourceId);
+  if (effective && defaultUrl && effective !== defaultUrl) {
+    query.set("baseUrl", effective);
   }
 }
 
@@ -24,12 +27,12 @@ let mangalikNativeReady = false;
 let cloudflareNativeReady = false;
 
 const GENRE_FILTER_SOURCES = [
-  "mangalik", "mangaforfree", "azorafly", "novelsparadise", "nightnovel",
-  "realmnovel", "kolnovel", "dilar", "arabshentai", "hentairead", "hentaigasm",
+  "mangalik", "azorafly", "novelsparadise", "nightnovel",
+  "kolnovel", "dilar",
 ];
 const TAG_FILTER_SOURCES = [
-  "mangalik", "mangaforfree", "novelsparadise", "nightnovel",
-  "realmnovel", "kolnovel", "hentairead", "hentaigasm",
+  "mangalik", "novelsparadise", "nightnovel",
+  "kolnovel",
 ];
 
 async function ensureMangalikNative() {
@@ -62,7 +65,6 @@ async function requestJson(path, fallbackMessage, { ttlMs = 0 } = {}) {
   const data = isNative()
     ? await (async () => {
       if (path.includes("/mangalik/")) await ensureMangalikNative();
-      if (path.includes("/arabshentai/") || path.includes("/hentairead/")) await ensureCloudflareNative();
       const { handleSourceRequest } = await import("../../../server/mangaSourcesPlugin.js");
       const result = await handleSourceRequest(path);
       if (!result || result.kind !== "json") throw new Error(fallbackMessage);
@@ -108,7 +110,6 @@ async function fetchImagePayload(sourceId, url) {
     };
   }
   if (sourceId === "mangalik") await ensureMangalikNative();
-  if (sourceId === "arabshentai" || sourceId === "hentairead") await ensureCloudflareNative();
   const { handleSourceRequest } = await import("../../../server/mangaSourcesPlugin.js");
   const result = await handleSourceRequest(sourceImageUrl(sourceId, url));
   if (!result || result.kind !== "image") throw new Error(t("errors.loadImage"));
@@ -143,7 +144,6 @@ export function fetchCatalog(sourceId, { page = 1, genre = "", tag = "", tagPath
     query.set("tag", tag);
     if (tagPath) query.set("tagPath", tagPath);
   }
-  if (sourceId === "arabshentai" && queryParam === "type" && queryValue) query.set("type", queryValue);
   if (FILTER_PATH_SOURCES.has(sourceId) && filterPath) {
     query.set("filterPath", filterPath);
     if (queryParam && queryValue) {
@@ -181,7 +181,6 @@ export function searchSource(sourceId, query, {
     params.set("tag", tag);
     if (tagPath) params.set("tagPath", tagPath);
   }
-  if (sourceId === "arabshentai" && queryParam === "type" && queryValue) params.set("type", queryValue);
   if (FILTER_PATH_SOURCES.has(sourceId) && filterPath) {
     params.set("filterPath", filterPath);
     if (queryParam && queryValue) {

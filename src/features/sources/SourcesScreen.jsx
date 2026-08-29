@@ -703,7 +703,9 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
   const viewDescription = effectiveMode === "full"
     ? describeCatalogView({ query, filter: selectedFilter, kind: selectedKind, page })
     : t("sources.settingsOnly");
-  const catalogBusy = status === "loading" || searching || loadingMore;
+  const catalogInitialBusy = status === "loading" || searching;
+  const catalogPaging = loadingMore;
+  const catalogBusy = catalogInitialBusy || catalogPaging;
   const skeletonCount = getCatalogSkeletonCount();
   const skeletonType = selectedKind?.slug && selectedKind.slug !== "all"
     ? selectedKind.slug
@@ -742,7 +744,7 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
         )}
         {status === "disabled" ? <div className="live-error"><Wifi size={30} /><h2>{t("sources.sourceOffline")}</h2><p>{t("sources.enableFromSettings")}</p></div> : status === "error" ? <div className="live-error"><Wifi size={30} /><h2>{t("sources.connectFailed", { name: profile.name })}</h2><p>{error}</p><button className="button button--primary" onClick={() => refreshCatalog({ kind: selectedKind, filter: selectedFilter, catalogQuery: query, page, notify: true })}><RefreshCw size={17} /> {t("common.retry")}</button></div> : <>
           <div className="live-catalog__meta" ref={catalogAnchorRef}><strong>{catalogBusy ? "…" : `${visible.length} ${unitLabel}`}</strong><span>{catalogBusy ? reloadLabel : viewDescription}</span></div>
-          {catalogBusy ? (
+          {catalogInitialBusy ? (
             <>
               <div className="catalog-reload" role="status" aria-live="polite">
                 <RefreshCw size={15} aria-hidden="true" />
@@ -755,10 +757,22 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
             </>
           ) : (
             <>
-          <div className={`catalog-page-carousel catalog-page-carousel--${slideDirection}`} key={`${activeSource.id}-${catalogViewKey(activeSource.id, selectedFilter, query, selectedKind)}-page-${page}`} onTouchStart={(event) => { swipeStart.current = event.touches[0].clientX; }} onTouchEnd={(event) => { if (effectiveMode !== "full" || loadingMore) return; const distance = event.changedTouches[0].clientX - swipeStart.current; if (Math.abs(distance) < 55) return; if (distance < 0) changePage(page + 1, "next"); else changePage(page - 1, "prev"); }}>
+          <div
+            className={`catalog-page-carousel catalog-page-carousel--${slideDirection}${catalogPaging ? " is-paging" : ""}`}
+            key={`${activeSource.id}-${catalogViewKey(activeSource.id, selectedFilter, query, selectedKind)}-page-${page}`}
+            onTouchStart={(event) => { swipeStart.current = event.touches[0].clientX; }}
+            onTouchEnd={(event) => { if (effectiveMode !== "full" || loadingMore) return; const distance = event.changedTouches[0].clientX - swipeStart.current; if (Math.abs(distance) < 55) return; if (distance < 0) changePage(page + 1, "next"); else changePage(page - 1, "prev"); }}
+            aria-busy={catalogPaging}
+          >
+            {catalogPaging && (
+              <div className="catalog-page-carousel__status" role="status" aria-live="polite">
+                <RefreshCw size={16} aria-hidden="true" />
+                <span>{reloadLabel}</span>
+              </div>
+            )}
             <div className="live-manga-grid">{visible.map((item) => <CatalogCard key={item.url} item={item} profile={profile} onOpenDetails={handleOpenLiveManga} onOpenChapter={openLiveChapter} />)}</div>
           </div>
-          {!visible.length && <div className="empty-state"><Search size={31} /><h2>{effectiveMode === "selected" ? t("sources.noTitlesYet") : t("sources.noResults")}</h2><p>{effectiveMode === "selected" ? t("sources.pickMangaNovels") : t("sources.tryOtherName")}</p>{effectiveMode === "selected" && <button className="button button--primary" onClick={() => navigate("source-management")}>{t("sources.managePicks")}</button>}</div>}
+          {!visible.length && !catalogPaging && <div className="empty-state"><Search size={31} /><h2>{effectiveMode === "selected" ? t("sources.noTitlesYet") : t("sources.noResults")}</h2><p>{effectiveMode === "selected" ? t("sources.pickMangaNovels") : t("sources.tryOtherName")}</p>{effectiveMode === "selected" && <button className="button button--primary" onClick={() => navigate("source-management")}>{t("sources.managePicks")}</button>}</div>}
             </>
           )}
           {effectiveMode === "full" && (visible.length > 0 || loadingMore) && (

@@ -158,7 +158,7 @@ public class AnimeEpisodePlayerPlugin extends Plugin {
         settings.setDomStorageEnabled(true);
         settings.setDatabaseEnabled(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
-        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setUserAgentString(USER_AGENT);
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
@@ -253,7 +253,7 @@ public class AnimeEpisodePlayerPlugin extends Plugin {
     }
 
     private boolean isAllowedNavigation(String url) {
-        if (!url.startsWith("https://") && !url.startsWith("http://")) {
+        if (!url.startsWith("https://")) {
             return false;
         }
         try {

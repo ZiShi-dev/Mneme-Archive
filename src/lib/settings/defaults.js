@@ -1,4 +1,5 @@
 import { DEFAULT_COFLEX_BASE_URL } from "./coflixBaseUrl.js";
+import { getDefaultSourceBaseUrl, getEffectiveSourceBaseUrl, normalizeSourceBaseUrlOverrides } from "./sourceBaseUrls.js";
 
 export const PRELOAD_PAGES_MIN = 1;
 export const PRELOAD_PAGES_MAX = 30;
@@ -15,4 +16,5 @@ export const DEFAULT_APP_SETTINGS = {
   backgroundSync: true,
   backgroundIntervalMinutes: 30,
   coflixBaseUrl: DEFAULT_COFLEX_BASE_URL,
+  sourceBaseUrls: {},
 };

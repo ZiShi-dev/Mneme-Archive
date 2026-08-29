@@ -17,8 +17,8 @@ test("getSourceLanguageLabels returns French and English for VF/VOSTFR video sou
   assert.deepEqual(getSourceLanguageLabels("frenchstream"), ["الفرنسية", "الإنجليزية"]);
 });
 
-test("getSourceLanguageLabels returns English for MangaForFree", () => {
-  assert.deepEqual(getSourceLanguageLabels("mangaforfree"), ["الإنجليزية"]);
+test("getSourceLanguageLabels returns English for Dilar", () => {
+  assert.deepEqual(getSourceLanguageLabels("dilar"), ["العربية"]);
 });
 
 test("every source profile exposes at least one language", () => {

@@ -10,9 +10,10 @@ import {
 } from "../lib/embedResolvers.js";
 import { fetchProxiedHlsResource } from "../lib/hlsProxy.js";
 import { videoHostRank } from "../lib/videoHosts.js";
+import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
 
-const BASE_URL = "https://www.wiflix.tv";
-const BASE_HOST = "www.wiflix.tv";
+const DEFAULT_BASE_URL = "https://www.wiflix.tv";
+const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
 const SOURCE_NAME = "Wiflix";
 const SOURCE_ID = "wiflix";
 const MOVIES_PATH = "/film-en-streaming/";
@@ -20,7 +21,7 @@ const SERIES_PATH = "/serie-en-streaming/";
 const MIXED_PATH = "/all/";
 const BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
-const IMAGE_HOSTS = new Set(["wiflix.tv", "www.wiflix.tv"]);
+const IMAGE_HOSTS = new Set([DEFAULT_CTX.apex, DEFAULT_CTX.hostname, `www.${DEFAULT_CTX.apex}`]);
 const PLAYER_HOST_ORDER = [
   /vidzy\./i,
   /fsvid\./i,
@@ -44,41 +45,59 @@ const LANG_RANK = [
   /VOST/i,
 ];
 
-const fetchWiflixHtml = createCachedHtmlFetcher({
-  ttlMs: 3 * 60_000,
-  timeoutMs: 40_000,
-  retries: 2,
-  headers: {
-    accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "accept-language": "fr-FR,fr;q=0.9,en;q=0.6",
-    referer: `${BASE_URL}/`,
-    "user-agent": BROWSER_UA,
-  },
-  getVariants: (url) => {
-    try {
-      const parsed = new URL(url);
-      const alt = new URL(url);
-      alt.hostname = parsed.hostname === "wiflix.tv" ? "www.wiflix.tv" : "wiflix.tv";
-      return alt.toString() === url ? [url] : [url, alt.toString()];
-    } catch {
-      return [url];
-    }
-  },
-  buildError: (lastStatus) => `Wiflix a répondu ${lastStatus || "sans réponse"}`,
-});
-
-function isAllowedHost(hostname = "") {
-  const host = String(hostname).toLowerCase();
-  return host === "wiflix.tv" || host === "www.wiflix.tv";
+function createWiflixFetcher(baseUrl = DEFAULT_BASE_URL) {
+  const hostCtx = createHostContext(baseUrl);
+  return createCachedHtmlFetcher({
+    ttlMs: 3 * 60_000,
+    timeoutMs: 40_000,
+    retries: 2,
+    headers: {
+      accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "accept-language": "fr-FR,fr;q=0.9,en;q=0.6",
+      referer: `${baseUrl}/`,
+      "user-agent": BROWSER_UA,
+    },
+    getVariants: (url) => {
+      try {
+        const parsed = new URL(url);
+        const alt = new URL(url);
+        alt.hostname = parsed.hostname === hostCtx.apex ? hostCtx.hostname : hostCtx.apex;
+        return alt.toString() === url ? [url] : [url, alt.toString()];
+      } catch {
+        return [url];
+      }
+    },
+    buildError: (lastStatus) => `Wiflix a répondu ${lastStatus || "sans réponse"}`,
+  });
 }
 
-export function normalizeWiflixUrl(rawUrl = "") {
+export function assertWiflixStreamReferer(rawUrl = "", ctx = DEFAULT_CTX) {
+  const decoded = decodeHtml(String(rawUrl || "").trim());
+  if (!decoded) throw new Error("مرجع البث غير صالح");
+  let url;
+  try {
+    url = new URL(decoded, ctx.baseUrl);
+  } catch {
+    throw new Error("مرجع البث غير صالح");
+  }
+  if (url.protocol !== "https:" || !isAllowedHost(url.hostname, ctx)) {
+    throw new Error("مرجع البث غير صالح");
+  }
+  url.hash = "";
+  return url.toString();
+}
+
+function isAllowedHost(hostname = "", ctx = DEFAULT_CTX) {
+  return ctx.allowedHosts.has(String(hostname).toLowerCase());
+}
+
+export function normalizeWiflixUrl(rawUrl = "", ctx = DEFAULT_CTX) {
   const decoded = decodeHtml(rawUrl);
   if (!decoded) return "";
   try {
-    const url = new URL(decoded, BASE_URL);
-    if (url.protocol !== "https:" || !isAllowedHost(url.hostname)) return "";
-    url.hostname = BASE_HOST;
+    const url = new URL(decoded, ctx.baseUrl);
+    if (url.protocol !== "https:" || !isAllowedHost(url.hostname, ctx)) return "";
+    url.hostname = ctx.hostname;
     url.hash = "";
     url.search = "";
     url.pathname = url.pathname.replace(/\/+$/, "") || "/";
@@ -96,7 +115,7 @@ function assertWiflixHost(rawUrl) {
 
 export function watchSlugFromUrl(rawUrl = "") {
   try {
-    const url = new URL(normalizeWiflixUrl(rawUrl) || String(rawUrl || ""), BASE_URL);
+    const url = new URL(normalizeWiflixUrl(rawUrl) || String(rawUrl || ""), DEFAULT_BASE_URL);
     return url.pathname.match(/^\/watch\/([a-z0-9-]+)$/i)?.[1] || "";
   } catch {
     return "";
@@ -107,12 +126,12 @@ export function assertWatchUrl(rawUrl) {
   const url = assertWiflixHost(rawUrl);
   const slug = watchSlugFromUrl(url.toString());
   if (!slug) throw new Error("رابط Wiflix غير صالح");
-  return `${BASE_URL}/watch/${slug}`;
+  return `${DEFAULT_BASE_URL}/watch/${slug}`;
 }
 
 export function episodeNumberFromUrl(rawUrl = "") {
   try {
-    const url = new URL(String(rawUrl || ""), BASE_URL);
+    const url = new URL(String(rawUrl || ""), DEFAULT_BASE_URL);
     const episode = url.searchParams.get("episode");
     return /^\d+$/.test(episode || "") ? episode : "";
   } catch {
@@ -122,7 +141,7 @@ export function episodeNumberFromUrl(rawUrl = "") {
 
 export function episodeLanguageFromUrl(rawUrl = "") {
   try {
-    const url = new URL(String(rawUrl || ""), BASE_URL);
+    const url = new URL(String(rawUrl || ""), DEFAULT_BASE_URL);
     const language = String(url.searchParams.get("language") || "").toUpperCase();
     if (language === "VOSTFR") return "VOSTFR";
     if (language === "VF") return "VF";
@@ -145,21 +164,21 @@ function episodeUrl(seasonUrl, number, language = "VF") {
   return `${assertWatchUrl(seasonUrl)}?language=${lang}&episode=${Number(number)}`;
 }
 
-export function assertWiflixImageUrl(rawUrl) {
+export function assertWiflixImageUrl(rawUrl, ctx = DEFAULT_CTX) {
   const decoded = decodeHtml(rawUrl);
   let url;
   try {
-    url = new URL(decoded, BASE_URL);
+    url = new URL(decoded, ctx.baseUrl);
   } catch {
     throw new Error("رابط الصورة غير مسموح");
   }
-  if (url.protocol !== "https:" || !IMAGE_HOSTS.has(url.hostname.toLowerCase())) {
+  if (url.protocol !== "https:" || !ctx.allowedHosts.has(url.hostname.toLowerCase())) {
     throw new Error("رابط الصورة غير مسموح");
   }
   if (!/^\/(?:poster|static)\//i.test(url.pathname)) {
     throw new Error("رابط الصورة غير مسموح");
   }
-  url.hostname = BASE_HOST;
+  url.hostname = ctx.hostname;
   url.hash = "";
   return url.toString();
 }
@@ -187,13 +206,13 @@ function watchEntry(url, label = "1") {
   };
 }
 
-function absoluteMediaUrl(raw = "") {
+function absoluteMediaUrl(raw = "", ctx = DEFAULT_CTX) {
   const decoded = decodeHtml(raw);
   if (!decoded) return "";
   try {
-    const url = new URL(decoded, BASE_URL);
-    if (url.protocol !== "https:" || !isAllowedHost(url.hostname)) return "";
-    url.hostname = BASE_HOST;
+    const url = new URL(decoded, ctx.baseUrl);
+    if (url.protocol !== "https:" || !isAllowedHost(url.hostname, ctx)) return "";
+    url.hostname = ctx.hostname;
     url.hash = "";
     return url.toString();
   } catch {
@@ -286,7 +305,7 @@ export function parseWiflixFilters(html = "") {
     const href = decodeHtml(match[1].match(/href\s*=\s*["']([^"']+)["']/i)?.[1] ?? "");
     if (!href) continue;
     let target;
-    try { target = new URL(href, BASE_URL); } catch { continue; }
+    try { target = new URL(href, DEFAULT_BASE_URL); } catch { continue; }
     if (!isAllowedHost(target.hostname)) continue;
     const path = `${target.pathname}${target.pathname.endsWith("/") ? "" : "/"}`;
     const name = textOnly(match[2]).replace(/^#/, "").trim();
@@ -437,8 +456,8 @@ export function catalogHasMore(html, page) {
 export function buildCatalogUrl(page, filterPath = MIXED_PATH) {
   const path = assertFilterPath(filterPath);
   const trimmed = path.replace(/\/+$/, "");
-  if (page <= 1) return `${BASE_URL}${path}`;
-  return `${BASE_URL}${trimmed}?page=${page}`;
+  if (page <= 1) return `${DEFAULT_BASE_URL}${path}`;
+  return `${DEFAULT_BASE_URL}${trimmed}?page=${page}`;
 }
 
 function movListValue(html, label) {
@@ -672,7 +691,7 @@ async function enrichWiflixPlayback(html, details) {
 export function buildSearchUrl(query, page = 1) {
   const params = new URLSearchParams({ keywords: query });
   if (page > 1) params.set("page", String(page));
-  return `${BASE_URL}/search?${params}`;
+  return `${DEFAULT_BASE_URL}/search?${params}`;
 }
 
 async function fetchSearchHtml(query, page = 1) {
@@ -742,13 +761,16 @@ async function fetchPlayableChapter(target) {
 }
 
 export async function handleWiflixRequest(requestUrl) {
+  const ctx = resolveSourceRequestContext(requestUrl, DEFAULT_BASE_URL, { label: SOURCE_NAME });
+  const fetchWiflixHtml = createWiflixFetcher(ctx.baseUrl);
+
   if (requestUrl.pathname.endsWith("/image")) {
-    return fetchProxiedImage(assertWiflixImageUrl(requestUrl.searchParams.get("url") ?? ""), `${BASE_URL}/`, SOURCE_NAME);
+    return fetchProxiedImage(assertWiflixImageUrl(requestUrl.searchParams.get("url") ?? "", ctx), `${ctx.baseUrl}/`, SOURCE_NAME);
   }
 
   if (requestUrl.pathname.endsWith("/stream")) {
     const target = assertProxiedStreamUrl(requestUrl.searchParams.get("url") ?? "");
-    const referer = String(requestUrl.searchParams.get("referer") ?? `${BASE_URL}/`).trim();
+    const referer = assertWiflixStreamReferer(requestUrl.searchParams.get("referer") ?? `${ctx.baseUrl}/`, ctx);
     return fetchProxiedHlsResource({
       target,
       referer,
@@ -758,7 +780,7 @@ export async function handleWiflixRequest(requestUrl) {
   }
 
   if (requestUrl.pathname.endsWith("/filters")) {
-    const html = await fetchWiflixHtml(`${BASE_URL}${MOVIES_PATH}`);
+    const html = await fetchWiflixHtml(`${ctx.baseUrl}${MOVIES_PATH}`);
     const parsed = parseWiflixFilters(html);
     return responseJson(200, {
       kinds: [
@@ -778,7 +800,7 @@ export async function handleWiflixRequest(requestUrl) {
     if (filterPath === MIXED_PATH) {
       if (page <= 1) {
         const [homeHtml, filmsHtml, seriesHtml] = await Promise.all([
-          fetchWiflixHtml(`${BASE_URL}/`),
+          fetchWiflixHtml(`${ctx.baseUrl}/`),
           fetchWiflixHtml(buildCatalogUrl(1, MOVIES_PATH)),
           fetchWiflixHtml(buildCatalogUrl(1, SERIES_PATH)),
         ]);

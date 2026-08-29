@@ -20,21 +20,240 @@
 
 [data-theme="yozakura"] .phone-frame {
   background-image:
-    radial-gradient(ellipse at 20% -6%, color-mix(in srgb, var(--sakura) 16%, transparent), transparent 44%),
-    radial-gradient(ellipse at 88% 108%, color-mix(in srgb, var(--ume) 18%, transparent), transparent 48%),
-    radial-gradient(circle at 1px 1px, rgba(255,244,247,.04) 0.55px, transparent 0.75px);
+    radial-gradient(ellipse at 18% -4%, color-mix(in srgb, #b34e64 22%, transparent), transparent 46%),
+    radial-gradient(ellipse at 82% 108%, color-mix(in srgb, var(--ume) 16%, transparent), transparent 48%),
+    linear-gradient(180deg, #1a0a0a 0%, var(--paper) 38%, var(--paper) 100%),
+    radial-gradient(circle at 1px 1px, rgba(255,244,247,.05) 0.55px, transparent 0.75px);
+}
+
+/* ── Branches décoratives (Sakura / Yozakura) — arrière-plan uniquement ── */
+.sakura-branches {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.sakura-branches--frame {
+  mask-image: linear-gradient(
+    180deg,
+    #000 0%,
+    #000 38%,
+    transparent 54%,
+    transparent 66%,
+    #000 80%,
+    #000 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    #000 0%,
+    #000 38%,
+    transparent 54%,
+    transparent 66%,
+    #000 80%,
+    #000 100%
+  );
+}
+
+.sakura-branches--night.sakura-branches--frame {
+  opacity: 0.58;
+}
+
+.sakura-branches--day.sakura-branches--frame {
+  opacity: 0.42;
+}
+
+.sakura-branches--stage {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.38;
+}
+
+.sakura-branches--bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 28%;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  mask-image: linear-gradient(0deg, #000 0%, #000 52%, transparent 100%);
+  -webkit-mask-image: linear-gradient(0deg, #000 0%, #000 52%, transparent 100%);
+}
+
+.sakura-branches--night.sakura-branches--bottom {
+  opacity: 0.52;
+}
+
+.sakura-branches--day.sakura-branches--bottom {
+  opacity: 0.38;
+}
+
+.sakura-branches__sky {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 38%;
+  background:
+    radial-gradient(ellipse 90% 80% at 18% 8%, color-mix(in srgb, #b34e64 28%, transparent), transparent 62%),
+    radial-gradient(ellipse 70% 65% at 82% 12%, color-mix(in srgb, #8e3a4d 18%, transparent), transparent 58%),
+    linear-gradient(180deg, color-mix(in srgb, #2d1616 72%, transparent) 0%, transparent 100%);
+  opacity: 0.85;
+}
+
+.sakura-branches--stage .sakura-branches__sky {
+  height: 52vh;
+  opacity: 0.55;
+}
+
+.sakura-branches__arch-wrap {
+  position: absolute;
+  top: -2%;
+  left: 50%;
+  width: 88%;
+  max-width: 400px;
+  transform: translateX(-50%);
+  opacity: 0.62;
+  mask-image: linear-gradient(180deg, #000 0%, #000 55%, transparent 92%);
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 55%, transparent 92%);
+}
+
+.sakura-branches--stage .sakura-branches__arch-wrap {
+  max-width: 640px;
+  opacity: 0.5;
+}
+
+.sakura-branches__arch {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.sakura-branches__glow {
+  position: absolute;
+  top: 0;
+  width: 58%;
+  height: 42%;
+  pointer-events: none;
+}
+
+.sakura-branches__glow--left {
+  left: -8%;
+  background: radial-gradient(ellipse at 28% 18%, color-mix(in srgb, #b34e64 28%, transparent), transparent 68%);
+}
+
+.sakura-branches__glow--right {
+  right: -8%;
+  background: radial-gradient(ellipse at 72% 18%, color-mix(in srgb, #8e3a4d 20%, transparent), transparent 70%);
+}
+
+.sakura-branches__glow--bottom {
+  top: auto;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 100%;
+  background:
+    radial-gradient(ellipse 90% 70% at 22% 100%, color-mix(in srgb, #b34e64 22%, transparent), transparent 68%),
+    radial-gradient(ellipse 90% 70% at 78% 100%, color-mix(in srgb, #8e3a4d 16%, transparent), transparent 70%);
+  opacity: 0.75;
+}
+
+.sakura-branches__sparkles {
+  position: absolute;
+  inset: 0;
+  height: 40%;
+  background:
+    radial-gradient(circle at 14% 18%, rgba(255, 240, 245, .1) 0 1px, transparent 2px),
+    radial-gradient(circle at 72% 24%, rgba(253, 239, 242, .08) 0 1px, transparent 2px),
+    radial-gradient(circle at 38% 34%, rgba(255, 240, 245, .07) 0 1px, transparent 2px),
+    radial-gradient(circle at 86% 42%, rgba(244, 202, 213, .06) 0 1px, transparent 2px);
+  opacity: 0.55;
+}
+
+.sakura-branches__corner {
+  position: absolute;
+  top: 0;
+  width: 46%;
+  max-width: 210px;
+  opacity: 0.92;
+}
+
+.sakura-branches__corner--tl {
+  left: -4%;
+}
+
+.sakura-branches__corner--tr {
+  right: -4%;
+}
+
+.sakura-branches__corner--bl {
+  top: auto;
+  bottom: 0;
+  left: -4%;
+}
+
+.sakura-branches__corner--br {
+  top: auto;
+  bottom: 0;
+  right: -4%;
+}
+
+.sakura-branches--day .sakura-branches__corner {
+  opacity: 0.78;
+}
+
+.sakura-branches__corner--night {
+  width: 48%;
+  max-width: 200px;
+  opacity: 0.55;
+  top: -4%;
+}
+
+.sakura-branches__corner--night.sakura-branches__corner--tl {
+  left: -6%;
+}
+
+.sakura-branches__corner--night.sakura-branches__corner--tr {
+  right: -6%;
+}
+
+.sakura-branches__corner--night.sakura-branches__corner--bl {
+  top: auto;
+  bottom: -4%;
+  left: -6%;
+}
+
+.sakura-branches__corner--night.sakura-branches__corner--br {
+  top: auto;
+  bottom: -4%;
+  right: -6%;
+}
+
+.sakura-branches--stage .sakura-branches__corner {
+  max-width: 280px;
+  opacity: 0.35;
+}
+
+.sakura-branches__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+[data-theme="yozakura"] .phone-frame:has(.settings-page) .sakura-branches,
+[data-theme="sakura"] .phone-frame:has(.settings-page) .sakura-branches {
+  opacity: 0.32;
 }
 
 [data-theme="sakura"] .phone-frame:has(.screen--home)::before,
 [data-theme="yozakura"] .phone-frame:has(.screen--home)::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  opacity: .03;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='36' viewBox='0 0 72 36'%3E%3Cpath fill='none' stroke='%23C94F6D' stroke-width='1.2' d='M0 36c12-18 24-18 36 0s24 18 36 0'/%3E%3C/svg%3E");
-  background-size: 72px 36px;
+  display: none;
 }
 
 [data-theme="sakura"] .sakura-fall,
@@ -54,7 +273,13 @@
 [data-theme="yozakura"] .sakura-fall--frame {
   position: absolute;
   inset: 0;
-  z-index: 4;
+  z-index: 1;
+}
+
+[data-theme="sakura"] .screen,
+[data-theme="yozakura"] .screen {
+  position: relative;
+  z-index: 1;
 }
 
 [data-theme="sakura"] .sakura-fall canvas,
@@ -400,7 +625,7 @@
 }
 
 [data-theme="yozakura"] .bottom-nav {
-  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
   border-color: color-mix(in srgb, var(--line) 80%, transparent);
 }
 
@@ -437,8 +662,13 @@
   border: 0;
 }
 
-[data-theme="sakura"] .theme-selector > button.active,
-[data-theme="yozakura"] .theme-selector > button.active {
+[data-theme="sakura"] .theme-selector > button.active:not(.theme-selector__option--sakura) {
+  border-color: var(--kobai);
+  background: color-mix(in srgb, var(--sakura) 16%, var(--paper));
+  color: var(--ume);
+}
+
+[data-theme="yozakura"] .theme-selector > button.active:not(.theme-selector__option--yozakura) {
   border-color: var(--kobai);
   background: color-mix(in srgb, var(--sakura) 16%, var(--paper));
   color: var(--ume);

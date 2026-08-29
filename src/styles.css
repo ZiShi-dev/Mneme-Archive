@@ -2,6 +2,7 @@
 @import "./styles/base.css";
 @import "./styles/reader.css";
 @import "./styles/catalog.css";
+@import "./styles/details-hero.css";
 @import "./styles/management.css";
 @import "./styles/favorites.css";
 @import "./styles/reading-history.css";
@@ -18,3 +19,4 @@
 @import "./styles/desktop.css";
 @import "./styles/responsive.css";
 @import "./styles/scrollbar.css";
+@import "./styles/skeleton.css";

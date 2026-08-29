@@ -5,9 +5,10 @@ import { normalizeSearchQuery } from "../lib/queryLimits.js";
 import { responseJson } from "../lib/response.js";
 import { applyRecentChapterFields, normalizeRecentChapters } from "../lib/catalogChapters.js";
 import { enrichSourceDetails } from "../lib/detailEnrichment.js";
+import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
 
-const BASE_URL = "https://4h.b9p2m6c.shop";
-const BASE_HOST = new URL(BASE_URL).hostname;
+const DEFAULT_BASE_URL = "https://4h.b9p2m6c.shop";
+const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
 const SOURCE_NAME = "Anime4up";
 const SOURCE_ID = "anime4up";
 const CATALOG_PATH = "/قائمة-الانمي/";
@@ -77,20 +78,22 @@ async function fetchProxiedSubtitle(target, referer = "") {
   };
 }
 
-function isAllowedAnime4upHost(hostname = "") {
+function isAllowedAnime4upHost(hostname = "", ctx = DEFAULT_CTX) {
   const host = String(hostname).toLowerCase();
-  return host === BASE_HOST
+  return host === ctx.hostname
+    || host === ctx.apex
+    || host === `www.${ctx.apex}`
     || ANIME4UP_HOST_PATTERN.test(host)
     || ANIME4UP_SITE_MIRROR_PATTERN.test(host);
 }
 
-export function normalizeAnime4upUrl(rawUrl = "", { keepHost = false } = {}) {
+export function normalizeAnime4upUrl(rawUrl = "", { keepHost = false, ctx = DEFAULT_CTX } = {}) {
   const decoded = decodeHtml(rawUrl);
   if (!decoded) return "";
   try {
-    const url = new URL(decoded, BASE_URL);
-    if (url.protocol !== "https:" || !isAllowedAnime4upHost(url.hostname)) return "";
-    if (!keepHost) url.hostname = BASE_HOST;
+    const url = new URL(decoded, ctx.baseUrl);
+    if (url.protocol !== "https:" || !isAllowedAnime4upHost(url.hostname, ctx)) return "";
+    if (!keepHost) url.hostname = ctx.hostname;
     url.hash = "";
     return url.toString();
   } catch {
@@ -98,32 +101,35 @@ export function normalizeAnime4upUrl(rawUrl = "", { keepHost = false } = {}) {
   }
 }
 
-function canonicalAnime4upHtml(html = "") {
+function canonicalAnime4upHtml(html = "", baseUrl = DEFAULT_BASE_URL) {
   return html
-    .replace(/https?:\/\/w1\.anime4up\.rest/gi, BASE_URL)
-    .replace(/https?:\/\/www\.anime4up\.rest/gi, BASE_URL)
-    .replace(/https?:\/\/anime4up\.rest/gi, BASE_URL)
-    .replace(/https?:\/\/\d[a-z0-9]\.[a-z0-9]+\.shop/gi, BASE_URL);
+    .replace(/https?:\/\/[^"/]+\/wp-content/gi, `${baseUrl}/wp-content`)
+    .replace(/https?:\/\/w1\.anime4up\.rest/gi, baseUrl)
+    .replace(/https?:\/\/www\.anime4up\.rest/gi, baseUrl)
+    .replace(/https?:\/\/anime4up\.rest/gi, baseUrl)
+    .replace(/https?:\/\/\d[a-z0-9]\.[a-z0-9]+\.shop/gi, baseUrl);
 }
 
-const fetchAnime4upHtml = createCachedHtmlFetcher({
-  ttlMs: 3 * 60_000,
-  timeoutMs: 40_000,
-  headers: {
-    accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "accept-language": "ar,en;q=0.8",
-    referer: `${BASE_URL}/`,
-    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-  },
-  getVariants: (url) => [url],
-  buildError: (lastStatus) => `Anime4up a répondu ${lastStatus || "sans réponse"}`,
-});
+function createAnime4upFetcher(baseUrl = DEFAULT_BASE_URL) {
+  return createCachedHtmlFetcher({
+    ttlMs: 3 * 60_000,
+    timeoutMs: 40_000,
+    headers: {
+      accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "accept-language": "ar,en;q=0.8",
+      referer: `${baseUrl}/`,
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    },
+    getVariants: (url) => [url],
+    buildError: (lastStatus) => `Anime4up a répondu ${lastStatus || "sans réponse"}`,
+  });
+}
 
-function assertAnime4upHost(rawUrl) {
-  const normalized = normalizeAnime4upUrl(rawUrl);
+function assertAnime4upHost(rawUrl, ctx = DEFAULT_CTX) {
+  const normalized = normalizeAnime4upUrl(rawUrl, { ctx });
   if (!normalized) throw new Error("المصدر غير مسموح");
   const url = new URL(normalized);
-  url.hostname = BASE_HOST;
+  url.hostname = ctx.hostname;
   url.hash = "";
   return url;
 }
@@ -131,7 +137,7 @@ function assertAnime4upHost(rawUrl) {
 function assertAnime4upImageUrl(rawUrl) {
   const decoded = decodeHtml(String(rawUrl).trim());
   if (!decoded) throw new Error("رابط الصورة غير مسموح");
-  const url = new URL(decoded, BASE_URL);
+  const url = new URL(decoded, DEFAULT_BASE_URL);
   if (url.protocol !== "https:" || !isAllowedAnime4upHost(url.hostname)) {
     throw new Error("رابط الصورة غير مسموح");
   }
@@ -145,7 +151,7 @@ async function fetchAnime4upProxiedImage(rawUrl) {
   const referers = [
     "https://w1.anime4up.rest/",
     "https://anime4up.rest/",
-    `${BASE_URL}/`,
+    `${DEFAULT_BASE_URL}/`,
     `${new URL(target).origin}/`,
   ];
   let lastError;
@@ -163,7 +169,7 @@ function assertAnimeUrl(rawUrl) {
   const url = assertAnime4upHost(rawUrl);
   const parts = url.pathname.split("/").filter(Boolean);
   if (parts[0] !== "anime" || !parts[1] || parts[1] === "page") throw new Error("رابط أنمي Anime4up غير صالح");
-  return `${BASE_URL}/anime/${parts[1]}/`;
+  return `${DEFAULT_BASE_URL}/anime/${parts[1]}/`;
 }
 
 function assertEpisodeUrl(rawUrl) {
@@ -457,7 +463,7 @@ export function parseAnime4upFilterLinks(html) {
     const href = decodeHtml(match[1].match(/href\s*=\s*["']([^"']+)["']/i)?.[1] ?? "");
     if (!href) continue;
     let target;
-    try { target = new URL(href, BASE_URL); } catch { continue; }
+    try { target = new URL(href, DEFAULT_BASE_URL); } catch { continue; }
     if (!isAllowedAnime4upHost(target.hostname)) continue;
     const parts = target.pathname.split("/").filter(Boolean);
     const genreIndex = parts.indexOf("anime-genre");
@@ -687,11 +693,11 @@ export function isAnime4upCatalogScopedSearchPath(filterPath = "") {
 function buildCatalogUrl(page, filterPath = CATALOG_PATH) {
   const normalized = filterPath.startsWith("/") ? filterPath : `/${filterPath}`;
   if (normalized.replace(/\/$/, "") === HOME_PATH.replace(/\/$/, "")) {
-    return page <= 1 ? `${BASE_URL}${HOME_PATH}` : `${BASE_URL}${HOME_PATH}?wa_latest_episodes_ajax=1&wa_latest_page=${page}`;
+    return page <= 1 ? `${DEFAULT_BASE_URL}${HOME_PATH}` : `${DEFAULT_BASE_URL}${HOME_PATH}?wa_latest_episodes_ajax=1&wa_latest_page=${page}`;
   }
-  if (page <= 1) return `${BASE_URL}${normalized}`;
+  if (page <= 1) return `${DEFAULT_BASE_URL}${normalized}`;
   const trimmed = normalized.endsWith("/") ? normalized.slice(0, -1) : normalized;
-  return `${BASE_URL}${trimmed}/page/${page}/`;
+  return `${DEFAULT_BASE_URL}${trimmed}/page/${page}/`;
 }
 
 function catalogHasMore(html, page, filterPath = CATALOG_PATH) {
@@ -703,11 +709,11 @@ function catalogHasMore(html, page, filterPath = CATALOG_PATH) {
 }
 
 async function fetchLatestEpisodesPage(page) {
-  if (page <= 1) return { html: await fetchAnime4upHtml(`${BASE_URL}${HOME_PATH}`), hasMore: false };
-  const response = await fetch(`${BASE_URL}${HOME_PATH}?wa_latest_episodes_ajax=1&wa_latest_page=${page}`, {
+  if (page <= 1) return { html: await fetchAnime4upHtml(`${DEFAULT_BASE_URL}${HOME_PATH}`), hasMore: false };
+  const response = await fetch(`${DEFAULT_BASE_URL}${HOME_PATH}?wa_latest_episodes_ajax=1&wa_latest_page=${page}`, {
     headers: {
       accept: "application/json, text/javascript, */*; q=0.01",
-      referer: `${BASE_URL}${HOME_PATH}`,
+      referer: `${DEFAULT_BASE_URL}${HOME_PATH}`,
       "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
       "x-requested-with": "XMLHttpRequest",
     },
@@ -744,6 +750,9 @@ async function fetchAnimeEpisodes(animeUrl, html) {
 }
 
 export async function handleAnime4upRequest(requestUrl) {
+  const ctx = resolveSourceRequestContext(requestUrl, DEFAULT_BASE_URL, { label: SOURCE_NAME });
+  const fetchAnime4upHtml = createAnime4upFetcher(ctx.baseUrl);
+
   if (requestUrl.pathname.endsWith("/image")) {
     return fetchAnime4upProxiedImage(requestUrl.searchParams.get("url") ?? "");
   }
@@ -761,12 +770,12 @@ export async function handleAnime4upRequest(requestUrl) {
 
   if (requestUrl.pathname.endsWith("/subtitle")) {
     const target = assertAnime4upSubtitleUrl(requestUrl.searchParams.get("url") ?? "");
-    const referer = assertAnime4upStreamReferer(requestUrl.searchParams.get("referer") ?? `${BASE_URL}/`);
+    const referer = assertAnime4upStreamReferer(requestUrl.searchParams.get("referer") ?? `${ctx.baseUrl}/`);
     return await fetchProxiedSubtitle(target, referer);
   }
 
   if (requestUrl.pathname.endsWith("/filters")) {
-    const html = await fetchAnime4upHtml(`${BASE_URL}${CATALOG_PATH}`);
+    const html = await fetchAnime4upHtml(`${ctx.baseUrl}${CATALOG_PATH}`);
     return responseJson(200, { ...mergeFilterGroups([parseAnime4upFilterLinks(html)]), fetchedAt: new Date().toISOString() });
   }
 
@@ -781,7 +790,7 @@ export async function handleAnime4upRequest(requestUrl) {
     let hasMore;
     if (isHome) {
       if (page <= 1) {
-        const homeHtml = await fetchAnime4upHtml(`${BASE_URL}${HOME_PATH}`);
+        const homeHtml = await fetchAnime4upHtml(`${ctx.baseUrl}${HOME_PATH}`);
         html = catalogHtmlForHome(homeHtml, page);
         hasMore = catalogHasMore(homeHtml, page, filterPath);
       } else {
@@ -818,7 +827,7 @@ export async function handleAnime4upRequest(requestUrl) {
         hasMore: catalogHasMore(html, page, filterPath),
       });
     }
-    const html = await fetchAnime4upHtml(`${BASE_URL}/?s=${encodeURIComponent(query)}`);
+    const html = await fetchAnime4upHtml(`${ctx.baseUrl}/?s=${encodeURIComponent(query)}`);
     return responseJson(200, { items: parseAnime4upCatalog(html), page: 1, hasMore: false });
   }
 

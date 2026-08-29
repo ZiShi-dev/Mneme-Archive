@@ -1,26 +1,51 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="CineVault">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Mneme Archive">
   <defs>
-    <linearGradient id="bg" x1="64" y1="48" x2="448" y2="464" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#221836"/>
-      <stop offset="55%" stop-color="#120d1f"/>
-      <stop offset="100%" stop-color="#090612"/>
+    <linearGradient id="bg" x1="80" y1="64" x2="432" y2="464" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#24161c" />
+      <stop offset="100%" stop-color="#120c10" />
     </linearGradient>
-    <linearGradient id="accent" x1="96" y1="96" x2="416" y2="416" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#8b6dff"/>
-      <stop offset="100%" stop-color="#ff6b9d"/>
-    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
   </defs>
-  <rect width="512" height="512" rx="112" fill="#090A12"/>
-  <path d="M88 40 H424 L472 88 V424 L424 472 H88 L40 424 V88 Z" fill="url(#bg)" stroke="url(#accent)" stroke-width="12"/>
-  <path d="M72 128 H440 L416 168 H96 Z" fill="url(#accent)" opacity="0.92"/>
-  <path d="M112 168 H144 V192 H112 Z M176 168 H208 V192 H176 Z M240 168 H272 V192 H240 Z M304 168 H336 V192 H304 Z M368 168 H400 V192 H368 Z" fill="#0d0a18" opacity="0.85"/>
-  <rect x="96" y="216" width="48" height="72" rx="12" fill="url(#accent)" opacity="0.9"/>
-  <rect x="96" y="312" width="48" height="72" rx="12" fill="url(#accent)" opacity="0.62"/>
-  <rect x="96" y="408" width="48" height="40" rx="10" fill="url(#accent)" opacity="0.38"/>
-  <path d="M232 240 L232 336 L360 288 Z" fill="url(#accent)"/>
-  <rect x="384" y="240" width="40" height="26" rx="8" fill="url(#accent)" opacity="0.82"/>
-  <rect x="384" y="288" width="40" height="26" rx="8" fill="url(#accent)" opacity="0.62"/>
-  <rect x="384" y="336" width="40" height="26" rx="8" fill="url(#accent)" opacity="0.42"/>
-  <rect x="384" y="384" width="40" height="26" rx="8" fill="url(#accent)" opacity="0.28"/>
+
+  <rect x="32" y="32" width="448" height="448" rx="136" fill="url(#bg)" />
+  <rect x="36" y="36" width="440" height="440" rx="132" fill="none" stroke="rgba(255,240,245,0.16)" stroke-width="8" />
+
+  <g filter="url(#glow)">
+    <circle cx="368" cy="136" r="42" fill="#e8a8ba" opacity="0.22" />
+    <circle cx="368" cy="136" r="27" fill="#e8a8ba" />
+    <circle cx="368" cy="136" r="9" fill="#f6f1ea" />
+  </g>
+
+  <path
+    d="M136 168 C136 150, 244 138, 256 146 C268 138, 376 150, 376 168 V344 C174 374, 256 379, 256 379 C256 379, 242 374, 136 344 Z"
+    fill="#f6f1ea"
+  />
+  <path
+    d="M136 168 C136 150, 244 138, 256 146 C268 138, 376 150, 376 168 V344 C174 374, 256 379, 256 379 C256 379, 242 374, 136 344 Z"
+    fill="none"
+    stroke="#efe8df"
+    stroke-width="9"
+    opacity="0.88"
+  />
+  <path d="M256 146 V379" stroke="#efe8df" stroke-width="8" opacity="0.72" />
+
+  <path d="M168 216 H216" stroke="rgba(239,232,223,0.42)" stroke-width="12" stroke-linecap="round" />
+  <path d="M168 252 H224" stroke="rgba(239,232,223,0.42)" stroke-width="12" stroke-linecap="round" />
+  <path d="M168 288 H208" stroke="rgba(239,232,223,0.42)" stroke-width="12" stroke-linecap="round" />
+
+  <path d="M296 216 H344" stroke="rgba(239,232,223,0.42)" stroke-width="12" stroke-linecap="round" />
+  <path d="M288 252 H344" stroke="rgba(239,232,223,0.42)" stroke-width="12" stroke-linecap="round" />
+  <path d="M296 288 H336" stroke="rgba(239,232,223,0.42)" stroke-width="12" stroke-linecap="round" />
+
+  <path d="M256 304 L294 330 L278 370 H234 L218 330 Z" fill="#c94f6d" opacity="0.92" />
+
+  <circle cx="112" cy="368" r="9" fill="#e8a8ba" opacity="0.55" />
+  <circle cx="400" cy="336" r="7" fill="#e8a8ba" opacity="0.42" />
 </svg>

@@ -7,8 +7,8 @@
 
 .mneme-mark {
   display: block;
-  object-fit: cover;
   flex-shrink: 0;
+  border-radius: 28%;
   user-select: none;
   -webkit-user-drag: none;
 }
@@ -925,6 +925,84 @@ button.source-overview-row { color: inherit; cursor: pointer; }
   opacity: .75;
 }
 
+.source-urls-sheet__body {
+  padding-top: 4px;
+}
+
+.source-url-list {
+  display: grid;
+  gap: 8px;
+  max-height: min(62vh, 520px);
+  overflow-y: auto;
+  padding-inline-end: 2px;
+}
+
+.source-url-list__row {
+  width: 100%;
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--white) 90%, var(--surface));
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: border-color var(--motion-standard), background var(--motion-standard);
+}
+
+.source-url-list__row:hover {
+  border-color: color-mix(in srgb, var(--brand) 34%, var(--line));
+  background: color-mix(in srgb, var(--brand) 5%, var(--white));
+}
+
+.source-url-list__copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.source-url-list__copy strong {
+  color: var(--ink);
+  font: 600 11px/1.3 "Alexandria", sans-serif;
+}
+
+.source-url-list__copy small {
+  overflow: hidden;
+  color: var(--muted);
+  font: 500 9px/1.35 "Fragment Mono", monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-url-list__copy em {
+  color: var(--brand);
+  font: 600 8px/1 "Alexandria";
+  font-style: normal;
+}
+
+.source-urls-sheet header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.source-url-sheet__back {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--white) 90%, var(--surface));
+  color: var(--ink);
+  cursor: pointer;
+}
+
 .notify-sheet__tools-secondary {
   display: inline-flex;
   align-items: center;
@@ -1101,4 +1179,43 @@ button.source-overview-row { color: inherit; cursor: pointer; }
 
 .boot-screen--error p {
   color: #f2a3a0;
+}
+
+.error-boundary {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--bg, #090a12);
+}
+
+.error-boundary__card {
+  max-width: 420px;
+  width: 100%;
+  padding: 24px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: center;
+}
+
+.error-boundary__title {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+}
+
+.error-boundary__text {
+  margin: 0 0 16px;
+  color: #aab3ad;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.error-boundary__retry {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 18px;
+  background: #e53637;
+  color: #fff;
+  cursor: pointer;
 }

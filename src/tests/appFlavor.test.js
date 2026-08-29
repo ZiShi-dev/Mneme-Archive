@@ -10,19 +10,24 @@ import {
 import { initialSources } from "../config/sources.js";
 import { filterItemsByAudioLanguage, itemOffersPreferredAudio } from "../features/sources/audioLanguage.js";
 
-test("chromebook flavor keeps only French movie and series sources", () => {
-  assert.equal(isChromebookApp, true);
-  assert.deepEqual(ALLOWED_SOURCE_IDS, ["frenchstream", "wiflix", "coflix"]);
-  assert.deepEqual(VISIBLE_MEDIA_TYPES, ["movie", "series"]);
-  assert.equal(DEFAULT_SOURCE_ID, "frenchstream");
-  assert.equal(PREFERRED_AUDIO_LANGUAGE, "VOSTFR");
-  assert.deepEqual(initialSources.map((entry) => entry.id), ["frenchstream", "wiflix", "coflix"]);
+test("archive flavor exposes all sources and media types", () => {
+  assert.equal(isChromebookApp, false);
+  assert.equal(ALLOWED_SOURCE_IDS, null);
+  assert.deepEqual(VISIBLE_MEDIA_TYPES, ["manga", "novel", "anime", "movie", "series"]);
+  assert.equal(DEFAULT_SOURCE_ID, "mangalik");
+  assert.equal(PREFERRED_AUDIO_LANGUAGE, "VF");
+  assert.equal(initialSources.length, 14);
+  assert.ok(initialSources.some((entry) => entry.id === "mangalik"));
+  assert.ok(initialSources.some((entry) => entry.id === "frenchstream"));
+  assert.ok(initialSources.some((entry) => entry.id === "anime4up"));
+  assert.ok(initialSources.some((entry) => entry.id === "animedar"));
 });
 
-test("itemOffersPreferredAudio keeps VOSTFR and unknown labels", () => {
-  assert.equal(itemOffersPreferredAudio({ audioLabel: "VOSTFR" }), true);
+test("itemOffersPreferredAudio uses preferred audio language and unknown labels", () => {
+  assert.equal(itemOffersPreferredAudio({ audioLabel: "VF" }), true);
   assert.equal(itemOffersPreferredAudio({ audioLabel: "VF+VOSTFR" }), true);
-  assert.equal(itemOffersPreferredAudio({ audioLabel: "VF" }), false);
+  assert.equal(itemOffersPreferredAudio({ audioLabel: "VOSTFR" }), false);
+  assert.equal(itemOffersPreferredAudio({ audioLabel: "VOSTFR" }, "VOSTFR"), true);
   assert.equal(itemOffersPreferredAudio({}), true);
 });
 

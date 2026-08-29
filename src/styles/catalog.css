@@ -14,14 +14,66 @@
 .live-catalog__meta { display: flex; justify-content: space-between; align-items: center; margin: 17px 0 10px; }
 .live-catalog__meta strong { font: 700 12px/1 "Reem Kufi"; }
 .live-catalog__meta span { color: var(--muted); font-size: 8px; }
-.live-manga-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 17px 10px; }
-.live-manga-card { min-width: 0; border: 0; padding: 0; background: transparent; display: grid; align-content: start; gap: 5px; text-align: start; isolation: isolate; }
+
+/* Filtres taxonomy (التصنيفات / الوسوم) — aspect bouton cliquable */
+.live-catalog .catalog-taxonomy-filters {
+  gap: 10px;
+  min-height: 40px;
+  margin-bottom: 12px;
+}
+
+.live-catalog .catalog-taxonomy-filters .la-chip-bar__label {
+  font: 600 11px/1.3 var(--font-sans);
+  color: var(--muted);
+}
+
+.live-catalog .catalog-taxonomy-filters .la-chip-bar__chips {
+  gap: 8px;
+}
+
+.live-catalog .catalog-taxonomy-filters .la-chip--picker {
+  min-height: 36px;
+  padding-inline: 12px 10px;
+  font: 600 12px/1.25 var(--font-sans);
+  gap: 6px;
+}
+
+.live-catalog .catalog-taxonomy-filters .la-chip--picker > svg:first-of-type {
+  width: 14px;
+  height: 14px;
+  opacity: 0.85;
+  color: var(--brand);
+}
+
+.live-catalog .catalog-taxonomy-filters .la-chip--picker > span {
+  max-width: 132px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-catalog .catalog-taxonomy-filters .la-chip-bar__clear {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--white);
+  color: var(--muted);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--ink) 5%, transparent);
+}
+
+.live-catalog .catalog-taxonomy-filters .la-chip-bar__clear:hover {
+  border-color: color-mix(in srgb, var(--brand) 35%, var(--line));
+  color: var(--brand);
+}
+.live-manga-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px 10px; align-items: start; }
+.live-manga-card { min-width: 0; border: 0; padding: 0; background: transparent; display: grid; align-content: start; gap: 5px; text-align: start; isolation: isolate; overflow: hidden; }
 .live-manga-card__main { position: relative; z-index: 0; min-width: 0; display: grid; gap: 5px; padding: 0; border: 0; background: transparent; color: inherit; text-align: start; cursor: pointer; overflow: hidden; border-radius: 10px; }
 .live-manga-card strong { font: 700 10px/1.35 "Alexandria", "Shippori Mincho", sans-serif; color: var(--ink); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; min-height: 27px; }
 .live-manga-card strong[dir="auto"] { text-align: start; }
 .live-manga-card small { color: var(--green); font-size: 9px; font-weight: 700; }
-.live-manga-card__chapters { display: grid; gap: 4px; margin-top: 2px; position: relative; z-index: 1; }
-.live-manga-card__chapters > button { min-height: 29px; display: flex; align-items: center; gap: 5px; padding: 0 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--white); color: inherit; text-align: start; cursor: pointer; transition: border-color var(--motion-standard), background var(--motion-standard), transform var(--motion-standard); }
+.live-manga-card__chapters { display: grid; gap: 4px; margin-top: 2px; min-width: 0; }
+.live-manga-card__chapters > button { width: 100%; max-width: 100%; min-height: 29px; display: flex; align-items: center; gap: 4px; padding: 0 5px; border: 1px solid var(--line); border-radius: 8px; background: var(--white); color: inherit; text-align: start; cursor: pointer; box-sizing: border-box; overflow: hidden; transition: border-color var(--motion-standard), background var(--motion-standard), transform var(--motion-standard); }
 .live-manga-card__chapters > button:hover:not(:disabled) { border-color: var(--brand); background: color-mix(in srgb, var(--brand) 8%, var(--white)); transform: translateY(-1px); }
 .live-manga-card__chapters > button:disabled { opacity: .55; cursor: not-allowed; }
 .live-manga-card__chapters i { padding: 4px 5px; border-radius: 6px; background: color-mix(in srgb, var(--brand) 10%, var(--outside)); color: var(--brand); font: normal 6px/1 "Alexandria"; white-space: nowrap; }
@@ -40,6 +92,13 @@
   font: 600 7px/1.35 "Alexandria";
 }
 .live-manga-card__no-chapters svg { flex: 0 0 auto; opacity: .7; }
+
+@media (max-width: 380px) {
+  .live-manga-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px 8px;
+  }
+}
 
 .catalog-reload {
   display: flex;
@@ -412,6 +471,465 @@
   background: rgba(9, 10, 18, 0.28);
 }
 
+/* Hero lecture (manga / roman) : cover + meta compact côte à côte */
+.live-details-hero--reading.live-details-hero--cinematic {
+  display: block;
+  padding: 12px 18px 20px;
+  margin-bottom: 4px;
+}
+
+.live-details-hero__content--reading {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+[dir="rtl"] .live-details-hero__content--reading {
+  flex-direction: row-reverse;
+}
+
+.live-details-hero__reading-panel {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  align-content: end;
+}
+
+.live-details-hero--reading .live-details-hero__meta {
+  align-content: start;
+  gap: 5px;
+}
+
+.live-details-hero--reading .live-details-hero__title {
+  font: 800 clamp(20px, 5.4vw, 28px)/1.16 var(--font-display), "Instrument Sans", sans-serif;
+}
+
+.live-details-hero--reading .live-details-hero__subtitle {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.35;
+  opacity: 0.88;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.live-details-hero--reading .live-details-hero__cover .remote-cover--hero,
+.live-details-hero--reading .live-details-hero__cover .remote-cover--hero.remote-cover--novel {
+  width: 108px;
+  height: 162px;
+  flex-basis: 108px;
+  border-radius: 14px;
+  box-shadow: 0 12px 28px rgba(9, 10, 18, 0.3);
+}
+
+.live-details-hero--reading .details-hub {
+  margin: 0;
+  width: 100%;
+  max-width: none;
+}
+
+.live-details-hero--reading .details-hub__primary,
+.live-details-hero--reading .details-hub__latest:not(.details-hub__latest--secondary) {
+  min-height: 52px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(214, 232, 255, 0.92));
+  color: #10222f;
+  box-shadow: 0 12px 26px rgba(9, 10, 18, 0.2);
+}
+
+[dir="rtl"] .live-details-hero--reading .details-hub__latest,
+[dir="rtl"] .live-details-hero--reading .details-hub__primary {
+  flex-direction: row-reverse;
+  text-align: start;
+}
+
+[dir="ltr"] .live-details-hero--reading .details-hub__latest,
+[dir="ltr"] .live-details-hero--reading .details-hub__primary {
+  text-align: start;
+}
+
+.live-details-hero--reading .details-hub__latest-copy,
+.live-details-hero--reading .details-hub__primary-copy {
+  text-align: start;
+}
+
+.live-details-hero--reading .details-hub__latest-icon,
+.live-details-hero--reading .details-hub__primary-icon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: rgba(15, 79, 93, 0.12);
+  color: #0f4f5d;
+  flex-shrink: 0;
+}
+
+.live-details-hero--reading .details-hub__latest-copy small,
+.live-details-hero--reading .details-hub__primary-copy small {
+  color: rgba(16, 34, 47, 0.68);
+}
+
+.live-details-hero--reading .details-hub__latest-copy strong,
+.live-details-hero--reading .details-hub__primary-copy strong {
+  color: #10222f;
+  white-space: normal;
+}
+
+/* Page film : hero compact + CTA + contenu enrichi */
+.screen--details-movie .live-details-hero--reading .live-details-hero__cover .remote-cover--hero.remote-cover--video {
+  width: 112px;
+  height: 168px;
+  flex-basis: 112px;
+}
+
+.screen--details-movie .live-details-hero__facts--chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.screen--details-movie .live-details-hero__facts--chips > li {
+  padding: 5px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(9, 10, 18, 0.34);
+  color: rgba(255, 255, 255, 0.88);
+  font: 600 11px/1.2 var(--font-sans);
+  backdrop-filter: blur(8px);
+}
+
+.screen--details-movie .details-movie-hero-actions {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+}
+
+.screen--details-movie .details-movie-watch {
+  position: relative;
+  width: 100%;
+  min-height: 52px;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--brand) 92%, white),
+    color-mix(in srgb, var(--brand) 68%, #4c2dff)
+  );
+  color: #fff;
+  text-align: start;
+  cursor: pointer;
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--brand) 34%, transparent);
+}
+
+[dir="rtl"] .screen--details-movie .details-movie-watch {
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+}
+
+.screen--details-movie .details-movie-watch__icon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.screen--details-movie .details-movie-watch__copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.screen--details-movie .details-movie-watch__copy small {
+  color: rgba(255, 255, 255, 0.76);
+  font: 500 11px/1.2 var(--font-sans);
+}
+
+.screen--details-movie .details-movie-watch__copy strong {
+  color: #fff;
+  font: 700 14px/1.25 var(--font-sans);
+  white-space: normal;
+}
+
+.screen--details-movie .details-movie-watch__badge,
+.screen--details-movie .details-movie-watch__progress {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.92);
+  font: 700 10px/1 var(--font-sans);
+  font-style: normal;
+}
+
+.screen--details-movie .details-movie-watch__arrow {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.screen--details-movie .details-movie-watch__track {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.screen--details-movie .details-movie-watch__track > span {
+  display: block;
+  height: 100%;
+  background: #fff;
+}
+
+.screen--details-movie .details-movie-hero-actions .details-audio-language--hero {
+  margin: 0;
+}
+
+.screen--details-movie .details-content--movie .details-about {
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--ink) 2.5%, var(--paper));
+}
+
+.screen--details-movie .details-content--movie .details-about p {
+  font-size: 14px;
+  line-height: 1.65;
+  color: color-mix(in srgb, var(--ink) 88%, transparent);
+}
+
+.screen--details-movie .details-content--movie .details-about__tags {
+  margin-top: 12px;
+}
+
+.screen--details-movie .details-related--movie-strip {
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--ink) 2.5%, var(--paper));
+}
+
+.screen--details-movie .details-related--movie-strip .details-related__scroller {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(108px, 124px);
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.screen--details-movie .details-related--movie-strip .details-related__card {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: start;
+  cursor: pointer;
+}
+
+.screen--details-movie .details-related--movie-strip .details-related__card .remote-cover {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: 12px;
+}
+
+.screen--details-movie .details-related--movie-strip .details-related__copy strong {
+  font: 700 11px/1.35 var(--font-sans);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.screen--details-movie .details-related--movie-strip .details-related__copy small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+/* Hero cinématique : titre en haut, poster + actions en dock (vidéo) */
+.live-details-hero--cinematic {
+  display: grid;
+  gap: 0;
+  align-content: start;
+  padding: 16px 20px 0;
+}
+
+.live-details-hero--cinematic .live-details-hero__head {
+  position: relative;
+  z-index: 1;
+  padding: 0 0 10px;
+}
+
+.live-details-hero--cinematic .live-details-hero__head .live-details-hero__meta {
+  align-content: start;
+  gap: 10px;
+}
+
+.live-details-hero--cinematic .live-details-hero__head .live-details-hero__title {
+  font: 800 clamp(22px, 6vw, 30px)/1.28 var(--font-display), "Instrument Sans", sans-serif;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.45);
+}
+
+.live-details-hero--cinematic .live-details-hero__head .live-details-hero__subtitle {
+  margin: 2px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  opacity: 0.9;
+}
+
+.live-details-hero--cinematic .live-details-hero__dock {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  margin-top: 0;
+  padding: 10px 0 20px;
+}
+
+[dir="rtl"] .live-details-hero--cinematic:not(.live-details-hero--reading) .live-details-hero__dock {
+  flex-direction: row-reverse;
+}
+
+.live-details-hero--cinematic .live-details-hero__dock-panel {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 14px;
+  align-content: end;
+}
+
+.live-details-hero--cinematic .live-details-hero__dock .details-hub {
+  margin: 0;
+  max-width: none;
+  width: 100%;
+}
+
+.live-details-hero--cinematic .live-details-hero__dock .details-hub__primary,
+.live-details-hero--cinematic .live-details-hero__dock .details-hub__latest:not(.details-hub__latest--secondary) {
+  min-height: 58px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(214, 232, 255, 0.92));
+  color: #10222f;
+  box-shadow: 0 14px 30px rgba(9, 10, 18, 0.22);
+}
+
+.live-details-hero--cinematic .live-details-hero__dock .details-hub__primary-icon,
+.live-details-hero--cinematic .live-details-hero__dock .details-hub__latest-icon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(15, 79, 93, 0.12);
+  color: #0f4f5d;
+  flex-shrink: 0;
+}
+
+.live-details-hero--cinematic .live-details-hero__dock .details-hub__latest-copy small,
+.live-details-hero--cinematic .live-details-hero__dock .details-hub__primary-copy small {
+  color: rgba(16, 34, 47, 0.68);
+  font: 500 11px/1.2 var(--font-sans);
+}
+
+.live-details-hero--cinematic .live-details-hero__dock .details-hub__latest-copy strong,
+.live-details-hero--cinematic .live-details-hero__dock .details-hub__primary-copy strong {
+  color: #10222f;
+  font: 700 14px/1.3 var(--font-sans);
+  white-space: normal;
+}
+
+.live-details-hero--cinematic .live-details-hero__dock .details-hub__primary em,
+.live-details-hero--cinematic .live-details-hero__dock .details-hub__primary-arrow {
+  color: rgba(16, 34, 47, 0.72);
+}
+
+.live-details-hero--cinematic .live-details-hero__dock .details-hub__latest--secondary {
+  min-height: 44px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(9, 10, 18, 0.28);
+  color: #fff;
+  box-shadow: none;
+}
+
+.live-details-hero--cinematic .live-details-hero__dock .details-hub__latest--secondary .details-hub__latest-copy small,
+.live-details-hero--cinematic .live-details-hero__dock .details-hub__latest--secondary .details-hub__latest-copy strong {
+  color: #fff;
+}
+
+.live-details-hero--cinematic .live-details-hero__dock .details-hub__latest--secondary .details-hub__latest-icon {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+.live-details-hero--cinematic .live-details-hero__dock-panel .details-movie-hero-actions {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+.live-details-hero--cinematic .live-details-hero__dock-panel .details-movie-watch {
+  width: 100%;
+}
+
+.screen--details-cinematic-manga .live-details-hero__cover .remote-cover--hero,
+.screen--details-cinematic-novel .live-details-hero__cover .remote-cover--hero.remote-cover--novel {
+  width: 118px;
+  height: 176px;
+  flex-basis: 118px;
+  border-radius: 14px;
+  box-shadow: 0 12px 28px rgba(9, 10, 18, 0.3);
+}
+
+.screen--details-cinematic-manga .live-details-hero--cinematic,
+.screen--details-cinematic-novel .live-details-hero--cinematic {
+  padding: 12px 18px 0;
+}
+
+.screen--details-cinematic-manga .live-details-hero__head .live-details-hero__meta,
+.screen--details-cinematic-novel .live-details-hero__head .live-details-hero__meta {
+  gap: 5px;
+}
+
+.screen--details-cinematic-manga .live-details-hero__dock .details-hub__primary,
+.screen--details-cinematic-manga .live-details-hero__dock .details-hub__latest:not(.details-hub__latest--secondary),
+.screen--details-cinematic-novel .live-details-hero__dock .details-hub__primary,
+.screen--details-cinematic-novel .live-details-hero__dock .details-hub__latest:not(.details-hub__latest--secondary) {
+  min-height: 52px;
+}
+
+.screen--details-cinematic-anime .live-details-hero__cover .remote-cover--hero.remote-cover--video,
+.screen--details-cinematic-series .live-details-hero__cover .remote-cover--hero.remote-cover--video,
+.screen--details-cinematic-movie .live-details-hero__cover .remote-cover--hero.remote-cover--video {
+  width: 132px;
+  height: 196px;
+  flex-basis: 132px;
+  border-radius: 16px;
+  box-shadow: 0 16px 34px rgba(9, 10, 18, 0.34);
+}
+
+.live-details-hero--cinematic .live-details-hero__dock .details-audio-language--hero {
+  max-width: none;
+}
+
 .publication-status {
   display: inline-flex;
   align-items: center;
@@ -440,6 +958,7 @@
 .screen--live-anime .details-about p {
   unicode-bidi: plaintext;
   text-align: start;
+  text-wrap: pretty;
 }
 
 .live-details-hero--novel .live-details-hero__cover::before {
@@ -718,11 +1237,11 @@
   }
 }
 .built-in-source { margin: 15px 0 20px; }
-.source-mode-cards { display: grid; gap: 9px; margin-bottom: 20px; }
-.source-mode-cards > button { width: 100%; border: 1px solid var(--line); border-radius: 15px; background: var(--white); color: var(--muted); display: flex; align-items: center; gap: 12px; padding: 14px; text-align: start; cursor: pointer; }
-.source-mode-cards > button > span { flex: 1; display: grid; gap: 4px; }
-.source-mode-cards strong { color: var(--ink); font: 700 11px/1.2 "Reem Kufi"; }
-.source-mode-cards small { color: var(--muted); font-size: 9px; }
+.source-mode-cards { display: grid; gap: 10px; margin-bottom: 20px; }
+.source-mode-cards > button { width: 100%; border: 1px solid var(--line); border-radius: 15px; background: var(--white); color: var(--muted); display: flex; align-items: center; gap: 12px; padding: 14px 16px; text-align: start; cursor: pointer; }
+.source-mode-cards > button > span { flex: 1; display: grid; gap: 5px; }
+.source-mode-cards strong { color: var(--ink); font: 700 14px/1.4 var(--font-display); }
+.source-mode-cards small { color: var(--muted); font: 500 13px/1.55 var(--font-sans); }
 .source-mode-cards > button > svg:last-child { opacity: 0; color: var(--green); }
 .source-mode-cards > button.active { border-color: var(--green); background: color-mix(in srgb, var(--green) 7%, var(--white)); color: var(--green); }
 .source-mode-cards > button.active > svg:last-child { opacity: 1; }

@@ -6,18 +6,15 @@ export const AZORAFLY_LOGO_URL = "https://storage.azorafly.com/public/upload/202
 export const GALAXY_NOVELS_LOGO_URL = "https://galaxynovels.com/wp-content/uploads/2026/05/cropped-مجرة-الروايات-شفافة-192x192.png";
 export const NOVELS_PARADISE_LOGO_URL = "https://novelsparadise.site/favicon.ico";
 export const NIGHT_NOVEL_LOGO_URL = "https://nightnovelapp.tech/open-book.svg";
-export const REALM_NOVEL_LOGO_URL = "https://realmnovel.com/static/favicon-32.png";
+export const ANIMEDAR_LOGO_URL = "https://animedar.net/wp-content/uploads/2023/10/cropped-cropped-انمي-دار-180x180-1-150x150.png";
 export const CENELE_LOGO_URL = "https://cenele.com/wp-content/uploads/2026/08/cropped-%D9%81%D8%B6%D8%A7%D8%A1-%D8%B1%D9%88%D8%A7%D9%8A%D8%A7%D8%AA-192x192.png";
 export const KOLNOVEL_LOGO_URL = "https://kolnovel.com/wp-content/uploads/2026/07/cropped-%D8%A8%D8%AF%D9%88%D9%86-%D8%A7%D8%B3%D9%8596_20260720234820-1-192x192.png";
 export const ANIME4UP_LOGO_URL = "https://4h.b9p2m6c.shop/wp-content/uploads/2019/03/Anime4up-Icon-1.png";
-export const MANGAFORFREE_LOGO_URL = "https://mangaforfree.com/wp-content/uploads/2026/07/Site-Icon-mangaforfree.png";
+export const ANIMESAMA_LOGO_URL = "https://anime-sama.to/img/icon.png";
 export const FRENCH_STREAM_LOGO_URL = "https://french-stream.one/apple-touch-icon.png";
 export const WIFLIX_LOGO_URL = "https://www.wiflix.tv/static/templates/wiflixnew/images/favicon.png";
 export const COFLIX_LOGO_URL = "https://coflix.esq/wp-content/uploads/2022/10/cropped-coflix-180x180-1-150x150.png";
 export const DILAR_LOGO_URL = "https://dilar.tube/favicon.ico";
-export const ARABS_HENTAI_LOGO_URL = "https://arabshentai.com/wp-content/themes/dooplay/assets/img/brand/arbs_logo_dark.webp";
-export const HENTAIREAD_LOGO_URL = "https://hentairead.com/favicon.ico";
-export const HENTAIGASM_LOGO_URL = "https://hentaigasm.com/favicon.ico";
 
 export const sourceProfiles = {
   mangalik: {
@@ -31,18 +28,6 @@ export const sourceProfiles = {
     contentLabel: "مانغا",
     contentTypes: ["manga"],
     languages: ["ar"],
-  },
-  mangaforfree: {
-    id: "mangaforfree",
-    name: "MangaForFree",
-    arabicName: "مانغا فور فري",
-    domain: "mangaforfree.com",
-    url: "https://mangaforfree.com/manga/",
-    logo: MANGAFORFREE_LOGO_URL,
-    initials: "MF",
-    contentLabel: "مانغا ومانهوا",
-    contentTypes: ["manga"],
-    languages: ["en"],
   },
   azorafly: {
     id: "azorafly",
@@ -92,16 +77,16 @@ export const sourceProfiles = {
     contentTypes: ["novel"],
     languages: ["ar"],
   },
-  realmnovel: {
-    id: "realmnovel",
-    name: "Realm Novel",
-    arabicName: "عالم الروايات",
-    domain: "realmnovel.com",
-    url: "https://realmnovel.com/",
-    logo: REALM_NOVEL_LOGO_URL,
-    initials: "RN",
-    contentLabel: "روايات مترجمة",
-    contentTypes: ["novel"],
+  animedar: {
+    id: "animedar",
+    name: "AnimeDar",
+    arabicName: "انمي دار",
+    domain: "animedar.net",
+    url: "https://animedar.net/",
+    logo: ANIMEDAR_LOGO_URL,
+    initials: "AD",
+    contentLabel: "أنمي مترجم",
+    contentTypes: ["anime"],
     languages: ["ar"],
   },
   cenele: {
@@ -139,6 +124,18 @@ export const sourceProfiles = {
     contentLabel: "أنمي مترجم",
     contentTypes: ["anime", "movie"],
     languages: ["ar"],
+  },
+  animesama: {
+    id: "animesama",
+    name: "Anime-Sama",
+    arabicName: "أنمي ساما",
+    domain: "anime-sama.to",
+    url: "https://anime-sama.to/catalogue/",
+    logo: ANIMESAMA_LOGO_URL,
+    initials: "AS",
+    contentLabel: "أنمي فرنسي",
+    contentTypes: ["anime"],
+    languages: ["fr"],
   },
   frenchstream: {
     id: "frenchstream",
@@ -187,42 +184,6 @@ export const sourceProfiles = {
     contentLabel: "مانغا ومانهوا",
     contentTypes: ["manga"],
     languages: ["ar"],
-  },
-  arabshentai: {
-    id: "arabshentai",
-    name: "Arabs Hentai",
-    arabicName: "عربس هنتاي",
-    domain: "arabshentai.com",
-    url: "https://arabshentai.com/manga/",
-    logo: ARABS_HENTAI_LOGO_URL,
-    initials: "AH",
-    contentLabel: "مانغا ومانهوا",
-    contentTypes: ["manga"],
-    languages: ["ar"],
-  },
-  hentairead: {
-    id: "hentairead",
-    name: "HentaiRead",
-    arabicName: "هنتاي ريد",
-    domain: "hentairead.com",
-    url: "https://hentairead.com/hentai/",
-    logo: HENTAIREAD_LOGO_URL,
-    initials: "HR",
-    contentLabel: "مانغا إنجليزية",
-    contentTypes: ["manga"],
-    languages: ["en"],
-  },
-  hentaigasm: {
-    id: "hentaigasm",
-    name: "HentaiGasm",
-    arabicName: "هنتاي غازم",
-    domain: "hentaigasm.com",
-    url: "https://hentaigasm.com/",
-    logo: HENTAIGASM_LOGO_URL,
-    initials: "HG",
-    contentLabel: "أنمي هنتاي",
-    contentTypes: ["anime"],
-    languages: ["en"],
   },
 };
 
@@ -313,13 +274,12 @@ export function defaultContentKinds(sourceId) {
     ];
   }
 
-  if (sourceId === "arabshentai") {
-    return [
-      { slug: "all", name: "الكل", type: "kind" },
-      { slug: "manhwa", name: "مانهوا", type: "kind", queryValue: "manhwa" },
-      { slug: "manga", name: "مانجا", type: "kind", queryValue: "manga" },
-      { slug: "anime", name: "أنمي", type: "kind", queryValue: "anime" },
-    ];
+  if (sourceId === "animedar") {
+    return [{ slug: "all", name: "الكل", filterPath: "/" }];
+  }
+
+  if (sourceId === "animesama") {
+    return [{ slug: "all", name: "الكل", filterPath: "/all/" }];
   }
 
   const profile = sourceProfiles[sourceId];
@@ -342,29 +302,23 @@ export function resolveSourceId(item) {
   if (item?.sourceId === "novelsparadise") return "novelsparadise";
   if (item?.source === "Night Novel") return "nightnovel";
   if (item?.sourceId === "nightnovel") return "nightnovel";
-  if (item?.source === "Realm Novel") return "realmnovel";
-  if (item?.sourceId === "realmnovel") return "realmnovel";
+  if (item?.source === "AnimeDar") return "animedar";
+  if (item?.sourceId === "animedar") return "animedar";
   if (item?.source === "Cenele") return "cenele";
   if (item?.sourceId === "cenele") return "cenele";
   if (item?.source === "Kol Novel") return "kolnovel";
   if (item?.sourceId === "kolnovel") return "kolnovel";
   if (item?.source === "Anime4up") return "anime4up";
   if (item?.sourceId === "anime4up") return "anime4up";
+  if (item?.source === "Anime-Sama") return "animesama";
+  if (item?.sourceId === "animesama") return "animesama";
   if (item?.source === "French Stream") return "frenchstream";
   if (item?.sourceId === "frenchstream") return "frenchstream";
   if (item?.source === "Wiflix") return "wiflix";
   if (item?.sourceId === "wiflix") return "wiflix";
   if (item?.source === "Coflix") return "coflix";
   if (item?.sourceId === "coflix") return "coflix";
-  if (item?.source === "MangaForFree") return "mangaforfree";
-  if (item?.sourceId === "mangaforfree") return "mangaforfree";
   if (item?.source === "Dilar") return "dilar";
   if (item?.sourceId === "dilar") return "dilar";
-  if (item?.source === "Arabs Hentai") return "arabshentai";
-  if (item?.sourceId === "arabshentai") return "arabshentai";
-  if (item?.source === "HentaiRead") return "hentairead";
-  if (item?.sourceId === "hentairead") return "hentairead";
-  if (item?.source === "HentaiGasm") return "hentaigasm";
-  if (item?.sourceId === "hentaigasm") return "hentaigasm";
   return DEFAULT_SOURCE_ID;
 }

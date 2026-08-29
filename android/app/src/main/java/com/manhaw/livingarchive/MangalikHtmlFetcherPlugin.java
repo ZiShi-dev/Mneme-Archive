@@ -29,11 +29,9 @@ import org.json.JSONObject;
 public class MangalikHtmlFetcherPlugin extends Plugin {
 
     private static final String MANGALIK_HOST = "mangalik.net";
-    private static final String ARABS_HENTAI_HOST = "arabshentai.com";
     private static final String HENTAIREAD_HOST = "hentairead.com";
     private static final String HENCOVER_HOST = "hencover.xyz";
     private static final String MANGALIK_WARMUP_URL = "https://mangalik.net/manga/";
-    private static final String ARABS_HENTAI_WARMUP_URL = "https://arabshentai.com/manga/";
     private static final String HENTAIREAD_WARMUP_URL = "https://hentairead.com/hentai/";
     private static final String USER_AGENT =
         "Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36";
@@ -326,9 +324,6 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
     private String warmupUrlFor(String url) {
         try {
             String host = normalizeHost(new URI(url).getHost());
-            if (ARABS_HENTAI_HOST.equals(host)) {
-                return ARABS_HENTAI_WARMUP_URL;
-            }
             if (HENTAIREAD_HOST.equals(host)) {
                 return HENTAIREAD_WARMUP_URL;
             }
@@ -341,9 +336,6 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
     private String refererFor(String url) {
         try {
             String host = normalizeHost(new URI(url).getHost());
-            if (ARABS_HENTAI_HOST.equals(host)) {
-                return "https://arabshentai.com/";
-            }
             if (HENTAIREAD_HOST.equals(host) || HENCOVER_HOST.equals(host)) {
                 return "https://hentairead.com/";
             }
@@ -361,7 +353,6 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
             }
             String host = normalizeHost(uri.getHost());
             return MANGALIK_HOST.equals(host)
-                || ARABS_HENTAI_HOST.equals(host)
                 || HENTAIREAD_HOST.equals(host);
         } catch (Exception error) {
             return false;
@@ -381,9 +372,6 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
             }
             if (!isAllowedUrl(url)) {
                 return false;
-            }
-            if (ARABS_HENTAI_HOST.equals(host)) {
-                return path.startsWith("/wp-content/uploads/");
             }
             if (HENTAIREAD_HOST.equals(host)) {
                 return path.startsWith("/wp-content/uploads/") || path.startsWith("/hentai/");

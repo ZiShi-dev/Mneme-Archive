@@ -9,7 +9,6 @@ import {
 
 const sources = [
   { id: "mangalik", enabled: true },
-  { id: "mangaforfree", enabled: true },
   { id: "frenchstream", enabled: false },
   { id: "wiflix", enabled: true },
   { id: "anime4up", enabled: true },
@@ -17,7 +16,7 @@ const sources = [
 
 test("filterEnableSources matches language labels in Arabic", () => {
   const english = filterEnableSources(sources, { query: "الإنجليزية" });
-  assert.deepEqual(english.map((entry) => entry.id).sort(), ["frenchstream", "mangaforfree", "wiflix"]);
+  assert.deepEqual(english.map((entry) => entry.id).sort(), ["frenchstream", "wiflix"]);
 });
 
 test("filterEnableSources filters by content type and enabled scope", () => {

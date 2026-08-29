@@ -13,10 +13,16 @@ import { DataUsageSettingsEntry, DataUsageSettingsSheet } from "./DataUsageSetti
 import { LanguageSettingsEntry, LanguageSettingsSheet } from "./LanguageSettingsPanel";
 import { ThemeSettingsEntry, ThemeSettingsSheet } from "./ThemeSettingsPanel";
 import { FontSettingsEntry, FontSettingsSheet } from "./FontSettingsPanel";
-import { CoflixSettingsEntry, CoflixSettingsSheet } from "./CoflixSettingsPanel";
+import { SourceUrlsSettingsEntry, SourceUrlsSettingsSheet } from "./SourceUrlsSettingsPanel";
 import { AppMark } from "../components/brand/AppMark";
+import { getSourceDisplayName } from "../config/sources";
 import { getAppBrandText } from "../lib/brand/appBrand";
 import { isChromebookApp } from "../config/appFlavor";
+import {
+  countSourceBaseUrlOverrides,
+  getDefaultSourceBaseUrl,
+  normalizeSourceBaseUrl,
+} from "../lib/settings/sourceBaseUrls.js";
 
 export function SettingsScreen({ navigate, appearance, typeface, onSetAppearance, onSetTypeface, sources, sourcePreferences, onToggleSite, onSetSitesEnabled }) {
   const { t } = useI18n();
@@ -28,8 +34,9 @@ export function SettingsScreen({ navigate, appearance, typeface, onSetAppearance
   const [themeOpen, setThemeOpen] = useState(false);
   const [fontOpen, setFontOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
-  const [coflixOpen, setCoflixOpen] = useState(false);
+  const [sourceUrlsOpen, setSourceUrlsOpen] = useState(false);
   const activeSourceCount = sources.filter((entry) => entry.enabled !== false).length;
+  const sourceUrlOverrideCount = countSourceBaseUrlOverrides(settings.sourceBaseUrls);
 
   useEffect(() => {
     setRuntimeSettings(settings);
@@ -106,12 +113,10 @@ export function SettingsScreen({ navigate, appearance, typeface, onSetAppearance
             </span>
             <ChevronLeft size={18} />
           </button>
-          {isChromebookApp && (
-            <CoflixSettingsEntry
-              baseUrl={settings.coflixBaseUrl}
-              onOpen={() => setCoflixOpen(true)}
-            />
-          )}
+          <SourceUrlsSettingsEntry
+            overrideCount={sourceUrlOverrideCount}
+            onOpen={() => setSourceUrlsOpen(true)}
+          />
           </div>
         </section>
 
@@ -178,13 +183,22 @@ export function SettingsScreen({ navigate, appearance, typeface, onSetAppearance
         onSetTypeface={onSetTypeface}
       />
       <LanguageSettingsSheet open={languageOpen} onClose={() => setLanguageOpen(false)} />
-      <CoflixSettingsSheet
-        open={coflixOpen}
-        onClose={() => setCoflixOpen(false)}
-        baseUrl={settings.coflixBaseUrl}
-        onSave={(nextUrl) => {
-          setSettings((current) => ({ ...current, coflixBaseUrl: nextUrl }));
-          notifyUpdated(t("settings.coflixUrlUpdated"));
+      <SourceUrlsSettingsSheet
+        open={sourceUrlsOpen}
+        onClose={() => setSourceUrlsOpen(false)}
+        sourceBaseUrls={settings.sourceBaseUrls}
+        onSaveOverride={(sourceId, nextUrl) => {
+          setSettings((current) => {
+            const defaultUrl = getDefaultSourceBaseUrl(sourceId);
+            const normalized = normalizeSourceBaseUrl(sourceId, nextUrl);
+            const nextOverrides = { ...(current.sourceBaseUrls || {}) };
+            if (!defaultUrl || normalized === defaultUrl) delete nextOverrides[sourceId];
+            else nextOverrides[sourceId] = normalized;
+            const next = { ...current, sourceBaseUrls: nextOverrides };
+            if (sourceId === "coflix") next.coflixBaseUrl = normalized;
+            return next;
+          });
+          notifyUpdated(t("settings.sourceUrlUpdated", { name: getSourceDisplayName(sourceId) }));
         }}
       />
       <EnableSourcesSheet

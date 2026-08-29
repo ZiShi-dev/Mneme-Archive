@@ -3,58 +3,65 @@ import { createCachedHtmlFetcher, fetchProxiedImage } from "../lib/httpUtils.js"
 import { normalizeSearchQuery } from "../lib/queryLimits.js";
 import { responseJson } from "../lib/response.js";
 import { applyRecentChapterFields, recentChaptersFromCount } from "../lib/catalogChapters.js";
+import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
 
-const BASE_URL = "https://cenele.com";
+const DEFAULT_BASE_URL = "https://cenele.com";
+const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
 const SOURCE_NAME = "Cenele";
 const SOURCE_ID = "cenele";
-const AJAX_URL = `${BASE_URL}/wp-admin/admin-ajax.php`;
 const CATALOG_PATH = "/cont/";
 
-const fetchCeneleHtml = createCachedHtmlFetcher({
-  ttlMs: 3 * 60_000,
-  timeoutMs: 35_000,
-  headers: {
-    accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "accept-language": "ar,en;q=0.8",
-    referer: `${BASE_URL}/`,
-    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-  },
-  getVariants: (url) => [url],
-  buildError: (lastStatus) => `Cenele a répondu ${lastStatus || "sans réponse"}`,
-});
+function createFetcher(baseUrl = DEFAULT_BASE_URL) {
+  return createCachedHtmlFetcher({
+    ttlMs: 3 * 60_000,
+    timeoutMs: 35_000,
+    headers: {
+      accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "accept-language": "ar,en;q=0.8",
+      referer: `${baseUrl}/`,
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    },
+    getVariants: (url) => [url],
+    buildError: (lastStatus) => `Cenele a répondu ${lastStatus || "sans réponse"}`,
+  });
+}
 
-function assertCeneleHost(rawUrl) {
+function ajaxUrl(ctx = DEFAULT_CTX) {
+  return `${ctx.baseUrl}/wp-admin/admin-ajax.php`;
+}
+
+function assertCeneleHost(rawUrl, ctx = DEFAULT_CTX) {
   const url = new URL(rawUrl);
-  if (url.protocol !== "https:" || !["cenele.com", "www.cenele.com"].includes(url.hostname)) {
+  if (url.protocol !== "https:" || !ctx.allowedHosts.has(url.hostname.toLowerCase())) {
     throw new Error("المصدر غير مسموح");
   }
-  url.hostname = "cenele.com";
+  url.hostname = ctx.apex;
   url.hash = "";
   return url;
 }
 
-function assertCeneleImageUrl(rawUrl) {
-  const url = assertCeneleHost(rawUrl);
+function assertCeneleImageUrl(rawUrl, ctx = DEFAULT_CTX) {
+  const url = assertCeneleHost(rawUrl, ctx);
   if (!url.pathname.startsWith("/wp-content/uploads/")) throw new Error("رابط الصورة غير مسموح");
   return url.toString();
 }
 
-function assertNovelUrl(rawUrl) {
-  const url = assertCeneleHost(rawUrl);
+function assertNovelUrl(rawUrl, ctx = DEFAULT_CTX) {
+  const url = assertCeneleHost(rawUrl, ctx);
   const parts = url.pathname.split("/").filter(Boolean);
   if (parts[0] !== "cont" || parts.length !== 2) throw new Error("رابط Cenele غير صالح");
   return url.toString();
 }
 
-function assertChapterUrl(rawUrl) {
-  const url = assertCeneleHost(rawUrl);
+function assertChapterUrl(rawUrl, ctx = DEFAULT_CTX) {
+  const url = assertCeneleHost(rawUrl, ctx);
   const parts = url.pathname.split("/").filter(Boolean);
   if (parts[0] !== "cont" || parts.length < 4) throw new Error("رابط فصل Cenele غير صالح");
   return url.toString();
 }
 
-function slugFromNovelUrl(rawUrl) {
-  const url = assertCeneleHost(rawUrl);
+function slugFromNovelUrl(rawUrl, ctx = DEFAULT_CTX) {
+  const url = assertCeneleHost(rawUrl, ctx);
   const parts = url.pathname.split("/").filter(Boolean);
   if (parts[0] === "cont" && parts[1]) return parts[1];
   throw new Error("رابط Cenele غير صالح");
@@ -94,10 +101,10 @@ function parseChapterCount(block = "") {
   return Number((chip?.[1] ?? "").replace(/,/g, "")) || 0;
 }
 
-function buildCeneleChapterUrl(novelUrl, chapterNumber) {
-  const slug = slugFromNovelUrl(novelUrl);
+function buildCeneleChapterUrl(novelUrl, chapterNumber, ctx = DEFAULT_CTX) {
+  const slug = slugFromNovelUrl(novelUrl, ctx);
   if (!slug || !chapterNumber) return null;
-  return `${BASE_URL}/cont/${slug}/vol/الفصل-${chapterNumber}/`;
+  return `${ctx.baseUrl}/cont/${slug}/vol/الفصل-${chapterNumber}/`;
 }
 
 export function parseCeneleCatalog(html) {
@@ -105,9 +112,9 @@ export function parseCeneleCatalog(html) {
   const starts = [...html.matchAll(/<article[^>]*class="[^"]*nhv-library-card[^"]*"[^>]*>/gi)];
   starts.forEach((match, index) => {
     const block = html.slice(match.index, starts[index + 1]?.index ?? html.length);
-    const link = block.match(/<h2[^>]*class="[^"]*nhv-library-card__title[^"]*"[^>]*>[\s\S]*?<a[^>]*href="(https?:\/\/(?:www\.)?cenele\.com\/cont\/[^"?#]+\/?)"[^>]*>([\s\S]*?)<\/a>/i);
+    const link = block.match(/<h2[^>]*class="[^"]*nhv-library-card__title[^"]*"[^>]*>[\s\S]*?<a[^>]*href="(https?:\/\/[^"/]+\/cont\/[^"?#]+\/?)"[^>]*>([\s\S]*?)<\/a>/i);
     if (!link) return;
-    const url = link[1].replace("www.cenele.com", "cenele.com");
+    const url = link[1].replace(/^https?:\/\/www\./i, "https://");
     const title = textOnly(link[2]);
     if (!title) return;
     const imageTag = block.match(/<img[^>]*class="[^"]*wp-post-image[^"]*"[^>]*>/i)?.[0] ?? block.match(/<img[^>]*>/i)?.[0] ?? "";
@@ -138,7 +145,7 @@ export function parseCeneleChapterRows(html) {
     const block = match[2];
     const link = block.match(/<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i);
     if (!link) continue;
-    const url = decodeHtml(link[1]).replace("www.cenele.com", "cenele.com");
+    const url = decodeHtml(link[1]).replace(/^https?:\/\/www\./i, "https://");
     if (seen.has(url)) continue;
     seen.add(url);
     const nameHtml = link[2];
@@ -158,7 +165,7 @@ export function parseCeneleChapterRows(html) {
   return chapters;
 }
 
-function parseCeneleTaxonomies(html) {
+function parseCeneleTaxonomies(html, ctx = DEFAULT_CTX) {
   const categories = [];
   const tags = [];
   const seenCategories = new Set();
@@ -168,11 +175,11 @@ function parseCeneleTaxonomies(html) {
     if (!href) continue;
     let target;
     try {
-      target = new URL(href, BASE_URL);
+      target = new URL(href, ctx.baseUrl);
     } catch {
       continue;
     }
-    if (target.hostname !== "cenele.com") continue;
+    if (!ctx.hostPattern.test(target.hostname)) continue;
     const parts = target.pathname.split("/").filter(Boolean);
     const label = textOnly(match[2]).replace(/^#/, "").trim();
     if (!label || label.length > 60) continue;
@@ -191,7 +198,7 @@ function parseCeneleTaxonomies(html) {
   return { categories: categories.slice(0, 30), tags: tags.slice(0, 40) };
 }
 
-function parseCeneleFilterLinks(html) {
+function parseCeneleFilterLinks(html, ctx = DEFAULT_CTX) {
   const categories = [];
   const tags = [];
   const seen = { category: new Set(), tag: new Set() };
@@ -200,11 +207,11 @@ function parseCeneleFilterLinks(html) {
     if (!href) continue;
     let target;
     try {
-      target = new URL(href, BASE_URL);
+      target = new URL(href, ctx.baseUrl);
     } catch {
       continue;
     }
-    if (target.hostname !== "cenele.com") continue;
+    if (!ctx.hostPattern.test(target.hostname)) continue;
     const parts = target.pathname.split("/").filter(Boolean);
     const type = parts[0] === "cont-genre" ? "category" : parts[0] === "cont-tag" ? "tag" : "";
     if (!type || !parts[1]) continue;
@@ -235,15 +242,15 @@ function mergeFilterGroups(groups, limit = 60) {
   };
 }
 
-async function getCeneleAjax(params) {
-  const url = new URL(AJAX_URL);
+async function getCeneleAjax(params, ctx = DEFAULT_CTX) {
+  const url = new URL(ajaxUrl(ctx));
   for (const [key, value] of Object.entries(params)) {
     if (value) url.searchParams.set(key, value);
   }
   const response = await fetch(url, {
     headers: {
       accept: "application/json, text/javascript, */*; q=0.01",
-      referer: `${BASE_URL}${CATALOG_PATH}`,
+      referer: `${ctx.baseUrl}${CATALOG_PATH}`,
       "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
       "x-requested-with": "XMLHttpRequest",
     },
@@ -256,14 +263,14 @@ async function getCeneleAjax(params) {
   return data;
 }
 
-async function postCeneleAjax(params) {
+async function postCeneleAjax(params, ctx = DEFAULT_CTX) {
   const body = new URLSearchParams(params);
-  const response = await fetch(AJAX_URL, {
+  const response = await fetch(ajaxUrl(ctx), {
     method: "POST",
     headers: {
       accept: "application/json, text/javascript, */*; q=0.01",
       "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
-      referer: `${BASE_URL}${CATALOG_PATH}`,
+      referer: `${ctx.baseUrl}${CATALOG_PATH}`,
       "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
       "x-requested-with": "XMLHttpRequest",
     },
@@ -277,13 +284,13 @@ async function postCeneleAjax(params) {
   return data;
 }
 
-async function fetchLibraryAjaxConfig() {
-  const html = await fetchCeneleHtml(`${BASE_URL}${CATALOG_PATH}`);
+async function fetchLibraryAjaxConfig(ctx, fetchCeneleHtml) {
+  const html = await fetchCeneleHtml(`${ctx.baseUrl}${CATALOG_PATH}`);
   const config = extractJsonConfig(html, "nhvLibrary") || {};
-  return { nonce: config.nonce || "", ajaxUrl: config.ajaxUrl || AJAX_URL };
+  return { nonce: config.nonce || "", ajaxUrl: config.ajaxUrl || ajaxUrl(ctx) };
 }
 
-async function fetchNovelAjaxConfig(novelUrl) {
+async function fetchNovelAjaxConfig(novelUrl, fetchCeneleHtml) {
   const html = await fetchCeneleHtml(novelUrl);
   const config = extractJsonConfig(html, "nhvNovelV2") || {};
   return {
@@ -294,7 +301,7 @@ async function fetchNovelAjaxConfig(novelUrl) {
   };
 }
 
-export async function fetchCeneleChapters(mangaId, chaptersNonce) {
+export async function fetchCeneleChapters(mangaId, chaptersNonce, ctx = DEFAULT_CTX) {
   const chapters = [];
   const seen = new Set();
   let page = 1;
@@ -306,7 +313,7 @@ export async function fetchCeneleChapters(mangaId, chaptersNonce) {
       nonce: chaptersNonce,
       page: String(page),
       order: "desc",
-    });
+    }, ctx);
     for (const chapter of parseCeneleChapterRows(data.html || "")) {
       if (seen.has(chapter.url)) continue;
       seen.add(chapter.url);
@@ -327,7 +334,7 @@ export function parseCeneleDetails(html, url, chapters = []) {
   const summary = textOnly(synopsisBlock.replace(/<h2[^>]*>[\s\S]*?<\/h2>/i, ""));
   const postId = html.match(/post-(\d+)/i)?.[1] ?? "";
   const media = resolveMediaType(title);
-  const taxonomies = parseCeneleTaxonomies(html);
+  const taxonomies = parseCeneleTaxonomies(html, DEFAULT_CTX);
   const sorted = [...chapters].sort((a, b) => Number(b.number) - Number(a.number));
   const latest = sorted[0];
   return {
@@ -374,11 +381,11 @@ export function parseCeneleChapter(html, url) {
   };
 }
 
-function buildCatalogUrl(page, filterPath = CATALOG_PATH) {
+function buildCatalogUrl(page, filterPath = CATALOG_PATH, baseUrl = DEFAULT_BASE_URL) {
   const normalized = filterPath.startsWith("/") ? filterPath : `/${filterPath}`;
-  if (page <= 1) return `${BASE_URL}${normalized}`;
+  if (page <= 1) return `${baseUrl}${normalized}`;
   const trimmed = normalized.endsWith("/") ? normalized.slice(0, -1) : normalized;
-  return `${BASE_URL}${trimmed}/page/${page}/`;
+  return `${baseUrl}${trimmed}/page/${page}/`;
 }
 
 function catalogHasMore(html, page, filterPath = CATALOG_PATH) {
@@ -387,15 +394,15 @@ function catalogHasMore(html, page, filterPath = CATALOG_PATH) {
     || new RegExp(`${trimmed}/page/${page + 1}/`, "i").test(html);
 }
 
-async function searchCeneleCatalog(query) {
-  const { nonce } = await fetchLibraryAjaxConfig();
+async function searchCeneleCatalog(query, ctx, fetchCeneleHtml) {
+  const { nonce } = await fetchLibraryAjaxConfig(ctx, fetchCeneleHtml);
   const data = await getCeneleAjax({
     action: "nhv_manga_suggest",
     term: query,
     nonce,
-  });
+  }, ctx);
   const items = (data.data?.items || data.items || []).map((entry) => {
-    const url = String(entry.url || "").replace("www.cenele.com", "cenele.com");
+    const url = String(entry.url || "").replace(/^https?:\/\/www\./i, "https://");
     if (!url) return null;
     const title = textOnly(entry.title || "");
     const media = resolveMediaType(title);
@@ -417,13 +424,16 @@ async function searchCeneleCatalog(query) {
 }
 
 export async function handleCeneleRequest(requestUrl) {
+  const ctx = resolveSourceRequestContext(requestUrl, DEFAULT_BASE_URL, { label: SOURCE_NAME });
+  const fetchCeneleHtml = createFetcher(ctx.baseUrl);
+
   if (requestUrl.pathname.endsWith("/image")) {
-    return fetchProxiedImage(assertCeneleImageUrl(requestUrl.searchParams.get("url") ?? ""), `${BASE_URL}/`, SOURCE_NAME);
+    return fetchProxiedImage(assertCeneleImageUrl(requestUrl.searchParams.get("url") ?? "", ctx), `${ctx.baseUrl}/`, SOURCE_NAME);
   }
 
   if (requestUrl.pathname.endsWith("/filters")) {
-    const html = await fetchCeneleHtml(`${BASE_URL}${CATALOG_PATH}`);
-    return responseJson(200, { ...mergeFilterGroups([parseCeneleFilterLinks(html)]), fetchedAt: new Date().toISOString() });
+    const html = await fetchCeneleHtml(`${ctx.baseUrl}${CATALOG_PATH}`);
+    return responseJson(200, { ...mergeFilterGroups([parseCeneleFilterLinks(html, ctx)]), fetchedAt: new Date().toISOString() });
   }
 
   if (requestUrl.pathname.endsWith("/catalog")) {
@@ -432,7 +442,7 @@ export async function handleCeneleRequest(requestUrl) {
     if (!/^\/[\p{L}\p{N}/+_.%-]+\/?$/u.test(filterPath) || filterPath.includes("..")) {
       throw new Error("مسار فلتر Cenele غير صالح");
     }
-    const html = await fetchCeneleHtml(buildCatalogUrl(page, filterPath));
+    const html = await fetchCeneleHtml(buildCatalogUrl(page, filterPath, ctx.baseUrl));
     const items = parseCeneleCatalog(html);
     return responseJson(200, {
       items,
@@ -445,17 +455,17 @@ export async function handleCeneleRequest(requestUrl) {
   if (requestUrl.pathname.endsWith("/search")) {
     const { query, valid } = normalizeSearchQuery(requestUrl.searchParams.get("q"));
     if (!valid) return responseJson(200, { items: [] });
-    const items = await searchCeneleCatalog(query);
+    const items = await searchCeneleCatalog(query, ctx, fetchCeneleHtml);
     return responseJson(200, { items });
   }
 
   if (requestUrl.pathname.endsWith("/manga")) {
-    const target = assertNovelUrl(requestUrl.searchParams.get("url") ?? "");
-    const { postId, chaptersNonce, html } = await fetchNovelAjaxConfig(target);
+    const target = assertNovelUrl(requestUrl.searchParams.get("url") ?? "", ctx);
+    const { postId, chaptersNonce, html } = await fetchNovelAjaxConfig(target, fetchCeneleHtml);
     let chapters = parseCeneleChapterRows(html);
     if (postId && chaptersNonce) {
       try {
-        chapters = await fetchCeneleChapters(postId, chaptersNonce);
+        chapters = await fetchCeneleChapters(postId, chaptersNonce, ctx);
       } catch {
         // Garde les chapitres récents rendus dans la page.
       }
@@ -464,7 +474,7 @@ export async function handleCeneleRequest(requestUrl) {
   }
 
   if (requestUrl.pathname.endsWith("/chapter")) {
-    const target = assertChapterUrl(requestUrl.searchParams.get("url") ?? "");
+    const target = assertChapterUrl(requestUrl.searchParams.get("url") ?? "", ctx);
     const html = await fetchCeneleHtml(target);
     return responseJson(200, parseCeneleChapter(html, target));
   }
