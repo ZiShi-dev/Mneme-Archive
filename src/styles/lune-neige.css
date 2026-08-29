@@ -283,12 +283,6 @@
   z-index: 8;
 }
 
-[data-theme="lune-neige"] .bottom-nav,
-.app-shell--lune-neige .bottom-nav {
-  position: relative;
-  z-index: 5;
-}
-
 [data-theme="lune-neige"] .game-nav,
 .app-shell--lune-neige .game-nav {
   position: relative;
