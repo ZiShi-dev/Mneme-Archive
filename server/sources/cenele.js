@@ -4,6 +4,7 @@ import { normalizeSearchQuery } from "../lib/queryLimits.js";
 import { responseJson } from "../lib/response.js";
 import { applyRecentChapterFields, recentChaptersFromCount } from "../lib/catalogChapters.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
+import { filterNovelParagraphs } from "../lib/novelChapterText.js";
 
 const DEFAULT_BASE_URL = "https://cenele.com";
 const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
@@ -368,9 +369,9 @@ export function parseCeneleChapter(html, url) {
   const endMarker = tail.search(/<aside[^>]*class="[^"]*nhv-reader-store|<div[^>]*id="nhv-reading-bottom"|<\/article>/i);
   const block = endMarker > 0 ? tail.slice(0, endMarker) : tail.slice(0, 120_000);
   const cleaned = block.replace(/<div[^>]*class="[^"]*nhv-reading-chapter-head[^"]*"[\s\S]*?<\/div>\s*(?=<)/i, "");
-  const paragraphs = [...cleaned.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)]
+  const paragraphs = filterNovelParagraphs([...cleaned.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)]
     .map((match) => textOnly(match[1]))
-    .filter((text) => text && text.length > 1 && !/اختر المظهر/i.test(text));
+    .filter((text) => text && text.length > 1 && !/اختر المظهر/i.test(text)));
   if (!paragraphs.length) throw new Error("تعذر استخراج محتوى الفصل");
   return {
     title,

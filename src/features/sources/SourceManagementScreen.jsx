@@ -149,7 +149,7 @@ export function SourceManagementScreen({ sources, sourcePreferences, navigate, o
                     <div className="source-directory-card__top">
                       <SourceLogo sourceId={entry.id} />
                       <div className="source-directory-card__identity">
-                        <strong>{entryProfile.name}</strong>
+                        <strong dir="ltr">{entryProfile.name}</strong>
                         <small dir="ltr">{entryProfile.domain}</small>
                       </div>
                       <span className="source-directory-card__status">{t("common.active")}</span>
@@ -197,7 +197,7 @@ export function SourceManagementScreen({ sources, sourcePreferences, navigate, o
           <div className="source-config-modal__bar"><SheetCloseButton onClick={() => setShowConfig(false)} label={t("sources.closeConfig")} /><span>{t("sources.configure")}</span><i /></div>
           <div className="source-config-modal__body">
             <section className="source-config-panel">
-              <header className="source-config-panel__header"><SourceLogo sourceId={managedSourceId} /><div><span>{t("sources.sourceSettings")}</span><h2 id="source-config-title">{profile.name}</h2><small>{profile.contentLabel} · {getSourceLanguageLabels(profile).join(" · ")}</small></div><i className={source?.enabled === false ? "offline" : ""}>{source?.enabled === false ? t("common.stopped") : t("common.active")}</i></header>
+              <header className="source-config-panel__header"><SourceLogo sourceId={managedSourceId} /><div><span>{t("sources.sourceSettings")}</span><h2 id="source-config-title" dir="ltr">{profile.name}</h2><small>{profile.contentLabel} · {getSourceLanguageLabels(profile).join(" · ")}</small></div><i className={source?.enabled === false ? "offline" : ""}>{source?.enabled === false ? t("common.stopped") : t("common.active")}</i></header>
               {source?.enabled === false ? <div className="source-config-disabled"><Wifi size={23} /><div><strong>{t("sources.sourceOffline")}</strong><span>{t("sources.sourceOfflineHint")}</span></div></div> : <>
                 <div className="source-mode-cards">
                   <button className={preference.mode === "full" ? "active" : ""} onClick={() => onSetSourceMode(managedSourceId, "full")}><Globe2 size={21} /><span><strong>{t("sources.modeFull")}</strong><small>{t("sources.modeFullHint")}</small></span><Check size={18} /></button>

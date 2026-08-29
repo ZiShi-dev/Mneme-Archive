@@ -5,6 +5,7 @@ import { normalizeSearchQuery } from "../lib/queryLimits.js";
 import { responseJson } from "../lib/response.js";
 import { applyRecentChapterFields, recentChaptersFromCount } from "../lib/catalogChapters.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
+import { filterNovelParagraphs } from "../lib/novelChapterText.js";
 
 const DEFAULT_BASE_URL = "https://nightnovelapp.tech";
 const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
@@ -150,12 +151,12 @@ function mapChapterEntry(chapter, novelId, slug, baseUrl = DEFAULT_BASE_URL) {
 function parseChapterParagraphs(chapter = {}) {
   const html = chapter.contentHtml || chapter.content_html || "";
   if (html && /<[a-z][\s\S]*>/i.test(html)) {
-    return [...String(html).matchAll(/<(?:p|h[2-6]|blockquote|div)[^>]*>([\s\S]*?)<\/(?:p|h[2-6]|blockquote|div)>/gi)]
+    return filterNovelParagraphs([...String(html).matchAll(/<(?:p|h[2-6]|blockquote|div)[^>]*>([\s\S]*?)<\/(?:p|h[2-6]|blockquote|div)>/gi)]
       .map((match) => textOnly(match[1]))
-      .filter((text) => text && text.length > 1);
+      .filter((text) => text && text.length > 1));
   }
   const plain = chapter.content || "";
-  if (plain) return splitNightNovelParagraphs(plain);
+  if (plain) return filterNovelParagraphs(splitNightNovelParagraphs(plain));
   return [];
 }
 

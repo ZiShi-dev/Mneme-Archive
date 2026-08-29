@@ -4,6 +4,7 @@ import { normalizeSearchQuery } from "../lib/queryLimits.js";
 import { responseJson } from "../lib/response.js";
 import { applyRecentChapterFields, normalizeRecentChapters } from "../lib/catalogChapters.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
+import { filterNovelParagraphs } from "../lib/novelChapterText.js";
 
 const DEFAULT_BASE_URL = "https://azorafly.com";
 const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
@@ -258,7 +259,7 @@ function parseAzoraChapter(html, url) {
   const title = decodeHtml(html.match(/<meta name="twitter:title" content="([^"]+)"/i)?.[1] ?? "");
   const novelBlock = html.match(/<div class="novel-reader-content[^>]*>([\s\S]*?)<\/div>/i)?.[1];
   if (novelBlock) {
-    const paragraphs = [...novelBlock.matchAll(/<(?:p|h[1-6])[^>]*>([\s\S]*?)<\/(?:p|h[1-6])>/gi)].map((match) => textOnly(match[1])).filter(Boolean);
+    const paragraphs = filterNovelParagraphs([...novelBlock.matchAll(/<(?:p|h[1-6])[^>]*>([\s\S]*?)<\/(?:p|h[1-6])>/gi)].map((match) => textOnly(match[1])).filter(Boolean));
     return { title, url, kind: "novel", paragraphs, pages: [], locked: false };
   }
 

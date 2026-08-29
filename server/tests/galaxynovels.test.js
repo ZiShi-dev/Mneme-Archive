@@ -47,14 +47,10 @@ test("galaxyAuthorFilterEntry builds catalog filter payload", () => {
   });
 });
 
-test("galaxynovels filters expose all catalog authors", { timeout: 120_000 }, async () => {
+test("galaxynovels filters skip author list", async () => {
   const result = await handleGalaxyRequest(new URL("http://local/api/sources/galaxynovels/filters"));
   assert.equal(result.status, 200);
-  assert.ok(Array.isArray(result.body.authors));
-  assert.ok(result.body.authors.length > 20, `expected many authors, got ${result.body.authors.length}`);
-  const liMing = result.body.authors.find((entry) => entry.name === "Li Ming C");
-  assert.ok(liMing);
-  assert.ok(liMing.count >= 1);
+  assert.deepEqual(result.body.authors, []);
 });
 
 test("galaxynovels catalog author filter uses library search", async () => {
@@ -92,6 +88,7 @@ test("parseGalaxyChapter reads wor-reader-text-surface paragraphs", () => {
       <noscript><div class="wor-js-required">يرجى تفعيل JavaScript لمتابعة القراءة.</div></noscript>
       <div class="wor-reader-text-surface" itemprop="text" data-wor-reader-text>
         <p>فقرة اختبار أولى</p>
+        <p>???? حقوق تعريب الرواية محفوظة للمترجم والمدقق لورد غوامض • قراءة ممتعة ????</p>
         <p>فقرة اختبار ثانية</p>
       </div>
     </article>

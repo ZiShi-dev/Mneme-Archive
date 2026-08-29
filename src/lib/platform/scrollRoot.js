@@ -1,16 +1,21 @@
 export function getAppScrollElement() {
   if (typeof document === "undefined") return null;
-  const frame = document.querySelector(".phone-frame");
-  if (document.documentElement.classList.contains("desktop-app") && frame) {
+  const frame = document.querySelector(".phone-frame, .app-shell__view");
+  const usesFrameScroller = document.documentElement.classList.contains("desktop-app")
+    || document.documentElement.classList.contains("native-app");
+  if (usesFrameScroller && frame) {
     if (frame.scrollHeight > frame.clientHeight + 1) return frame;
+    return frame;
   }
   return document.scrollingElement || document.documentElement;
 }
 
 export function scrollAppToTop({ behavior = "auto" } = {}) {
   if (typeof document === "undefined") return;
-  const frame = document.documentElement.classList.contains("desktop-app")
-    ? document.querySelector(".phone-frame")
+  const usesFrameScroller = document.documentElement.classList.contains("desktop-app")
+    || document.documentElement.classList.contains("native-app");
+  const frame = usesFrameScroller
+    ? document.querySelector(".phone-frame, .app-shell__view")
     : null;
   if (frame) {
     frame.scrollTo({ top: 0, behavior });
