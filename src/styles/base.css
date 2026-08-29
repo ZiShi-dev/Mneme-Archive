@@ -51,7 +51,7 @@ input:focus, input:focus-visible { outline: 0; box-shadow: none; }
 .page-header { display: flex; align-items: center; justify-content: space-between; padding: 28px 22px 16px; }
 .page-header__title { display: flex; align-items: center; gap: 10px; }
 .page-header__mark { flex: 0 0 auto; border-radius: 11px; }
-.page-header h1 { font: 800 24px/1.15 "Shippori Mincho"; margin: 5px 0 0; letter-spacing: -.035em; }
+.page-header h1 { font: 800 24px/1.3 "Shippori Mincho"; margin: 5px 0 0; letter-spacing: -.035em; }
 .eyebrow { font: 700 9px/1 "Zen Kaku Gothic New"; letter-spacing: .16em; color: var(--muted); }
 .header-actions { display: flex; gap: 8px; }
 .icon-button { border: 1px solid var(--line); background: var(--white); width: 40px; height: 40px; display: grid; place-items: center; border-radius: 13px; cursor: pointer; position: relative; }
