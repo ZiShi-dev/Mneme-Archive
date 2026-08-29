@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Check, LayoutGrid, Search, Tag, UserRound, X } from "lucide-react";
+import { Check, LayoutGrid, Search, Tag, X } from "lucide-react";
 import { useI18n } from "../../i18n/I18nProvider";
 import { AUDIO_LANGUAGE_LABELS } from "./audioLanguage";
 import { localizeCatalogKinds } from "./contentTypes";
@@ -29,22 +29,12 @@ function getPickerMeta(t) {
       empty: t("sources.noTag"),
       prefix: "#",
     },
-    author: {
-      title: t("sources.pickAuthor"),
-      label: t("sources.authors"),
-      icon: UserRound,
-      countLabel: (count) => t("sources.authorCount", { count }),
-      searchPlaceholder: t("sources.searchAuthor"),
-      empty: t("sources.noAuthor"),
-      prefix: "",
-    },
   };
 }
 
 export function CatalogFilters({
   categories = [],
   tags = [],
-  authors = [],
   kinds = [],
   selected,
   selectedKind,
@@ -62,7 +52,7 @@ export function CatalogFilters({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [filterQuery, setFilterQuery] = useState("");
   const backdropPointerDownRef = useRef(false);
-  const entries = activeKind === "category" ? categories : activeKind === "tag" ? tags : authors;
+  const entries = activeKind === "category" ? categories : tags;
   const meta = pickerMeta[activeKind];
   const PickerIcon = meta.icon;
   const selectedTaxonomies = useMemo(() => normalizeTaxonomySelection(selected), [selected]);
@@ -74,6 +64,9 @@ export function CatalogFilters({
 
   const localizedKinds = useMemo(() => localizeCatalogKinds(kinds), [kinds, t]);
   const hasKinds = localizedKinds.length > 0;
+  const showTaxonomyBar = categories.length > 0
+    || tags.length > 0
+    || (loading && !hasKinds && !showAudioFilter);
 
   const selectedKindSlug = useMemo(() => {
     if (!localizedKinds.length) return "";
@@ -97,18 +90,18 @@ export function CatalogFilters({
     ? !isTaxonomySelectionEmpty(selected)
     : Boolean(selected) && selected.slug !== "all";
 
-  if (loading && !hasKinds && !showAudioFilter) {
+  if (loading && !hasKinds && !showAudioFilter && !showTaxonomyBar) {
     return <ChipFilterBar label={t("sources.filter")} loading ariaLabel={t("sources.loadingFilters")} />;
   }
 
-  if (!categories.length && !tags.length && !authors.length && !hasKinds && !showAudioFilter) return null;
+  if (!showTaxonomyBar && !hasKinds && !showAudioFilter) return null;
 
   const chooseKind = (kind) => {
     onSelectKind?.(kind);
   };
 
   const openPicker = (kind) => {
-    setActiveKind(kind);
+    setActiveKind(kind || "category");
     setFilterQuery("");
     setPickerOpen(true);
   };
@@ -196,7 +189,7 @@ export function CatalogFilters({
           ))}
         </ChipFilterBar>
       )}
-      {!loading && (categories.length > 0 || tags.length > 0 || authors.length > 0) && (
+      {showTaxonomyBar && (
       <ChipFilterBar
         className="catalog-taxonomy-filters"
         label={t("sources.filter")}
@@ -205,6 +198,7 @@ export function CatalogFilters({
         showClear={showClear}
         onClear={clearSelection}
       >
+        {categories.length > 0 && (
         <ChipFilterButton
           active={multiSelect ? Boolean(selectedTaxonomies.category) : selected?.type === "category"}
           disabled={!categories.length}
@@ -218,6 +212,8 @@ export function CatalogFilters({
         >
           {selectedTaxonomies.category ? selectedTaxonomies.category.name : t("sources.genres")}
         </ChipFilterButton>
+        )}
+        {tags.length > 0 && (
         <ChipFilterButton
           active={multiSelect ? Boolean(selectedTaxonomies.tag) : selected?.type === "tag"}
           disabled={!tags.length}
@@ -231,20 +227,6 @@ export function CatalogFilters({
         >
           {selectedTaxonomies.tag ? `#${selectedTaxonomies.tag.name}` : t("sources.tags")}
         </ChipFilterButton>
-        {authors.length > 0 && (
-          <ChipFilterButton
-            active={multiSelect ? Boolean(selectedTaxonomies.author) : selected?.type === "author"}
-            disabled={!authors.length}
-            icon={UserRound}
-            bordered
-            picker
-            count={!selectedTaxonomies.author && authors.length > 0 ? authors.length : undefined}
-            aria-haspopup="dialog"
-            aria-expanded={pickerOpen && activeKind === "author"}
-            onClick={() => openPicker("author")}
-          >
-            {selectedTaxonomies.author ? selectedTaxonomies.author.name : t("sources.authors")}
-          </ChipFilterButton>
         )}
       </ChipFilterBar>
       )}
@@ -279,8 +261,11 @@ export function CatalogFilters({
               {[
                 { id: "category", label: t("sources.genres"), count: categories.length, disabled: !categories.length },
                 { id: "tag", label: t("sources.tags"), count: tags.length, disabled: !tags.length },
-                { id: "author", label: t("sources.authors"), count: authors.length, disabled: !authors.length },
-              ].filter((tab) => tab.id !== "author" || authors.length > 0).map((tab) => {
+              ].filter((tab) => {
+                if (tab.id === "category") return categories.length > 0;
+                if (tab.id === "tag") return tags.length > 0;
+                return false;
+              }).map((tab) => {
                 const TabIcon = pickerMeta[tab.id].icon;
                 return (
                   <button

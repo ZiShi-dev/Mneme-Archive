@@ -167,7 +167,7 @@ export function CatalogSourceToolbar({ sources, activeSourceId, onSetActiveSourc
                   >
                     <SourceLogo sourceId={entry.id} />
                     <span>
-                      <strong>{entryProfile.name}</strong>
+                      <strong dir="ltr">{entryProfile.name}</strong>
                       <small>{disabled ? t("sources.stopped") : entryProfile.contentLabel}</small>
                       {!disabled && <SourceLanguageChips profile={entryProfile} />}
                     </span>

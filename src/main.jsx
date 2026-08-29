@@ -4,6 +4,7 @@ import { isElectronApp } from "./lib/platform/electronApp";
 import "./boot.js";
 import { createRoot } from "react-dom/client";
 import { registerSW } from "virtual:pwa-register";
+import { markNativeAppShell } from "./lib/platform/nativeAppLayout";
 import { initCapacitor } from "./capacitor";
 import { StorageProvider } from "./components/storage/StorageProvider";
 import { I18nProvider } from "./i18n/I18nProvider";
@@ -14,6 +15,7 @@ import { initSentry } from "./lib/monitoring/sentry";
 import "./styles.css";
 
 initSentry();
+markNativeAppShell();
 
 if (isChromebookApp || isElectronApp()) {
   document.documentElement.classList.add("desktop-app");

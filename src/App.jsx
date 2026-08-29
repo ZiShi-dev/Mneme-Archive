@@ -24,8 +24,10 @@ import { MnemeMark } from "./components/brand/MnemeMark";
 import { isSakuraTheme, isSnowTheme, hasAtmosphereEffect } from "./lib/theme/appearance";
 import { isChromebookApp } from "./config/appFlavor";
 import { isDesktopAppLayout } from "./lib/platform/desktopAppLayout";
+import { isNativeMobileApp } from "./lib/platform/nativeAppLayout";
 import { useI18n } from "./i18n/I18nProvider";
 import { PwaInstallBanner } from "./components/pwa/PwaInstallBanner";
+import { useHideBottomNavOnScroll } from "./hooks/useHideBottomNavOnScroll";
 import { usePwaInstall } from "./hooks/usePwaInstall";
 import { getAppBrandText } from "./lib/brand/appBrand";
 
@@ -60,6 +62,7 @@ export function App() {
   const desktopScrollerRef = useRef(null);
   const pwaInstall = usePwaInstall();
   const desktopLayout = isDesktopAppLayout();
+  const nativeLayout = isNativeMobileApp();
 
   useEffect(() => {
     setRuntimeSettings(settings);
@@ -167,6 +170,9 @@ export function App() {
     && screen !== "notification-center"
     && !liveReaderContent;
 
+  const isDiscoverScreen = screen === "sources" || screen === "source-catalog";
+  useHideBottomNavOnScroll(showMainBottomNav && isDiscoverScreen);
+
   const routeProps = {
     liveReaderContent,
     selectedLive,
@@ -233,6 +239,16 @@ export function App() {
             </div>
           </div>
         </div>
+      ) : nativeLayout ? (
+        <>
+          <div className="phone-frame app-shell__view">
+            {frameAtmosphere}
+            {screenContent}
+          </div>
+          {showMainBottomNav ? (
+            <BottomNav current={screen} navigate={navigate} />
+          ) : null}
+        </>
       ) : (
         <>
           <div className="desktop-note">

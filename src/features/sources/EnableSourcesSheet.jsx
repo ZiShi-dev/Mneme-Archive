@@ -237,7 +237,7 @@ export function EnableSourcesSheet({
               >
                 <SourceLogo sourceId={entry.id} />
                 <span className="management-source-picker__row-copy">
-                  <strong>{profile.name}</strong>
+                  <strong dir="ltr">{profile.name}</strong>
                   <small dir="ltr">{profile.domain}</small>
                   <span className="management-source-picker__row-meta">
                     {(profile.contentTypes || ["manga"]).map((contentType) => (

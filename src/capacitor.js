@@ -4,14 +4,17 @@ import { SplashScreen } from "@capacitor/splash-screen";
 import { isChromebookApp } from "./config/appFlavor";
 import { initNativeNotifications } from "./lib/notifications/nativeNotifications";
 import { initMangalikNative } from "./lib/platform/mangalikNative";
+import { initSafeAreaInsets } from "./lib/platform/safeAreaInsets";
+
+import { markNativeAppShell } from "./lib/platform/nativeAppLayout";
 
 export async function initCapacitor() {
   if (!Capacitor.isNativePlatform()) return;
-  document.documentElement.classList.add("native-app");
-  document.body.classList.add("native-app");
+  markNativeAppShell();
+  initSafeAreaInsets();
   try {
     await StatusBar.setStyle({ style: Style.Dark });
-    await StatusBar.setBackgroundColor({ color: "#171218" });
+    await StatusBar.setBackgroundColor({ color: "#090A12" });
     await initNativeNotifications();
     if (!isChromebookApp) {
       await initMangalikNative();

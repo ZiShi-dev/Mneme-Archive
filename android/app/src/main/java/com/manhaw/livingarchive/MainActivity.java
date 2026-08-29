@@ -1,6 +1,11 @@
 package com.manhaw.livingarchive;
 
 import android.os.Bundle;
+import android.view.View;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
@@ -11,5 +16,37 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(ParadiseChapterFetcherPlugin.class);
         registerPlugin(AnimeEpisodePlayerPlugin.class);
         super.onCreate(savedInstanceState);
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        installSafeAreaInsetsListener();
+    }
+
+    private void installSafeAreaInsetsListener() {
+        View content = findViewById(android.R.id.content);
+        if (content == null) return;
+        ViewCompat.setOnApplyWindowInsetsListener(content, (view, windowInsets) -> {
+            Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+            pushSafeAreaInsets(insets.top, insets.bottom, insets.left, insets.right);
+            return windowInsets;
+        });
+        ViewCompat.requestApplyInsets(content);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        View content = findViewById(android.R.id.content);
+        if (content != null) ViewCompat.requestApplyInsets(content);
+    }
+
+    private void pushSafeAreaInsets(int top, int bottom, int left, int right) {
+        if (getBridge() == null || getBridge().getWebView() == null) return;
+        String js = String.format(
+            "document.documentElement.style.setProperty('--app-safe-area-top','%dpx');"
+                + "document.documentElement.style.setProperty('--app-safe-area-bottom','%dpx');"
+                + "document.documentElement.style.setProperty('--app-safe-area-left','%dpx');"
+                + "document.documentElement.style.setProperty('--app-safe-area-right','%dpx');",
+            top, bottom, left, right
+        );
+        getBridge().getWebView().post(() -> getBridge().getWebView().evaluateJavascript(js, null));
     }
 }

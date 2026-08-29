@@ -80,7 +80,10 @@ function resolveCatalogBoot(sourceId, enabled, mode) {
 
   const live = catalogLiveViewCache.get(sourceId);
   const stored = readCatalogState();
-  const filter = live?.filter ?? stored.filters?.[sourceId] ?? null;
+  let filter = live?.filter ?? stored.filters?.[sourceId] ?? null;
+  if (sourceId === "galaxynovels" && (filter?.type === "author" || filter?.author)) {
+    filter = null;
+  }
   const kind = live?.kind ?? stored.kinds?.[sourceId] ?? null;
   const audioFilter = live?.audioFilter ?? stored.audioFilters?.[sourceId] ?? "all";
   const query = live?.query ?? stored.queries?.[sourceId] ?? "";
@@ -230,7 +233,7 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
   const [slideDirection, setSlideDirection] = useState("next");
   const [selectedLiveItems, setSelectedLiveItems] = useState(selectedItems);
   const cachedFilters = catalogFiltersCache.get(activeSource.id);
-  const [filters, setFilters] = useState(cachedFilters || { categories: [], tags: [], authors: [], kinds: [] });
+  const [filters, setFilters] = useState(cachedFilters || { categories: [], tags: [], kinds: [] });
   const [filtersLoading, setFiltersLoading] = useState(!cachedFilters && effectiveMode === "full" && activeSource.enabled !== false);
   const [selectedFilter, setSelectedFilter] = useState(boot.filter);
   const [selectedKind, setSelectedKind] = useState(boot.kind);
@@ -558,6 +561,7 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
 
     const cached = catalogFiltersCache.get(activeSource.id);
     if (cached) {
+      catalogFiltersCache.set(activeSource.id, cached);
       setFilters(cached);
       setFiltersLoading(false);
       return undefined;
@@ -570,13 +574,12 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
       const nextFilters = {
         categories: data.categories || data.genres || [],
         tags: data.tags || [],
-        authors: data.authors || [],
         kinds: data.kinds || [],
       };
       catalogFiltersCache.set(activeSource.id, nextFilters);
       setFilters(nextFilters);
     }).catch(() => {
-      if (!cancelled) setFilters({ categories: [], tags: [], authors: [], kinds: [] });
+      if (!cancelled) setFilters({ categories: [], tags: [], kinds: [] });
     }).finally(() => {
       if (!cancelled) setFiltersLoading(false);
     });
@@ -729,7 +732,6 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
           <CatalogFilters
             categories={visibleCategories}
             tags={filters.tags}
-            authors={filters.authors}
             kinds={filters.kinds?.length ? filters.kinds : mediaKindsFallback}
             selected={selectedFilter}
             selectedKind={selectedKind}

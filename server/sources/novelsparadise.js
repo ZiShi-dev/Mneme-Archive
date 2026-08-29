@@ -8,6 +8,7 @@ import {
   normalizeRecentChapters,
 } from "../lib/catalogChapters.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
+import { isNovelBoilerplateParagraph } from "../lib/novelChapterText.js";
 
 const DEFAULT_BASE_URL = "https://novelsparadise.site";
 const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
@@ -441,7 +442,13 @@ const KOLNOVEL_HASH_PARAGRAPH_RE = /<p class='[a-f0-9]{16,}'[^>]*>[\s\S]*?<p cla
 const PARADISE_JUNK_PARAGRAPH_RE = /\.shola-|function\s+sholaTab|#366ad3|wp-admin\/admin-ajax|chapter-countdown/i;
 
 function isParadiseParagraphText(text) {
-  return Boolean(text && text.length > 1 && !PARADISE_PAYWALL_RE.test(text) && !PARADISE_JUNK_PARAGRAPH_RE.test(text));
+  return Boolean(
+    text
+    && text.length > 1
+    && !PARADISE_PAYWALL_RE.test(text)
+    && !PARADISE_JUNK_PARAGRAPH_RE.test(text)
+    && !isNovelBoilerplateParagraph(text),
+  );
 }
 
 function sanitizeParadiseContentBlock(htmlBlock = "") {

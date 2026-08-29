@@ -152,6 +152,18 @@ html[dir="rtl"] .notify-sheet__body > * {
   display: none;
 }
 
+.native-app .phone-frame,
+.native-app .app-shell__view {
+  scrollbar-width: none;
+}
+
+.native-app .phone-frame::-webkit-scrollbar,
+.native-app .app-shell__view::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   ::-webkit-scrollbar-thumb {
     box-shadow: inset 0 0 0 1px color-mix(in srgb, white 16%, transparent);

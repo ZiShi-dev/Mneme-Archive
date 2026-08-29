@@ -28,11 +28,11 @@ export function BottomNav({ current, navigate }) {
     <nav className="bottom-nav" aria-label={t("nav.aria")}>
       {navItems(t).map(([id, Icon, label, ariaLabel]) => (
         <button
-          className={current === id ? "active" : ""}
+          className={isNavScreenActive(id, current) ? "active" : ""}
           key={id}
           type="button"
           aria-label={ariaLabel}
-          aria-current={current === id ? "page" : undefined}
+          aria-current={isNavScreenActive(id, current) ? "page" : undefined}
           onClick={() => navigate(id)}
         >
           <Icon size={21} aria-hidden="true" />
