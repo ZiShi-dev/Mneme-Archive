@@ -1,6 +1,6 @@
 {
   "appId": "com.manhaw.livingarchive",
-  "appName": "CinéVault",
+  "appName": "Mneme Archive",
   "webDir": "dist",
   "server": {
     "androidScheme": "https"
