@@ -1,17 +1,18 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { SourcePageImage } from "./SourcePageImage";
+import { scrollReaderTo } from "../../lib/platform/scrollRoot.js";
 
 export function ReaderPageList({ sourceId, pages, onFirstPageReady }) {
   const [loadThroughIndex, setLoadThroughIndex] = useState(0);
 
   useEffect(() => {
     setLoadThroughIndex(0);
-    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    scrollReaderTo(0);
   }, [pages]);
 
   const handlePageSettled = useCallback((index) => {
     if (index === 0) {
-      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      scrollReaderTo(0);
       onFirstPageReady?.();
     }
     setLoadThroughIndex((current) => {

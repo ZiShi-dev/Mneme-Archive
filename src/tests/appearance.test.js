@@ -10,6 +10,7 @@ import {
   THEME_PAPER,
   THEME_SAKURA,
   THEME_YOZAKURA,
+  themeDefaultTypeface,
 } from "../lib/theme/appearance.js";
 
 test("normalizeThemeId keeps known appearance ids", () => {
@@ -50,4 +51,12 @@ test("isSakuraTheme only matches sakura palettes", () => {
 test("isSnowTheme only matches lune-neige", () => {
   assert.equal(isSnowTheme(THEME_LUNE_NEIGE), true);
   assert.equal(isSnowTheme(THEME_SAKURA), false);
+});
+
+test("themeDefaultTypeface pairs each theme with a readable preset", () => {
+  assert.equal(themeDefaultTypeface(THEME_INK), "sans");
+  assert.equal(themeDefaultTypeface(THEME_PAPER), "classic");
+  assert.equal(themeDefaultTypeface(THEME_SAKURA), "naskh");
+  assert.equal(themeDefaultTypeface(THEME_YOZAKURA), "kufi");
+  assert.equal(themeDefaultTypeface(THEME_LUNE_NEIGE), "sans");
 });

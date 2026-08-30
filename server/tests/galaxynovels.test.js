@@ -5,10 +5,20 @@ import {
   galaxyAuthorFilterEntry,
   handleGalaxyRequest,
   normalizeGalaxyAuthorName,
+  parseGalaxyCatalog,
   parseGalaxyCatalogNovelIds,
   parseGalaxyChapter,
   parseGalaxyChapterApi,
 } from "../sources/galaxynovels.js";
+
+const CATALOG_CARD = `
+<article class="wor-library-card post-317274" data-wor-library-novel-id="317274">
+  <h2 class="wor-library-card__title"><a href="https://galaxynovels.com/novel/sample-novel/">رواية تجريبية</a></h2>
+  <a class="wor-library-card__cover" href="https://galaxynovels.com/novel/sample-novel/">
+    <img class="wor-cover-img" data-src="https://galaxynovels.com/wp-content/uploads/cover.webp" />
+  </a>
+  <b data-wor-library-chapter-count>12</b>
+</article>`;
 
 test("parseGalaxyCatalogNovelIds reads library novel ids", () => {
   const html = `
@@ -17,6 +27,25 @@ test("parseGalaxyCatalogNovelIds reads library novel ids", () => {
     <article data-wor-library-novel-id="48220"></article>
   `;
   assert.deepEqual(parseGalaxyCatalogNovelIds(html), [48220, 313293]);
+});
+
+test("parseGalaxyCatalog reads library cards", () => {
+  const items = parseGalaxyCatalog(CATALOG_CARD);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].title, "رواية تجريبية");
+  assert.equal(items[0].id, "sample-novel");
+  assert.equal(items[0].novelId, 317274);
+  assert.match(items[0].cover, /cover\.webp$/);
+});
+
+test("parseGalaxyCatalog accepts reversed article attributes", () => {
+  const html = CATALOG_CARD.replace(
+    'class="wor-library-card post-317274" data-wor-library-novel-id="317274"',
+    'data-wor-library-novel-id="317274" class="wor-library-card post-317274"',
+  );
+  const items = parseGalaxyCatalog(html);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].title, "رواية تجريبية");
 });
 
 test("buildGalaxyAuthorFilterEntries sorts and filters invalid authors", () => {

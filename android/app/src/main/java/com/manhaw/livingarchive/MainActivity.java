@@ -9,6 +9,8 @@ import androidx.core.view.WindowInsetsCompat;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
+    private boolean safeAreaListenerInstalled = false;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(ImmersiveModePlugin.class);
@@ -21,21 +23,41 @@ public class MainActivity extends BridgeActivity {
     }
 
     private void installSafeAreaInsetsListener() {
-        View content = findViewById(android.R.id.content);
-        if (content == null) return;
-        ViewCompat.setOnApplyWindowInsetsListener(content, (view, windowInsets) -> {
-            Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+        if (safeAreaListenerInstalled) return;
+
+        View target = getBridge() != null ? getBridge().getWebView() : null;
+        if (target == null) {
+            target = findViewById(android.R.id.content);
+        }
+        if (target == null) return;
+
+        ViewCompat.setOnApplyWindowInsetsListener(target, (view, windowInsets) -> {
+            Insets insets = resolveSafeAreaInsets(windowInsets);
             pushSafeAreaInsets(insets.top, insets.bottom, insets.left, insets.right);
             return windowInsets;
         });
-        ViewCompat.requestApplyInsets(content);
+        ViewCompat.requestApplyInsets(target);
+        safeAreaListenerInstalled = true;
+    }
+
+    private static Insets resolveSafeAreaInsets(WindowInsetsCompat windowInsets) {
+        int insetTypes = WindowInsetsCompat.Type.systemBars()
+            | WindowInsetsCompat.Type.displayCutout()
+            | WindowInsetsCompat.Type.navigationBars()
+            | WindowInsetsCompat.Type.tappableElement()
+            | WindowInsetsCompat.Type.mandatorySystemGestures();
+        return windowInsets.getInsets(insetTypes);
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        View content = findViewById(android.R.id.content);
-        if (content != null) ViewCompat.requestApplyInsets(content);
+        installSafeAreaInsetsListener();
+        View target = getBridge() != null ? getBridge().getWebView() : null;
+        if (target == null) {
+            target = findViewById(android.R.id.content);
+        }
+        if (target != null) ViewCompat.requestApplyInsets(target);
     }
 
     private void pushSafeAreaInsets(int top, int bottom, int left, int right) {

@@ -1,4 +1,5 @@
 import { t } from "../../i18n/runtime.js";
+import { getSourceProfile } from "../../config/sources.js";
 import { sourceCapability, sourcesWithCapability } from "../../config/sourceCapabilities.js";
 import { localizeCatalogKind } from "./contentTypes.js";
 
@@ -64,6 +65,7 @@ export function toggleTaxonomySelection(current, type, entry) {
       filterPath: entry.filterPath,
       queryParam: entry.queryParam,
       queryValue: entry.queryValue,
+      filterQueryValue: entry.filterQueryValue,
     };
   const next = { ...normalized, [type]: nextEntry };
   return isTaxonomySelectionEmpty(next) ? null : next;
@@ -169,6 +171,10 @@ export function filterCategoriesForKind(categories = [], kind) {
   return categories.filter((entry) => categoryMatchesKind(entry, kindSlug));
 }
 
+function resolveTaxonomyQueryValue(entry) {
+  return entry?.filterQueryValue || entry?.queryValue || entry?.slug || "";
+}
+
 export function filterRequestParams(filter) {
   if (!filter) return {};
   const normalized = normalizeTaxonomySelection(filter);
@@ -190,9 +196,18 @@ export function filterRequestParams(filter) {
     || normalized.tag?.filterPath
     || normalized.author?.filterPath,
   );
+  const categoryMatches = normalized.category
+    && categoryMatchesKind(normalized.category, kindSlug);
+  const genre = categoryPath
+    ? normalized.category.slug
+    : (categoryMatches
+      ? resolveTaxonomyQueryValue(normalized.category)
+      : (filter.type === "category" ? resolveTaxonomyQueryValue(filter) : ""));
+  const tag = resolveTaxonomyQueryValue(normalized.tag)
+    || (filter.type === "tag" ? resolveTaxonomyQueryValue(filter) : "");
   return {
-    genre: categoryPath ? normalized.category.slug : (filter.type === "category" ? filter.slug : ""),
-    tag: normalized.tag?.slug || (filter.type === "tag" ? filter.slug : ""),
+    genre,
+    tag,
     tagPath: normalized.tag?.archivePath || filter.archivePath || "",
     filterPath,
     queryParam: taxonomyScoped
@@ -244,6 +259,10 @@ export function catalogItemMatchesFilter(item, filter) {
   if (filter.filterPath === "/all/" && !isMediaKindFilter(filter)) return true;
 
   if (isMediaKindFilter(filter)) {
+    if (item.catalogKind) {
+      const needle = filter.queryValue || filter.slug;
+      return item.catalogKind === needle;
+    }
     if (filter.slug === "movies") return item.mediaType === "movie";
     if (filter.slug === "series") return item.mediaType === "series" || item.mediaType === "anime";
     if (filter.slug === "anime") return item.mediaType === "anime";
@@ -288,4 +307,16 @@ export function applyTaxonomyFilters(items, filter) {
     result = result.filter((item) => catalogItemMatchesFilter(item, { ...normalized[type], type }));
   }
   return result;
+}
+
+export function sanitizeCatalogKind(sourceId, kind) {
+  if (!kind || kind.slug === "all") return null;
+  const profile = getSourceProfile(sourceId);
+  const supported = profile?.contentTypes || [];
+  if (!supported.length) return null;
+  if (supported.length === 1) return null;
+  if (!isMediaKindFilter(kind)) return kind;
+  if (supported.includes(kind.slug)) return kind;
+  if (kind.queryValue && supported.includes(kind.queryValue)) return kind;
+  return null;
 }

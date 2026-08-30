@@ -114,8 +114,8 @@ export const sourceProfiles = {
     url: "https://cenele.com/",
     logo: CENELE_LOGO_URL,
     initials: "CE",
-    contentLabel: "روايات ومانهوا",
-    contentTypes: ["novel", "manga"],
+    contentLabel: "روايات",
+    contentTypes: ["novel"],
     languages: ["ar"],
   },
   kolnovel: {

@@ -230,6 +230,16 @@
   padding-top: calc(var(--reader-header-height) + env(safe-area-inset-top, 0px));
 }
 
+.reader.live-reader--loading,
+.reader--loading {
+  background: var(--reader-bg, #05060a);
+  color: var(--reader-text, #f4f1ea);
+}
+
+.live-reader--loading .reader-header {
+  opacity: 1;
+}
+
 .novel-reader-content {
   margin-top: calc(var(--reader-header-height) + env(safe-area-inset-top, 0px));
 }
@@ -1186,6 +1196,16 @@
   width: 100%;
   max-width: 100%;
   overflow-x: hidden;
+}
+
+html.native-app #root > .live-reader:not(.live-reader--video),
+html.native-app #root > .reader {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .live-reader--novel .novel-reader-content {

@@ -314,7 +314,7 @@ input:focus, input:focus-visible { outline: 0; box-shadow: none; }
 .bottom-nav__tab.is-active,
 .bottom-nav__tab.active,
 .bottom-nav button.active {
-  color: var(--brand);
+  color: var(--bottom-nav-active, var(--brand));
   font-weight: 700;
 }
 
@@ -390,10 +390,10 @@ input:focus, input:focus-visible { outline: 0; box-shadow: none; }
   opacity: 0;
 }
 
-@media (hover: hover) {
+  @media (hover: hover) {
   .bottom-nav__tab:not(.is-active):not(.active):hover,
   .bottom-nav button:not(.active):hover {
-    color: color-mix(in srgb, var(--brand) 55%, var(--bottom-nav-inactive));
+    color: color-mix(in srgb, var(--bottom-nav-active, var(--brand)) 55%, var(--bottom-nav-inactive));
   }
 
   .bottom-nav__tab:not(.is-active):not(.active):hover::before,

@@ -1,9 +1,25 @@
-import { handleSourceRequest } from "./handler.js";
+import { handleSourceRequest as handleSourceRequestCore } from "./handler.js";
 import { createSecurityHeadersMiddleware } from "./lib/securityHeaders.js";
 import { createRateLimiter, shouldRateLimitSourceRequest } from "./lib/rateLimit.js";
 import { sendSourceResponse } from "./lib/response.js";
 
-export { handleSourceRequest } from "./handler.js";
+let nativeInitPromise = null;
+
+async function ensureNativeSourceFetch() {
+  const cap = globalThis.Capacitor;
+  if (!cap?.isNativePlatform?.()) return;
+  if (!nativeInitPromise) {
+    nativeInitPromise = import("../src/lib/platform/mangalikNative.js")
+      .then((module) => module.initCloudflareNative())
+      .catch(() => {});
+  }
+  await nativeInitPromise;
+}
+
+export async function handleSourceRequest(rawUrl) {
+  await ensureNativeSourceFetch();
+  return handleSourceRequestCore(rawUrl);
+}
 
 function createSourcesAdapter() {
   const securityHeaders = createSecurityHeadersMiddleware();

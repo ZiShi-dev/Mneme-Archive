@@ -4,6 +4,7 @@ import {
   handleNovelsParadiseRequest,
   normalizeChapterUrl,
   normalizeSeriesUrl,
+  paradiseCatalogHtmlLooksValid,
   parseParadiseCatalog,
   parseParadiseChapter,
   parseParadiseChapters,
@@ -70,6 +71,24 @@ test("parseParadiseCatalog reads series cards with latest chapter", () => {
   assert.equal(items[0].title, "أ");
   assert.equal(items[0].altTitle, "Novel A");
   assert.equal(items[0].latestChapter, "12");
+});
+
+test("parseParadiseCatalog accepts relative series links", () => {
+  const html = `
+    <article class="maindet">
+      <h2 itemprop="headline"><a href="/series/novel-b/" title="Novel B">Novel B</a></h2>
+      <img class="ts-post-image" data-src="https://novelsparadise.site/cover-b.jpg" />
+    </article>
+  `;
+  const items = parseParadiseCatalog(html);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].id, "novel-b");
+  assert.match(items[0].cover, /cover-b\.jpg$/);
+});
+
+test("paradiseCatalogHtmlLooksValid rejects cloudflare pages", () => {
+  assert.equal(paradiseCatalogHtmlLooksValid('<html><title>Just a moment...</title></html>'), false);
+  assert.equal(paradiseCatalogHtmlLooksValid('<article class="maindet"><img class="ts-post-image" /></article>'), true);
 });
 
 test("resolveParadiseTitles prefers Arabic over English", () => {

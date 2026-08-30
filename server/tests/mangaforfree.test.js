@@ -39,6 +39,13 @@ test("parseMangaforfreeCatalog reads series cards", () => {
   assert.equal(items[0].recentChapters[0].number, "10");
 });
 
+test("parseMangaforfreeCatalog accepts reversed madara class order", () => {
+  const html = CATALOG_CARD.replace('class="page-item-detail manga"', 'class="manga page-item-detail"');
+  const items = parseMangaforfreeCatalog(html);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].title, "Sample Manga");
+});
+
 test("extractMangaforfreeId reads ajax holder id", () => {
   const html = `<div id="manga-chapters-holder" data-id="361905"></div>`;
   assert.equal(extractMangaforfreeId(html), "361905");

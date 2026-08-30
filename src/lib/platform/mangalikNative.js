@@ -1,16 +1,11 @@
 import { Capacitor } from "@capacitor/core";
-import { configureMangalikNativeFetch } from "../../../server/sources/mangalik.js";
-import { configureArabshentaiNativeFetch } from "../../../server/sources/arabshentai.js";
-import { configureHentaireadNativeFetch } from "../../../server/sources/hentairead.js";
-import { configureMangaforfreeNativeFetch } from "../../../server/sources/mangaforfree.js";
-import { configureAzoraflyNativeFetch } from "../../../server/sources/azorafly.js";
-import { configureGalaxynovelsNativeFetch } from "../../../server/sources/galaxynovels.js";
+import { configureSourceNativeFetch } from "../../../server/lib/nativeFetchBridge.js";
 import { t } from "../../i18n/runtime.js";
 import { fetchNativeHtmlWithCache } from "./nativeHtmlCache.js";
 import { WEBVIEW_SOURCE_IDS } from "./webViewSources.js";
 
 export { WEBVIEW_SOURCE_IDS, usesWebViewSource, shouldDeferCatalogFilters } from "./webViewSources.js";
-export { clearNativeHtmlCache, normalizeNativeHtmlUrl } from "./nativeHtmlCache.js";
+export { clearNativeHtmlCache, invalidateNativeHtmlCache, normalizeNativeHtmlUrl } from "./nativeHtmlCache.js";
 
 function decodeBase64(base64) {
   const binary = atob(base64);
@@ -97,12 +92,7 @@ let cloudflareNativeReady = false;
 export async function initCloudflareNative() {
   if (!Capacitor.isNativePlatform() || cloudflareNativeReady) return;
   const fetchers = await createCloudflareNativeFetchers();
-  configureMangalikNativeFetch(fetchers);
-  configureArabshentaiNativeFetch(fetchers);
-  configureHentaireadNativeFetch(fetchers);
-  configureMangaforfreeNativeFetch(fetchers);
-  configureAzoraflyNativeFetch(fetchers);
-  configureGalaxynovelsNativeFetch(fetchers);
+  configureSourceNativeFetch(fetchers);
   cloudflareNativeReady = true;
 }
 

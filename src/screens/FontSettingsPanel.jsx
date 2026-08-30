@@ -20,7 +20,7 @@ const FONT_OPTIONS = [
   { id: FONT_CLASSIC, Icon: Type },
 ];
 
-function FontSelector({ typeface, onSetTypeface }) {
+export function FontSelector({ typeface, onSetTypeface }) {
   const { t } = useI18n();
   return (
     <div className="theme-selector theme-selector--four font-selector" role="group" aria-label={t("settings.font")}>
@@ -47,6 +47,8 @@ function FontSelector({ typeface, onSetTypeface }) {
     </div>
   );
 }
+
+export { FONT_OPTIONS };
 
 export function FontSettingsSheet({ open, onClose, typeface, onSetTypeface }) {
   const { t } = useI18n();

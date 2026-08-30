@@ -1,27 +1,90 @@
+function isWindowScrollRoot(root) {
+  return !root
+    || root === document.documentElement
+    || root === document.body
+    || root === document.scrollingElement;
+}
+
+export function getStandaloneReaderElement() {
+  if (typeof document === "undefined") return null;
+  return document.querySelector("#root > .live-reader:not(.live-reader--video), #root > .reader");
+}
+
 export function getAppScrollElement() {
   if (typeof document === "undefined") return null;
+
+  const standaloneReader = getStandaloneReaderElement();
+  if (standaloneReader && document.documentElement.classList.contains("native-app")) {
+    return standaloneReader;
+  }
+
   const frame = document.querySelector(".phone-frame, .app-shell__view");
   const usesFrameScroller = document.documentElement.classList.contains("desktop-app")
     || document.documentElement.classList.contains("native-app");
   if (usesFrameScroller && frame) {
-    if (frame.scrollHeight > frame.clientHeight + 1) return frame;
     return frame;
   }
   return document.scrollingElement || document.documentElement;
 }
 
-export function scrollAppToTop({ behavior = "auto" } = {}) {
-  if (typeof document === "undefined") return;
-  const usesFrameScroller = document.documentElement.classList.contains("desktop-app")
-    || document.documentElement.classList.contains("native-app");
-  const frame = usesFrameScroller
-    ? document.querySelector(".phone-frame, .app-shell__view")
-    : null;
-  if (frame) {
-    frame.scrollTo({ top: 0, behavior });
+export function getReaderScrollElement() {
+  return getAppScrollElement();
+}
+
+export function getScrollTop(root = getReaderScrollElement()) {
+  if (!root) return 0;
+  if (isWindowScrollRoot(root)) return window.scrollY || 0;
+  return root.scrollTop || 0;
+}
+
+export function getScrollViewportHeight(root = getReaderScrollElement()) {
+  if (!root) return window.innerHeight;
+  if (isWindowScrollRoot(root)) return window.innerHeight;
+  return root.clientHeight;
+}
+
+export function getScrollHeight(root = getReaderScrollElement()) {
+  if (!root) return document.documentElement.scrollHeight;
+  if (isWindowScrollRoot(root)) return document.documentElement.scrollHeight;
+  return root.scrollHeight;
+}
+
+export function getMaxScrollTop(root = getReaderScrollElement()) {
+  return Math.max(0, getScrollHeight(root) - getScrollViewportHeight(root));
+}
+
+export function scrollReaderTo(top, { behavior = "auto", root = getReaderScrollElement() } = {}) {
+  if (!root) return;
+  const nextTop = Math.max(0, top);
+  if (isWindowScrollRoot(root)) {
+    window.scrollTo({ top: nextTop, left: 0, behavior });
     return;
   }
-  window.scrollTo({ top: 0, behavior });
+  root.scrollTo({ top: nextTop, left: 0, behavior });
+}
+
+export function scrollReaderBy(deltaY, { root = getReaderScrollElement() } = {}) {
+  if (!root) return;
+  if (isWindowScrollRoot(root)) {
+    window.scrollBy(0, deltaY);
+    return;
+  }
+  root.scrollTop += deltaY;
+}
+
+export function addReaderScrollListener(handler, { passive = true } = {}) {
+  const root = getReaderScrollElement();
+  if (!root) return () => {};
+  if (isWindowScrollRoot(root)) {
+    window.addEventListener("scroll", handler, { passive });
+    return () => window.removeEventListener("scroll", handler);
+  }
+  root.addEventListener("scroll", handler, { passive });
+  return () => root.removeEventListener("scroll", handler);
+}
+
+export function scrollAppToTop({ behavior = "auto" } = {}) {
+  scrollReaderTo(0, { behavior });
 }
 
 export function scrollAppToElement(target, { behavior = "auto", offset = 12 } = {}) {
@@ -29,7 +92,7 @@ export function scrollAppToElement(target, { behavior = "auto", offset = 12 } = 
   const root = getAppScrollElement();
   if (!root) return;
 
-  if (root === document.scrollingElement || root === document.documentElement || root === document.body) {
+  if (isWindowScrollRoot(root)) {
     const top = window.scrollY + target.getBoundingClientRect().top - offset;
     window.scrollTo({ top: Math.max(0, top), behavior });
     return;

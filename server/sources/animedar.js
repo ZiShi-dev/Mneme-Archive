@@ -388,6 +388,11 @@ function buildCatalogUrl(page, filterPath = "/", baseUrl = DEFAULT_BASE_URL) {
   return `${baseUrl}${trimmed}/page/${page}/`;
 }
 
+function isValidAnimedarFilterPath(filterPath = "") {
+  if (filterPath === "/") return true;
+  return /^\/[\p{L}\p{N}/+_.%-]+\/?$/u.test(filterPath) && !filterPath.includes("..");
+}
+
 export async function handleAnimedarRequest(requestUrl) {
   const ctx = resolveSourceRequestContext(requestUrl, DEFAULT_BASE_URL, { label: SOURCE_NAME });
   const fetchHtml = createFetcher(ctx.baseUrl);
@@ -405,7 +410,7 @@ export async function handleAnimedarRequest(requestUrl) {
   if (requestUrl.pathname.endsWith("/catalog")) {
     const page = Math.min(Math.max(Number(requestUrl.searchParams.get("page")) || 1, 1), 1000);
     const filterPath = requestUrl.searchParams.get("filterPath")?.trim() || "/";
-    if (!/^\/[\p{L}\p{N}/+_.%-]+\/?$/u.test(filterPath) || filterPath.includes("..")) {
+    if (!isValidAnimedarFilterPath(filterPath)) {
       throw new Error("مسار فلتر AnimeDar غير صالح");
     }
     const html = await fetchHtml(buildCatalogUrl(page, filterPath, ctx.baseUrl));

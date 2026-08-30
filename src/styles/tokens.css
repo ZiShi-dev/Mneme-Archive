@@ -65,7 +65,7 @@
   --bottom-nav-inactive: color-mix(in srgb, var(--muted) 92%, var(--ink));
   --bottom-nav-active-bg: color-mix(in srgb, var(--brand) 22%, var(--paper));
   --bottom-nav-focus-ring: color-mix(in srgb, var(--brand) 48%, transparent);
-  --bottom-nav-halo: color-mix(in srgb, var(--brand) 72%, #f8f6f2);
+  --bottom-nav-halo: color-mix(in srgb, var(--brand) 72%, var(--surface));
   --bottom-nav-halo-glow: color-mix(in srgb, var(--brand) 38%, transparent);
   --content-padding-x: 22px;
   --content-padding-top: 8px;
@@ -141,6 +141,15 @@ html[dir="ltr"] {
   --ume: var(--stamp);
   --sumi: var(--text);
   --sumi-muted: var(--text-muted);
+  --bottom-nav-bg: color-mix(in srgb, var(--surface) 90%, transparent);
+  --bottom-nav-border: color-mix(in srgb, var(--line) 55%, transparent);
+  --bottom-nav-shadow: 0 -12px 36px color-mix(in srgb, #000 28%, transparent);
+  --bottom-nav-inactive: color-mix(in srgb, var(--text-muted) 88%, var(--text));
+  --bottom-nav-active-bg: color-mix(in srgb, var(--brand) 24%, var(--surface));
+  --bottom-nav-focus-ring: color-mix(in srgb, var(--brand) 50%, transparent);
+  --bottom-nav-halo: color-mix(in srgb, var(--brand) 75%, var(--surface));
+  --bottom-nav-halo-glow: color-mix(in srgb, var(--brand) 40%, transparent);
+  --bottom-nav-active: var(--brand);
 }
 
 /* Sakura · Usuzakura (jour) */
@@ -199,6 +208,15 @@ html[dir="ltr"] {
   --moon-white: var(--text);
   --shadow: 0 18px 40px rgba(121, 59, 85, .08);
   --radius-control: 14px;
+  --bottom-nav-bg: color-mix(in srgb, var(--washi) 94%, transparent);
+  --bottom-nav-border: color-mix(in srgb, var(--border) 80%, transparent);
+  --bottom-nav-shadow: 0 -12px 32px color-mix(in srgb, var(--ume) 10%, transparent);
+  --bottom-nav-inactive: color-mix(in srgb, var(--sumi-muted) 88%, var(--sumi));
+  --bottom-nav-active-bg: color-mix(in srgb, var(--kobai) 16%, var(--washi));
+  --bottom-nav-focus-ring: color-mix(in srgb, var(--kobai) 42%, transparent);
+  --bottom-nav-halo: color-mix(in srgb, var(--kobai) 62%, var(--usuzakura));
+  --bottom-nav-halo-glow: color-mix(in srgb, var(--sakura) 38%, transparent);
+  --bottom-nav-active: var(--kobai);
 }
 
 /* Yozakura 夜桜 (nuit sakura) */
@@ -257,6 +275,15 @@ html[dir="ltr"] {
   --moon-white: var(--text);
   --shadow: 0 22px 50px rgba(0, 0, 0, .38);
   --radius-control: 14px;
+  --bottom-nav-bg: color-mix(in srgb, var(--surface) 92%, transparent);
+  --bottom-nav-border: color-mix(in srgb, var(--border) 60%, transparent);
+  --bottom-nav-shadow: 0 -14px 40px color-mix(in srgb, #000 35%, transparent);
+  --bottom-nav-inactive: color-mix(in srgb, var(--sumi-muted) 85%, var(--sumi));
+  --bottom-nav-active-bg: color-mix(in srgb, var(--sakura) 22%, var(--surface));
+  --bottom-nav-focus-ring: color-mix(in srgb, var(--kobai) 48%, transparent);
+  --bottom-nav-halo: color-mix(in srgb, var(--sakura) 72%, var(--washi));
+  --bottom-nav-halo-glow: color-mix(in srgb, var(--kobai) 42%, transparent);
+  --bottom-nav-active: var(--sakura);
 }
 
 /* Lune Mer · neige de verre sous la lune sur la mer */
@@ -303,4 +330,27 @@ html[dir="ltr"] {
   --cta: #C8DAF5;
   --cta-text: #0D1522;
   --radius-control: 14px;
+  --bottom-nav-bg: color-mix(in srgb, var(--surface) 90%, transparent);
+  --bottom-nav-border: color-mix(in srgb, var(--border) 58%, transparent);
+  --bottom-nav-shadow: 0 -14px 42px color-mix(in srgb, var(--star-mist) 55%, transparent);
+  --bottom-nav-inactive: color-mix(in srgb, var(--text-muted) 88%, var(--text));
+  --bottom-nav-active-bg: color-mix(in srgb, var(--frost) 20%, var(--surface));
+  --bottom-nav-focus-ring: color-mix(in srgb, var(--frost) 45%, transparent);
+  --bottom-nav-halo: color-mix(in srgb, var(--moon-glow) 55%, var(--frost));
+  --bottom-nav-halo-glow: color-mix(in srgb, var(--frost) 40%, transparent);
+  --bottom-nav-active: var(--moon-glow);
+}
+
+/* Papier */
+[data-theme="paper"],
+[data-theme="paper"] .app-shell {
+  --bottom-nav-bg: color-mix(in srgb, var(--surface) 90%, transparent);
+  --bottom-nav-border: color-mix(in srgb, var(--line) 70%, transparent);
+  --bottom-nav-shadow: 0 -10px 36px color-mix(in srgb, var(--ink) 7%, transparent);
+  --bottom-nav-inactive: color-mix(in srgb, var(--muted) 90%, var(--ink));
+  --bottom-nav-active-bg: color-mix(in srgb, var(--brand) 18%, var(--surface));
+  --bottom-nav-focus-ring: color-mix(in srgb, var(--brand) 45%, transparent);
+  --bottom-nav-halo: color-mix(in srgb, var(--brand) 68%, var(--surface));
+  --bottom-nav-halo-glow: color-mix(in srgb, var(--brand) 32%, transparent);
+  --bottom-nav-active: var(--brand);
 }

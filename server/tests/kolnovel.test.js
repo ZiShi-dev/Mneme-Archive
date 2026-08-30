@@ -32,6 +32,7 @@ test("parseKolnovelCatalog reads series cards", () => {
   const html = `
     <article class="maindet">
       <h2 itemprop="headline"><a href="https://kolnovel.com/series/novel-a/" title="Novel A">Novel A</a></h2>
+      <span class="mdgenre"><a href="https://kolnovel.com/genre/action/"># أكشن</a></span>
       <div class="contexcerpt"><p>رواية أ مترجمة Novel A</p></div>
       <img class="ts-post-image" src="https://kolnovel.com/cover.jpg" />
       <div class="mdinfodet">
@@ -43,6 +44,15 @@ test("parseKolnovelCatalog reads series cards", () => {
   assert.equal(items.length, 1);
   assert.equal(items[0].id, "novel-a");
   assert.equal(items[0].latestChapter, "12");
+  assert.deepEqual(items[0].genres, ["أكشن"]);
+});
+
+test("kolnovel catalog accepts latin genre filters", async () => {
+  const { handleKolnovelRequest } = await import("../sources/kolnovel.js");
+  const url = new URL("https://api.local/sources/kolnovel/catalog?page=1&genre=action");
+  const result = await handleKolnovelRequest(url);
+  assert.equal(result.status, 200);
+  assert.ok(result.body.items.length > 0);
 });
 
 test("extractKolnovelChapterNumber prefers الفصل over season number", () => {

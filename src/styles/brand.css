@@ -21,25 +21,25 @@
 }
 
 .app-brand-name--header {
-  font-size: clamp(22px, 5.6vw, 28px);
-  line-height: 1.42;
+  font-size: clamp(19px, 4.8vw, 24px);
+  line-height: 1.38;
 }
 
 .app-brand-name--profile {
-  font-size: 17px;
-  font-weight: 700;
-  line-height: 1.4;
-}
-
-.app-brand-name--desktop {
-  font-size: clamp(28px, 4.2vw, 38px);
-  line-height: 1.28;
-}
-
-.app-brand-name--nav {
   font-size: 15px;
   font-weight: 700;
   line-height: 1.35;
+}
+
+.app-brand-name--desktop {
+  font-size: clamp(24px, 3.8vw, 32px);
+  line-height: 1.24;
+}
+
+.app-brand-name--nav {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.32;
 }
 
 [dir="ltr"] .app-brand-name {
@@ -57,6 +57,10 @@
 
 .settings-profile .app-brand-name--profile {
   display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .desktop-note .app-brand-name--desktop {
@@ -65,6 +69,10 @@
 
 .game-nav__brand-copy .app-brand-name--nav {
   display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 [data-theme="ink"] .app-brand-name__accent,

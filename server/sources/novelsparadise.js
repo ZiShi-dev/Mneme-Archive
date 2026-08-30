@@ -9,16 +9,21 @@ import {
 } from "../lib/catalogChapters.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
 import { isNovelBoilerplateParagraph } from "../lib/novelChapterText.js";
+import { configureSourceNativeFetch, fetchNativeHtml, hasNativeHtmlFetcher } from "../lib/nativeFetchBridge.js";
 
 const DEFAULT_BASE_URL = "https://novelsparadise.site";
 const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
 const SOURCE_NAME = "Novels Paradise";
 const SOURCE_ID = "novelsparadise";
 
+export function configureNovelsparadiseNativeFetch(options) {
+  configureSourceNativeFetch(options);
+}
+
 function createFetcher(baseUrl = DEFAULT_BASE_URL) {
   return createCachedHtmlFetcher({
     ttlMs: 3 * 60_000,
-    timeoutMs: 35_000,
+    timeoutMs: 40_000,
     headers: {
       accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       "accept-language": "ar,en-US;q=0.9,en;q=0.8",
@@ -37,6 +42,37 @@ function createFetcher(baseUrl = DEFAULT_BASE_URL) {
       ? "حماية Novels Paradise تمنع الاتصال (Cloudflare)"
       : `Novels Paradise a répondu ${lastStatus}`),
   });
+}
+
+function isParadiseCatalogUrl(url = "") {
+  try {
+    return new URL(url, DEFAULT_BASE_URL).pathname.startsWith("/series");
+  } catch {
+    return false;
+  }
+}
+
+export function paradiseCatalogHtmlLooksValid(html = "") {
+  if (!html) return false;
+  if (/Just a moment|cf-chl-|challenges\.cloudflare\.com/i.test(html)) return false;
+  return /<article\b|ts-post-image|class="[^"]*maindet|epcl-/i.test(html);
+}
+
+async function fetchParadiseHtml(url, remoteFetcher) {
+  const html = await fetchNativeHtml(url, () => remoteFetcher(url));
+  if (!hasNativeHtmlFetcher() || paradiseCatalogHtmlLooksValid(html)) return html;
+  try {
+    const remote = await remoteFetcher(url);
+    if (paradiseCatalogHtmlLooksValid(remote)) return remote;
+  } catch {
+    // Garde le HTML WebView si le repli HTTP échoue aussi.
+  }
+  return html;
+}
+
+function assertParadiseCatalogHtml(url, html) {
+  if (!isParadiseCatalogUrl(url) || paradiseCatalogHtmlLooksValid(html)) return;
+  throw new Error("حماية Novels Paradise تمنع الاتصال (Cloudflare)");
 }
 
 function assertParadiseHost(rawUrl, ctx = DEFAULT_CTX) {
@@ -143,14 +179,24 @@ function parseCatalogArabicTitleFromExcerpt(article = "") {
 }
 
 function parseArticleTitleAndHref(article) {
-  const headline = article.match(/<h2[^>]*itemprop=["']headline["'][^>]*>[\s\S]*?<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/i);
+  const headline = article.match(/<h[23][^>]*itemprop=["']headline["'][^>]*>[\s\S]*?<a\b[^>]*href=["']([^"']+)["'][^>]*(?:title=["']([^"']*)["'])?[^>]*>([\s\S]*?)<\/a>/i);
   if (headline) {
-    return { href: decodeHtml(headline[1]), title: headline[2] };
+    return { href: decodeHtml(headline[1]), title: headline[2] || headline[3] };
+  }
+  const coverLink = article.match(/<a\b[^>]*class=["'][^"']*(?:thumb|series|l[^"']*)["'][^>]*href=["']([^"']+)["'][^>]*(?:title=["']([^"']*)["'])?/i)
+    ?? article.match(/<a\b[^>]*href=["']([^"']+)["'][^>]*title=["']([^"']+)["'][^>]*>\s*<img/i);
+  if (coverLink) {
+    return { href: decodeHtml(coverLink[1]), title: coverLink[2] || "" };
   }
   const forward = article.match(/<a\b[^>]*title=["']([^"']+)["'][^>]*href=["']([^"']+)["']/i);
   if (forward) return { title: forward[1], href: forward[2] };
   const reverse = article.match(/<a\b[^>]*href=["']([^"']+)["'][^>]*title=["']([^"']+)["']/i);
   if (reverse) return { title: reverse[2], href: reverse[1] };
+  const hrefOnly = article.match(/<a\b[^>]*href=["'](\/series\/[^"']+\/?)["']/i);
+  if (hrefOnly) {
+    const title = article.match(/\btitle=["']([^"']+)["']/i)?.[1] ?? "";
+    return { href: hrefOnly[1], title };
+  }
   return null;
 }
 
@@ -238,23 +284,41 @@ function decodeParadiseFilterValue(raw = "") {
   }
 }
 
+function isLatinFilterSlug(value = "") {
+  return /^[a-z0-9_-]+$/i.test(String(value || "").trim());
+}
+
+function scoreParadiseFilterValue(decoded = "", raw = "") {
+  if (isLatinFilterSlug(decoded)) return 3;
+  if (isLatinFilterSlug(raw)) return 2;
+  return 1;
+}
+
 export function parseParadiseFilterCheckboxes(html, fieldName) {
   const form = extractParadiseFiltersForm(html);
-  const entries = [];
-  const seen = new Set();
+  const byName = new Map();
   const pattern = new RegExp(
     `<li>\\s*<input\\b[^>]*\\bname=["']${fieldName}\\[\\]["'][^>]*\\bvalue=["']([^"']*)["'][^>]*>\\s*<label\\b[^>]*>([\\s\\S]*?)<\\/label>\\s*<\\/li>`,
     "gi",
   );
   for (const match of form.matchAll(pattern)) {
-    const slug = decodeParadiseFilterValue(match[1]);
+    const rawValue = match[1];
+    const decoded = decodeParadiseFilterValue(rawValue);
     const name = textOnly(match[2]);
-    const key = slug.toLocaleLowerCase("ar");
-    if (!slug || !name || seen.has(key)) continue;
-    seen.add(key);
-    entries.push({ slug, name, count: 0 });
+    const key = name.toLocaleLowerCase("ar");
+    if (!decoded || !name) continue;
+    const slug = decoded;
+    const filterQueryValue = isLatinFilterSlug(decoded)
+      ? decoded
+      : (isLatinFilterSlug(rawValue) ? decodeParadiseFilterValue(rawValue) : decoded);
+    const candidate = { slug, name, count: 0, filterQueryValue };
+    const existing = byName.get(key);
+    if (!existing || scoreParadiseFilterValue(candidate.filterQueryValue, candidate.slug)
+      > scoreParadiseFilterValue(existing.filterQueryValue, existing.slug)) {
+      byName.set(key, candidate);
+    }
   }
-  return entries.sort((a, b) => a.name.localeCompare(b.name, "ar"));
+  return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name, "ar"));
 }
 
 export function parseParadiseFilters(html) {
@@ -285,7 +349,7 @@ function mapCatalogItem(rawTitle, href, cover, article = "") {
   const slug = seriesSlugFromSlug(slugFromPath(new URL(href, DEFAULT_BASE_URL).pathname));
   const alter = article.match(/<span class="alter">([\s\S]*?)<\/span>/i)?.[1] ?? "";
   const excerptTitle = parseCatalogArabicTitleFromExcerpt(article);
-  const { title, altTitle } = resolveParadiseTitles(rawTitle, alter || excerptTitle);
+  const { title, altTitle } = resolveParadiseTitles(rawTitle || excerptTitle, alter || excerptTitle);
   return {
     id: slug,
     title,
@@ -306,8 +370,9 @@ export function parseParadiseCatalog(html) {
   const articlePattern = /<article\b[\s\S]*?<\/article>/gi;
   for (const block of html.matchAll(articlePattern)) {
     const article = block[0];
+    if (!/maindet|ts-post-image|nchapter|contexcerpt|itemprop=["']headline["']/i.test(article)) continue;
     const link = parseArticleTitleAndHref(article);
-    if (!link?.href || !link.title) continue;
+    if (!link?.href) continue;
     const imageTag = article.match(/<img\b[^>]*class="[^"]*ts-post-image[^"]*"[^>]*>/i)?.[0]
       ?? article.match(/<img\b[^>]*>/i)?.[0]
       ?? "";
@@ -626,13 +691,15 @@ export function parseParadiseChapter(html, url) {
 
 export async function handleNovelsParadiseRequest(requestUrl) {
   const ctx = resolveSourceRequestContext(requestUrl, DEFAULT_BASE_URL, { label: SOURCE_NAME });
-  const fetchParadiseHtml = createFetcher(ctx.baseUrl);
+  const remoteFetcher = createFetcher(ctx.baseUrl);
+  const fetchHtml = (url) => fetchParadiseHtml(url, remoteFetcher);
 
   if (requestUrl.pathname.endsWith("/image")) {
     return fetchProxiedImage(assertParadiseImageUrl(requestUrl.searchParams.get("url") ?? "", ctx), `${ctx.baseUrl}/`, SOURCE_NAME);
   }
   if (requestUrl.pathname.endsWith("/filters")) {
-    const html = await fetchParadiseHtml(buildParadiseCatalogUrl(1, {}, ctx.baseUrl));
+    const target = buildParadiseCatalogUrl(1, {}, ctx.baseUrl);
+    const html = await fetchHtml(target);
     return responseJson(200, { ...parseParadiseFilters(html), fetchedAt: new Date().toISOString() });
   }
   if (requestUrl.pathname.endsWith("/catalog")) {
@@ -640,12 +707,14 @@ export async function handleNovelsParadiseRequest(requestUrl) {
     const order = requestUrl.searchParams.get("order")?.trim() || "latest";
     const genre = assertParadiseFilterSlug(requestUrl.searchParams.get("genre"), "تصنيف");
     const tag = assertParadiseFilterSlug(requestUrl.searchParams.get("tag"), "وسم");
-    const html = await fetchParadiseHtml(buildParadiseCatalogUrl(page, {
+    const target = buildParadiseCatalogUrl(page, {
       status: requestUrl.searchParams.get("status") ?? "",
       order,
       genre,
       tag,
-    }, ctx.baseUrl));
+    }, ctx.baseUrl);
+    const html = await fetchHtml(target);
+    assertParadiseCatalogHtml(target, html);
     const items = parseParadiseCatalog(html);
     return responseJson(200, {
       items,
@@ -667,12 +736,13 @@ export async function handleNovelsParadiseRequest(requestUrl) {
     target.searchParams.set("s", query);
     if (genre) target.searchParams.append("genre[]", genre);
     if (tag) target.searchParams.append("type[]", tag);
-    const html = await fetchParadiseHtml(target.toString());
+    const html = await fetchHtml(target.toString());
+    assertParadiseCatalogHtml(target.toString(), html);
     return responseJson(200, { items: parseParadiseCatalog(html), page, hasMore: catalogHasMorePages(html, page) });
   }
   if (requestUrl.pathname.endsWith("/manga")) {
     const target = normalizeSeriesUrl(requestUrl.searchParams.get("url") ?? "");
-    const html = await fetchParadiseHtml(target);
+    const html = await fetchHtml(target);
     return responseJson(200, parseParadiseDetails(html, target));
   }
   if (requestUrl.pathname.endsWith("/chapter")) {

@@ -56,6 +56,20 @@ test("parseArabshentaiCatalog reads dooplay cards", () => {
   assert.equal(items[0].title, "Sample Series");
   assert.equal(items[0].id, "sample-series");
   assert.equal(items[0].recentChapters[0].number, "41");
+  assert.equal(items[0].mediaType, "manga");
+});
+
+test("parseArabshentaiCatalog tags anime items from catalog type", () => {
+  const items = parseArabshentaiCatalog(CATALOG_ARTICLE, { catalogType: "anime" });
+  assert.equal(items[0].catalogKind, "anime");
+  assert.equal(items[0].mediaType, "anime");
+});
+
+test("parseArabshentaiCatalog accepts reversed dooplay class order", () => {
+  const html = CATALOG_ARTICLE.replace('class="item wp-manga"', 'class="wp-manga item"');
+  const items = parseArabshentaiCatalog(html);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].title, "Sample Series");
 });
 
 test("parseArabshentaiChapters reads dooplay chapter list", () => {

@@ -5,12 +5,14 @@ import { responseJson } from "../lib/response.js";
 import {
   parseParadiseChapter,
   parseParadiseFilters,
+  paradiseCatalogHtmlLooksValid,
   resolveParadiseTitles,
   catalogHasMorePages,
   parseCatalogChaptersFromArticle,
   extractEplisterListBlocks,
 } from "./novelsparadise.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
+import { configureSourceNativeFetch, fetchNativeHtml, hasNativeHtmlFetcher } from "../lib/nativeFetchBridge.js";
 
 const DEFAULT_BASE_URL = "https://kolnovel.com";
 const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
@@ -18,6 +20,10 @@ const SOURCE_NAME = "Kol Novel";
 const SOURCE_ID = "kolnovel";
 const CHAPTER_SLUG_PREFIX = "shaag24";
 const CHAPTER_SLUG_MARKER = "z435ggye-";
+
+export function configureKolnovelNativeFetch(options) {
+  configureSourceNativeFetch(options);
+}
 
 function createFetcher(baseUrl = DEFAULT_BASE_URL) {
   return createCachedHtmlFetcher({
@@ -140,6 +146,21 @@ function parseCatalogChapterFromArticle(article) {
   return parseCatalogChaptersFromArticle(article, DEFAULT_BASE_URL, extractKolnovelChapterNumber);
 }
 
+function parseCatalogGenres(article = "") {
+  const genres = [];
+  const seen = new Set();
+  for (const match of article.matchAll(/<span[^>]*class="[^"]*mdgenre[^"]*"[^>]*>([\s\S]*?)<\/span>/gi)) {
+    for (const label of match[1].matchAll(/<a[^>]*>([\s\S]*?)<\/a>/gi)) {
+      const name = textOnly(label[1]).replace(/^#\s*/, "").trim();
+      const key = name.toLocaleLowerCase("ar");
+      if (!name || seen.has(key)) continue;
+      seen.add(key);
+      genres.push(name);
+    }
+  }
+  return genres.slice(0, 12);
+}
+
 export function extractKolnovelChapterNumber(primaryText, secondaryText = "", fallback = "") {
   const primary = textOnly(primaryText);
   const secondary = textOnly(secondaryText);
@@ -181,10 +202,12 @@ function assertKolnovelFilterSlug(value, label) {
 }
 
 function mapCatalogItem(rawTitle, href, cover, article = "") {
-  const slug = seriesSlugFromSlug(slugFromPath(new URL(href, DEFAULT_BASE_URL).pathname));
+  const pathname = new URL(href, DEFAULT_BASE_URL).pathname;
+  const slug = seriesSlugFromSlug(decodeURIComponent(slugFromPath(pathname)));
   const alter = article.match(/<span class="alter">([\s\S]*?)<\/span>/i)?.[1] ?? "";
   const excerptTitle = parseCatalogArabicTitleFromExcerpt(article);
   const { title, altTitle } = resolveParadiseTitles(rawTitle, alter || excerptTitle);
+  const genres = parseCatalogGenres(article);
   return {
     id: slug,
     title,
@@ -195,6 +218,8 @@ function mapCatalogItem(rawTitle, href, cover, article = "") {
     sourceId: SOURCE_ID,
     mediaType: "novel",
     mediaTypeLabel: "رواية",
+    categories: genres,
+    genres,
     ...parseCatalogChapterFromArticle(article),
   };
 }
@@ -204,6 +229,7 @@ export function parseKolnovelCatalog(html) {
   const seen = new Set();
   for (const block of html.matchAll(/<article\b[\s\S]*?<\/article>/gi)) {
     const article = block[0];
+    if (!/maindet|ts-post-image|nchapter|contexcerpt|itemprop=["']headline["']/i.test(article)) continue;
     const link = parseArticleTitleAndHref(article);
     if (!link?.href || !link.title) continue;
     const imageTag = article.match(/<img\b[^>]*class="[^"]*ts-post-image[^"]*"[^>]*>/i)?.[0]
@@ -323,16 +349,43 @@ function parseKolnovelDetails(html, url) {
   };
 }
 
+async function fetchKolnovelHtml(url, remoteFetcher) {
+  const html = await fetchNativeHtml(url, () => remoteFetcher(url));
+  if (!hasNativeHtmlFetcher() || paradiseCatalogHtmlLooksValid(html)) return html;
+  try {
+    const remote = await remoteFetcher(url);
+    if (paradiseCatalogHtmlLooksValid(remote)) return remote;
+  } catch {
+    // Garde le HTML WebView si le repli HTTP échoue aussi.
+  }
+  return html;
+}
+
+function isKolnovelCatalogUrl(url = "") {
+  try {
+    const parsed = new URL(url);
+    return parsed.pathname === "/series/" || parsed.pathname.startsWith("/series/");
+  } catch {
+    return false;
+  }
+}
+
+function assertKolnovelCatalogHtml(url, html, items = []) {
+  if (!isKolnovelCatalogUrl(url) || items.length > 0 || paradiseCatalogHtmlLooksValid(html)) return;
+  throw new Error("حماية Kol Novel تمنع الاتصال (Cloudflare)");
+}
+
 export async function handleKolnovelRequest(requestUrl) {
   const ctx = resolveSourceRequestContext(requestUrl, DEFAULT_BASE_URL, { label: SOURCE_NAME });
-  const fetchKolnovelHtml = createFetcher(ctx.baseUrl);
+  const remoteFetcher = createFetcher(ctx.baseUrl);
+  const fetchKolnovelHtmlBound = (url) => fetchKolnovelHtml(url, remoteFetcher);
 
   if (requestUrl.pathname.endsWith("/image")) {
     return fetchProxiedImage(assertKolnovelImageUrl(requestUrl.searchParams.get("url") ?? "", ctx), `${ctx.baseUrl}/`, SOURCE_NAME);
   }
 
   if (requestUrl.pathname.endsWith("/filters")) {
-    const html = await fetchKolnovelHtml(buildKolnovelCatalogUrl(1, {}, ctx.baseUrl));
+    const html = await fetchKolnovelHtmlBound(buildKolnovelCatalogUrl(1, {}, ctx.baseUrl));
     return responseJson(200, { ...parseParadiseFilters(html), fetchedAt: new Date().toISOString() });
   }
 
@@ -341,13 +394,15 @@ export async function handleKolnovelRequest(requestUrl) {
     const order = requestUrl.searchParams.get("order")?.trim() || "latest";
     const genre = assertKolnovelFilterSlug(requestUrl.searchParams.get("genre"), "تصنيف");
     const tag = assertKolnovelFilterSlug(requestUrl.searchParams.get("tag"), "وسم");
-    const html = await fetchKolnovelHtml(buildKolnovelCatalogUrl(page, {
+    const target = buildKolnovelCatalogUrl(page, {
       status: requestUrl.searchParams.get("status") ?? "",
       order,
       genre,
       tag,
-    }, ctx.baseUrl));
+    }, ctx.baseUrl);
+    const html = await fetchKolnovelHtmlBound(target);
     const items = parseKolnovelCatalog(html);
+    assertKolnovelCatalogHtml(target, html, items);
     return responseJson(200, {
       items,
       page,
@@ -369,13 +424,15 @@ export async function handleKolnovelRequest(requestUrl) {
     target.searchParams.set("s", query);
     if (genre) target.searchParams.append("genre[]", genre);
     if (tag) target.searchParams.append("type[]", tag);
-    const html = await fetchKolnovelHtml(target.toString());
-    return responseJson(200, { items: parseKolnovelCatalog(html), page, hasMore: catalogHasMorePages(html, page) });
+    const html = await fetchKolnovelHtmlBound(target.toString());
+    const items = parseKolnovelCatalog(html);
+    assertKolnovelCatalogHtml(target.toString(), html, items);
+    return responseJson(200, { items, page, hasMore: catalogHasMorePages(html, page) });
   }
 
   if (requestUrl.pathname.endsWith("/manga")) {
     const target = normalizeSeriesUrl(requestUrl.searchParams.get("url") ?? "");
-    const html = await fetchKolnovelHtml(target);
+    const html = await fetchKolnovelHtmlBound(target);
     return responseJson(200, parseKolnovelDetails(html, target));
   }
 
@@ -386,7 +443,7 @@ export async function handleKolnovelRequest(requestUrl) {
       html = await fetchKolnovelChapterHtml(target, ctx);
     } catch {
       const seriesUrl = seriesUrlFromChapterUrl(target);
-      await fetchKolnovelHtml(seriesUrl).catch(() => {});
+      await fetchKolnovelHtmlBound(seriesUrl).catch(() => {});
       html = await fetchKolnovelChapterHtml(target, ctx);
     }
     return responseJson(200, parseParadiseChapter(html, target));

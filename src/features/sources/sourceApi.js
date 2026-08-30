@@ -65,6 +65,25 @@ function appendCatalogQueryFilters(query, sourceId, {
 
 let cloudflareNativeReady = false;
 
+const NATIVE_REQUEST_TIMEOUT_MS = 120_000;
+
+async function withTimeout(promise, fallbackMessage, timeoutMs = NATIVE_REQUEST_TIMEOUT_MS) {
+  let timeoutId;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(t("errors.requestTimeout"))), timeoutMs);
+      }),
+    ]);
+  } catch (error) {
+    if (error instanceof Error && error.message) throw error;
+    throw new Error(fallbackMessage);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
 async function ensureCloudflareNative() {
   if (!isNative() || cloudflareNativeReady) return;
   const { initCloudflareNative } = await import("../../lib/platform/mangalikNative.js");
@@ -86,14 +105,14 @@ async function requestJson(path, fallbackMessage, { ttlMs = 0 } = {}) {
   }
 
   const data = isNative()
-    ? await (async () => {
+    ? await withTimeout((async () => {
       if (pathUsesCloudflareNative(path)) await ensureCloudflareNative();
       const { handleSourceRequest } = await import("../../../server/mangaSourcesPlugin.js");
       const result = await handleSourceRequest(path);
       if (!result || result.kind !== "json") throw new Error(fallbackMessage);
       if (result.status !== 200) throw new Error(result.body.error || fallbackMessage);
       return result.body;
-    })()
+    })(), fallbackMessage)
     : await fetch(path).then((response) => readJson(response, fallbackMessage));
 
   if (ttlMs > 0) writeJsonCache(path, data);

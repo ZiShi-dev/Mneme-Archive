@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   buildEpisodeUrl,
   buildServerEmbedUrl,
+  handleAnimedarRequest,
   parseAnimedarCatalog,
   parseAnimedarDetails,
   parseAnimedarEpisodes,
@@ -97,4 +98,12 @@ test("parseAnimedarDetails merges metadata and chapters", () => {
   assert.equal(details.totalEpisodes, 3);
   assert.deepEqual(details.categories, ["Action"]);
   assert.equal(details.chapters.length, 3);
+});
+
+test("handleAnimedarRequest catalog accepts root filterPath", async () => {
+  const url = new URL("https://api.local/sources/animedar/catalog?page=1&filterPath=/");
+  const result = await handleAnimedarRequest(url);
+  assert.equal(result.status, 200);
+  assert.ok(Array.isArray(result.body.items));
+  assert.ok(result.body.items.length > 0, "catalog should return items for /");
 });

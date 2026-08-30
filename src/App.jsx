@@ -31,10 +31,10 @@ import { PwaInstallBanner } from "./components/pwa/PwaInstallBanner";
 import { useHideBottomNavOnScroll } from "./hooks/useHideBottomNavOnScroll";
 import { usePwaInstall } from "./hooks/usePwaInstall";
 import { getAppBrandText } from "./lib/brand/appBrand";
+import { LiveReader } from "./features/sources/LiveReader";
 import { NovelReaderSkeleton, ReaderPagesSkeleton, VideoStageSkeleton } from "./components/ui/ContentSkeleton";
 
 const LiveVideoPlayer = lazy(() => import("./features/sources/LiveVideoPlayer").then((module) => ({ default: module.LiveVideoPlayer })));
-const LiveReader = lazy(() => import("./features/sources/LiveReader").then((module) => ({ default: module.LiveReader })));
 
 function ReaderSuspenseFallback({ manga }) {
   const { t } = useI18n();
@@ -48,13 +48,13 @@ function ReaderSuspenseFallback({ manga }) {
   }
   if (mediaType === "novel") {
     return (
-      <div className="reader live-reader live-reader--novel reader--theme-night">
+      <div className="reader live-reader live-reader--novel reader--theme-night reader--loading">
         <NovelReaderSkeleton label={t("reader.loadingChapter")} />
       </div>
     );
   }
   return (
-    <div className="reader live-reader">
+    <div className="reader live-reader reader--loading">
       <ReaderPagesSkeleton label={t("reader.loadingChapter")} />
     </div>
   );
@@ -176,13 +176,11 @@ export function App() {
         </FeatureSuspense>
       )
       : (
-        <FeatureSuspense fallback={<ReaderSuspenseFallback manga={liveReader.manga} />}>
-          <LiveReader
-            key={readerKey}
-            {...commonProps}
-            readerSettings={settings}
-          />
-        </FeatureSuspense>
+        <LiveReader
+          key={readerKey}
+          {...commonProps}
+          readerSettings={settings}
+        />
       );
   })() : null;
 

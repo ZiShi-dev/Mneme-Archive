@@ -26,6 +26,13 @@ import { installEmbedPopupGuards } from "../../lib/video/embedHosts";
 import { useI18n } from "../../i18n/I18nProvider";
 import { resolveNovelContentDirection } from "../../lib/text/contentDirection.js";
 import { NovelReaderSkeleton, ReaderPagesSkeleton, VideoStageSkeleton } from "../../components/ui/ContentSkeleton";
+import {
+  addReaderScrollListener,
+  getMaxScrollTop,
+  getScrollTop,
+  scrollReaderBy,
+  scrollReaderTo,
+} from "../../lib/platform/scrollRoot.js";
 
 const scrollSpeeds = [0.5, 1, 1.5, 2];
 const defaultReaderPreferences = { theme: "night", fontSize: 18, lineHeight: 1.9, fontFamily: "naskh", textAlign: "right", paragraphSpacing: 1.25, contentWidth: "normal" };
@@ -114,7 +121,7 @@ export function LiveReader({
     setAutoScroll(false);
     setTouchPaused(false);
     setControlsMode("panel");
-    window.scrollTo(0, 0);
+    scrollReaderTo(0);
     pendingSeekRef.current = null;
     fetchSourceChapter(sourceId, activeChapter.url, {
       contentApi: activeChapter.contentApi,
@@ -144,10 +151,10 @@ export function LiveReader({
     const updateProgress = () => {
       setProgress(computeReaderScrollProgress());
     };
-    window.addEventListener("scroll", updateProgress, { passive: true });
+    const removeScrollListener = addReaderScrollListener(updateProgress);
     window.addEventListener("resize", updateProgress);
     return () => {
-      window.removeEventListener("scroll", updateProgress);
+      removeScrollListener();
       window.removeEventListener("resize", updateProgress);
     };
   }, []);
@@ -176,12 +183,12 @@ export function LiveReader({
   useEffect(() => {
     if (!autoScroll || !data || touchPaused) return undefined;
     const timer = setInterval(() => {
-      const maximum = document.documentElement.scrollHeight - window.innerHeight;
-      if (window.scrollY >= maximum - 3) {
+      const maximum = getMaxScrollTop();
+      if (getScrollTop() >= maximum - 3) {
         setAutoScroll(false);
         setControlsMode("panel");
       }
-      else window.scrollBy(0, 1.35 * scrollSpeeds[speedIndex]);
+      else scrollReaderBy(1.35 * scrollSpeeds[speedIndex]);
     }, 16);
     return () => clearInterval(timer);
   }, [autoScroll, data, speedIndex, touchPaused]);
@@ -252,9 +259,9 @@ export function LiveReader({
 
   function seekTo(value) {
     const nextProgress = Math.round(Number(value));
-    const maximum = document.documentElement.scrollHeight - window.innerHeight;
+    const maximum = getMaxScrollTop();
     setProgress(nextProgress);
-    window.scrollTo({ top: maximum * (nextProgress / 100), behavior: "smooth" });
+    scrollReaderTo(maximum * (nextProgress / 100), { behavior: "smooth" });
   }
 
   function changeChapter(nextChapterToOpen) {
@@ -308,17 +315,17 @@ export function LiveReader({
     return installEmbedPopupGuards();
   }, [embedPlayback]);
   const isNovel = expectsNovel || data?.kind === "novel";
-  const showNovelSkeleton = isNovel && loadingChapter && !data && !error;
-  const showPagesSkeleton = !isNovel && loadingChapter && !data && !error;
+  const showChapterLoading = !error && !data;
   const showNovelRefresh = isNovel && loadingChapter && Boolean(data) && !error;
   const contentDir = useMemo(() => {
     if (!isNovel) return dir;
     return resolveNovelContentDirection({
       contentLanguage: data?.contentLanguage,
       languages: profile?.languages,
+      paragraphs: data?.paragraphs,
       fallback: dir,
     });
-  }, [data?.contentLanguage, dir, isNovel, profile?.languages]);
+  }, [data?.contentLanguage, data?.paragraphs, dir, isNovel, profile?.languages]);
   const readerStyle = isNovel
     ? {
         "--reader-font-size": `${readerPreferences.fontSize}px`,
@@ -331,6 +338,7 @@ export function LiveReader({
     "live-reader",
     isNovel ? "live-reader--novel" : "",
     data?.kind === "video" ? "live-reader--video" : "",
+    showChapterLoading ? "live-reader--loading" : "",
     isNovel ? `reader--theme-${readerPreferences.theme}` : "",
     isNovel ? `reader--font-${readerPreferences.fontFamily}` : "",
     isNovel ? `reader--align-${readerPreferences.textAlign}` : "",
@@ -357,10 +365,10 @@ export function LiveReader({
         unitLabel={data?.kind === "video" ? t("media.theEpisode") : t("media.theChapter")}
         hideSettings={!isNovel}
       />
-      {error ? <div className="reader-live-state"><Wifi size={30} /><h2>{t("reader.loadChapterFailed")}</h2><p>{error}</p></div> : showNovelSkeleton ? (
-        <NovelReaderSkeleton label={t("reader.loadingChapter")} />
-      ) : showPagesSkeleton ? (
-        <ReaderPagesSkeleton label={t("reader.loadingChapter")} />
+      {error ? <div className="reader-live-state"><Wifi size={30} /><h2>{t("reader.loadChapterFailed")}</h2><p>{error}</p></div> : showChapterLoading ? (
+        isNovel
+          ? <NovelReaderSkeleton label={t("reader.loadingChapter")} />
+          : <ReaderPagesSkeleton label={t("reader.loadingChapter")} />
       ) : data.kind === "video" ? (
         <div className="live-video-stage">
           {!playback ? (

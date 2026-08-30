@@ -519,6 +519,40 @@
   pointer-events: auto;
 }
 
+html.native-app :is(
+  .catalog-source-picker-backdrop,
+  .management-source-picker-backdrop,
+  .catalog-filter-picker-backdrop,
+  .la-sheet-backdrop,
+  .notify-sheet-backdrop,
+  .follow-sheet-backdrop
+) {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: rgba(3, 4, 10, .78);
+}
+
+.catalog-source-picker-backdrop.is-closed {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.catalog-source-picker-backdrop.is-open {
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.catalog-source-picker__list--pending {
+  min-height: 220px;
+}
+
+.catalog-source-picker__option--skeleton {
+  min-height: 72px;
+  border-style: dashed;
+  opacity: .35;
+  pointer-events: none;
+}
+
 @keyframes laShimmer {
   to { background-position: -220% 0; }
 }
@@ -557,7 +591,13 @@
   border-radius: var(--radius-sheet) var(--radius-sheet) 16px 16px;
   background: var(--paper, var(--white));
   box-shadow: 0 -18px 50px rgba(0, 0, 0, .28);
-  animation: laSheetIn 220ms cubic-bezier(.2, .8, .2, 1);
+  transform: translateZ(0);
+}
+
+.catalog-source-picker-backdrop.is-open .catalog-source-picker,
+.management-source-picker-backdrop.is-open .management-source-picker,
+.la-sheet-backdrop.is-open .la-sheet {
+  animation: laSheetIn 180ms cubic-bezier(.2, .8, .2, 1);
 }
 
 .catalog-filter-picker { width: var(--sheet-width); max-width: 100%; max-height: var(--sheet-height); }

@@ -8,7 +8,7 @@ export function SourceLogo({ sourceId = "mangalik", large = false, className = "
   useEffect(() => setFailed(false), [sourceId]);
 
   const classes = `source-logo source-logo--official source-logo--${sourceId} ${large ? "source-logo--large" : ""} ${className}`.trim();
-  return <span className={classes}>{failed ? profile.initials : <img src={profile.logo} alt={profile.name} loading="lazy" onError={() => setFailed(true)} />}</span>;
+  return <span className={classes}>{failed ? profile.initials : <img src={profile.logo} alt={profile.name} loading="lazy" decoding="async" onError={() => setFailed(true)} />}</span>;
 }
 
 

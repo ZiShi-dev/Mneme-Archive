@@ -2,6 +2,13 @@ import { resolveSourceId } from "../config/sources";
 import { getChapterProgress } from "./storage/chapterProgress";
 import { resolveBookmarkType } from "../features/sources/contentTypes";
 import { getLocale, t } from "../i18n/runtime.js";
+import {
+  getMaxScrollTop,
+  getReaderScrollElement,
+  getScrollHeight,
+  getScrollTop,
+  getScrollViewportHeight,
+} from "./platform/scrollRoot.js";
 
 export const HISTORY_DAY_GROUPS = {
   today: "today",
@@ -42,23 +49,23 @@ export function isReadToday(record) {
 export const CHAPTER_COMPLETE_SCROLL_GAP = 56;
 export const CHAPTER_COMPLETE_MIN_PROGRESS = 92;
 
-export function computeReaderScrollProgress() {
-  const maximum = document.documentElement.scrollHeight - window.innerHeight;
+export function computeReaderScrollProgress(root = getReaderScrollElement()) {
+  const maximum = getMaxScrollTop(root);
   if (maximum <= 0) return 0;
-  return Math.min(100, Math.max(0, Math.round((window.scrollY / maximum) * 100)));
+  return Math.min(100, Math.max(0, Math.round((getScrollTop(root) / maximum) * 100)));
 }
 
-export function isReaderAtBottom(gap = CHAPTER_COMPLETE_SCROLL_GAP) {
-  const doc = document.documentElement;
-  return window.scrollY + window.innerHeight >= doc.scrollHeight - gap;
+export function isReaderAtBottom(gap = CHAPTER_COMPLETE_SCROLL_GAP, root = getReaderScrollElement()) {
+  return getScrollTop(root) + getScrollViewportHeight(root) >= getScrollHeight(root) - gap;
 }
 
 export function shouldMarkChapterComplete({ userHasScrolled, scrollProgress } = {}) {
   if (!userHasScrolled) return false;
-  const maximum = document.documentElement.scrollHeight - window.innerHeight;
-  const progress = scrollProgress ?? computeReaderScrollProgress();
-  if (maximum <= 120) return isReaderAtBottom();
-  return isReaderAtBottom() && progress >= CHAPTER_COMPLETE_MIN_PROGRESS;
+  const root = getReaderScrollElement();
+  const maximum = getMaxScrollTop(root);
+  const progress = scrollProgress ?? computeReaderScrollProgress(root);
+  if (maximum <= 120) return isReaderAtBottom(CHAPTER_COMPLETE_SCROLL_GAP, root);
+  return isReaderAtBottom(CHAPTER_COMPLETE_SCROLL_GAP, root) && progress >= CHAPTER_COMPLETE_MIN_PROGRESS;
 }
 
 export function normalizeReadingRecord(record) {

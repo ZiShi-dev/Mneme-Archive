@@ -25,8 +25,12 @@ import {
   applyAppearance,
   isDarkTheme,
   normalizeThemeId,
+  themeDefaultTypeface,
 } from "../../lib/theme/appearance";
+import { applyTypeface, FONT_SANS, normalizeTypefaceId, typefaceNameKey } from "../../lib/theme/typeface";
 import { ThemeSelector } from "../../screens/ThemeSettingsPanel";
+import { FontSelector } from "../../screens/FontSettingsPanel";
+import { TYPEFACES } from "../../lib/theme/typeface";
 
 const SPLASH_MS = 2400;
 
@@ -43,7 +47,7 @@ function readBootAppearance() {
 }
 
 function buildOnboardingTheme(appearance) {
-  const palette = resolveMnemeMarkPalette("dark", appearance);
+  const palette = resolveMnemeMarkPalette("auto", appearance);
   const dark = isDarkTheme(appearance);
   return {
     appearance,
@@ -242,7 +246,7 @@ function OnboardingPermissions({ theme, onContinue }) {
   );
 }
 
-function OnboardingTheme({ theme, appearance, onSetAppearance, onDone }) {
+function OnboardingTheme({ theme, appearance, onSetAppearance, onContinue }) {
   const { t, dir } = useI18n();
 
   return (
@@ -255,6 +259,59 @@ function OnboardingTheme({ theme, appearance, onSetAppearance, onDone }) {
 
         <div className="onboarding__theme-grid">
           <ThemeSelector appearance={appearance} onSetAppearance={onSetAppearance} />
+        </div>
+
+        <div className="onboarding__actions">
+          <button type="button" className="onboarding__primary" onClick={onContinue}>
+            {t("onboarding.continue")}
+          </button>
+        </div>
+      </div>
+    </OnboardingBackdrop>
+  );
+}
+
+function OnboardingFont({ theme, typeface, onSetTypeface, onDone }) {
+  const { t, dir } = useI18n();
+  const preview = TYPEFACES[typeface] || TYPEFACES.sans;
+
+  return (
+    <OnboardingBackdrop theme={theme}>
+      <div className="onboarding__panel onboarding__panel--font" dir={dir}>
+        <header className="onboarding__header">
+          <h1>{t("onboarding.fontTitle")}</h1>
+          <p>{t("onboarding.fontSubtitle")}</p>
+        </header>
+
+        <div
+          className="onboarding__font-preview"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          <small>{t("onboarding.fontSampleLabel")}</small>
+          <p
+            className="onboarding__font-sample-ar"
+            dir="rtl"
+            style={{ fontFamily: preview.arabic }}
+          >
+            {t("onboarding.fontSampleAr")}
+          </p>
+          <p
+            className="onboarding__font-sample-fr"
+            style={{ fontFamily: preview.sans }}
+          >
+            {t("onboarding.fontSampleFr")}
+          </p>
+          <p
+            className="onboarding__font-sample-title"
+            style={{ fontFamily: preview.display }}
+          >
+            {t(typefaceNameKey(typeface))}
+          </p>
+        </div>
+
+        <div className="onboarding__font-grid">
+          <FontSelector typeface={typeface} onSetTypeface={onSetTypeface} />
         </div>
 
         <div className="onboarding__actions">
@@ -271,17 +328,28 @@ function OnboardingFlow({ onComplete }) {
   const isNative = Capacitor.isNativePlatform();
   const [step, setStep] = useState("splash");
   const [appearance, setAppearanceRaw] = usePersistedState("living-archive:appearance", readBootAppearance());
+  const [typeface, setTypefaceRaw] = usePersistedState("living-archive:typeface", FONT_SANS);
   const appearanceId = normalizeThemeId(appearance ?? THEME_INK);
+  const typefaceId = normalizeTypefaceId(typeface ?? FONT_SANS);
   const theme = useMemo(() => buildOnboardingTheme(appearanceId), [appearanceId]);
 
   const setAppearance = useCallback((next) => {
-    setAppearanceRaw(normalizeThemeId(next));
-  }, [setAppearanceRaw]);
+    const normalized = normalizeThemeId(next);
+    setAppearanceRaw(normalized);
+    setTypefaceRaw(themeDefaultTypeface(normalized));
+  }, [setAppearanceRaw, setTypefaceRaw]);
+
+  const setTypeface = useCallback((next) => {
+    setTypefaceRaw(normalizeTypefaceId(next));
+  }, [setTypefaceRaw]);
+
+  const goToFont = useCallback(() => setStep("font"), []);
 
   useEffect(() => {
     applyAppearance(appearanceId);
+    applyTypeface(typefaceId);
     void syncNativeChrome(theme.palette.canvas, isDarkTheme(appearanceId));
-  }, [appearanceId, theme.palette.canvas]);
+  }, [appearanceId, typefaceId, theme.palette.canvas]);
 
   useEffect(() => {
     if (!isNative) return;
@@ -321,6 +389,17 @@ function OnboardingFlow({ onComplete }) {
         theme={theme}
         appearance={appearanceId}
         onSetAppearance={setAppearance}
+        onContinue={goToFont}
+      />
+    );
+  }
+
+  if (step === "font") {
+    return (
+      <OnboardingFont
+        theme={theme}
+        typeface={typefaceId}
+        onSetTypeface={setTypeface}
         onDone={finish}
       />
     );
@@ -344,7 +423,15 @@ export function OnboardingGate({ children }) {
     return children;
   }
 
-  if (!ready) return null;
+  if (!ready) {
+    return (
+      <div className="boot-screen" role="status" aria-live="polite">
+        <div className="boot-screen__inner">
+          <p>{getAppBrandText(runtimeT).loading}</p>
+        </div>
+      </div>
+    );
+  }
 
   return <OnboardingFlow onComplete={() => setComplete(true)} />;
 }

@@ -11,8 +11,6 @@ const SOURCE_NAME = "Arabs Hentai";
 const SOURCE_ID = "arabshentai";
 const ALLOWED_HOSTS = new Set(["arabshentai.com", "www.arabshentai.com"]);
 const HOST_PATTERN = /(?:^|\.)arabshentai\.com$/i;
-const CATALOG_TYPES = ["manhwa", "manga", "anime", "games", "sex"];
-
 const { normalizeHost, normalizeAssetUrl: normalizeHostAssetUrl } = createWpMangaHostHelpers({
   baseUrl: BASE_URL,
   apexHostname: "arabshentai.com",
@@ -24,6 +22,7 @@ const { configureNativeFetch, resolveHtml, resolveImage } = createWpMangaFetcher
   apexHostname: "arabshentai.com",
   sourceName: SOURCE_NAME,
   acceptLanguage: "ar,en;q=0.8",
+  timeoutMs: 40_000,
   forbiddenMessage: "حماية Arabs Hentai منعت الاتصال مؤقتًا",
 });
 
@@ -101,40 +100,105 @@ export function parseArabshentaiChapters(html = "") {
   return chapters;
 }
 
-export function parseArabshentaiCatalog(html = "") {
+function catalogKindFields(catalogType = "") {
+  if (catalogType === "anime") {
+    return { catalogKind: "anime", mediaType: "anime", mediaTypeLabel: "أنمي" };
+  }
+  if (catalogType === "manhwa") {
+    return { catalogKind: "manhwa", mediaType: "manga", mediaTypeLabel: "مانهوا" };
+  }
+  if (catalogType) {
+    return { catalogKind: catalogType, mediaType: "manga", mediaTypeLabel: "مانغا" };
+  }
+  return { mediaType: "manga", mediaTypeLabel: "مانغا" };
+}
+
+function isDooPlayCatalogArticle(tag = "") {
+  const classes = tag.match(/class=["']([^"']+)["']/i)?.[1] ?? "";
+  return /\bitem\b/.test(classes) && /\bwp-manga\b/.test(classes);
+}
+
+function pushArabshentaiCatalogItem(results, seen, {
+  url,
+  title,
+  cover,
+  chapters,
+  catalogType = "",
+}) {
+  const normalizedUrl = url.replace("www.arabshentai.com", "arabshentai.com");
+  if (!normalizedUrl || seen.has(normalizedUrl)) return;
+  const cleanTitle = textOnly(title);
+  if (!cleanTitle) return;
+  seen.add(normalizedUrl);
+  results.push(applyRecentChapterFields({
+    id: slugFromUrl(normalizedUrl),
+    title: cleanTitle,
+    url: normalizedUrl,
+    cover: normalizeAssetUrl(cover),
+    source: SOURCE_NAME,
+    sourceId: SOURCE_ID,
+    ...catalogKindFields(catalogType),
+  }, chapters));
+}
+
+function parseArabshentaiDooPlayCatalog(html = "", catalogType = "") {
   const results = [];
   const seen = new Set();
-  for (const match of html.matchAll(/<article[^>]*class="[^"]*item[^"]*wp-manga[^"]*"[^>]*>([\s\S]*?)<\/article>/gi)) {
-    const block = match[1];
+  for (const match of html.matchAll(/<article\b([^>]*)>([\s\S]*?)<\/article>/gi)) {
+    if (!isDooPlayCatalogArticle(match[1])) continue;
+    const block = match[2];
     const link = block.match(/<a[^>]*href="(https?:\/\/(?:www\.)?arabshentai\.com\/manga\/[^"?#]+\/?)"[^>]*>/i);
     if (!link) continue;
-    const url = link[1].replace("www.arabshentai.com", "arabshentai.com");
-    if (seen.has(url)) continue;
-    const title = textOnly(
-      block.match(/<h3[^>]*>[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/i)?.[1]
+    const title = block.match(/<h3[^>]*>[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/i)?.[1]
       ?? block.match(/<img[^>]*alt="([^"]+)"/i)?.[1]
-      ?? "",
-    );
-    if (!title) continue;
+      ?? "";
     const imageTag = block.match(/<img[^>]*>/i)?.[0] ?? "";
-    const cover = normalizeAssetUrl(imageTag.match(/(?:src|data-src)=["']([^"']+)"/i)?.[1] ?? "");
+    const cover = imageTag.match(/(?:src|data-src)=["']([^"']+)["']/i)?.[1] ?? "";
     const chapters = normalizeRecentChapters([...block.matchAll(/<span[^>]*class="[^"]*chapter[^"]*"[^>]*>[\s\S]*?<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi)].map((entry) => {
       const number = textOnly(entry[2]).trim();
       return { url: normalizeAssetUrl(entry[1]), name: number, number };
     }));
-    seen.add(url);
-    results.push(applyRecentChapterFields({
-      id: slugFromUrl(url),
+    pushArabshentaiCatalogItem(results, seen, {
+      url: link[1],
       title,
-      url,
       cover,
-      source: SOURCE_NAME,
-      sourceId: SOURCE_ID,
-      mediaType: "manga",
-      mediaTypeLabel: "مانغا",
-    }, chapters));
+      chapters,
+      catalogType,
+    });
   }
   return results;
+}
+
+function parseArabshentaiMadaraCatalog(html = "", catalogType = "") {
+  const results = [];
+  const seen = new Set();
+  const starts = [...html.matchAll(/<div[^>]*class="[^"]*page-item-detail[^"]*manga[^"]*"[^>]*>/gi)];
+  starts.forEach((match, index) => {
+    const block = html.slice(match.index, starts[index + 1]?.index ?? html.length);
+    const link = block.match(/<a[^>]*href="(https?:\/\/(?:www\.)?arabshentai\.com\/manga\/[^"?#]+\/?)"[^>]*(?:title="([^"]*)")?[^>]*>/i);
+    if (!link) return;
+    const title = block.match(/<div[^>]*class="[^"]*post-title[^"]*"[^>]*>[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/i)?.[1] ?? link[2] ?? "";
+    const imageTag = block.match(/<img[^>]*class="[^"]*img-responsive[^"]*"[^>]*>/i)?.[0] ?? block.match(/<img[^>]*>/i)?.[0] ?? "";
+    const cover = imageTag.match(/(?:src|data-src)=["']([^"']+)["']/i)?.[1] ?? "";
+    const chapters = normalizeRecentChapters([...block.matchAll(/<span[^>]*class="[^"]*chapter[^"]*"[^>]*>[\s\S]*?<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi)].map((entry) => {
+      const number = textOnly(entry[2]).trim();
+      return { url: normalizeAssetUrl(entry[1]), name: number, number };
+    }));
+    pushArabshentaiCatalogItem(results, seen, {
+      url: link[1],
+      title,
+      cover,
+      chapters,
+      catalogType,
+    });
+  });
+  return results;
+}
+
+export function parseArabshentaiCatalog(html = "", { catalogType = "" } = {}) {
+  const fromDooPlay = parseArabshentaiDooPlayCatalog(html, catalogType);
+  if (fromDooPlay.length) return fromDooPlay;
+  return parseArabshentaiMadaraCatalog(html, catalogType);
 }
 
 function parseArabshentaiGenres(html = "") {
@@ -153,8 +217,8 @@ function parseArabshentaiGenres(html = "") {
   return genres.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "ar"));
 }
 
-function parseArabshentaiSearch(html = "") {
-  return parseArabshentaiCatalog(html);
+function parseArabshentaiSearch(html = "", catalogType = "") {
+  return parseArabshentaiCatalog(html, { catalogType });
 }
 
 function parseArabshentaiManga(html, url) {
@@ -230,25 +294,11 @@ export function mergeArabshentaiCatalogItems(groups = []) {
   return items;
 }
 
-async function fetchCatalogSlice({ page, genre, type }) {
+async function fetchArabshentaiCatalog({ page, genre, type }) {
   const html = await resolveHtml(buildCatalogTarget({ page, genre, type }));
   return {
-    items: parseArabshentaiCatalog(html),
+    items: parseArabshentaiCatalog(html, { catalogType: type }),
     hasMore: catalogHasMore(html, { page, genre, type }),
-  };
-}
-
-async function fetchArabshentaiCatalog({ page, genre, type }) {
-  if (type) {
-    const slice = await fetchCatalogSlice({ page, genre, type });
-    return { items: slice.items, hasMore: slice.hasMore };
-  }
-  const slices = await Promise.all(
-    CATALOG_TYPES.map((catalogType) => fetchCatalogSlice({ page, genre, type: catalogType })),
-  );
-  return {
-    items: mergeArabshentaiCatalogItems(slices.map((slice) => slice.items)),
-    hasMore: slices.some((slice) => slice.hasMore),
   };
 }
 

@@ -12,6 +12,7 @@ test("MangalikHtmlFetcher web stub rejects native-only call", async () => {
 
 test("configureMangalikNativeFetch injects custom html fetcher", async () => {
   const { configureMangalikNativeFetch } = await import("../../server/sources/mangalik.js");
+  const { clearSourceNativeFetch } = await import("../../server/lib/nativeFetchBridge.js");
   configureMangalikNativeFetch({
     fetchHtml: async () => "<html><body><div class='page-item-detail manga'>test</div></body></html>",
     fetchImage: null,
@@ -19,11 +20,12 @@ test("configureMangalikNativeFetch injects custom html fetcher", async () => {
   const { handleMangalikRequest } = await import("../../server/sources/mangalik.js");
   const response = await handleMangalikRequest(new URL("http://localhost/api/sources/mangalik/catalog?page=1"));
   assert.equal(response.status, 200);
-  configureMangalikNativeFetch({ fetchHtml: null, fetchImage: null });
+  clearSourceNativeFetch();
 });
 
 test("configureAzoraflyNativeFetch injects custom html fetcher", async () => {
   const { configureAzoraflyNativeFetch } = await import("../../server/sources/azorafly.js");
+  const { clearSourceNativeFetch } = await import("../../server/lib/nativeFetchBridge.js");
   configureAzoraflyNativeFetch({
     fetchHtml: async () => "<html><body><a href=\"/series/demo\" title=\"Demo\">Demo</a></body></html>",
     fetchImage: null,
@@ -31,7 +33,7 @@ test("configureAzoraflyNativeFetch injects custom html fetcher", async () => {
   const { handleAzoraRequest } = await import("../../server/sources/azorafly.js");
   const response = await handleAzoraRequest(new URL("http://localhost/api/sources/azorafly/filters"));
   assert.equal(response.status, 200);
-  configureAzoraflyNativeFetch({ fetchHtml: null, fetchImage: null });
+  clearSourceNativeFetch();
 });
 
 test("normalizeNativeHtmlUrl deduplicates catalog page-1 URLs", async () => {
@@ -74,7 +76,7 @@ test("fetchNativeHtmlWithCache reuses in-flight fetch", async () => {
 
 test("webViewSources marks native catalog sources", async () => {
   const { WEBVIEW_SOURCE_IDS, shouldDeferCatalogFilters } = await import("../lib/platform/webViewSources.js");
-  assert.deepEqual(WEBVIEW_SOURCE_IDS, ["mangalik", "azorafly", "galaxynovels", "arabshentai", "hentairead", "mangaforfree"]);
+  assert.deepEqual(WEBVIEW_SOURCE_IDS, ["mangalik", "azorafly", "galaxynovels", "arabshentai", "hentairead", "mangaforfree", "novelsparadise", "kolnovel", "novelphoenix"]);
   assert.equal(shouldDeferCatalogFilters("azorafly"), true);
   assert.equal(shouldDeferCatalogFilters("paradise"), false);
 });

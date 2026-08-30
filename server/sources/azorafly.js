@@ -5,17 +5,14 @@ import { responseJson } from "../lib/response.js";
 import { applyRecentChapterFields, normalizeRecentChapters } from "../lib/catalogChapters.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
 import { filterNovelParagraphs } from "../lib/novelChapterText.js";
+import { configureSourceNativeFetch, fetchNativeHtml, fetchNativeImage } from "../lib/nativeFetchBridge.js";
 
 const DEFAULT_BASE_URL = "https://azorafly.com";
 const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
 const AZORA_API_URL = "https://api.azorafly.com";
 
-let nativeHtmlFetcher = null;
-let nativeImageFetcher = null;
-
-export function configureAzoraflyNativeFetch({ fetchHtml, fetchImage } = {}) {
-  nativeHtmlFetcher = fetchHtml ?? null;
-  nativeImageFetcher = fetchImage ?? null;
+export function configureAzoraflyNativeFetch(options) {
+  configureSourceNativeFetch(options);
 }
 
 function createFetcher(baseUrl = DEFAULT_BASE_URL) {
@@ -26,10 +23,7 @@ function createFetcher(baseUrl = DEFAULT_BASE_URL) {
     getVariants: (url) => [url],
     buildError: (lastStatus) => (lastStatus === 403 ? "حماية AzoraFly منعت الاتصال مؤقتًا" : `AzoraFly a répondu ${lastStatus}`),
   });
-  return async (url) => {
-    if (nativeHtmlFetcher) return nativeHtmlFetcher(url);
-    return fetchRemote(url);
-  };
+  return (url) => fetchNativeHtml(url, () => fetchRemote(url));
 }
 
 function assertAzoraUrl(rawUrl, chapter = false, ctx = DEFAULT_CTX) {
@@ -54,8 +48,7 @@ function assertAzoraImageUrl(rawUrl) {
 
 async function proxyAzoraImage(rawUrl, ctx = DEFAULT_CTX) {
   const target = assertAzoraImageUrl(rawUrl);
-  if (nativeImageFetcher) return nativeImageFetcher(target);
-  return fetchProxiedImage(target, `${ctx.baseUrl}/`, "AzoraFly");
+  return fetchNativeImage(target, () => fetchProxiedImage(target, `${ctx.baseUrl}/`, "AzoraFly"));
 }
 
 function parseAzoraFilters(html) {

@@ -6,6 +6,7 @@ import { applyRecentChapterFields, enrichCatalogItems } from "../lib/catalogChap
 import { enrichSourceDetails } from "../lib/detailEnrichment.js";
 import { filterNovelParagraphs } from "../lib/novelChapterText.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
+import { configureSourceNativeFetch, fetchNativeHtml, fetchNativeImage, hasNativeHtmlFetcher } from "../lib/nativeFetchBridge.js";
 
 const DEFAULT_BASE_URL = "https://galaxynovels.com";
 const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
@@ -26,25 +27,28 @@ const galaxyNovelApiCache = new Map();
 let galaxyAuthorFiltersCache = null;
 let galaxyAuthorFiltersWarmPromise = null;
 
-let nativeHtmlFetcher = null;
-let nativeImageFetcher = null;
-
-export function configureGalaxynovelsNativeFetch({ fetchHtml, fetchImage } = {}) {
-  nativeHtmlFetcher = fetchHtml ?? null;
-  nativeImageFetcher = fetchImage ?? null;
+export function configureGalaxynovelsNativeFetch(options) {
+  configureSourceNativeFetch(options);
 }
 
 function createFetcher(baseUrl = DEFAULT_BASE_URL) {
-  const fetchRemote = createCachedHtmlFetcher({
+  const fetchHtmlRemote = createCachedHtmlFetcher({
     ttlMs: 3 * 60_000,
-    timeoutMs: 30_000,
+    timeoutMs: 40_000,
     headers: { accept: "text/html,application/xhtml+xml", "accept-language": "ar,en;q=0.8", referer: `${baseUrl}/`, "user-agent": "Mozilla/5.0 (Android 14; Mobile) AppleWebKit/537.36 Chrome/124 Safari/537.36" },
     getVariants: (url) => [url],
     buildError: (lastStatus) => (lastStatus === 403 ? "حماية Galaxy Novels منعت الاتصال مؤقتًا" : `Galaxy Novels a répondu ${lastStatus}`),
   });
-  return async (url) => {
-    if (nativeHtmlFetcher) return nativeHtmlFetcher(url);
-    return fetchRemote(url);
+  return async function fetchGalaxyHtml(url) {
+    const html = await fetchNativeHtml(url, () => fetchHtmlRemote(url));
+    if (!hasNativeHtmlFetcher() || galaxyCatalogHtmlLooksValid(html, url)) return html;
+    try {
+      const remote = await fetchHtmlRemote(url);
+      if (galaxyCatalogHtmlLooksValid(remote, url)) return remote;
+    } catch {
+      // Garde le HTML WebView si le repli HTTP échoue aussi.
+    }
+    return html;
   };
 }
 
@@ -73,8 +77,7 @@ function assertGalaxyImageUrl(rawUrl, ctx = DEFAULT_CTX) {
 
 async function proxyGalaxyImage(rawUrl, ctx = DEFAULT_CTX) {
   const target = assertGalaxyImageUrl(rawUrl, ctx);
-  if (nativeImageFetcher) return nativeImageFetcher(target);
-  return fetchProxiedImage(target, `${ctx.baseUrl}/`, "Galaxy Novels");
+  return fetchNativeImage(target, () => fetchProxiedImage(target, `${ctx.baseUrl}/`, "Galaxy Novels"));
 }
 
 async function fetchGalaxyNovelApi(novelId) {
@@ -101,7 +104,78 @@ function slugifyGalaxyAuthor(name) {
 }
 
 export function parseGalaxyCatalogNovelIds(html) {
-  return [...new Set([...html.matchAll(/data-wor-library-novel-id="(\d+)"/gi)].map((match) => Number(match[1])).filter(Boolean))];
+  return [...new Set([...html.matchAll(/data-wor-library-novel-id=["'](\d+)["']/gi)].map((match) => Number(match[1])).filter(Boolean))];
+}
+
+function galaxyCatalogHtmlLooksValid(html = "", url = "") {
+  if (/data-wor-library-novel-id|wor-library-card/i.test(html)) return true;
+  try {
+    const path = new URL(url, DEFAULT_BASE_URL).pathname;
+    if (!/^\/library\/?$/i.test(path)) return true;
+  } catch {
+    return true;
+  }
+  return false;
+}
+
+function imageFromGalaxyTag(tag = "") {
+  const direct = tag.match(/(?:data-src|data-lazy-src|src)=["']([^"']+)["']/gi) ?? [];
+  for (const match of direct) {
+    const value = match.match(/=["']([^"']+)["']/i)?.[1] ?? "";
+    if (value && !/^data:/i.test(value)) return decodeHtml(value);
+  }
+  return "";
+}
+
+function extractGalaxyNovelLink(block = "") {
+  const titleLink = block.match(/<h2[^>]*class=["'][^"']*wor-library-card__title[^"']*["'][^>]*>[\s\S]*?<a[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/i);
+  if (titleLink) return { url: titleLink[1], title: titleLink[2] };
+  const coverLink = block.match(/<a[^>]*class=["'][^"']*wor-library-card__cover[^"']*["'][^>]*href=["']([^"']+)["'][^>]*(?:aria-label=["']([^"']*)["'])?/i);
+  if (coverLink) return { url: coverLink[1], title: coverLink[2] || "" };
+  const generic = block.match(/<a[^>]*href=["']([^"']+\/novel\/[^"']+\/?)["'][^>]*>/i);
+  if (generic) return { url: generic[1], title: "" };
+  return null;
+}
+
+export function parseGalaxyCatalog(html = "") {
+  const results = [];
+  const seen = new Set();
+  for (const match of html.matchAll(/<article\b([^>]*)>([\s\S]*?)<\/article>/gi)) {
+    const attrs = match[1];
+    const block = match[2];
+    if (!/\bwor-library-card\b/.test(attrs) && !/data-wor-library-novel-id=/i.test(attrs)) continue;
+    const novelId = Number(
+      attrs.match(/data-wor-library-novel-id=["'](\d+)["']/i)?.[1]
+      ?? block.match(/data-wor-library-novel-id=["'](\d+)["']/i)?.[1]
+      ?? 0,
+    );
+    const link = extractGalaxyNovelLink(block);
+    if (!link?.url) continue;
+    const url = toGalaxyAbsoluteUrl(link.url);
+    if (seen.has(url)) continue;
+    const imageTag = block.match(/<img[^>]*class=["'][^"']*wor-cover-img[^"']*["'][^>]*>/i)?.[0]
+      ?? block.match(/<img[^>]*>/i)?.[0]
+      ?? "";
+    const chapterCount = textOnly(block.match(/<b[^>]*data-wor-library-chapter-count[^>]*>([\s\S]*?)<\/b>/i)?.[1] ?? "0");
+    const status = textOnly(block.match(/<b>([^<]+)<\/b><small>الحالة<\/small>/i)?.[1] ?? "");
+    const summary = textOnly(block.match(/<div[^>]*class=["'][^"']*wor-single-summary__text[^"']*["'][^>]*>([\s\S]*?)<\/div>/i)?.[1] ?? "");
+    seen.add(url);
+    results.push(applyRecentChapterFields({
+      id: new URL(url).pathname.split("/").filter(Boolean).pop(),
+      novelId,
+      title: textOnly(link.title),
+      url,
+      cover: imageFromGalaxyTag(imageTag),
+      summary,
+      chapterCount: Number(chapterCount) || 0,
+      status,
+      source: "Galaxy Novels",
+      sourceId: "galaxynovels",
+      mediaType: "novel",
+      mediaTypeLabel: "رواية",
+    }, []));
+  }
+  return results;
 }
 
 export function normalizeGalaxyAuthorName(name) {
@@ -278,37 +352,6 @@ function mapGalaxyChapters(index) {
       contentApi: chapter.content_api ? toGalaxyAbsoluteUrl(chapter.content_api) : "",
     }))
     .filter((chapter) => chapter.url && chapter.number);
-}
-
-function parseGalaxyCatalog(html) {
-  const results = [];
-  const starts = [...html.matchAll(/<article[^>]*class="[^"]*wor-library-card[^"]*"[^>]*data-wor-library-novel-id="(\d+)"[^>]*>/gi)];
-  starts.forEach((match, index) => {
-    const block = html.slice(match.index, starts[index + 1]?.index ?? html.length);
-    const link = block.match(/<h2[^>]*class="[^"]*wor-library-card__title[^"]*"[^>]*>[\s\S]*?<a[^>]*href="(https?:\/\/(?:www\.)?galaxynovels\.com\/novel\/[^"?#]+\/?)[^>]*>([\s\S]*?)<\/a>/i);
-    if (!link) return;
-    const url = link[1].replace("www.galaxynovels.com", "galaxynovels.com");
-    const imageTag = block.match(/<img[^>]*class="[^"]*wor-cover-img[^"]*"[^>]*>/i)?.[0] ?? "";
-    const cover = imageTag.match(/data-src="([^"]+)"/i)?.[1] ?? imageTag.match(/src="([^"]+)"/i)?.[1] ?? "";
-    const chapterCount = textOnly(block.match(/<b[^>]*data-wor-library-chapter-count[^>]*>([\s\S]*?)<\/b>/i)?.[1] ?? "0");
-    const status = textOnly(block.match(/<b>([^<]+)<\/b><small>الحالة<\/small>/i)?.[1] ?? "");
-    const summary = textOnly(block.match(/<div[^>]*class="[^"]*wor-single-summary__text[^"]*"[^>]*>([\s\S]*?)<\/div>/i)?.[1] ?? "");
-    results.push(applyRecentChapterFields({
-      id: new URL(url).pathname.split("/").filter(Boolean).pop(),
-      novelId: Number(match[1]),
-      title: textOnly(link[2]),
-      url,
-      cover: decodeHtml(cover),
-      summary,
-      chapterCount: Number(chapterCount) || 0,
-      status,
-      source: "Galaxy Novels",
-      sourceId: "galaxynovels",
-      mediaType: "novel",
-      mediaTypeLabel: "رواية",
-    }, []));
-  });
-  return results;
 }
 
 async function enrichGalaxyCatalog(items, { concurrency = 6 } = {}) {

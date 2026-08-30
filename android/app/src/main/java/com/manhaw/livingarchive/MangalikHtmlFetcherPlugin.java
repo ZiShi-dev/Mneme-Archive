@@ -42,8 +42,11 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
             + "var hasCatalog=/wp-manga|page-item-detail|item[^\"']*wp-manga|dooplay/i.test(body);"
             + "var hasAzora=/storage\\.azorafly\\.com|href=\\\"\\/series\\/|itemprop=\\\"genre\\\"|bg-card/i.test(body);"
             + "var hasGalaxy=/data-wor-library-novel-id|wor-cover-img|wor-library|wor-single-novel/i.test(body);"
-            + "if((hasCatalog||hasAzora||hasGalaxy)&&body.length>1200){return JSON.stringify({ready:true,html:html});}"
-            + "if(/Just a moment|cf-chl-|challenges\\.cloudflare\\.com/i.test(body)){return JSON.stringify({ready:false,blocked:true});}"
+            + "var hasParadise=/ts-post-image|<article\\b|epcl-|eplister/i.test(body);"
+            + "var hasNovelPhoenix=/novel-item|novel-title/i.test(body);"
+            + "var hasChapter=/reading-content|wp-manga-chapter|manga-reading|chapter-image|epcontent|text-chapter/i.test(body);"
+            + "if((hasCatalog||hasAzora||hasGalaxy||hasParadise||hasNovelPhoenix||hasChapter)&&body.length>800){return JSON.stringify({ready:true,html:html});}"
+            + "if(/Just a moment|cf-chl-|challenges\\.cloudflare\\.com/i.test(html)){return JSON.stringify({ready:false,blocked:true});}"
             + "if(!body||body.length<400){return JSON.stringify({ready:false});}"
             + "if(document.readyState!=='complete'){return JSON.stringify({ready:false});}"
             + "return JSON.stringify({ready:true,html:html});"
@@ -64,8 +67,14 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
     private static final SourceHost[] SOURCE_HOSTS = {
         new SourceHost("mangalik.net", "https://mangalik.net/manga/", "https://mangalik.net/"),
         new SourceHost("azorafly.com", "https://azorafly.com/", "https://azorafly.com/"),
-        new SourceHost("galaxynovels.com", "https://galaxynovels.com/", "https://galaxynovels.com/"),
+        new SourceHost("galaxynovels.com", "https://galaxynovels.com/library/", "https://galaxynovels.com/"),
         new SourceHost("wtr-lab.com", "https://wtr-lab.com/en/novel-list", "https://wtr-lab.com/"),
+        new SourceHost("arabshentai.com", "https://arabshentai.com/manga/", "https://arabshentai.com/"),
+        new SourceHost("hentairead.com", "https://hentairead.com/hentai/", "https://hentairead.com/"),
+        new SourceHost("mangaforfree.com", "https://mangaforfree.com/manga/", "https://mangaforfree.com/"),
+        new SourceHost("novelsparadise.site", "https://novelsparadise.site/series/", "https://novelsparadise.site/"),
+        new SourceHost("kolnovel.com", "https://kolnovel.com/series/", "https://kolnovel.com/"),
+        new SourceHost("novelphoenix.com", "https://novelphoenix.com/", "https://novelphoenix.com/"),
     };
 
     private static final String AZORA_STORAGE_HOST = "storage.azorafly.com";
@@ -574,6 +583,18 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
             }
             if ("wtr-lab.com".equals(host)) {
                 return path.startsWith("/cdn/") || path.startsWith("/assets/");
+            }
+            if ("novelphoenix.com".equals(host)) {
+                return path.startsWith("/server-") || path.startsWith("/logo");
+            }
+            if (host.endsWith("hencover.xyz")) {
+                return path.matches("(?i).+\\.(webp|jpe?g|png|avif|gif)$");
+            }
+            if ("novelsparadise.site".equals(host) || "kolnovel.com".equals(host)) {
+                return path.startsWith("/wp-content/uploads/") || path.startsWith("/series/");
+            }
+            if ("hentairead.com".equals(host)) {
+                return path.startsWith("/wp-content/uploads/") || path.startsWith("/hentai/");
             }
             return path.startsWith("/manga/") || path.startsWith("/wp-content/uploads/");
         } catch (Exception error) {

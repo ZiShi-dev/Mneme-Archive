@@ -82,6 +82,8 @@ export function VideoStageSkeleton({ label }) {
 export function ReaderPagesSkeleton({ label, pages = 2 }) {
   return (
     <div className="reader-pages-skeleton" role="status" aria-live="polite" aria-label={label}>
+      <span className="reader-pages-skeleton__spinner" aria-hidden="true" />
+      <p className="reader-pages-skeleton__label">{label}</p>
       {Array.from({ length: pages }, (_, index) => (
         <span key={index} className="reader-pages-skeleton__page ui-skeleton" />
       ))}
@@ -92,6 +94,7 @@ export function ReaderPagesSkeleton({ label, pages = 2 }) {
 export function NovelReaderSkeleton({ label }) {
   return (
     <div className="novel-reader-skeleton" role="status" aria-live="polite" aria-label={label}>
+      <span className="novel-reader-skeleton__spinner" aria-hidden="true" />
       <span className="novel-reader-skeleton__source ui-skeleton" aria-hidden="true" />
       <p className="novel-reader-skeleton__label">{label}</p>
       {Array.from({ length: 12 }, (_, index) => (

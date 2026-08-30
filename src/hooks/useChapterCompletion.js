@@ -3,6 +3,7 @@ import {
   computeReaderScrollProgress,
   shouldMarkChapterComplete,
 } from "../lib/readingProgress";
+import { addReaderScrollListener } from "../lib/platform/scrollRoot.js";
 
 export function useChapterCompletion({
   enabled,
@@ -27,11 +28,11 @@ export function useChapterCompletion({
     const markUserScroll = () => {
       userScrolledRef.current = true;
     };
-    window.addEventListener("scroll", markUserScroll, { passive: true });
+    const removeScrollListener = addReaderScrollListener(markUserScroll);
     window.addEventListener("wheel", markUserScroll, { passive: true });
     window.addEventListener("touchmove", markUserScroll, { passive: true });
     return () => {
-      window.removeEventListener("scroll", markUserScroll);
+      removeScrollListener();
       window.removeEventListener("wheel", markUserScroll);
       window.removeEventListener("touchmove", markUserScroll);
     };
@@ -62,15 +63,14 @@ export function useChapterCompletion({
     }, { threshold: [0.55, 0.85] });
     observer.observe(node);
 
-    const onScrollCheck = () => {
+    const removeScrollListener = addReaderScrollListener(() => {
       if (completedRef.current) return;
       markCompleted();
-    };
-    window.addEventListener("scroll", onScrollCheck, { passive: true });
+    });
 
     return () => {
       observer.disconnect();
-      window.removeEventListener("scroll", onScrollCheck);
+      removeScrollListener();
     };
   }, [enabled, onComplete, progressKey, rootSelector]);
 

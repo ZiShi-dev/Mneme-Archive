@@ -6,16 +6,13 @@ import { applyRecentChapterFields, normalizeRecentChapters } from "../lib/catalo
 import { parseMadaraChapters, resolveMadaraChapters } from "../lib/madaraChapters.js";
 import { enrichSourceDetails } from "../lib/detailEnrichment.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
+import { configureSourceNativeFetch, fetchNativeHtml, fetchNativeImage } from "../lib/nativeFetchBridge.js";
 
 const DEFAULT_BASE_URL = "https://mangalik.net";
 const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
 
-let nativeHtmlFetcher = null;
-let nativeImageFetcher = null;
-
-export function configureMangalikNativeFetch({ fetchHtml, fetchImage } = {}) {
-  nativeHtmlFetcher = fetchHtml ?? null;
-  nativeImageFetcher = fetchImage ?? null;
+export function configureMangalikNativeFetch(options) {
+  configureSourceNativeFetch(options);
 }
 
 function createFetcher(baseUrl = DEFAULT_BASE_URL) {
@@ -43,8 +40,7 @@ function createFetcher(baseUrl = DEFAULT_BASE_URL) {
 }
 
 async function resolveHtml(url, fetchHtml) {
-  if (nativeHtmlFetcher) return nativeHtmlFetcher(url);
-  return fetchHtml(url);
+  return fetchNativeHtml(url, () => fetchHtml(url));
 }
 
 function assertMangaLikUrl(rawUrl, chapter = false, ctx = DEFAULT_CTX) {
@@ -66,8 +62,7 @@ function assertMangaLikImageUrl(rawUrl, ctx = DEFAULT_CTX) {
 
 async function proxyImage(rawUrl, ctx) {
   const target = assertMangaLikImageUrl(rawUrl, ctx);
-  if (nativeImageFetcher) return nativeImageFetcher(target);
-  return fetchProxiedImage(target, `${ctx.baseUrl}/`, "MangaLik");
+  return fetchNativeImage(target, () => fetchProxiedImage(target, `${ctx.baseUrl}/`, "MangaLik"));
 }
 
 function parseCatalog(html) {

@@ -1,4 +1,4 @@
-import { catalogViewKey } from "./catalogView";
+import { catalogViewKey, sanitizeCatalogKind } from "./catalogView";
 import { kvGetSync, kvSet } from "../../lib/storage/initStorage";
 
 export const CATALOG_STATE_KEY = "living-archive:catalog-state";
@@ -55,7 +55,7 @@ export function resolveCatalogBoot(sourceId, enabled, mode) {
   if (sourceId === "galaxynovels" && (filter?.type === "author" || filter?.author)) {
     filter = null;
   }
-  const kind = live?.kind ?? stored.kinds?.[sourceId] ?? null;
+  const kind = sanitizeCatalogKind(sourceId, live?.kind ?? stored.kinds?.[sourceId] ?? null);
   const audioFilter = live?.audioFilter ?? stored.audioFilters?.[sourceId] ?? "all";
   const query = live?.query ?? stored.queries?.[sourceId] ?? "";
   const viewKey = catalogViewKey(sourceId, filter, query, kind);

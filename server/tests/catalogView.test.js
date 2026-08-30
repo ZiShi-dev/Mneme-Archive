@@ -13,6 +13,7 @@ import {
   resolveEffectiveFilter,
   shouldUseCatalogScopedSearch,
   toggleTaxonomySelection,
+  sanitizeCatalogKind,
 } from "../../src/features/sources/catalogView.js";
 
 test("catalogViewKey keeps kind, filter and query distinct", () => {
@@ -78,6 +79,20 @@ test("catalogItemMatchesFilter filters series items", () => {
     catalogItemMatchesFilter({ mediaType: "series", mediaTypeLabel: "مسلسل", title: "You" }, { slug: "series", name: "مسلسلات" }),
     true,
   );
+});
+
+test("filterRequestParams forwards kolnovel taxonomy genres", () => {
+  const params = filterRequestParams({
+    category: { type: "category", slug: "أكشن", name: "أكشن", filterQueryValue: "action" },
+  });
+  assert.equal(params.genre, "action");
+});
+
+test("sanitizeCatalogKind drops unsupported manga/novel filters", () => {
+  const manga = { type: "kind", slug: "manga", name: "مانغا", filterPath: "/all/" };
+  assert.equal(sanitizeCatalogKind("kolnovel", manga), null);
+  assert.equal(sanitizeCatalogKind("azorafly", manga)?.slug, "manga");
+  assert.equal(sanitizeCatalogKind("kolnovel", { slug: "all", name: "الكل" }), null);
 });
 
 test("shouldUseCatalogScopedSearch keeps kind-only search on the site search", () => {

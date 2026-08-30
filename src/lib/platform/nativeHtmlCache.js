@@ -35,6 +35,14 @@ export function normalizeNativeHtmlUrl(url = "") {
       }
     }
 
+    if (host === "mangaforfree.com" || host === "www.mangaforfree.com") {
+      if (stripTrailingSlash(parsed.pathname) === "/manga") {
+        parsed.search = "";
+        parsed.hash = "";
+        return `${parsed.origin}/manga/`;
+      }
+    }
+
     if (host === "galaxynovels.com" || host === "www.galaxynovels.com") {
       const path = stripTrailingSlash(parsed.pathname);
       if (path === "/library") {
@@ -43,6 +51,22 @@ export function normalizeNativeHtmlUrl(url = "") {
           parsed.search = "";
           parsed.hash = "";
           return `${parsed.origin}/library/`;
+        }
+      }
+    }
+
+    if (host === "novelsparadise.site" || host === "www.novelsparadise.site") {
+      const path = stripTrailingSlash(parsed.pathname);
+      if (path === "/series") {
+        const page = parsed.searchParams.get("page") || "1";
+        const order = parsed.searchParams.get("order") || "latest";
+        const status = parsed.searchParams.get("status") || "";
+        const hasFilters = parsed.searchParams.has("s")
+          || [...parsed.searchParams.keys()].some((key) => key.startsWith("genre") || key.startsWith("type"));
+        if (page === "1" && order === "latest" && !status && !hasFilters) {
+          parsed.search = "";
+          parsed.hash = "";
+          return `${parsed.origin}/series/`;
         }
       }
     }
@@ -70,6 +94,12 @@ function writeCachedHtml(url, html) {
 export function clearNativeHtmlCache() {
   htmlMemoryCache.clear();
   htmlInFlight.clear();
+}
+
+export function invalidateNativeHtmlCache(url = "") {
+  const normalizedUrl = normalizeNativeHtmlUrl(url);
+  htmlMemoryCache.delete(normalizedUrl);
+  htmlInFlight.delete(normalizedUrl);
 }
 
 export async function fetchNativeHtmlWithCache(fetcher, url) {

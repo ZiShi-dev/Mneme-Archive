@@ -14,6 +14,10 @@ function getPortalRoot() {
   return root;
 }
 
+if (typeof document !== "undefined") {
+  getPortalRoot();
+}
+
 export function SheetPortal({ children }) {
   const root = getPortalRoot();
   if (!root) return null;

@@ -5,6 +5,7 @@ import { responseJson } from "../lib/response.js";
 import { applyRecentChapterFields, recentChaptersFromCount } from "../lib/catalogChapters.js";
 import { filterNovelParagraphs } from "../lib/novelChapterText.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
+import { configureSourceNativeFetch, fetchNativeHtml, hasNativeHtmlFetcher } from "../lib/nativeFetchBridge.js";
 
 const DEFAULT_BASE_URL = "https://novelphoenix.com";
 const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
@@ -14,10 +15,14 @@ const FILTERS_CACHE_TTL_MS = 30 * 60_000;
 const TAG_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 let filtersCache = null;
 
+export function configureNovelphoenixNativeFetch(options) {
+  configureSourceNativeFetch(options);
+}
+
 function createFetcher(baseUrl = DEFAULT_BASE_URL) {
   return createCachedHtmlFetcher({
     ttlMs: 3 * 60_000,
-    timeoutMs: 35_000,
+    timeoutMs: 40_000,
     headers: {
       accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       "accept-language": "en,ar;q=0.8",
@@ -93,18 +98,37 @@ function parseImageUrl(tag = "") {
   return candidate.startsWith("data:") ? "" : decodeHtml(candidate);
 }
 
+function parseNovelItemLink(block = "") {
+  const anchor = block.match(/<a\b([^>]*)>/i);
+  if (!anchor) return null;
+  const attrs = anchor[1];
+  const href = decodeHtml(attrs.match(/\bhref=["']([^"']+)["']/i)?.[1] || "");
+  const titleAttr = attrs.match(/\btitle=["']([^"']*)["']/i)?.[1] || "";
+  const slug = href.match(/\/novel\/([^"/?#]+)/i)?.[1];
+  if (!slug) return null;
+  const title = textOnly(titleAttr
+    || block.match(/<h[1-4][^>]*class="[^"]*novel-title[^"]*"[^>]*>([\s\S]*?)<\/h[1-4]>/i)?.[1]
+    || "");
+  return { slug, title };
+}
+
+export function novelphoenixCatalogHtmlLooksValid(html = "") {
+  if (!html) return false;
+  if (/Just a moment|cf-chl-|challenges\.cloudflare\.com/i.test(html)) return false;
+  return /<li\s+class=["']novel-item["']|class=["']novel-list["']|\/novel\//i.test(html);
+}
+
 export function parseNovelphoenixCatalog(html = "", baseUrl = DEFAULT_BASE_URL) {
   const results = [];
   const seen = new Set();
-  const blocks = [...html.matchAll(/<li class="novel-item">([\s\S]*?)<\/li>/gi)];
+  const blocks = [...html.matchAll(/<li\s+class=["']novel-item["'][^>]*>([\s\S]*?)<\/li>/gi)];
   for (const match of blocks) {
     const block = match[1];
-    const link = block.match(/<a[^>]*href="(\/novel\/[^"/?#]+)"[^>]*(?:title="([^"]*)")?[^>]*>/i);
-    if (!link) continue;
-    const slug = link[1].split("/").pop();
-    if (!slug || seen.has(slug)) continue;
-    seen.add(slug);
-    const title = textOnly(link[2] || block.match(/<h[1-4][^>]*class="[^"]*novel-title[^"]*"[^>]*>([\s\S]*?)<\/h[1-4]>/i)?.[1] || "");
+    const link = parseNovelItemLink(block);
+    if (!link?.slug || seen.has(link.slug)) continue;
+    seen.add(link.slug);
+    const { slug, title } = link;
+    if (!title) continue;
     const imageTag = block.match(/<img[^>]*>/i)?.[0] || "";
     const cover = toAbsoluteUrl(parseImageUrl(imageTag), baseUrl);
     const chapterCount = Number(textOnly(block.match(/<div class="novel-stats"[^>]*>[\s\S]*?(\d+)\s*Chapters?/i)?.[1] || "0")) || 0;
@@ -192,13 +216,14 @@ export function buildNovelphoenixCatalogUrl({
   kind = "",
   baseUrl = DEFAULT_BASE_URL,
 } = {}) {
+  const normalizedKind = kind && kind !== "all" ? kind : "";
   let path = "/genre-all/sort-new/status-all/all-novel";
-  if (kind === "popular") path = "/genre-all/sort-popular/status-all/all-novel";
-  else if (kind === "updates") path = "/genre-all/sort-latest-release/status-all/all-novel";
-  else if (kind === "completed") path = "/genre-all/sort-new/status-completed/all-novel";
-  else if (kind === "ongoing") path = "/genre-all/sort-new/status-ongoing/all-novel";
-  else if (kind === "ranking") path = "/ranking";
-  else if (kind === "latest") path = "/latest-release-novels";
+  if (normalizedKind === "popular") path = "/genre-all/sort-popular/status-all/all-novel";
+  else if (normalizedKind === "updates") path = "/genre-all/sort-latest-release/status-all/all-novel";
+  else if (normalizedKind === "completed") path = "/genre-all/sort-new/status-completed/all-novel";
+  else if (normalizedKind === "ongoing") path = "/genre-all/sort-new/status-ongoing/all-novel";
+  else if (normalizedKind === "ranking") path = "/ranking";
+  else if (normalizedKind === "latest") path = "/latest-release-novels";
 
   if (genre) path = `/genre-${genre}/sort-new/status-all/all-novel`;
   if (tag) path = `/tags/${tag}/order-popular`;
@@ -341,10 +366,37 @@ export function parseNovelphoenixChapter(html = "", url = "") {
   };
 }
 
+async function resolveNovelphoenixHtml(url, remoteFetcher) {
+  const html = await fetchNativeHtml(url, () => remoteFetcher(url));
+  if (!hasNativeHtmlFetcher() || novelphoenixCatalogHtmlLooksValid(html)) return html;
+  try {
+    const remote = await remoteFetcher(url);
+    if (novelphoenixCatalogHtmlLooksValid(remote)) return remote;
+  } catch {
+    // Garde le HTML WebView si le repli HTTP échoue aussi.
+  }
+  return html;
+}
+
+function isNovelphoenixCatalogUrl(url = "") {
+  try {
+    const parsed = new URL(url);
+    return /\/genre-|\/tags\/|\/ranking|\/latest-release|\/search/i.test(parsed.pathname);
+  } catch {
+    return false;
+  }
+}
+
+function assertNovelphoenixCatalogHtml(url, html, items = []) {
+  if (!isNovelphoenixCatalogUrl(url) || items.length > 0 || novelphoenixCatalogHtmlLooksValid(html)) return;
+  throw new Error("حماية Novel Phoenix تمنع الاتصال (Cloudflare)");
+}
+
 export async function handleNovelphoenixRequest(requestUrl) {
   const ctx = resolveSourceRequestContext(requestUrl, DEFAULT_BASE_URL, { label: SOURCE_NAME });
   const { baseUrl } = ctx;
-  const fetchHtml = createFetcher(baseUrl);
+  const remoteFetcher = createFetcher(baseUrl);
+  const fetchHtml = (url) => resolveNovelphoenixHtml(url, remoteFetcher);
 
   if (requestUrl.pathname.endsWith("/image")) {
     return fetchProxiedImage(
@@ -367,6 +419,7 @@ export async function handleNovelphoenixRequest(requestUrl) {
     const targetUrl = buildNovelphoenixCatalogUrl({ page, genre, tag, kind, baseUrl });
     const html = await fetchHtml(targetUrl);
     const items = parseNovelphoenixCatalog(html, baseUrl);
+    assertNovelphoenixCatalogHtml(targetUrl, html, items);
     return responseJson(200, {
       items,
       page,
@@ -382,8 +435,10 @@ export async function handleNovelphoenixRequest(requestUrl) {
     const { query, valid } = normalizeSearchQuery(requestUrl.searchParams.get("q"));
     if (!valid) return responseJson(200, { items: [], page: 1, hasMore: false });
     const page = Math.min(Math.max(Number(requestUrl.searchParams.get("page")) || 1, 1), 1000);
-    const html = await fetchHtml(buildNovelphoenixSearchUrl(query, page, baseUrl));
+    const targetUrl = buildNovelphoenixSearchUrl(query, page, baseUrl);
+    const html = await fetchHtml(targetUrl);
     const items = parseNovelphoenixCatalog(html, baseUrl);
+    assertNovelphoenixCatalogHtml(targetUrl, html, items);
     return responseJson(200, {
       items,
       page,

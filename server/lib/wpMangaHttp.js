@@ -1,5 +1,6 @@
 import { decodeHtml } from "./htmlUtils.js";
 import { createCachedHtmlFetcher, fetchProxiedImage } from "./httpUtils.js";
+import { fetchNativeHtml, fetchNativeImage, configureSourceNativeFetch } from "./nativeFetchBridge.js";
 
 /**
  * Helpers URL partagés pour les thèmes Madara / DooPlay (manga, hentai, etc.).
@@ -46,12 +47,8 @@ export function createWpMangaFetchers({
   forbiddenMessage,
   userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
 }) {
-  let nativeHtmlFetcher = null;
-  let nativeImageFetcher = null;
-
-  function configureNativeFetch({ fetchHtml, fetchImage } = {}) {
-    nativeHtmlFetcher = fetchHtml ?? null;
-    nativeImageFetcher = fetchImage ?? null;
+  function configureNativeFetch(options = {}) {
+    configureSourceNativeFetch(options);
   }
 
   const fetchHtmlRemote = createCachedHtmlFetcher({
@@ -79,14 +76,12 @@ export function createWpMangaFetchers({
   });
 
   async function resolveHtml(url) {
-    if (nativeHtmlFetcher) return nativeHtmlFetcher(url);
-    return fetchHtmlRemote(url);
+    return fetchNativeHtml(url, () => fetchHtmlRemote(url));
   }
 
   async function resolveImage(rawUrl, assertImageUrl) {
     const target = assertImageUrl(rawUrl);
-    if (nativeImageFetcher) return nativeImageFetcher(target);
-    return fetchProxiedImage(target, `${baseUrl}/`, sourceName);
+    return fetchNativeImage(target, () => fetchProxiedImage(target, `${baseUrl}/`, sourceName));
   }
 
   return { configureNativeFetch, resolveHtml, resolveImage, fetchHtmlRemote };

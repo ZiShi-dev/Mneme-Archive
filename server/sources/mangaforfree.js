@@ -8,6 +8,7 @@ import {
   resolveMadaraChapters,
 } from "../lib/madaraChapters.js";
 import { enrichSourceDetails } from "../lib/detailEnrichment.js";
+import { hasNativeHtmlFetcher } from "../lib/nativeFetchBridge.js";
 import { createWpMangaFetchers, createWpMangaHostHelpers } from "../lib/wpMangaHttp.js";
 
 const BASE_URL = "https://mangaforfree.com";
@@ -22,18 +23,188 @@ const { normalizeHost, normalizeAssetUrl } = createWpMangaHostHelpers({
   hostPattern: HOST_PATTERN,
 });
 
-const { configureNativeFetch, resolveHtml, resolveImage } = createWpMangaFetchers({
+const { configureNativeFetch, resolveHtml, resolveImage, fetchHtmlRemote } = createWpMangaFetchers({
   baseUrl: BASE_URL,
   apexHostname: "mangaforfree.com",
   sourceName: SOURCE_NAME,
+  timeoutMs: 40_000,
+  forbiddenMessage: "حماية MangaForFree منعت الاتصال مؤقتًا",
 });
 
 export function configureMangaforfreeNativeFetch(options) {
   configureNativeFetch(options);
 }
 
+function catalogHtmlLooksValid(html = "") {
+  return /page-item-detail|c-tabs-item__content|\bitem\b[^"']*\bwp-manga\b|\bwp-manga\b[^"']*\bitem\b/i.test(html);
+}
+
 async function fetchHtml(url) {
-  return resolveHtml(url);
+  const html = await resolveHtml(url);
+  if (!hasNativeHtmlFetcher() || catalogHtmlLooksValid(html)) return html;
+  try {
+    const remote = await fetchHtmlRemote(url);
+    if (catalogHtmlLooksValid(remote)) return remote;
+  } catch {
+    // WebView seul résultat exploitable.
+  }
+  return html;
+}
+
+function isMadaraCatalogBlock(tag = "") {
+  const classes = tag.match(/class=["']([^"']+)["']/i)?.[1] ?? "";
+  return /\bpage-item-detail\b/.test(classes) && /\bmanga\b/.test(classes);
+}
+
+function isDooPlayCatalogArticle(tag = "") {
+  const classes = tag.match(/class=["']([^"']+)["']/i)?.[1] ?? "";
+  return /\bitem\b/.test(classes) && /\bwp-manga\b/.test(classes);
+}
+
+function normalizeSeriesUrl(rawUrl = "") {
+  try {
+    const url = new URL(decodeHtml(rawUrl).trim(), BASE_URL);
+    if (url.protocol !== "https:" || !HOST_PATTERN.test(url.hostname)) return "";
+    const parts = url.pathname.split("/").filter(Boolean);
+    if (parts[0] !== "manga" || parts.length !== 2) return "";
+    return normalizeHost(url).toString();
+  } catch {
+    return "";
+  }
+}
+
+function extractHref(block = "") {
+  const match = block.match(/<a[^>]*href=["']([^"']+)["'][^>]*>/i);
+  return match?.[1] ?? "";
+}
+
+function imageFromTag(tag = "") {
+  const direct = tag.match(/(?:data-src|data-lazy-src|data-original|src)=["']([^"']+)["']/i)?.[1] ?? "";
+  if (direct && !/^data:/i.test(direct)) return direct;
+  return "";
+}
+
+function pushMangaforfreeCatalogItem(results, seen, {
+  url,
+  title,
+  cover,
+  chapters = [],
+}) {
+  const normalizedUrl = normalizeSeriesUrl(url);
+  if (!normalizedUrl || seen.has(normalizedUrl)) return;
+  const cleanTitle = textOnly(title);
+  if (!cleanTitle) return;
+  seen.add(normalizedUrl);
+  results.push(applyRecentChapterFields({
+    id: new URL(normalizedUrl).pathname.split("/").filter(Boolean).pop(),
+    title: cleanTitle,
+    url: normalizedUrl,
+    cover: normalizeAssetUrl(cover),
+    source: SOURCE_NAME,
+    sourceId: SOURCE_ID,
+    mediaType: "manga",
+    mediaTypeLabel: "مانغا",
+  }, chapters));
+}
+
+function parseMadaraCatalogCards(html = "") {
+  const results = [];
+  const seen = new Set();
+  const starts = [...html.matchAll(/<div\b([^>]*)>/gi)].filter((match) => isMadaraCatalogBlock(match[1]));
+  starts.forEach((match, index) => {
+    const block = html.slice(match.index, starts[index + 1]?.index ?? html.length);
+    let href = "";
+    let linkTitle = "";
+    const direct = block.match(/<a[^>]*href=["']([^"']+)["'][^>]*(?:title=["']([^"']*)["'])?[^>]*>/i);
+    if (direct) {
+      href = direct[1];
+      linkTitle = direct[2] || "";
+    } else {
+      const reversed = block.match(/<a[^>]*title=["']([^"']*)["'][^>]*href=["']([^"']+)["'][^>]*>/i);
+      if (reversed) {
+        linkTitle = reversed[1];
+        href = reversed[2];
+      }
+    }
+    href = href || extractHref(block);
+    const url = href && /\/manga\/[^/]+\/?$/i.test(href) ? href : "";
+    if (!url) return;
+    const title = block.match(/<div[^>]*class="[^"]*post-title[^"]*"[^>]*>[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/i)?.[1]
+      ?? linkTitle
+      ?? block.match(/<img[^>]*alt=["']([^"']+)["']/i)?.[1]
+      ?? "";
+    const imageTag = block.match(/<img[^>]*class="[^"]*img-responsive[^"]*"[^>]*>/i)?.[0]
+      ?? block.match(/<img[^>]*>/i)?.[0]
+      ?? "";
+    const chapters = normalizeRecentChapters([...block.matchAll(/<span[^>]*class="[^"]*chapter[^"]*"[^>]*>[\s\S]*?<a[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)].map((entry) => {
+      const name = textOnly(entry[2]).replace(/^(?:Chapter|الفصل)\s*/i, "");
+      return { url: normalizeAssetUrl(entry[1]), name, number: name };
+    }));
+    pushMangaforfreeCatalogItem(results, seen, {
+      url,
+      title,
+      cover: imageFromTag(imageTag),
+      chapters,
+    });
+  });
+  return results;
+}
+
+function parseDooPlayCatalogCards(html = "") {
+  const results = [];
+  const seen = new Set();
+  for (const match of html.matchAll(/<article\b([^>]*)>([\s\S]*?)<\/article>/gi)) {
+    if (!isDooPlayCatalogArticle(match[1])) continue;
+    const block = match[2];
+    const href = extractHref(block);
+    const title = block.match(/<h3[^>]*>[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/i)?.[1]
+      ?? block.match(/<img[^>]*alt=["']([^"']+)["']/i)?.[1]
+      ?? "";
+    const imageTag = block.match(/<img[^>]*>/i)?.[0] ?? "";
+    const chapters = normalizeRecentChapters([...block.matchAll(/<span[^>]*class="[^"]*chapter[^"]*"[^>]*>[\s\S]*?<a[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)].map((entry) => {
+      const name = textOnly(entry[2]).replace(/^(?:Chapter|الفصل)\s*/i, "");
+      return { url: normalizeAssetUrl(entry[1]), name, number: name };
+    }));
+    pushMangaforfreeCatalogItem(results, seen, {
+      url: href,
+      title,
+      cover: imageFromTag(imageTag),
+      chapters,
+    });
+  }
+  return results;
+}
+
+function parseTabCatalogCards(html = "") {
+  const results = [];
+  const seen = new Set();
+  const starts = [...html.matchAll(/<div[^>]*class="[^"]*c-tabs-item__content[^"]*"[^>]*>/gi)];
+  starts.forEach((match, index) => {
+    const block = html.slice(match.index, starts[index + 1]?.index ?? html.length);
+    const link = block.match(/<a[^>]*href=["']([^"']+)["'][^>]*(?:title=["']([^"']*)["'])?[^>]*>/i);
+    const href = link?.[1] ?? extractHref(block);
+    const title = block.match(/<div[^>]*class="[^"]*post-title[^"]*"[^>]*>[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/i)?.[1]
+      ?? link?.[2]
+      ?? block.match(/<img[^>]*alt=["']([^"']+)["']/i)?.[1]
+      ?? "";
+    const imageTag = block.match(/<div[^>]*class="[^"]*tab-thumb[^"]*"[^>]*>[\s\S]*?<img[^>]*>/i)?.[0]
+      ?? block.match(/<img[^>]*>/i)?.[0]
+      ?? "";
+    pushMangaforfreeCatalogItem(results, seen, {
+      url: href,
+      title,
+      cover: imageFromTag(imageTag),
+    });
+  });
+  return results;
+}
+
+export function parseMangaforfreeCatalog(html = "") {
+  const fromMadara = parseMadaraCatalogCards(html);
+  if (fromMadara.length) return fromMadara;
+  const fromDooPlay = parseDooPlayCatalogCards(html);
+  if (fromDooPlay.length) return fromDooPlay;
+  return parseTabCatalogCards(html);
 }
 
 function assertMangaforfreeUrl(rawUrl, chapter = false) {
@@ -58,37 +229,8 @@ export function parseMangaforfreeChapters(html = "") {
   return parseMadaraChapters(html, { normalizeUrl: normalizeAssetUrl });
 }
 
-export function parseMangaforfreeCatalog(html = "") {
-  const results = [];
-  const seen = new Set();
-  const starts = [...html.matchAll(/<div[^>]*class="[^"]*page-item-detail[^"]*manga[^"]*"[^>]*>/gi)];
-  starts.forEach((match, index) => {
-    const block = html.slice(match.index, starts[index + 1]?.index ?? html.length);
-    const link = block.match(/<a[^>]*href="(https?:\/\/(?:www\.)?mangaforfree\.com\/manga\/[^\"]+\/?)"[^>]*(?:title="([^"]*)")?[^>]*>/i);
-    if (!link) return;
-    const normalizedUrl = link[1].replace("www.mangaforfree.com", "mangaforfree.com");
-    if (seen.has(normalizedUrl)) return;
-    const title = textOnly(block.match(/<div[^>]*class="[^"]*post-title[^"]*"[^>]*>[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/i)?.[1] ?? link[2] ?? "");
-    if (!title) return;
-    const imageTag = block.match(/<img[^>]*class="[^"]*img-responsive[^"]*"[^>]*>/i)?.[0] ?? block.match(/<img[^>]*>/i)?.[0] ?? "";
-    const cover = normalizeAssetUrl(imageTag.match(/(?:src|data-src)="\s*([^\"]+)"/i)?.[1] ?? "");
-    const chapters = normalizeRecentChapters([...block.matchAll(/<span[^>]*class="[^"]*chapter[^"]*"[^>]*>[\s\S]*?<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi)].map((entry) => {
-      const name = textOnly(entry[2]).replace(/^(?:Chapter|الفصل)\s*/i, "");
-      return { url: normalizeAssetUrl(entry[1]), name, number: name };
-    }));
-    seen.add(normalizedUrl);
-    results.push(applyRecentChapterFields({
-      id: new URL(normalizedUrl).pathname.split("/").filter(Boolean).pop(),
-      title,
-      url: normalizedUrl,
-      cover,
-      source: SOURCE_NAME,
-      sourceId: SOURCE_ID,
-      mediaType: "manga",
-      mediaTypeLabel: "مانغا",
-    }, chapters));
-  });
-  return results;
+function parseSearch(html = "") {
+  return parseTabCatalogCards(html);
 }
 
 function parseGenres(html = "") {
@@ -126,38 +268,6 @@ function parseMangaTags(html = "") {
     tags.push({ slug, name, count: 0, archivePath });
   }
   return tags;
-}
-
-function parseSearch(html = "") {
-  const results = [];
-  const seen = new Set();
-  const starts = [...html.matchAll(/<div[^>]*class="[^"]*c-tabs-item__content[^"]*"[^>]*>/gi)];
-  starts.forEach((match, index) => {
-    const block = html.slice(match.index, starts[index + 1]?.index ?? html.length);
-    const link = block.match(/<a[^>]*href="(https?:\/\/(?:www\.)?mangaforfree\.com\/manga\/[^\"]+\/?)"[^>]*(?:title="([^"]*)")?[^>]*>/i);
-    if (!link) return;
-    const url = link[1].replace("www.mangaforfree.com", "mangaforfree.com");
-    if (seen.has(url)) return;
-    const title = textOnly(block.match(/<div[^>]*class="[^"]*post-title[^"]*"[^>]*>[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/i)?.[1] ?? link[2] ?? "");
-    const imageTag = block.match(/<div[^>]*class="[^"]*tab-thumb[^"]*"[^>]*>[\s\S]*?<img[^>]*>/i)?.[0] ?? "";
-    const cover = normalizeAssetUrl(imageTag.match(/(?:src|data-src)="\s*([^\"]+)"/i)?.[1] ?? "");
-    if (!title) return;
-    seen.add(url);
-    results.push({
-      id: new URL(url).pathname.split("/").filter(Boolean).pop(),
-      title,
-      url,
-      cover,
-      latestChapter: "—",
-      latestChapterUrl: null,
-      recentChapters: [],
-      source: SOURCE_NAME,
-      sourceId: SOURCE_ID,
-      mediaType: "manga",
-      mediaTypeLabel: "مانغا",
-    });
-  });
-  return results;
 }
 
 function parseManga(html, url) {

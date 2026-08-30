@@ -6,6 +6,8 @@ import {
   buildNovelphoenixCatalogUrl,
   buildNovelphoenixSearchUrl,
   catalogHasMorePages,
+  handleNovelphoenixRequest,
+  novelphoenixCatalogHtmlLooksValid,
   parseChapterTarget,
   parseNovelphoenixCatalog,
   parseNovelphoenixChapter,
@@ -56,6 +58,30 @@ test("parseNovelphoenixCatalog reads novel cards", () => {
   assert.equal(items[0].title, "Shadow Slave");
   assert.equal(items[0].url, buildNovelUrl("shadow-slave"));
   assert.equal(items[0].cover, "https://novelphoenix.com/server-1/shadow-slave.jpg");
+});
+
+test("parseNovelphoenixCatalog accepts absolute novel urls", () => {
+  const html = `
+    <li class="novel-item">
+      <a title="Shadow Slave" href="https://novelphoenix.com/novel/shadow-slave">
+        <h4 class="novel-title text2row">Shadow Slave</h4>
+      </a>
+    </li>
+  `;
+  const items = parseNovelphoenixCatalog(html);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].id, "shadow-slave");
+});
+
+test("novelphoenixCatalogHtmlLooksValid rejects cloudflare pages", () => {
+  assert.equal(novelphoenixCatalogHtmlLooksValid('<html><title>Just a moment...</title></html>'), false);
+  assert.equal(novelphoenixCatalogHtmlLooksValid('<ul><li class="novel-item"></li></ul>'), true);
+});
+
+test("handleNovelphoenixRequest catalog returns novels", async () => {
+  const result = await handleNovelphoenixRequest(new URL("https://api.local/sources/novelphoenix/catalog?page=1"));
+  assert.equal(result.status, 200);
+  assert.ok(result.body.items.length > 0);
 });
 
 test("parseNovelphoenixChapters reads chapter list", () => {

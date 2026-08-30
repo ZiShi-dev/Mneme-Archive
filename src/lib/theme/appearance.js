@@ -14,6 +14,18 @@ export const THEME_META_COLOR = {
   [THEME_LUNE_NEIGE]: "#0D1522",
 };
 
+const THEME_DEFAULT_TYPEFACE = {
+  [THEME_INK]: "sans",
+  [THEME_PAPER]: "classic",
+  [THEME_SAKURA]: "naskh",
+  [THEME_YOZAKURA]: "kufi",
+  [THEME_LUNE_NEIGE]: "sans",
+};
+
+export function themeDefaultTypeface(themeId) {
+  return THEME_DEFAULT_TYPEFACE[normalizeThemeId(themeId)] || "sans";
+}
+
 export function normalizeThemeId(value) {
   if (value === THEME_INK || value === THEME_PAPER || value === THEME_SAKURA || value === THEME_YOZAKURA || value === THEME_LUNE_NEIGE) {
     return value;

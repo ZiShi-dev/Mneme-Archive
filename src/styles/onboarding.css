@@ -7,7 +7,11 @@
   padding: max(20px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom));
   background: var(--onboarding-bg, #090a12);
   color: var(--onboarding-fg, #f6f7f8);
+  font-family: var(--font-sans);
   overflow: hidden;
+  transition:
+    background-color 0.4s ease,
+    color 0.4s ease;
 }
 
 .onboarding__stars {
@@ -55,6 +59,69 @@
   overflow: auto;
 }
 
+.onboarding__panel--font {
+  width: min(100%, 460px);
+  max-height: min(94dvh, 820px);
+  overflow: auto;
+}
+
+.onboarding__font-preview {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--onboarding-fg, #f6f7f8) 16%, transparent);
+  background: color-mix(in srgb, var(--onboarding-fg, #f6f7f8) 6%, var(--onboarding-bg, #090a12));
+  transition: background-color 0.35s ease, border-color 0.35s ease;
+}
+
+.onboarding__font-preview > small {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--onboarding-fg, #f6f7f8) 58%, transparent);
+}
+
+.onboarding__font-sample-ar {
+  margin: 0;
+  font-size: clamp(1.35rem, 5vw, 1.65rem);
+  line-height: 1.55;
+  text-align: start;
+}
+
+.onboarding__font-sample-fr {
+  margin: 0;
+  font-size: clamp(1.05rem, 3.8vw, 1.2rem);
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--onboarding-fg, #f6f7f8) 82%, transparent);
+}
+
+.onboarding__font-sample-title {
+  margin: 4px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: color-mix(in srgb, var(--onboarding-star, #8b7cff) 88%, var(--onboarding-fg, #f6f7f8));
+}
+
+.onboarding__font-grid {
+  --line: color-mix(in srgb, var(--onboarding-fg, #f6f7f8) 16%, transparent);
+  --paper: color-mix(in srgb, var(--onboarding-fg, #f6f7f8) 8%, var(--onboarding-bg, #090a12));
+  --ink: var(--onboarding-fg, #f6f7f8);
+  --muted: color-mix(in srgb, var(--onboarding-fg, #f6f7f8) 62%, transparent);
+  --brand: var(--onboarding-star, #8b7cff);
+}
+
+.onboarding__font-grid .theme-selector {
+  padding: 0;
+  border-bottom: 0;
+}
+
+.onboarding__font-grid .font-selector > button {
+  min-height: 68px;
+}
+
 .onboarding__theme-grid {
   --line: color-mix(in srgb, var(--onboarding-fg, #f6f7f8) 16%, transparent);
   --paper: color-mix(in srgb, var(--onboarding-fg, #f6f7f8) 8%, var(--onboarding-bg, #090a12));
@@ -66,6 +133,10 @@
 .onboarding__theme-grid .theme-selector {
   padding: 0;
   border-bottom: 0;
+}
+
+.onboarding__theme-grid .theme-selector strong {
+  font-family: var(--font-sans);
 }
 
 .onboarding__splash {
@@ -123,6 +194,7 @@
 
 .onboarding__header h1 {
   margin: 0;
+  font-family: var(--font-display);
   font-size: clamp(1.35rem, 4vw, 1.65rem);
   line-height: 1.25;
 }
