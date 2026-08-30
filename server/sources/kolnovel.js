@@ -6,6 +6,7 @@ import {
   parseParadiseChapter,
   parseParadiseFilters,
   paradiseCatalogHtmlLooksValid,
+  paradiseChapterHtmlLooksValid,
   resolveParadiseTitles,
   catalogHasMorePages,
   parseCatalogChaptersFromArticle,
@@ -13,6 +14,7 @@ import {
 } from "./novelsparadise.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
 import { configureSourceNativeFetch, fetchNativeHtml, hasNativeHtmlFetcher } from "../lib/nativeFetchBridge.js";
+import { isCloudflareChallengeHtml } from "../lib/cloudflareDetect.js";
 
 const DEFAULT_BASE_URL = "https://kolnovel.com";
 const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
@@ -231,7 +233,7 @@ export function parseKolnovelCatalog(html) {
     const article = block[0];
     if (!/maindet|ts-post-image|nchapter|contexcerpt|itemprop=["']headline["']/i.test(article)) continue;
     const link = parseArticleTitleAndHref(article);
-    if (!link?.href || !link.title) continue;
+    if (!link?.href) continue;
     const imageTag = article.match(/<img\b[^>]*class="[^"]*ts-post-image[^"]*"[^>]*>/i)?.[0]
       ?? article.match(/<img\b[^>]*>/i)?.[0]
       ?? "";
@@ -294,7 +296,7 @@ async function fetchKolnovelChapterHtml(chapterUrl, ctx = DEFAULT_CTX) {
     signal: AbortSignal.timeout(35_000),
   });
   const html = await response.text();
-  if (response.status === 403 || /<title[^>]*>\s*Just a moment/i.test(html)) {
+  if (response.status === 403 || isCloudflareChallengeHtml(html)) {
     throw new Error("حماية Kol Novel تمنع قراءة الفصول (Cloudflare)");
   }
   if (!response.ok) throw new Error(`Kol Novel a répondu ${response.status}`);
@@ -349,15 +351,27 @@ function parseKolnovelDetails(html, url) {
   };
 }
 
+function kolnovelPageHtmlLooksValid(html = "", url = "") {
+  if (!html || isCloudflareChallengeHtml(html)) return false;
+  if (/shaag24/i.test(url)) return paradiseChapterHtmlLooksValid(html) || /epcontent/i.test(html);
+  return paradiseCatalogHtmlLooksValid(html);
+}
+
 async function fetchKolnovelHtml(url, remoteFetcher) {
   const html = await fetchNativeHtml(url, () => remoteFetcher(url));
-  if (!hasNativeHtmlFetcher() || paradiseCatalogHtmlLooksValid(html)) return html;
+  const looksValid = (value) => kolnovelPageHtmlLooksValid(value, url);
+  if (!hasNativeHtmlFetcher()) {
+    if (isCloudflareChallengeHtml(html)) throw new Error("حماية Kol Novel تمنع الاتصال (Cloudflare)");
+    return html;
+  }
+  if (looksValid(html)) return html;
   try {
     const remote = await remoteFetcher(url);
-    if (paradiseCatalogHtmlLooksValid(remote)) return remote;
+    if (looksValid(remote)) return remote;
   } catch {
     // Garde le HTML WebView si le repli HTTP échoue aussi.
   }
+  if (isCloudflareChallengeHtml(html)) throw new Error("حماية Kol Novel تمنع الاتصال (Cloudflare)");
   return html;
 }
 

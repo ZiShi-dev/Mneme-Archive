@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { normalizeSettings } from "../lib/settings/normalizeSettings.js";
 import { DEFAULT_APP_SETTINGS, PRELOAD_PAGES_MAX, PRELOAD_PAGES_MIN } from "../lib/settings/defaults.js";
+import { BUILTIN_FLARESOLVERR_URL } from "../lib/settings/flareSolverrUrl.js";
 
 test("normalizeSettings returns defaults for invalid input", () => {
   assert.deepEqual(normalizeSettings(null), DEFAULT_APP_SETTINGS);
@@ -26,5 +27,20 @@ test("normalizeSettings normalizes coflix base url", () => {
   assert.equal(
     normalizeSettings({ coflixBaseUrl: "http://insecure.test" }).coflixBaseUrl,
     DEFAULT_APP_SETTINGS.coflixBaseUrl,
+  );
+});
+
+test("normalizeSettings normalizes flareSolverr url", () => {
+  assert.equal(
+    normalizeSettings({ flareSolverrUrl: "http://127.0.0.1:8191/" }).flareSolverrUrl,
+    "http://127.0.0.1:8191",
+  );
+  assert.equal(
+    normalizeSettings({ flareSolverrUrl: "not-a-url" }).flareSolverrUrl,
+    BUILTIN_FLARESOLVERR_URL,
+  );
+  assert.equal(
+    normalizeSettings({}).flareSolverrUrl,
+    BUILTIN_FLARESOLVERR_URL,
   );
 });

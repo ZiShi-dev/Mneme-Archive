@@ -14,6 +14,7 @@ import { LanguageSettingsEntry, LanguageSettingsSheet } from "./LanguageSettings
 import { ThemeSettingsEntry, ThemeSettingsSheet } from "./ThemeSettingsPanel";
 import { FontSettingsEntry, FontSettingsSheet } from "./FontSettingsPanel";
 import { SourceUrlsSettingsEntry, SourceUrlsSettingsSheet } from "./SourceUrlsSettingsPanel";
+import { FlareSolverrSettingsEntry, FlareSolverrSettingsSheet } from "./FlareSolverrSettingsPanel";
 import { AppMark } from "../components/brand/AppMark";
 import { AppBrandName } from "../components/brand/AppBrandName";
 import { getSourceDisplayName } from "../config/sources";
@@ -37,6 +38,7 @@ export function SettingsScreen({ navigate, appearance, typeface, onSetAppearance
   const [fontOpen, setFontOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
   const [sourceUrlsOpen, setSourceUrlsOpen] = useState(false);
+  const [flareSolverrOpen, setFlareSolverrOpen] = useState(false);
   const activeSourceCount = sources.filter((entry) => entry.enabled !== false).length;
   const sourceUrlOverrideCount = countSourceBaseUrlOverrides(settings.sourceBaseUrls);
 
@@ -126,6 +128,12 @@ export function SettingsScreen({ navigate, appearance, typeface, onSetAppearance
             overrideCount={sourceUrlOverrideCount}
             onOpen={() => setSourceUrlsOpen(true)}
           />
+          {!isChromebookApp && (
+            <FlareSolverrSettingsEntry
+              baseUrl={settings.flareSolverrUrl}
+              onOpen={() => setFlareSolverrOpen(true)}
+            />
+          )}
           </div>
         </section>
 
@@ -208,6 +216,15 @@ export function SettingsScreen({ navigate, appearance, typeface, onSetAppearance
             return next;
           });
           notifyUpdated(t("settings.sourceUrlUpdated", { name: getSourceDisplayName(sourceId) }));
+        }}
+      />
+      <FlareSolverrSettingsSheet
+        open={flareSolverrOpen}
+        onClose={() => setFlareSolverrOpen(false)}
+        baseUrl={settings.flareSolverrUrl}
+        onSave={(nextUrl) => {
+          setSettings((current) => ({ ...current, flareSolverrUrl: nextUrl }));
+          notifyUpdated(t("settings.flareSolverrUrlUpdated"));
         }}
       />
       <EnableSourcesSheet

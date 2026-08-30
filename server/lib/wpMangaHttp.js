@@ -1,6 +1,19 @@
 import { decodeHtml } from "./htmlUtils.js";
 import { createCachedHtmlFetcher, fetchProxiedImage } from "./httpUtils.js";
-import { fetchNativeHtml, fetchNativeImage, configureSourceNativeFetch } from "./nativeFetchBridge.js";
+import { isCloudflareChallengeHtml } from "./cloudflareDetect.js";
+import { fetchNativeHtml, fetchNativeImage, configureSourceNativeFetch, hasNativeHtmlFetcher } from "./nativeFetchBridge.js";
+
+const WP_MANGA_PAGE_MARKERS = /page-item-detail|c-tabs-item__content|\bitem\b[^"']*\bwp-manga\b|\bwp-manga\b[^"']*\bitem\b|reading-content|wp-manga-chapter|manga-reading|chapter-image|text-chapter/i;
+
+export function defaultWpMangaCatalogHtmlLooksValid(html = "") {
+  if (!html || isCloudflareChallengeHtml(html)) return false;
+  return /page-item-detail|c-tabs-item__content|\bitem\b[^"']*\bwp-manga\b|\bwp-manga\b[^"']*\bitem\b/i.test(html);
+}
+
+export function defaultWpMangaPageHtmlLooksValid(html = "") {
+  if (!html || isCloudflareChallengeHtml(html)) return false;
+  return WP_MANGA_PAGE_MARKERS.test(html);
+}
 
 /**
  * Helpers URL partagés pour les thèmes Madara / DooPlay (manga, hentai, etc.).
@@ -46,6 +59,7 @@ export function createWpMangaFetchers({
   timeoutMs,
   forbiddenMessage,
   userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  catalogHtmlLooksValid = defaultWpMangaCatalogHtmlLooksValid,
 }) {
   function configureNativeFetch(options = {}) {
     configureSourceNativeFetch(options);
@@ -76,7 +90,36 @@ export function createWpMangaFetchers({
   });
 
   async function resolveHtml(url) {
-    return fetchNativeHtml(url, () => fetchHtmlRemote(url));
+    if (!hasNativeHtmlFetcher()) {
+      const html = await fetchHtmlRemote(url);
+      if (isCloudflareChallengeHtml(html)) {
+        throw new Error(forbiddenMessage || `حماية ${sourceName} تمنع الاتصال (Cloudflare)`);
+      }
+      return html;
+    }
+
+    let nativeHtml = "";
+    try {
+      nativeHtml = await fetchNativeHtml(url, async () => "");
+    } catch {
+      nativeHtml = "";
+    }
+
+    if (catalogHtmlLooksValid(nativeHtml, url)) return nativeHtml;
+
+    try {
+      const remote = await fetchHtmlRemote(url);
+      if (catalogHtmlLooksValid(remote, url)) return remote;
+    } catch {
+      // Garde le HTML WebView si le repli HTTP échoue aussi.
+    }
+
+    if (isCloudflareChallengeHtml(nativeHtml)) {
+      throw new Error(forbiddenMessage || `حماية ${sourceName} تمنع الاتصال (Cloudflare)`);
+    }
+    if (nativeHtml) return nativeHtml;
+
+    return fetchHtmlRemote(url);
   }
 
   async function resolveImage(rawUrl, assertImageUrl) {

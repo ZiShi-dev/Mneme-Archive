@@ -1,5 +1,6 @@
 import { DEFAULT_APP_SETTINGS, PRELOAD_PAGES_MAX, PRELOAD_PAGES_MIN } from "./defaults.js";
 import { normalizeCoflixBaseUrl } from "./coflixBaseUrl.js";
+import { getDefaultFlareSolverrUrl, normalizeFlareSolverrUrl } from "./flareSolverrUrl.js";
 import { getEffectiveSourceBaseUrl, normalizeSourceBaseUrlOverrides } from "./sourceBaseUrls.js";
 
 function clamp(value, min, max) {
@@ -45,5 +46,8 @@ export function normalizeSettings(raw) {
     ),
     sourceBaseUrls,
     coflixBaseUrl: getEffectiveSourceBaseUrl("coflix", sourceBaseUrls) || normalizeCoflixBaseUrl(raw.coflixBaseUrl),
+    flareSolverrUrl: normalizeFlareSolverrUrl(raw.flareSolverrUrl, {
+      fallback: getDefaultFlareSolverrUrl(),
+    }),
   };
 }

@@ -7,6 +7,7 @@ import { enrichSourceDetails } from "../lib/detailEnrichment.js";
 import { filterNovelParagraphs } from "../lib/novelChapterText.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
 import { configureSourceNativeFetch, fetchNativeHtml, fetchNativeImage, hasNativeHtmlFetcher } from "../lib/nativeFetchBridge.js";
+import { isCloudflareChallengeHtml } from "../lib/cloudflareDetect.js";
 
 const DEFAULT_BASE_URL = "https://galaxynovels.com";
 const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
@@ -41,13 +42,19 @@ function createFetcher(baseUrl = DEFAULT_BASE_URL) {
   });
   return async function fetchGalaxyHtml(url) {
     const html = await fetchNativeHtml(url, () => fetchHtmlRemote(url));
-    if (!hasNativeHtmlFetcher() || galaxyCatalogHtmlLooksValid(html, url)) return html;
+    const looksValid = (value) => galaxyPageHtmlLooksValid(value, url);
+    if (!hasNativeHtmlFetcher()) {
+      if (isCloudflareChallengeHtml(html)) throw new Error("حماية Galaxy Novels تمنع الاتصال (Cloudflare)");
+      return html;
+    }
+    if (looksValid(html)) return html;
     try {
       const remote = await fetchHtmlRemote(url);
-      if (galaxyCatalogHtmlLooksValid(remote, url)) return remote;
+      if (looksValid(remote)) return remote;
     } catch {
       // Garde le HTML WebView si le repli HTTP échoue aussi.
     }
+    if (isCloudflareChallengeHtml(html)) throw new Error("حماية Galaxy Novels تمنع الاتصال (Cloudflare)");
     return html;
   };
 }
@@ -107,15 +114,12 @@ export function parseGalaxyCatalogNovelIds(html) {
   return [...new Set([...html.matchAll(/data-wor-library-novel-id=["'](\d+)["']/gi)].map((match) => Number(match[1])).filter(Boolean))];
 }
 
-function galaxyCatalogHtmlLooksValid(html = "", url = "") {
-  if (/data-wor-library-novel-id|wor-library-card/i.test(html)) return true;
-  try {
-    const path = new URL(url, DEFAULT_BASE_URL).pathname;
-    if (!/^\/library\/?$/i.test(path)) return true;
-  } catch {
-    return true;
+function galaxyPageHtmlLooksValid(html = "", url = "") {
+  if (!html || isCloudflareChallengeHtml(html)) return false;
+  if (/\/novel\/[^/]+\/chapter-/i.test(url)) {
+    return /wor-reader|wor-chapter-content|chapter-content|reading-content|text-chapter/i.test(html);
   }
-  return false;
+  return /data-wor-library-novel-id|wor-library-card|wor-single-novel|wor-reader/i.test(html);
 }
 
 function imageFromGalaxyTag(tag = "") {
@@ -458,9 +462,12 @@ export async function handleGalaxyRequest(requestUrl) {
   if (requestUrl.pathname.endsWith("/image")) return await proxyGalaxyImage(requestUrl.searchParams.get("url") ?? "", ctx);
   if (requestUrl.pathname.endsWith("/filters")) {
     const html = await fetchGalaxyHtml(`${ctx.baseUrl}/library/`);
+    const taxonomy = mergeFilterGroups([parseTaxonomyFilterLinks(html, ctx.baseUrl, [ctx.apex, ctx.hostname])]);
+    const authors = await buildGalaxyAuthorFilters(fetchGalaxyHtml, ctx.baseUrl, GALAXY_AUTHOR_FILTER_QUICK_PAGES);
+    warmGalaxyAuthorFilters(fetchGalaxyHtml, ctx.baseUrl);
     return responseJson(200, {
-      ...mergeFilterGroups([parseTaxonomyFilterLinks(html, ctx.baseUrl, [ctx.apex, ctx.hostname])]),
-      authors: [],
+      ...taxonomy,
+      authors,
       fetchedAt: new Date().toISOString(),
     });
   }

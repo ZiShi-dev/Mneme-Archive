@@ -6,6 +6,7 @@ import { applyRecentChapterFields, recentChaptersFromCount } from "../lib/catalo
 import { filterNovelParagraphs } from "../lib/novelChapterText.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
 import { configureSourceNativeFetch, fetchNativeHtml, hasNativeHtmlFetcher } from "../lib/nativeFetchBridge.js";
+import { isCloudflareChallengeHtml } from "../lib/cloudflareDetect.js";
 
 const DEFAULT_BASE_URL = "https://novelphoenix.com";
 const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
@@ -113,9 +114,18 @@ function parseNovelItemLink(block = "") {
 }
 
 export function novelphoenixCatalogHtmlLooksValid(html = "") {
-  if (!html) return false;
-  if (/Just a moment|cf-chl-|challenges\.cloudflare\.com/i.test(html)) return false;
+  if (!html || isCloudflareChallengeHtml(html)) return false;
   return /<li\s+class=["']novel-item["']|class=["']novel-list["']|\/novel\//i.test(html);
+}
+
+function novelphoenixChapterHtmlLooksValid(html = "") {
+  if (!html || isCloudflareChallengeHtml(html)) return false;
+  return /class=["']chapter-content["']|class=["']chapter-body["']|id=["']chapter-content["']/i.test(html);
+}
+
+function novelphoenixPageHtmlLooksValid(html = "", url = "") {
+  if (/\/chapter[-/]/i.test(url)) return novelphoenixChapterHtmlLooksValid(html);
+  return novelphoenixCatalogHtmlLooksValid(html);
 }
 
 export function parseNovelphoenixCatalog(html = "", baseUrl = DEFAULT_BASE_URL) {
@@ -178,11 +188,12 @@ function parseTagFilters(html = "") {
   return entries;
 }
 
-async function fetchTagFilters(fetchHtml, baseUrl = DEFAULT_BASE_URL) {
+async function fetchTagFilters(fetchHtml, baseUrl = DEFAULT_BASE_URL, { maxLetters = TAG_LETTERS.length } = {}) {
+  const letters = TAG_LETTERS.slice(0, Math.max(0, maxLetters));
   const tags = [];
   const seen = new Set();
-  for (let index = 0; index < TAG_LETTERS.length; index += 6) {
-    const batch = TAG_LETTERS.slice(index, index + 6);
+  for (let index = 0; index < letters.length; index += 6) {
+    const batch = letters.slice(index, index + 6);
     const pages = await Promise.all(batch.map((letter) => fetchHtml(`${baseUrl}/all-tags/${letter}`).catch(() => "")));
     for (const html of pages) {
       for (const entry of parseTagFilters(html)) {
@@ -201,7 +212,9 @@ async function fetchFilters(fetchHtml, baseUrl = DEFAULT_BASE_URL) {
   }
   const catalogHtml = await fetchHtml(`${baseUrl}/genre-all/sort-new/status-all/all-novel`);
   const categories = parseGenreFilters(catalogHtml);
-  const tags = await fetchTagFilters(fetchHtml, baseUrl);
+  const tags = hasNativeHtmlFetcher()
+    ? await fetchTagFilters(fetchHtml, baseUrl, { maxLetters: 4 })
+    : await fetchTagFilters(fetchHtml, baseUrl);
   const data = { categories, tags };
   if (categories.length || tags.length) {
     filtersCache = { at: Date.now(), baseUrl, data };
@@ -368,13 +381,19 @@ export function parseNovelphoenixChapter(html = "", url = "") {
 
 async function resolveNovelphoenixHtml(url, remoteFetcher) {
   const html = await fetchNativeHtml(url, () => remoteFetcher(url));
-  if (!hasNativeHtmlFetcher() || novelphoenixCatalogHtmlLooksValid(html)) return html;
+  const looksValid = (value) => novelphoenixPageHtmlLooksValid(value, url);
+  if (!hasNativeHtmlFetcher()) {
+    if (isCloudflareChallengeHtml(html)) throw new Error("حماية Novel Phoenix تمنع الاتصال (Cloudflare)");
+    return html;
+  }
+  if (looksValid(html)) return html;
   try {
     const remote = await remoteFetcher(url);
-    if (novelphoenixCatalogHtmlLooksValid(remote)) return remote;
+    if (looksValid(remote)) return remote;
   } catch {
     // Garde le HTML WebView si le repli HTTP échoue aussi.
   }
+  if (isCloudflareChallengeHtml(html)) throw new Error("حماية Novel Phoenix تمنع الاتصال (Cloudflare)");
   return html;
 }
 
@@ -426,7 +445,7 @@ export async function handleNovelphoenixRequest(requestUrl) {
       genre,
       tag,
       kind,
-      hasMore: catalogHasMorePages(html) || items.length >= 20,
+      hasMore: catalogHasMorePages(html),
       fetchedAt: new Date().toISOString(),
     });
   }
@@ -442,7 +461,7 @@ export async function handleNovelphoenixRequest(requestUrl) {
     return responseJson(200, {
       items,
       page,
-      hasMore: catalogHasMorePages(html) || items.length >= 20,
+      hasMore: catalogHasMorePages(html),
       fetchedAt: new Date().toISOString(),
     });
   }

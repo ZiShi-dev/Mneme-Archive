@@ -10,6 +10,7 @@ import {
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
 import { isNovelBoilerplateParagraph } from "../lib/novelChapterText.js";
 import { configureSourceNativeFetch, fetchNativeHtml, hasNativeHtmlFetcher } from "../lib/nativeFetchBridge.js";
+import { isCloudflareChallengeHtml } from "../lib/cloudflareDetect.js";
 
 const DEFAULT_BASE_URL = "https://novelsparadise.site";
 const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
@@ -53,20 +54,37 @@ function isParadiseCatalogUrl(url = "") {
 }
 
 export function paradiseCatalogHtmlLooksValid(html = "") {
-  if (!html) return false;
-  if (/Just a moment|cf-chl-|challenges\.cloudflare\.com/i.test(html)) return false;
+  if (!html || isCloudflareChallengeHtml(html)) return false;
   return /<article\b|ts-post-image|class="[^"]*maindet|epcl-/i.test(html);
+}
+
+export function paradiseChapterHtmlLooksValid(html = "") {
+  if (!html || isCloudflareChallengeHtml(html)) return false;
+  return /epcontent|entry-content|text-chapter/i.test(html);
+}
+
+function paradisePageHtmlLooksValid(html = "", url = "") {
+  if (isParadiseChapterSlug(url.split("/").filter(Boolean).pop() || "")) {
+    return paradiseChapterHtmlLooksValid(html);
+  }
+  return paradiseCatalogHtmlLooksValid(html);
 }
 
 async function fetchParadiseHtml(url, remoteFetcher) {
   const html = await fetchNativeHtml(url, () => remoteFetcher(url));
-  if (!hasNativeHtmlFetcher() || paradiseCatalogHtmlLooksValid(html)) return html;
+  const looksValid = (value) => paradisePageHtmlLooksValid(value, url);
+  if (!hasNativeHtmlFetcher()) {
+    if (isCloudflareChallengeHtml(html)) throw new Error("حماية Novels Paradise تمنع الاتصال (Cloudflare)");
+    return html;
+  }
+  if (looksValid(html)) return html;
   try {
     const remote = await remoteFetcher(url);
-    if (paradiseCatalogHtmlLooksValid(remote)) return remote;
+    if (looksValid(remote)) return remote;
   } catch {
     // Garde le HTML WebView si le repli HTTP échoue aussi.
   }
+  if (isCloudflareChallengeHtml(html)) throw new Error("حماية Novels Paradise تمنع الاتصال (Cloudflare)");
   return html;
 }
 
@@ -457,7 +475,7 @@ async function fetchParadiseChapterHtml(chapterUrl, seriesUrl = "", ctx = DEFAUL
     signal: AbortSignal.timeout(35_000),
   });
   const html = await response.text();
-  if (response.status === 403 || /Just a moment|cf-chl-|challenges\.cloudflare\.com/i.test(html)) {
+  if (response.status === 403 || isCloudflareChallengeHtml(html)) {
     throw new Error("حماية Novels Paradise تمنع قراءة الفصول (Cloudflare)");
   }
   if (!response.ok) throw new Error(`Novels Paradise a répondu ${response.status}`);

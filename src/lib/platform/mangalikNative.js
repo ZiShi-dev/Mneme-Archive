@@ -1,7 +1,9 @@
 import { Capacitor } from "@capacitor/core";
+import { fetchHtmlViaFlareSolverr } from "../../../server/lib/flareSolverr.js";
+import { getFlareSolverrConfig } from "../../../server/lib/flareSolverrConfig.js";
 import { configureSourceNativeFetch } from "../../../server/lib/nativeFetchBridge.js";
 import { t } from "../../i18n/runtime.js";
-import { fetchNativeHtmlWithCache } from "./nativeHtmlCache.js";
+import { fetchNativeHtmlWithCache, clearNativeHtmlCache } from "./nativeHtmlCache.js";
 import { WEBVIEW_SOURCE_IDS } from "./webViewSources.js";
 
 export { WEBVIEW_SOURCE_IDS, usesWebViewSource, shouldDeferCatalogFilters } from "./webViewSources.js";
@@ -54,22 +56,48 @@ function queueImageFetch(run) {
   });
 }
 
+function isCloudflareNativeError(error) {
+  const message = error instanceof Error ? error.message : String(error || "");
+  return /cancelled|cloudflare|حماية/i.test(message);
+}
+
+async function fetchHtmlViaFlareSolverrIfConfigured(url) {
+  const config = getFlareSolverrConfig();
+  if (!config?.baseUrl) {
+    throw new Error(t("errors.flareSolverrMissing"));
+  }
+  return fetchHtmlViaFlareSolverr(url, config);
+}
+
 async function createCloudflareNativeFetchers() {
   const { MangalikHtmlFetcher } = await import("../../plugins/mangalikHtmlFetcher.js");
   return {
     fetchHtml: async (url) => queueHtmlFetch(async () => {
       let lastError = null;
-      for (let attempt = 0; attempt < 2; attempt += 1) {
+      for (let attempt = 0; attempt < 3; attempt += 1) {
         try {
           return await fetchNativeHtmlWithCache(async (targetUrl) => {
-            const result = await MangalikHtmlFetcher.fetchHtml({ url: targetUrl });
-            if (!result?.html) throw new Error(t("errors.loadPage"));
-            return result.html;
+            try {
+              const result = await MangalikHtmlFetcher.fetchHtml({ url: targetUrl });
+              if (!result?.html) throw new Error(t("errors.loadPage"));
+              return result.html;
+            } catch (error) {
+              if (!isCloudflareNativeError(error)) throw error;
+              return fetchHtmlViaFlareSolverrIfConfigured(targetUrl);
+            }
           }, url);
         } catch (error) {
           lastError = error;
-          if (attempt === 0) {
-            await new Promise((resolve) => setTimeout(resolve, 2000));
+          if (isCloudflareNativeError(error)) {
+            try {
+              return await fetchHtmlViaFlareSolverrIfConfigured(url);
+            } catch (flareError) {
+              lastError = flareError;
+              break;
+            }
+          }
+          if (attempt < 2) {
+            await new Promise((resolve) => setTimeout(resolve, 2500 * (attempt + 1)));
           }
         }
       }
@@ -98,4 +126,22 @@ export async function initCloudflareNative() {
 
 export async function initMangalikNative() {
   return initCloudflareNative();
+}
+
+export async function cancelCloudflarePending() {
+  if (!Capacitor.isNativePlatform()) return;
+  htmlFetchChain = Promise.resolve();
+  clearNativeHtmlCache();
+  try {
+    const { MangalikHtmlFetcher } = await import("../../plugins/mangalikHtmlFetcher.js");
+    await MangalikHtmlFetcher.cancelPending();
+  } catch {
+    // Native plugin may be unavailable during startup.
+  }
+  try {
+    const { ParadiseChapterFetcher } = await import("../../plugins/paradiseChapterFetcher.js");
+    await ParadiseChapterFetcher.cancelPending();
+  } catch {
+    // Paradise fetcher is optional for catalog source switches.
+  }
 }

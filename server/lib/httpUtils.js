@@ -1,3 +1,6 @@
+import { isCloudflareChallengeHtml } from "./cloudflareDetect.js";
+import { tryFlareSolverrHtml } from "./flareSolverr.js";
+
 export const responseCache = new Map();
 const MAX_CACHE_ENTRIES = 100;
 
@@ -51,9 +54,7 @@ export async function fetchProxiedImage(target, referer, label) {
 
 function isCloudflareChallenge(response, html) {
   if (response.status === 403) return true;
-  if (/<title[^>]*>\s*Just a moment/i.test(html)) return true;
-  if (/class="[^"]*cf-browser-verification/i.test(html) && /cdn-cgi\/challenge-platform/i.test(html)) return true;
-  return false;
+  return isCloudflareChallengeHtml(html);
 }
 
 export function createCachedHtmlFetcher({ ttlMs, headers, getVariants, buildError, timeoutMs = 25_000, retries = 1 }) {
@@ -66,6 +67,7 @@ export function createCachedHtmlFetcher({ ttlMs, headers, getVariants, buildErro
     const variants = getVariants(url);
     let lastStatus = 0;
     let lastError;
+    let sawCloudflare = false;
     for (const target of variants) {
       try {
         const response = await fetchWithRetries(target, {
@@ -76,13 +78,24 @@ export function createCachedHtmlFetcher({ ttlMs, headers, getVariants, buildErro
         lastStatus = response.status;
         lastError = undefined;
         const html = await response.text();
-        if (!isCloudflareChallenge(response, html) && response.ok) {
+        if (isCloudflareChallenge(response, html)) {
+          sawCloudflare = true;
+          continue;
+        }
+        if (response.ok) {
           touchCacheEntry(url, { at: Date.now(), html });
           return html;
         }
       } catch (error) {
         lastError = error;
         if (variants.length === 1 && retries < 1) throw error;
+      }
+    }
+    if (sawCloudflare || lastStatus === 403) {
+      const flareHtml = await tryFlareSolverrHtml(url);
+      if (flareHtml) {
+        touchCacheEntry(url, { at: Date.now(), html: flareHtml });
+        return flareHtml;
       }
     }
     if (lastError && !lastStatus) throw lastError;

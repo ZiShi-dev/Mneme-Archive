@@ -5,7 +5,8 @@ import { responseJson } from "../lib/response.js";
 import { applyRecentChapterFields, normalizeRecentChapters } from "../lib/catalogChapters.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
 import { filterNovelParagraphs } from "../lib/novelChapterText.js";
-import { configureSourceNativeFetch, fetchNativeHtml, fetchNativeImage } from "../lib/nativeFetchBridge.js";
+import { configureSourceNativeFetch, fetchNativeHtml, fetchNativeImage, hasNativeHtmlFetcher } from "../lib/nativeFetchBridge.js";
+import { isCloudflareChallengeHtml } from "../lib/cloudflareDetect.js";
 
 const DEFAULT_BASE_URL = "https://azorafly.com";
 const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
@@ -18,12 +19,36 @@ export function configureAzoraflyNativeFetch(options) {
 function createFetcher(baseUrl = DEFAULT_BASE_URL) {
   const fetchRemote = createCachedHtmlFetcher({
     ttlMs: 3 * 60_000,
-    timeoutMs: 30_000,
+    timeoutMs: 40_000,
     headers: { accept: "text/html,application/xhtml+xml", "accept-language": "ar,en;q=0.9", "user-agent": "Mozilla/5.0 (Android 14; Mobile) AppleWebKit/537.36 Chrome/124 Safari/537.36" },
     getVariants: (url) => [url],
     buildError: (lastStatus) => (lastStatus === 403 ? "حماية AzoraFly منعت الاتصال مؤقتًا" : `AzoraFly a répondu ${lastStatus}`),
   });
-  return (url) => fetchNativeHtml(url, () => fetchRemote(url));
+  return async function fetchAzoraHtml(url) {
+    const html = await fetchNativeHtml(url, () => fetchRemote(url));
+    const looksValid = (value) => azoraPageHtmlLooksValid(value, url);
+    if (!hasNativeHtmlFetcher()) {
+      if (isCloudflareChallengeHtml(html)) throw new Error("حماية AzoraFly تمنع الاتصال (Cloudflare)");
+      return html;
+    }
+    if (looksValid(html)) return html;
+    try {
+      const remote = await fetchRemote(url);
+      if (looksValid(remote)) return remote;
+    } catch {
+      // Garde le HTML WebView si le repli HTTP échoue aussi.
+    }
+    if (isCloudflareChallengeHtml(html)) throw new Error("حماية AzoraFly تمنع الاتصال (Cloudflare)");
+    return html;
+  };
+}
+
+function azoraPageHtmlLooksValid(html = "", url = "") {
+  if (!html || isCloudflareChallengeHtml(html)) return false;
+  if (/\/series\/[^/]+\/[^/]+/i.test(url)) {
+    return /bg-card|storage\.azorafly\.com|chapter|الفصل/i.test(html);
+  }
+  return /bg-card|href=["']\/series\/|storage\.azorafly\.com/i.test(html);
 }
 
 function assertAzoraUrl(rawUrl, chapter = false, ctx = DEFAULT_CTX) {
@@ -74,13 +99,16 @@ function parseAzoraCatalog(html) {
   const starts = [...html.matchAll(marker)];
   starts.forEach((match, index) => {
     const block = html.slice(match.index, starts[index + 1]?.index ?? html.length);
-    const link = block.match(/<a href="\/series\/([^"\/?#]+)"[^>]*title="([^"]+)"/i);
-    if (!link || seen.has(link[1])) return;
-    const slug = link[1];
+    const link = block.match(/<a[^>]*href=["']([^"']+)["'][^>]*title=["']([^"']+)["']/i);
+    if (!link) return;
+    const slug = link[1].match(/\/series\/([^/?#]+)/i)?.[1];
+    if (!slug || seen.has(slug)) return;
     const title = decodeHtml(link[2]);
-    const cover = block.match(/<img[^>]*alt="[^"]*"[^>]*src="(https:\/\/storage\.azorafly\.com[^"]+)"/i)?.[1] ?? "";
+    const cover = block.match(/<img[^>]*alt="[^"]*"[^>]*(?:src|data-src)="([^"]+)"/i)?.[1]
+      ?? block.match(/<img[^>]*(?:src|data-src)="([^"]+)"[^>]*alt="[^"]*"/i)?.[1]
+      ?? "";
     const mediaType = textOnly(block.match(/text-white[^>]*>([^<]+)<\/span>/i)?.[1] ?? "مانهوا");
-    const chapterPattern = new RegExp(`<a href="\\/series\\/${slug}\\/([^\"]+)"[\\s\\S]*?<span>([^<]*الفصل[^<]*)<\\/span>`, "gi");
+    const chapterPattern = new RegExp(`<a[^>]*href=["'][^"']*\\/series\\/${slug}\\/([^"']+)["'][^>]*>[\\s\\S]*?<span>([^<]*الفصل[^<]*)<\\/span>`, "gi");
     const chapters = normalizeRecentChapters([...block.matchAll(chapterPattern)].map((entry) => {
       const name = textOnly(entry[2]).replace(/^الفصل\s*/i, "");
       return { url: `${DEFAULT_BASE_URL}/series/${slug}/${entry[1]}`, name, number: name };
@@ -303,7 +331,10 @@ export async function handleAzoraRequest(requestUrl) {
   if (requestUrl.pathname.endsWith("/search")) {
     const { query, valid } = normalizeSearchQuery(requestUrl.searchParams.get("q"));
     if (!valid) return responseJson(200, { items: [] });
-    const html = await fetchAzoraHtml(`${ctx.baseUrl}/series/?searchTerm=${encodeURIComponent(query)}`);
+    const genre = requestUrl.searchParams.get("genre")?.trim() ?? "";
+    if (genre && !/^\d+$/.test(genre)) throw new Error("تصنيف AzoraFly غير صالح");
+    const genreQuery = genre ? `&genres=${encodeURIComponent(`+${genre}`)}` : "";
+    const html = await fetchAzoraHtml(`${ctx.baseUrl}/series/?searchTerm=${encodeURIComponent(query)}${genreQuery}`);
     return responseJson(200, { items: parseAzoraCatalog(html).slice(0, 40) });
   }
   if (requestUrl.pathname.endsWith("/manga")) {
