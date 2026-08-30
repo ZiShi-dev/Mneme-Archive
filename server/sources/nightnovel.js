@@ -82,6 +82,19 @@ export function parseChapterTarget(rawUrl) {
   throw new Error("رابط فصل Night Novel غير صالح");
 }
 
+function mapTaxonomySlugs(raw = []) {
+  return raw
+    .map((entry) => String(entry?.slug || entry?.id || "").trim())
+    .filter(Boolean);
+}
+
+function filterCatalogByTaxonomy(items, { genre = "", tag = "" } = {}) {
+  let filtered = items;
+  if (genre) filtered = filtered.filter((item) => item.categorySlugs?.includes(genre));
+  if (tag) filtered = filtered.filter((item) => item.tagSlugs?.includes(tag));
+  return filtered;
+}
+
 function mapCategories(raw = []) {
   return raw
     .map((entry) => entry?.name || entry?.slug || "")
@@ -132,6 +145,8 @@ function mapCatalogItem(novel, baseUrl = DEFAULT_BASE_URL) {
     mediaTypeLabel: "رواية",
     categories: mapCategories(novel.categories),
     tags: mapTags(novel.tags),
+    categorySlugs: mapTaxonomySlugs(novel.categories),
+    tagSlugs: mapTaxonomySlugs(novel.tags),
   }, recentChapters);
 }
 
@@ -310,15 +325,7 @@ export async function handleNightNovelRequest(requestUrl) {
     }
 
     let items = await fetchAllCatalogNovels(baseUrl);
-
-    if (genre) {
-      const needle = genre.toLocaleLowerCase("ar");
-      items = items.filter((item) => item.categories?.some((name) => name.toLocaleLowerCase("ar").includes(needle)));
-    }
-    if (tag) {
-      const needle = tag.toLocaleLowerCase("ar");
-      items = items.filter((item) => item.tags?.some((name) => name.toLocaleLowerCase("ar").includes(needle)));
-    }
+    items = filterCatalogByTaxonomy(items, { genre, tag });
 
     const offset = (page - 1) * CATALOG_PAGE_SIZE;
     const slice = items.slice(offset, offset + CATALOG_PAGE_SIZE);
@@ -335,8 +342,11 @@ export async function handleNightNovelRequest(requestUrl) {
   if (requestUrl.pathname.endsWith("/search")) {
     const { query, valid } = normalizeSearchQuery(requestUrl.searchParams.get("q"));
     if (!valid) return responseJson(200, { items: [] });
+    const genre = requestUrl.searchParams.get("genre")?.trim() || "";
+    const tag = requestUrl.searchParams.get("tag")?.trim() || "";
     const needle = query.toLocaleLowerCase("ar");
-    const items = await fetchAllCatalogNovels();
+    let items = await fetchAllCatalogNovels(baseUrl);
+    items = filterCatalogByTaxonomy(items, { genre, tag });
     const filtered = items.filter((item) => {
       const haystack = `${item.title} ${item.altTitle}`.toLocaleLowerCase("ar");
       return haystack.includes(needle);

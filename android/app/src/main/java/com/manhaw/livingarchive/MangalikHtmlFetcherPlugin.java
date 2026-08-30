@@ -1,6 +1,7 @@
 package com.manhaw.livingarchive;
 
 import android.annotation.SuppressLint;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Base64;
@@ -22,34 +23,44 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.json.JSONObject;
 
 @CapacitorPlugin(name = "MangalikHtmlFetcher")
 public class MangalikHtmlFetcherPlugin extends Plugin {
 
     private static final String USER_AGENT =
-        "Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36";
-    private static final int POLL_INTERVAL_MS = 800;
-    private static final int MAX_POLLS = 90;
-    private static final int MAX_FETCH_RETRIES = 1;
-    private static final int MAX_BLOCKED_POLLS = 18;
+        "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.6778.135 Mobile Safari/537.36";
+    private static final int POLL_INTERVAL_MS = 900;
+    private static final int MAX_POLLS = 120;
+    private static final int MAX_BLOCKED_POLLS = 50;
+    private static final int OVERALL_TIMEOUT_MS = 5 * 60_000;
+    private static final int WEBVIEW_WIDTH_PX = 393;
+    private static final int WEBVIEW_HEIGHT_PX = 852;
+    private static final long HOST_SESSION_TTL_MS = 15 * 60_000;
+    private static final Map<String, Long> hostSessionAt = new ConcurrentHashMap<>();
     private static final String EXTRACT_JS =
         "(function(){try{"
             + "var html=document.documentElement?document.documentElement.outerHTML:'';"
             + "var body=document.body?document.body.innerHTML:'';"
-            + "var hasCatalog=/wp-manga|page-item-detail|item[^\"']*wp-manga|dooplay/i.test(body);"
+            + "var cfHard=/Just a moment|Attention Required!?|Checking your browser/i;"
+            + "var cfSoft=/cf-chl-|cdn-cgi\\/challenge-platform|cf-browser-verification|cf-turnstile|__cf_chl_opt|challenges\\.cloudflare\\.com/i;"
+            + "var hasContent=/novel-item|novel-list|page-item-detail|wp-manga|manga-item|bg-card|data-wor-library|wor-library|wor-single-novel|wor-reader|epcontent|reading-content|text-chapter|ts-post-image|<article\\b/i.test(body);"
+            + "if(cfHard.test(html)||cfHard.test(body)||((cfSoft.test(html)||cfSoft.test(body))&&!hasContent)){return JSON.stringify({ready:false,blocked:true});}"
+            + "var hasCatalog=/wp-manga|page-item-detail|item[^\"']*wp-manga|manga-item|dooplay/i.test(body);"
             + "var hasAzora=/storage\\.azorafly\\.com|href=\\\"\\/series\\/|itemprop=\\\"genre\\\"|bg-card/i.test(body);"
-            + "var hasGalaxy=/data-wor-library-novel-id|wor-cover-img|wor-library|wor-single-novel/i.test(body);"
+            + "var hasGalaxy=/data-wor-library-novel-id|wor-cover-img|wor-library|wor-single-novel|wor-reader|wor-chapter/i.test(body);"
             + "var hasParadise=/ts-post-image|<article\\b|epcl-|eplister/i.test(body);"
-            + "var hasNovelPhoenix=/novel-item|novel-title/i.test(body);"
+            + "var hasNovelPhoenix=/novel-item|novel-title|chapter-content|chapter-body/i.test(body);"
             + "var hasChapter=/reading-content|wp-manga-chapter|manga-reading|chapter-image|epcontent|text-chapter/i.test(body);"
             + "if((hasCatalog||hasAzora||hasGalaxy||hasParadise||hasNovelPhoenix||hasChapter)&&body.length>800){return JSON.stringify({ready:true,html:html});}"
-            + "if(/Just a moment|cf-chl-|challenges\\.cloudflare\\.com/i.test(html)){return JSON.stringify({ready:false,blocked:true});}"
             + "if(!body||body.length<400){return JSON.stringify({ready:false});}"
             + "if(document.readyState!=='complete'){return JSON.stringify({ready:false});}"
-            + "return JSON.stringify({ready:true,html:html});"
+            + "return JSON.stringify({ready:false});"
             + "}catch(error){return JSON.stringify({ready:false,error:String(error)});}})();";
 
     private static final class SourceHost {
@@ -129,8 +140,19 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
     private int blockedPollCount;
     private String pendingTargetUrl;
     private String pendingWarmupUrl = SOURCE_HOSTS[0].warmupUrl;
-    private int activeFetchRetries = 0;
     private Stage stage = Stage.WARMUP;
+
+    @PluginMethod
+    public void cancelPending(PluginCall call) {
+        pendingHtmlRequests.clear();
+        PluginCall current = activeCall;
+        if (current != null && fetchMode == FetchMode.HTML) {
+            activeCall = null;
+            cleanupActiveRequest();
+            current.reject("cancelled");
+        }
+        call.resolve();
+    }
 
     @PluginMethod
     public void fetchHtml(PluginCall call) {
@@ -181,7 +203,8 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
         pendingTargetUrl = "https://wtr-lab.com/en/novel/" + rawId + "/" + slug + "/" + chapterNo;
         pendingWarmupUrl = "https://wtr-lab.com/en/novel-list";
         stage = Stage.WARMUP;
-        getActivity().runOnUiThread(() -> startHtmlFetch(pendingTargetUrl));
+        handler.postDelayed(timeoutRunnable, OVERALL_TIMEOUT_MS);
+        getActivity().runOnUiThread(() -> startWtrlabWebViewFetch(pendingTargetUrl));
     }
 
     private String buildWtrlabReaderJs(int rawId, int chapterNo, String translate) {
@@ -243,33 +266,84 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
         blockedPollCount = 0;
         fetchMode = FetchMode.HTML;
         pendingTargetUrl = url;
-        pendingWarmupUrl = warmupUrlFor(url);
-        stage = Stage.WARMUP;
-        getActivity().runOnUiThread(() -> startHtmlFetch(url));
+        handler.postDelayed(timeoutRunnable, OVERALL_TIMEOUT_MS);
+        fetchHtmlDirectOnly();
+    }
+
+    private void fetchHtmlDirectOnly() {
+        final String targetUrl = pendingTargetUrl;
+        if (targetUrl == null || targetUrl.isEmpty() || activeCall == null) {
+            return;
+        }
+
+        new Thread(
+                () -> {
+                    String html = fetchHtmlDirect(targetUrl);
+                    boolean valid = looksLikeSourceHtml(html);
+                    boolean blocked = !valid && isCloudflareChallengeHtml(html);
+                    getActivity()
+                        .runOnUiThread(
+                            () -> {
+                                if (activeCall == null || fetchMode != FetchMode.HTML || !targetUrl.equals(pendingTargetUrl)) {
+                                    return;
+                                }
+                                if (valid) {
+                                    resolveActiveCall(html);
+                                    return;
+                                }
+                                if (!blocked && html != null && !html.isEmpty()) {
+                                    resolveActiveCall(html);
+                                    return;
+                                }
+                                failActiveCall("حماية الموقع تمنع الاتصال (Cloudflare)");
+                            }
+                        );
+                }
+            )
+            .start();
     }
 
     @SuppressLint("SetJavaScriptEnabled")
-    private void startHtmlFetch(String targetUrl) {
-        cleanupWebView();
-        WebView webView = new WebView(getContext());
-        activeWebView = webView;
-        webView.setVisibility(View.GONE);
-
+    private void configureWebView(WebView webView) {
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setDatabaseEnabled(true);
-        settings.setLoadsImagesAutomatically(false);
-        settings.setBlockNetworkImage(true);
+        settings.setLoadsImagesAutomatically(true);
+        settings.setBlockNetworkImage(false);
         settings.setUserAgentString(USER_AGENT);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+        settings.setUseWideViewPort(true);
+        settings.setLoadWithOverviewMode(true);
+        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        settings.setBuiltInZoomControls(false);
+        settings.setDisplayZoomControls(false);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            settings.setSafeBrowsingEnabled(true);
+        }
 
         CookieManager cookieManager = CookieManager.getInstance();
         cookieManager.setAcceptCookie(true);
         cookieManager.setAcceptThirdPartyCookies(webView, true);
+    }
 
+    private void attachHiddenWebView(WebView webView) {
+        webView.setAlpha(0.01f);
+        webView.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         ViewGroup root = getActivity().findViewById(android.R.id.content);
-        root.addView(webView, new FrameLayout.LayoutParams(1, 1));
+        root.addView(
+            webView,
+            new FrameLayout.LayoutParams(WEBVIEW_WIDTH_PX, WEBVIEW_HEIGHT_PX)
+        );
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    private void startWtrlabWebViewFetch(String targetUrl) {
+        cleanupWebView();
+        WebView webView = new WebView(getContext());
+        activeWebView = webView;
+        configureWebView(webView);
+        attachHiddenWebView(webView);
 
         webView.setWebViewClient(
             new WebViewClient() {
@@ -284,8 +358,13 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
                         return;
                     }
                     if (stage == Stage.WARMUP) {
-                        stage = Stage.TARGET;
-                        view.loadUrl(targetUrl);
+                        if (isSameUrl(pendingWarmupUrl, pendingTargetUrl)) {
+                            stage = Stage.POLL;
+                            handler.postDelayed(() -> pollHtml(view), POLL_INTERVAL_MS);
+                        } else {
+                            stage = Stage.TARGET;
+                            view.loadUrl(targetUrl);
+                        }
                         return;
                     }
                     if (stage == Stage.TARGET && isSameUrl(loadedUrl, targetUrl)) {
@@ -296,7 +375,6 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
             }
         );
 
-        handler.postDelayed(timeoutRunnable, POLL_INTERVAL_MS * MAX_POLLS);
         webView.loadUrl(pendingWarmupUrl);
     }
 
@@ -305,9 +383,8 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
             return;
         }
         pollCount += 1;
-        final String script = fetchMode == FetchMode.WTR_READER ? pendingWtrlabReaderJs : EXTRACT_JS;
         webView.evaluateJavascript(
-            script,
+            pendingWtrlabReaderJs,
             value -> {
                 if (activeWebView != webView || activeCall == null || stage != Stage.POLL) {
                     return;
@@ -319,6 +396,9 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
                 }
                 if (payload.optBoolean("blocked", false)) {
                     blockedPollCount += 1;
+                    if (blockedPollCount == 12 || blockedPollCount == 30) {
+                        webView.reload();
+                    }
                     if (blockedPollCount >= MAX_BLOCKED_POLLS) {
                         failActiveCall("حماية الموقع تمنع الاتصال (Cloudflare)");
                         return;
@@ -331,11 +411,7 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
                     scheduleNextPoll(webView);
                     return;
                 }
-                if (fetchMode == FetchMode.WTR_READER) {
-                    resolveWtrlabCall(payload.optJSONObject("payload"));
-                    return;
-                }
-                resolveActiveCall(payload.optString("html", ""));
+                resolveWtrlabCall(payload.optJSONObject("payload"));
             }
         );
     }
@@ -357,6 +433,7 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
             failActiveCall("تعذر تحميل محتوى الصفحة");
             return;
         }
+        markHostSession(pendingTargetUrl);
         JSObject result = new JSObject();
         result.put("html", html);
         result.put("url", pendingTargetUrl);
@@ -383,24 +460,67 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
 
     private void failActiveCall(String message) {
         PluginCall call = activeCall;
-        String retryUrl = pendingTargetUrl;
-        int retries = activeFetchRetries;
-        boolean canRetry = retries < MAX_FETCH_RETRIES
-            && retryUrl != null
-            && !retryUrl.isEmpty()
-            && (message.contains("Cloudflare")
-                || message.contains("مهلة")
-                || message.contains("تعذر"));
         cleanupActiveRequest();
-        if (canRetry && call != null) {
-            activeFetchRetries = retries + 1;
-            beginHtmlFetch(call, retryUrl);
-            return;
-        }
         if (call != null) {
             call.reject(message);
         }
         startNextQueuedHtmlFetch();
+    }
+
+    private String fetchHtmlDirect(String url) {
+        try {
+            HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
+            connection.setInstanceFollowRedirects(true);
+            connection.setConnectTimeout(25_000);
+            connection.setReadTimeout(25_000);
+            connection.setRequestProperty("User-Agent", USER_AGENT);
+            connection.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+            connection.setRequestProperty("Accept-Language", "en,ar;q=0.8");
+            connection.setRequestProperty("Referer", refererFor(url));
+            String cookies = CookieManager.getInstance().getCookie(url);
+            if (cookies != null && !cookies.isEmpty()) {
+                connection.setRequestProperty("Cookie", cookies);
+            }
+            int status = connection.getResponseCode();
+            if (status < 200 || status >= 300) {
+                return "";
+            }
+            byte[] bytes = readStream(connection.getInputStream());
+            return new String(bytes, StandardCharsets.UTF_8);
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
+    private boolean isCloudflareChallengeHtml(String html) {
+        if (html == null || html.isEmpty()) {
+            return true;
+        }
+        if (html.contains("Just a moment") || html.contains("Checking your browser") || html.contains("Attention Required")) {
+            return true;
+        }
+        String lower = html.toLowerCase(Locale.ROOT);
+        return lower.contains("cdn-cgi/challenge-platform")
+            || lower.contains("cf-browser-verification")
+            || lower.contains("challenges.cloudflare.com");
+    }
+
+    private boolean looksLikeSourceHtml(String html) {
+        if (html == null || html.length() < 400) {
+            return false;
+        }
+        if (isCloudflareChallengeHtml(html)) {
+            return false;
+        }
+        return html.contains("page-item-detail")
+            || html.contains("wp-manga")
+            || html.contains("manga-item")
+            || html.contains("novel-item")
+            || html.contains("data-wor-library")
+            || html.contains("reading-content")
+            || html.contains("ts-post-image")
+            || html.contains("bg-card")
+            || html.contains("novel-title");
     }
 
     private void startNextQueuedHtmlFetch() {
@@ -424,7 +544,6 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
         activeCall = null;
         pollCount = 0;
         blockedPollCount = 0;
-        activeFetchRetries = 0;
         stage = Stage.WARMUP;
         handler.removeCallbacks(timeoutRunnable);
         cleanupWebView();
@@ -523,6 +642,13 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
 
     private String warmupUrlFor(String url) {
         return sourceHostFor(url).warmupUrl;
+    }
+
+    private void markHostSession(String url) {
+        if (url == null || url.isEmpty()) {
+            return;
+        }
+        hostSessionAt.put(sourceHostFor(url).host, System.currentTimeMillis());
     }
 
     private String refererFor(String url) {

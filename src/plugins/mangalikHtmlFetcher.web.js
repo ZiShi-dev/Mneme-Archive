@@ -6,4 +6,6 @@ export class MangalikHtmlFetcherWeb {
   async fetchImage() {
     throw new Error("MangalikHtmlFetcher is only available on Android");
   }
+
+  async cancelPending() {}
 }

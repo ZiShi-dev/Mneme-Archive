@@ -4,7 +4,7 @@ import { responseJson } from "../lib/response.js";
 import { applyRecentChapterFields, normalizeRecentChapters } from "../lib/catalogChapters.js";
 import { parseChapterDateString } from "../lib/chapterDates.js";
 import { enrichSourceDetails } from "../lib/detailEnrichment.js";
-import { createWpMangaFetchers, createWpMangaHostHelpers } from "../lib/wpMangaHttp.js";
+import { createWpMangaFetchers, createWpMangaHostHelpers, defaultWpMangaPageHtmlLooksValid } from "../lib/wpMangaHttp.js";
 
 const BASE_URL = "https://arabshentai.com";
 const SOURCE_NAME = "Arabs Hentai";
@@ -24,6 +24,7 @@ const { configureNativeFetch, resolveHtml, resolveImage } = createWpMangaFetcher
   acceptLanguage: "ar,en;q=0.8",
   timeoutMs: 40_000,
   forbiddenMessage: "حماية Arabs Hentai منعت الاتصال مؤقتًا",
+  catalogHtmlLooksValid: defaultWpMangaPageHtmlLooksValid,
 });
 
 export function configureArabshentaiNativeFetch(options) {
@@ -147,8 +148,11 @@ function parseArabshentaiDooPlayCatalog(html = "", catalogType = "") {
   for (const match of html.matchAll(/<article\b([^>]*)>([\s\S]*?)<\/article>/gi)) {
     if (!isDooPlayCatalogArticle(match[1])) continue;
     const block = match[2];
-    const link = block.match(/<a[^>]*href="(https?:\/\/(?:www\.)?arabshentai\.com\/manga\/[^"?#]+\/?)"[^>]*>/i);
+    const link = block.match(/<a[^>]*href=["']([^"']+)["'][^>]*>/i);
     if (!link) continue;
+    const slug = link[1].match(/\/manga\/([^/?#]+)/i)?.[1];
+    if (!slug) continue;
+    const url = `https://arabshentai.com/manga/${slug}/`;
     const title = block.match(/<h3[^>]*>[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/i)?.[1]
       ?? block.match(/<img[^>]*alt="([^"]+)"/i)?.[1]
       ?? "";
@@ -159,7 +163,7 @@ function parseArabshentaiDooPlayCatalog(html = "", catalogType = "") {
       return { url: normalizeAssetUrl(entry[1]), name: number, number };
     }));
     pushArabshentaiCatalogItem(results, seen, {
-      url: link[1],
+      url,
       title,
       cover,
       chapters,
@@ -175,8 +179,11 @@ function parseArabshentaiMadaraCatalog(html = "", catalogType = "") {
   const starts = [...html.matchAll(/<div[^>]*class="[^"]*page-item-detail[^"]*manga[^"]*"[^>]*>/gi)];
   starts.forEach((match, index) => {
     const block = html.slice(match.index, starts[index + 1]?.index ?? html.length);
-    const link = block.match(/<a[^>]*href="(https?:\/\/(?:www\.)?arabshentai\.com\/manga\/[^"?#]+\/?)"[^>]*(?:title="([^"]*)")?[^>]*>/i);
+    const link = block.match(/<a[^>]*href=["']([^"']+)["'][^>]*(?:title=["']([^"']*)["'])?/i);
     if (!link) return;
+    const slug = link[1].match(/\/manga\/([^/?#]+)/i)?.[1];
+    if (!slug) return;
+    const url = `https://arabshentai.com/manga/${slug}/`;
     const title = block.match(/<div[^>]*class="[^"]*post-title[^"]*"[^>]*>[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/i)?.[1] ?? link[2] ?? "";
     const imageTag = block.match(/<img[^>]*class="[^"]*img-responsive[^"]*"[^>]*>/i)?.[0] ?? block.match(/<img[^>]*>/i)?.[0] ?? "";
     const cover = imageTag.match(/(?:src|data-src)=["']([^"']+)["']/i)?.[1] ?? "";
@@ -185,7 +192,7 @@ function parseArabshentaiMadaraCatalog(html = "", catalogType = "") {
       return { url: normalizeAssetUrl(entry[1]), name: number, number };
     }));
     pushArabshentaiCatalogItem(results, seen, {
-      url: link[1],
+      url,
       title,
       cover,
       chapters,
@@ -204,10 +211,15 @@ export function parseArabshentaiCatalog(html = "", { catalogType = "" } = {}) {
 function parseArabshentaiGenres(html = "") {
   const genres = [];
   const seen = new Set();
-  for (const match of html.matchAll(/<a[^>]*href="https?:\/\/(?:www\.)?arabshentai\.com\/manga-genre\/([^"\/?#]+)\/?"[^>]*>([\s\S]*?)<\/a>/gi)) {
-    const slug = decodeURIComponent(match[1]);
+  for (const match of html.matchAll(/<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi)) {
+    let target;
+    try { target = new URL(match[1], BASE_URL); } catch { continue; }
+    if (!ALLOWED_HOSTS.has(target.hostname)) continue;
+    const genreMatch = target.pathname.match(/\/manga-genre\/([^/]+)/i);
+    if (!genreMatch) continue;
+    const slug = decodeURIComponent(genreMatch[1]);
     if (!slug || seen.has(slug)) continue;
-    const label = textOnly(match[2]);
+    const label = textOnly(match[2] ?? "");
     const countMatch = label.match(/\(([\d,]+)\)\s*$/);
     const name = label.replace(/\s*\([\d,]+\)\s*$/, "").trim();
     if (!name) continue;

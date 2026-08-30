@@ -1046,13 +1046,12 @@
   padding-bottom: 14px;
 }
 
-.screen--home .page-header__title {
-  gap: 12px;
-  align-items: flex-start;
+.screen--home .page-header__brand-top {
+  align-items: center;
 }
 
 .screen--home .page-header__mark {
-  margin-top: 2px;
+  margin-top: 0;
 }
 
 .screen--home .header-actions {
@@ -1064,31 +1063,44 @@
   height: 38px;
 }
 
+.page-header--brand {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.page-header__brand-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
 .page-header--brand .page-header__copy {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 4px;
+  width: 100%;
   min-width: 0;
 }
 
 .page-header--brand h1 {
-  white-space: nowrap;
-  font-size: clamp(21px, 5.6vw, 26px);
-  line-height: 1.1;
+  white-space: normal;
+  text-wrap: balance;
+  font-size: clamp(22px, 6vw, 28px);
+  line-height: 1.15;
   margin: 0;
 }
 
 .page-header--brand .eyebrow {
   display: block;
   max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-wrap: nowrap;
-  line-height: 1.2;
-  font-size: clamp(8px, 2.2vw, 10px);
-  letter-spacing: 0.04em;
+  line-height: 1.35;
+  font-size: clamp(10px, 2.6vw, 12px);
+  letter-spacing: 0.03em;
   margin: 0;
+  text-wrap: balance;
 }
 
 .screen--home .content {

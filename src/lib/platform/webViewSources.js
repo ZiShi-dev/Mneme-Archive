@@ -1,4 +1,4 @@
-/** Sources dont le HTML passe par la WebView Android (contournement Cloudflare). */
+/** Sources Cloudflare : HTTP natif + Custom Tabs Android si vérification requise. */
 export const WEBVIEW_SOURCE_IDS = Object.freeze([
   "mangalik",
   "azorafly",

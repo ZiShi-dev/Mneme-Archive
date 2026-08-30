@@ -72,6 +72,13 @@ test("parseArabshentaiCatalog accepts reversed dooplay class order", () => {
   assert.equal(items[0].title, "Sample Series");
 });
 
+test("parseArabshentaiCatalog accepts relative manga links from WebView", () => {
+  const html = CATALOG_ARTICLE.replace(/https:\/\/arabshentai\.com/g, "");
+  const items = parseArabshentaiCatalog(html);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].url, "https://arabshentai.com/manga/sample-series/");
+});
+
 test("parseArabshentaiChapters reads dooplay chapter list", () => {
   const chapters = parseArabshentaiChapters(CHAPTER_LIST);
   assert.equal(chapters.length, 2);

@@ -108,18 +108,28 @@ function buildCeneleChapterUrl(novelUrl, chapterNumber, ctx = DEFAULT_CTX) {
   return `${ctx.baseUrl}/cont/${slug}/vol/الفصل-${chapterNumber}/`;
 }
 
-export function parseCeneleCatalog(html) {
+export function parseCeneleCatalog(html, baseUrl = DEFAULT_BASE_URL) {
+  const ctx = createHostContext(baseUrl);
   const results = [];
   const starts = [...html.matchAll(/<article[^>]*class="[^"]*nhv-library-card[^"]*"[^>]*>/gi)];
   starts.forEach((match, index) => {
     const block = html.slice(match.index, starts[index + 1]?.index ?? html.length);
-    const link = block.match(/<h2[^>]*class="[^"]*nhv-library-card__title[^"]*"[^>]*>[\s\S]*?<a[^>]*href="(https?:\/\/[^"/]+\/cont\/[^"?#]+\/?)"[^>]*>([\s\S]*?)<\/a>/i);
+    const link = block.match(/<h2[^>]*class="[^"]*nhv-library-card__title[^"]*"[^>]*>[\s\S]*?<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i);
     if (!link) return;
-    const url = link[1].replace(/^https?:\/\/www\./i, "https://");
+    let url = "";
+    try {
+      const parsed = new URL(link[1], ctx.baseUrl);
+      if (!ctx.allowedHosts.has(parsed.hostname.toLowerCase()) || !/\/cont\//i.test(parsed.pathname)) return;
+      parsed.hostname = ctx.hostname;
+      parsed.hash = "";
+      url = parsed.toString().replace(/^https?:\/\/www\./i, "https://");
+    } catch {
+      return;
+    }
     const title = textOnly(link[2]);
     if (!title) return;
     const imageTag = block.match(/<img[^>]*class="[^"]*wp-post-image[^"]*"[^>]*>/i)?.[0] ?? block.match(/<img[^>]*>/i)?.[0] ?? "";
-    const cover = decodeHtml(imageTag.match(/src="([^"]+)"/i)?.[1] ?? "");
+    const cover = decodeHtml(imageTag.match(/(?:src|data-src)="([^"]+)"/i)?.[1] ?? "");
     const excerpt = textOnly(block.match(/<p[^>]*class="[^"]*nhv-library-card__excerpt[^"]*"[^>]*>([\s\S]*?)<\/p>/i)?.[1] ?? "");
     const chapterCount = parseChapterCount(block);
     const recentChapters = recentChaptersFromCount(chapterCount, (number) => buildCeneleChapterUrl(url, number));

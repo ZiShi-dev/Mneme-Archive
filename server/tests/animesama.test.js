@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  buildAnimesamaCatalogUrl,
+  catalogHasMore,
   normalizeAnimesamaUrl,
   parseAnimesamaCatalog,
   parseAnimesamaEpisodesJs,
@@ -9,6 +11,27 @@ import {
 } from "../sources/animesama.js";
 
 describe("animesama", () => {
+  it("buildAnimesamaCatalogUrl gère filterPath et pagination", () => {
+    assert.equal(
+      buildAnimesamaCatalogUrl(1, "/all/"),
+      "https://anime-sama.to/catalogue/",
+    );
+    assert.equal(
+      buildAnimesamaCatalogUrl(2, "/all/"),
+      "https://anime-sama.to/catalogue/?page=2",
+    );
+    assert.equal(
+      buildAnimesamaCatalogUrl(1, "/catalogue/action/"),
+      "https://anime-sama.to/catalogue/action/",
+    );
+  });
+
+  it("catalogHasMore ne devine pas une page suivante sans lien", () => {
+    assert.equal(catalogHasMore('<a href="/catalogue/?page=2">2</a>', 1), true);
+    assert.equal(catalogHasMore('<div class="catalog-card"></div>', 1), false);
+    assert.equal(catalogHasMore('<a href="/catalogue/?page=2">2</a>', 2), false);
+  });
+
   it("normalise les URLs du domaine principal", () => {
     assert.equal(
       normalizeAnimesamaUrl("https://anime-sama.fr/catalogue/naruto/"),

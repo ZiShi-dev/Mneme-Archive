@@ -269,7 +269,11 @@ export function buildCatalogUrl(page, filterPath = MOVIES_PATH, ctx) {
     return page <= 1 ? `${ctx.baseUrl}/` : `${ctx.baseUrl}/page/${page}/`;
   }
   if (path.startsWith("/genres/")) {
-    return `${ctx.baseUrl}${path}`;
+    if (page <= 1) return `${ctx.baseUrl}${path}`;
+    const url = new URL(path, `${ctx.baseUrl}/`);
+    const query = url.search;
+    const basePath = url.pathname.replace(/\/+$/, "");
+    return `${ctx.baseUrl}${basePath}/page/${page}/${query}`;
   }
   const normalized = path.endsWith("/") ? path : `${path}/`;
   if (page <= 1) return `${ctx.baseUrl}${normalized}`;
@@ -529,6 +533,22 @@ export async function handleCoflixRequest(requestUrl) {
   if (requestUrl.pathname.endsWith("/search")) {
     const { query, valid } = normalizeSearchQuery(requestUrl.searchParams.get("q"));
     if (!valid) return responseJson(200, { items: [], baseUrl: ctx.baseUrl });
+    const page = Math.min(Math.max(Number(requestUrl.searchParams.get("page")) || 1, 1), 1000);
+    const filterPath = requestUrl.searchParams.get("filterPath")?.trim() || "";
+    if (filterPath && filterPath !== MIXED_PATH) {
+      const path = assertFilterPath(filterPath);
+      const html = await fetchCoflixHtml(buildCatalogUrl(page, path, ctx));
+      const needle = query.toLocaleLowerCase("fr");
+      const items = parseCoflixCatalog(html, ctx).filter((item) => (
+        `${item.title || ""} ${item.altTitle || ""}`.toLocaleLowerCase("fr").includes(needle)
+      ));
+      return responseJson(200, {
+        items,
+        page,
+        hasMore: catalogHasMore(html, page, path),
+        baseUrl: ctx.baseUrl,
+      });
+    }
     const html = await fetchCoflixHtml(`${ctx.baseUrl}/?s=${encodeURIComponent(query)}`);
     return responseJson(200, { items: parseCoflixSearch(html, ctx), baseUrl: ctx.baseUrl });
   }

@@ -73,7 +73,7 @@ export function SourcePageImage({ sourceId, page, index, onSettled }) {
       className="live-reader-pages__image"
       loading="eager"
       decoding="async"
-      fetchPriority={index === 0 ? "high" : "auto"}
+      fetchpriority={index === 0 ? "high" : "auto"}
       referrerPolicy="no-referrer"
       onLoad={() => onSettledRef.current?.()}
       onError={() => {

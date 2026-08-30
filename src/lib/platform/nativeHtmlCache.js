@@ -55,6 +55,53 @@ export function normalizeNativeHtmlUrl(url = "") {
       }
     }
 
+    if (host === "kolnovel.com" || host === "www.kolnovel.com") {
+      const path = stripTrailingSlash(parsed.pathname);
+      if (path === "/series") {
+        const page = parsed.searchParams.get("page") || "1";
+        const hasFilters = parsed.searchParams.has("s")
+          || [...parsed.searchParams.keys()].some((key) => key.startsWith("genre") || key.startsWith("type"));
+        if (page === "1" && !hasFilters) {
+          parsed.search = "";
+          parsed.hash = "";
+          return `${parsed.origin}/series/`;
+        }
+      }
+    }
+
+    if (host === "novelphoenix.com" || host === "www.novelphoenix.com") {
+      const path = stripTrailingSlash(parsed.pathname);
+      if (!path || path === "/genre-all/sort-new/status-all/all-novel") {
+        const page = parsed.searchParams.get("page") || "1";
+        if (page === "1") {
+          parsed.pathname = "/genre-all/sort-new/status-all/all-novel";
+          parsed.search = "";
+          parsed.hash = "";
+          return `${parsed.origin}${parsed.pathname}`;
+        }
+      }
+    }
+
+    if (host === "arabshentai.com" || host === "www.arabshentai.com") {
+      if (stripTrailingSlash(parsed.pathname) === "/manga") {
+        parsed.search = "";
+        parsed.hash = "";
+        return `${parsed.origin}/manga/`;
+      }
+    }
+
+    if (host === "hentairead.com" || host === "www.hentairead.com") {
+      const path = stripTrailingSlash(parsed.pathname);
+      if (path === "/hentai") {
+        const sortby = parsed.searchParams.get("sortby");
+        if (!sortby || sortby === "views") {
+          parsed.search = sortby === "views" ? "?sortby=views" : "";
+          parsed.hash = "";
+          return `${parsed.origin}/hentai${parsed.search}`;
+        }
+      }
+    }
+
     if (host === "novelsparadise.site" || host === "www.novelsparadise.site") {
       const path = stripTrailingSlash(parsed.pathname);
       if (path === "/series") {

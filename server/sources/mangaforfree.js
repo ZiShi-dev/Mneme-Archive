@@ -8,8 +8,7 @@ import {
   resolveMadaraChapters,
 } from "../lib/madaraChapters.js";
 import { enrichSourceDetails } from "../lib/detailEnrichment.js";
-import { hasNativeHtmlFetcher } from "../lib/nativeFetchBridge.js";
-import { createWpMangaFetchers, createWpMangaHostHelpers } from "../lib/wpMangaHttp.js";
+import { createWpMangaFetchers, createWpMangaHostHelpers, defaultWpMangaPageHtmlLooksValid } from "../lib/wpMangaHttp.js";
 
 const BASE_URL = "https://mangaforfree.com";
 const SOURCE_NAME = "MangaForFree";
@@ -23,33 +22,20 @@ const { normalizeHost, normalizeAssetUrl } = createWpMangaHostHelpers({
   hostPattern: HOST_PATTERN,
 });
 
-const { configureNativeFetch, resolveHtml, resolveImage, fetchHtmlRemote } = createWpMangaFetchers({
+const { configureNativeFetch, resolveHtml, resolveImage } = createWpMangaFetchers({
   baseUrl: BASE_URL,
   apexHostname: "mangaforfree.com",
   sourceName: SOURCE_NAME,
   timeoutMs: 40_000,
   forbiddenMessage: "حماية MangaForFree منعت الاتصال مؤقتًا",
+  catalogHtmlLooksValid: defaultWpMangaPageHtmlLooksValid,
 });
 
 export function configureMangaforfreeNativeFetch(options) {
   configureNativeFetch(options);
 }
 
-function catalogHtmlLooksValid(html = "") {
-  return /page-item-detail|c-tabs-item__content|\bitem\b[^"']*\bwp-manga\b|\bwp-manga\b[^"']*\bitem\b/i.test(html);
-}
-
-async function fetchHtml(url) {
-  const html = await resolveHtml(url);
-  if (!hasNativeHtmlFetcher() || catalogHtmlLooksValid(html)) return html;
-  try {
-    const remote = await fetchHtmlRemote(url);
-    if (catalogHtmlLooksValid(remote)) return remote;
-  } catch {
-    // WebView seul résultat exploitable.
-  }
-  return html;
-}
+const fetchHtml = resolveHtml;
 
 function isMadaraCatalogBlock(tag = "") {
   const classes = tag.match(/class=["']([^"']+)["']/i)?.[1] ?? "";
@@ -127,7 +113,7 @@ function parseMadaraCatalogCards(html = "") {
       }
     }
     href = href || extractHref(block);
-    const url = href && /\/manga\/[^/]+\/?$/i.test(href) ? href : "";
+    const url = normalizeSeriesUrl(href);
     if (!url) return;
     const title = block.match(/<div[^>]*class="[^"]*post-title[^"]*"[^>]*>[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/i)?.[1]
       ?? linkTitle
@@ -236,10 +222,15 @@ function parseSearch(html = "") {
 function parseGenres(html = "") {
   const genres = [];
   const seen = new Set();
-  for (const match of html.matchAll(/<a[^>]*href="https?:\/\/(?:www\.)?mangaforfree\.com\/manga-genre\/([^"\/?#]+)\/?"[^>]*>([\s\S]*?)<\/a>/gi)) {
-    const slug = decodeURIComponent(match[1]);
+  for (const match of html.matchAll(/<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi)) {
+    let target;
+    try { target = new URL(match[1], BASE_URL); } catch { continue; }
+    if (!ALLOWED_HOSTS.has(target.hostname)) continue;
+    const genreMatch = target.pathname.match(/\/manga-genre\/([^/]+)/i);
+    if (!genreMatch) continue;
+    const slug = decodeURIComponent(genreMatch[1]);
     if (seen.has(slug)) continue;
-    const label = textOnly(match[2]);
+    const label = textOnly(match[2] ?? "");
     const countMatch = label.match(/\(([\d,]+)\)\s*$/);
     const name = label.replace(/\s*\([\d,]+\)\s*$/, "").trim();
     if (!name) continue;

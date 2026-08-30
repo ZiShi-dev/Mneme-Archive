@@ -7,12 +7,21 @@ import { initMangalikNative } from "./lib/platform/mangalikNative";
 import { initSafeAreaInsets } from "./lib/platform/safeAreaInsets";
 
 import { markNativeAppShell } from "./lib/platform/nativeAppLayout";
-import { shouldSkipOnboarding } from "./lib/onboarding/constants";
+
+async function hideNativeSplash() {
+  try {
+    await SplashScreen.hide();
+  } catch {
+    // Plugin optionnel selon la plateforme.
+  }
+}
 
 export async function initCapacitor() {
   if (!Capacitor.isNativePlatform()) return;
   markNativeAppShell();
   initSafeAreaInsets();
+  // launchAutoHide est désactivé : masquer tout de suite pour ne pas bloquer le boot React.
+  await hideNativeSplash();
   try {
     await StatusBar.setStyle({ style: Style.Dark });
     await StatusBar.setBackgroundColor({ color: "#090A12" });
@@ -20,10 +29,7 @@ export async function initCapacitor() {
     if (!isChromebookApp) {
       await initMangalikNative();
     }
-    if (shouldSkipOnboarding()) {
-      await SplashScreen.hide();
-    }
   } catch {
-    // Plugins optionnels selon la plateforme.
+    await hideNativeSplash();
   }
 }

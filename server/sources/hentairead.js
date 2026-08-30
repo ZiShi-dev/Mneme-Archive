@@ -3,7 +3,7 @@ import { normalizeSearchQuery } from "../lib/queryLimits.js";
 import { responseJson } from "../lib/response.js";
 import { applyRecentChapterFields, normalizeRecentChapters } from "../lib/catalogChapters.js";
 import { enrichSourceDetails } from "../lib/detailEnrichment.js";
-import { createWpMangaFetchers, createWpMangaHostHelpers } from "../lib/wpMangaHttp.js";
+import { createWpMangaFetchers, createWpMangaHostHelpers, defaultWpMangaPageHtmlLooksValid } from "../lib/wpMangaHttp.js";
 
 const BASE_URL = "https://hentairead.com";
 const SOURCE_NAME = "HentaiRead";
@@ -25,6 +25,7 @@ const { configureNativeFetch, resolveHtml, resolveImage } = createWpMangaFetcher
   sourceName: SOURCE_NAME,
   timeoutMs: 40_000,
   forbiddenMessage: "حماية HentaiRead منعت الاتصال مؤقتًا",
+  catalogHtmlLooksValid: defaultWpMangaPageHtmlLooksValid,
 });
 
 export function configureHentaireadNativeFetch(options) {
@@ -86,7 +87,9 @@ export function parseHentaireadCatalog(html = "") {
     const link = block.match(/<a[^>]*class="[^"]*manga-item__link[^"]*"[^>]*href="([^"]+)"/i)
       ?? block.match(/<a[^>]*href="(https?:\/\/(?:www\.)?hentairead\.com\/hentai\/[^"?#]+\/?)"[^>]*class="[^"]*manga-item__link/i);
     if (!link) continue;
-    const url = link[1].replace("www.hentairead.com", "hentairead.com");
+    const slug = link[1].match(/\/hentai\/([^/?#]+)/i)?.[1];
+    if (!slug) continue;
+    const url = `https://hentairead.com/hentai/${slug}/`;
     if (seen.has(url)) continue;
     const title = textOnly(
       block.match(/<img[^>]*class="[^"]*manga-item__img-inner[^"]*"[^>]*alt="([^"]+)"/i)?.[1]
@@ -119,10 +122,15 @@ export function parseHentaireadCatalog(html = "") {
 function parseHentaireadGenres(html = "") {
   const genres = [];
   const seen = new Set();
-  for (const match of html.matchAll(/<a[^>]*href="https?:\/\/(?:www\.)?hentairead\.com\/genre\/([^"\/?#]+)\/?"[^>]*>([\s\S]*?)<\/a>/gi)) {
-    const slug = decodeURIComponent(match[1]);
+  for (const match of html.matchAll(/<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi)) {
+    let target;
+    try { target = new URL(match[1], BASE_URL); } catch { continue; }
+    if (!ALLOWED_HOSTS.has(target.hostname)) continue;
+    const genreMatch = target.pathname.match(/\/genre\/([^/]+)/i);
+    if (!genreMatch) continue;
+    const slug = decodeURIComponent(genreMatch[1]);
     if (!slug || seen.has(slug)) continue;
-    const name = textOnly(match[2]).replace(/\s*\([\d,]+\)\s*$/, "").trim();
+    const name = textOnly(match[2] ?? "").replace(/\s*\([\d,]+\)\s*$/, "").trim();
     if (!name) continue;
     seen.add(slug);
     genres.push({ slug, name, count: 0 });
@@ -133,10 +141,15 @@ function parseHentaireadGenres(html = "") {
 function parseHentaireadTags(html = "") {
   const tags = [];
   const seen = new Set();
-  for (const match of html.matchAll(/<a[^>]*href="https?:\/\/(?:www\.)?hentairead\.com\/tag\/([^"\/?#]+)\/?"[^>]*>([\s\S]*?)<\/a>/gi)) {
-    const slug = decodeURIComponent(match[1]);
+  for (const match of html.matchAll(/<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi)) {
+    let target;
+    try { target = new URL(match[1], BASE_URL); } catch { continue; }
+    if (!ALLOWED_HOSTS.has(target.hostname)) continue;
+    const tagMatch = target.pathname.match(/\/tag\/([^/]+)/i);
+    if (!tagMatch) continue;
+    const slug = decodeURIComponent(tagMatch[1]);
     if (!slug || seen.has(slug)) continue;
-    const name = textOnly(match[2]).replace(/\s*\([\d,]+\)\s*$/, "").trim();
+    const name = textOnly(match[2] ?? "").replace(/\s*\([\d,]+\)\s*$/, "").trim();
     if (!name) continue;
     seen.add(slug);
     tags.push({ slug, name, count: 0, archivePath: "tag" });
@@ -289,8 +302,11 @@ export async function handleHentaireadRequest(requestUrl) {
     const page = Math.min(Math.max(Number(requestUrl.searchParams.get("page")) || 1, 1), 1000);
     const genre = requestUrl.searchParams.get("genre")?.trim() ?? "";
     const tag = requestUrl.searchParams.get("tag")?.trim() ?? "";
+    const sortby = requestUrl.searchParams.get("sortby")?.trim()
+      || requestUrl.searchParams.get("sort")?.trim()
+      || "new";
     if (genre || tag) {
-      const html = await resolveHtml(buildCatalogTarget({ page, genre, tag }));
+      const html = await resolveHtml(buildCatalogTarget({ page, genre, tag, sortby }));
       const needle = query.toLocaleLowerCase("en");
       const items = parseHentaireadCatalog(html).filter((item) => item.title.toLocaleLowerCase("en").includes(needle));
       return responseJson(200, { items, page, hasMore: catalogHasMore(html, { page, genre, tag }) });

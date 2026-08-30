@@ -131,23 +131,46 @@ export function parseEpisodeTarget(rawUrl = "", ctx = DEFAULT_CTX) {
 }
 
 function assertAnimedarImageUrl(rawUrl, ctx = DEFAULT_CTX) {
+  const normalized = normalizeAnimedarImageUrl(rawUrl, ctx);
+  if (!normalized) throw new Error("رابط الصورة غير مسموح");
+  return normalized;
+}
+
+function normalizeAnimedarImageUrl(rawUrl = "", ctx = DEFAULT_CTX) {
   const decoded = decodeHtml(String(rawUrl || "").trim());
-  const url = new URL(decoded);
-  if (url.protocol !== "https:") throw new Error("رابط الصورة غير مسموح");
-  const host = url.hostname.toLowerCase();
-  const allowed = host === ctx.apex
-    || host === `www.${ctx.apex}`
-    || host === `i0.wp.com`
-    || host === `i1.wp.com`
-    || host === `i2.wp.com`;
-  if (!allowed) throw new Error("رابط الصورة غير مسموح");
-  if (host.endsWith(".wp.com") && !url.pathname.includes("/animedar.net/wp-content/")) {
-    throw new Error("رابط الصورة غير مسموح");
+  if (!decoded) return "";
+  try {
+    const url = new URL(decoded);
+    if (url.protocol !== "https:") return "";
+    const host = url.hostname.toLowerCase();
+    if (/^i\d+\.wp\.com$/i.test(host)) {
+      const uploadsPath = url.pathname.match(/\/[^/]+\.net(\/wp-content\/uploads\/.+)/i)?.[1];
+      if (!uploadsPath) return "";
+      const direct = new URL(uploadsPath, ctx.baseUrl);
+      direct.hostname = ctx.apex;
+      direct.search = "";
+      direct.hash = "";
+      return direct.toString();
+    }
+    const allowed = host === ctx.apex
+      || host === `www.${ctx.apex}`;
+    if (!allowed) return "";
+    if (!url.pathname.startsWith("/wp-content/uploads/")) return "";
+    url.hostname = ctx.apex;
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return "";
   }
-  if ((host === ctx.apex || host === `www.${ctx.apex}`) && !url.pathname.startsWith("/wp-content/uploads/")) {
-    throw new Error("رابط الصورة غير مسموح");
-  }
-  return url.toString();
+}
+
+function extractAnimedarImageUrl(block = "") {
+  const imgTag = [...block.matchAll(/<img\b[^>]*>/gi)]
+    .map((match) => match[0])
+    .find((tag) => /\bwp-post-image\b/i.test(tag));
+  if (!imgTag) return "";
+  const raw = imgTag.match(/(?:data-src|data-lazy-src|data-original|src)=["']([^"']+)["']/i)?.[1] ?? "";
+  return normalizeAnimedarImageUrl(raw);
 }
 
 function episodeNumberFromLabel(label = "") {
@@ -177,9 +200,10 @@ export function parseAnimedarCatalog(html = "", baseUrl = DEFAULT_BASE_URL) {
   const starts = [...html.matchAll(/<article class="bs ss1"[\s\S]*?itemtype="http:\/\/schema\.org\/CreativeWork">/gi)];
   starts.forEach((match, index) => {
     const block = html.slice(match.index, starts[index + 1]?.index ?? html.length);
-    const link = block.match(/<a[^>]*href="(https?:\/\/[^"/]+\/anime-p\/[^"?#]+\/?)"[^>]*itemprop="url"/i);
+    const link = block.match(/<a[^>]*href="([^"]+)"[^>]*itemprop="url"/i);
     if (!link) return;
     const url = normalizeAnimedarUrl(link[1], { ctx: createHostContext(baseUrl) });
+    if (!/\/anime-p\//i.test(url)) return;
     if (!url || seen.has(url)) return;
     seen.add(url);
     const title = textOnly(
@@ -188,7 +212,7 @@ export function parseAnimedarCatalog(html = "", baseUrl = DEFAULT_BASE_URL) {
         ?? "",
     );
     if (!title) return;
-    const cover = decodeHtml(block.match(/<img[^>]*class="[^"]*wp-post-image[^"]*"[^>]*src="([^"]+)"/i)?.[1] ?? "");
+    const cover = extractAnimedarImageUrl(block);
     const latestLabel = parseLatestEpisodeLabel(block);
     const latestNumber = episodeNumberFromLabel(latestLabel);
     const recentChapters = latestNumber
@@ -283,11 +307,8 @@ export function parseAnimedarDetails(html = "", url = "", chapters = [], ctx = D
     ?? html.match(/<meta property="og:title" content="([^"]+)"/i)?.[1]?.split("|")[0]
     ?? "");
   const altTitle = textOnly(html.match(/<span class="alter">([\s\S]*?)<\/span>/i)?.[1] ?? "");
-  const cover = decodeHtml(
-    html.match(/<div class="thumb"[\s\S]*?<img[^>]*src="([^"]+)"/i)?.[1]
-      ?? html.match(/<meta property="og:image" content="([^"]+)"/i)?.[1]
-      ?? "",
-  );
+  const cover = extractAnimedarImageUrl(html.match(/<div class="thumb"[\s\S]*?<\/div>/i)?.[0] ?? "")
+    || normalizeAnimedarImageUrl(html.match(/<meta property="og:image" content="([^"]+)"/i)?.[1] ?? "", ctx);
   const summary = textOnly(html.match(/<div class="mindesc">([\s\S]*?)<\/div>/i)?.[1] ?? "");
   const categories = [...html.matchAll(/<a href="https:\/\/animedar\.net\/genres\/[^"]+"[^>]*>([^<]+)/gi)]
     .map((match) => textOnly(match[1]))
@@ -393,6 +414,13 @@ function isValidAnimedarFilterPath(filterPath = "") {
   return /^\/[\p{L}\p{N}/+_.%-]+\/?$/u.test(filterPath) && !filterPath.includes("..");
 }
 
+function filterAnimedarItemsByQuery(items, query) {
+  const needle = query.toLocaleLowerCase("ar");
+  return items.filter((item) => (
+    `${item.title || ""} ${item.altTitle || ""}`.toLocaleLowerCase("ar").includes(needle)
+  ));
+}
+
 export async function handleAnimedarRequest(requestUrl) {
   const ctx = resolveSourceRequestContext(requestUrl, DEFAULT_BASE_URL, { label: SOURCE_NAME });
   const fetchHtml = createFetcher(ctx.baseUrl);
@@ -425,6 +453,18 @@ export async function handleAnimedarRequest(requestUrl) {
   if (requestUrl.pathname.endsWith("/search")) {
     const { query, valid } = normalizeSearchQuery(requestUrl.searchParams.get("q"));
     if (!valid) return responseJson(200, { items: [] });
+    const page = Math.min(Math.max(Number(requestUrl.searchParams.get("page")) || 1, 1), 1000);
+    const filterPath = requestUrl.searchParams.get("filterPath")?.trim() || "";
+    if (filterPath && filterPath !== "/" && isValidAnimedarFilterPath(filterPath)) {
+      const html = await fetchHtml(buildCatalogUrl(page, filterPath, ctx.baseUrl));
+      const items = filterAnimedarItemsByQuery(parseAnimedarCatalog(html, ctx.baseUrl), query);
+      return responseJson(200, {
+        items,
+        page,
+        hasMore: catalogHasMore(html, page),
+        fetchedAt: new Date().toISOString(),
+      });
+    }
     const html = await fetchHtml(`${ctx.baseUrl}/?s=${encodeURIComponent(query)}`);
     return responseJson(200, { items: parseAnimedarCatalog(html, ctx.baseUrl), page: 1, hasMore: false });
   }

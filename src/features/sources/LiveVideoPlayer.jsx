@@ -625,13 +625,17 @@ export function LiveVideoPlayer({
   const markCompleteAction = playback && progress < VIDEO_COMPLETE_THRESHOLD ? (
     <button
       type="button"
-      className="live-video-mark-complete live-video-mark-complete--meta"
+      className={`live-video-mark-complete${watchDesktopLayout ? " live-video-mark-complete--meta" : ""}`}
       onClick={markComplete}
     >
       <Check size={13} aria-hidden="true" />
       {presentation.type === "movie" ? t("reader.stream.markMovieComplete") : t("reader.stream.markEpisodeComplete")}
     </button>
   ) : null;
+
+  const showStandaloneMarkComplete = Boolean(
+    markCompleteAction && (watchDesktopLayout || embedMode || usePlyrPlayer),
+  );
 
   const serverBar = orderedSources.length > 0 && data && !cinemaMode ? (
     <div
@@ -874,6 +878,8 @@ export function LiveVideoPlayer({
             />
           </div>
         )}
+        {!watchDesktopLayout && serverBar}
+        {!watchDesktopLayout && showStandaloneMarkComplete ? markCompleteAction : null}
       </div>
   );
 
@@ -926,7 +932,7 @@ export function LiveVideoPlayer({
                   <span>{profile.name}</span>
                   {progress > 0 ? <span>{Math.round(progress)}%</span> : null}
                 </div>
-                {markCompleteAction}
+                {showStandaloneMarkComplete ? markCompleteAction : null}
               </div>
             </div>
             {showEpisodePlaylist ? (
@@ -965,8 +971,6 @@ export function LiveVideoPlayer({
             />
           )}
           {immersiveRoot}
-          {serverBar}
-          {markCompleteAction}
         </>
       )}
     </div>

@@ -427,10 +427,24 @@ async function enrichAnimesamaPlayback({ seasonUrl, episode, players = [], title
   };
 }
 
-function catalogHasMore(html, page) {
+export function buildAnimesamaCatalogUrl(page, filterPath = "/all/") {
+  let path = CATALOG_PATH;
+  const normalized = String(filterPath || "/all/").trim();
+  if (normalized && normalized !== "/all/") {
+    path = normalized.startsWith("/") ? normalized : `/${normalized}`;
+    if (!path.startsWith("/catalogue/")) {
+      path = `/catalogue/${path.replace(/^\/+/, "")}`;
+    }
+    if (!path.endsWith("/")) path = `${path}/`;
+  }
+  const url = new URL(path, BASE_URL);
+  if (page > 1) url.searchParams.set("page", String(page));
+  return url.toString();
+}
+
+export function catalogHasMore(html, page) {
   const maxPage = Number([...html.matchAll(/catalogue\/\?page=(\d+)/gi)].map((match) => match[1]).sort((a, b) => Number(b) - Number(a))[0] || 0);
-  if (maxPage) return page < maxPage;
-  return parseAnimesamaCatalog(html).length > 0;
+  return maxPage > 0 && page < maxPage;
 }
 
 async function fetchRecentEpisodesForItem(item) {
@@ -468,7 +482,8 @@ export async function handleAnimesamaRequest(requestUrl) {
 
   if (requestUrl.pathname.endsWith("/catalog")) {
     const page = Math.min(Math.max(Number(requestUrl.searchParams.get("page")) || 1, 1), 1000);
-    const catalogUrl = page <= 1 ? `${BASE_URL}${CATALOG_PATH}` : `${BASE_URL}${CATALOG_PATH}?page=${page}`;
+    const filterPath = requestUrl.searchParams.get("filterPath")?.trim() || "/all/";
+    const catalogUrl = buildAnimesamaCatalogUrl(page, filterPath);
     const html = await fetchAnimesamaHtml(catalogUrl);
     const items = parseAnimesamaCatalog(html);
     await enrichAnimesamaCatalogItems(items, { concurrency: 6 });
@@ -483,6 +498,22 @@ export async function handleAnimesamaRequest(requestUrl) {
   if (requestUrl.pathname.endsWith("/search")) {
     const { query, valid } = normalizeSearchQuery(requestUrl.searchParams.get("q"));
     if (!valid) return responseJson(200, { items: [] });
+    const page = Math.min(Math.max(Number(requestUrl.searchParams.get("page")) || 1, 1), 1000);
+    const filterPath = requestUrl.searchParams.get("filterPath")?.trim() || "";
+    if (filterPath && filterPath !== "/all/") {
+      const html = await fetchAnimesamaHtml(buildAnimesamaCatalogUrl(page, filterPath));
+      const needle = query.toLocaleLowerCase("fr");
+      const items = parseAnimesamaCatalog(html).filter((item) => (
+        `${item.title || ""} ${item.altTitle || ""}`.toLocaleLowerCase("fr").includes(needle)
+      ));
+      await enrichAnimesamaCatalogItems(items, { concurrency: 4 });
+      return responseJson(200, {
+        items,
+        page,
+        hasMore: catalogHasMore(html, page),
+        fetchedAt: new Date().toISOString(),
+      });
+    }
     const html = await fetchSearchHtml(query);
     const items = parseAnimesamaSearchResults(html);
     await enrichAnimesamaCatalogItems(items, { concurrency: 4 });

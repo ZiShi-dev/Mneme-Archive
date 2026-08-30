@@ -8,7 +8,8 @@ import { usePersistedState } from "../../hooks/usePersistedState";
 import { kvSet } from "../../lib/storage/initStorage";
 import { contentTypes } from "./contentTypes";
 import { Header } from "../../components/layout/Header";
-import { clearSourceApiCache, fetchCatalog, fetchSourceDetails, fetchSourceFilters, searchSource } from "./sourceApi";
+import { clearSourceApiCache, fetchCatalog, fetchSourceDetails, fetchSourceFilters, formatSourceError, searchSource } from "./sourceApi";
+import { usesWebViewSource, shouldDeferCatalogFilters } from "../../lib/platform/webViewSources.js";
 import { CatalogCard, CatalogGridSkeleton } from "./CatalogCard";
 import { filterItemsByAudioLanguage, sourceSupportsAudioFilter } from "./audioLanguage";
 import { CatalogFilters } from "./CatalogFilters";
@@ -31,7 +32,7 @@ import {
 import { fetchCatalogBatch, resolvePopulatedCatalogPage } from "./catalogPaging";
 import { getCatalogSkeletonCount } from "../../lib/catalog/catalogLayout";
 import { scrollAppToElement } from "../../lib/platform/scrollRoot";
-import { shouldDeferCatalogFilters } from "../../lib/platform/webViewSources";
+import { cancelCloudflarePending } from "../../lib/platform/mangalikNative.js";
 
 import { CatalogCarouselNav } from "./CatalogCarouselNav";
 import {
@@ -220,7 +221,8 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
     } catch (reason) {
       if (!silent) {
         const sourceName = getSourceProfile(sourceId).name;
-        const message = reason instanceof Error ? reason.message : searchActive ? t("sources.searchFailedNamed", { name: sourceName }) : t("sources.loadFailedNamed", { name: sourceName });
+        const fallback = searchActive ? t("sources.searchFailedNamed", { name: sourceName }) : t("sources.loadFailedNamed", { name: sourceName });
+        const message = formatSourceError(reason, fallback);
         setError(message);
         setStatus("error");
         if (notify) pushToast({ type: "error", message });
@@ -349,6 +351,10 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
   }
 
   useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      void cancelCloudflarePending();
+    }
+
     const nextBoot = resolveCatalogBoot(activeSource.id, activeSource.enabled !== false, effectiveMode);
     const savedFilter = nextBoot.filter;
     const savedKind = nextBoot.kind
@@ -559,6 +565,9 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
   const reloadLabel = isSearchQueryActive(query)
     ? t("sources.searching", { name: profile.name })
     : t("sources.fetching", { name: profile.name });
+  const connectingHint = usesWebViewSource(activeSource.id)
+    ? t("sources.connectingCloudflare")
+    : t("sources.connecting");
 
   return (
     <div className="screen screen--discover">
@@ -608,7 +617,7 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
                 <RefreshCw size={15} aria-hidden="true" />
                 <span>
                   <strong>{reloadLabel}</strong>
-                  <small>{t("sources.connecting")}</small>
+                  <small>{connectingHint}</small>
                 </span>
               </div>
               <CatalogGridSkeleton mediaType={skeletonType} count={skeletonCount} label={reloadLabel} />

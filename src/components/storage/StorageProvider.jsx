@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { Capacitor } from "@capacitor/core";
+import { SplashScreen } from "@capacitor/splash-screen";
 import { initStorage } from "../../lib/storage/initStorage";
 import { t } from "../../i18n/runtime";
 import { AppMark } from "../brand/AppMark";
@@ -9,6 +11,11 @@ const StorageContext = createContext({ ready: false, error: null });
 export function StorageProvider({ children }) {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    SplashScreen.hide().catch(() => {});
+  }, []);
 
   useEffect(() => {
     let active = true;

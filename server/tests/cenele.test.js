@@ -30,6 +30,20 @@ test("parseCeneleCatalog reads nhv-library-card entries", () => {
   assert.equal(items[0].id, "novel-a");
 });
 
+test("parseCeneleCatalog accepts relative novel links", () => {
+  const html = `
+    <article class="nhv-library-card">
+      <div class="nhv-library-card__body">
+        <h2 class="nhv-library-card__title"><a href="/cont/novel-b/">رواية ب</a></h2>
+      </div>
+    </article>
+  `;
+  const items = parseCeneleCatalog(html);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].title, "رواية ب");
+  assert.match(items[0].url, /\/cont\/novel-b\//);
+});
+
 test("parseCeneleChapterRows reads wp-manga-chapter list", () => {
   const html = `
     <li data-chapter-id="1" class="wp-manga-chapter">

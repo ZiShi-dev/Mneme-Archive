@@ -54,6 +54,14 @@ test("normalizeNativeHtmlUrl deduplicates catalog page-1 URLs", async () => {
     normalizeNativeHtmlUrl("https://galaxynovels.com/library/?library_page=1"),
     "https://galaxynovels.com/library/",
   );
+  assert.equal(
+    normalizeNativeHtmlUrl("https://kolnovel.com/series/?page=1"),
+    "https://kolnovel.com/series/",
+  );
+  assert.equal(
+    normalizeNativeHtmlUrl("https://novelphoenix.com/genre-all/sort-new/status-all/all-novel?page=1"),
+    "https://novelphoenix.com/genre-all/sort-new/status-all/all-novel",
+  );
 });
 
 test("fetchNativeHtmlWithCache reuses in-flight fetch", async () => {

@@ -20,7 +20,7 @@ import {
   upsertChapterReadLog,
 } from "../lib/reading/chapterReadLog";
 import { resolveBookmarkType } from "../features/sources/contentTypes";
-import { applyAppearance, isDarkTheme, normalizeThemeId } from "../lib/theme/appearance";
+import { applyAppearance, isDarkTheme, normalizeThemeId, THEME_INK } from "../lib/theme/appearance";
 import { applyTypeface, FONT_SANS, normalizeTypefaceId } from "../lib/theme/typeface";
 import { usePersistedState } from "./usePersistedState";
 import { clearReadingData } from "../lib/storage/clearLocalData.js";
@@ -32,7 +32,7 @@ export function useAppPreferences() {
   const [activeSourceId, setActiveSourceId] = usePersistedState("living-archive:active-source", DEFAULT_SOURCE_ID);
   const [sourcePreferences, setSourcePreferences] = usePersistedState("living-archive:v5:source-preferences", initialSourcePreferences);
   const [legacyInkMode] = usePersistedState("living-archive:ink-mode", true);
-  const [appearanceRaw, setAppearanceRaw] = usePersistedState("living-archive:appearance", null);
+  const [appearanceRaw, setAppearanceRaw] = usePersistedState("living-archive:appearance", THEME_INK);
   const [typefaceRaw, setTypefaceRaw] = usePersistedState("living-archive:typeface", FONT_SANS);
   const [readingHistory, setReadingHistory] = usePersistedState("living-archive:reading-history", {});
   const [chapterReadLog, setChapterReadLog] = usePersistedState("living-archive:chapter-read-log", {});

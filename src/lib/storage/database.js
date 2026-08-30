@@ -63,11 +63,10 @@ export async function openDatabase() {
 
       if (consistency.result && isConn) {
         db = await sqliteConnection.retrieveConnection(DB_NAME, false);
+        await db.open();
       } else {
         db = await createDatabaseConnection(sqliteConnection, openOptions);
       }
-
-      await db.open();
 
       await runMigrations(db);
       return db;

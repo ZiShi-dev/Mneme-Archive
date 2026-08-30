@@ -60,6 +60,28 @@ test("parseAnimedarCatalog extracts anime cards", () => {
   assert.equal(items[0].sourceId, "animedar");
   assert.equal(items[0].latestChapter, "9");
   assert.equal(items[0].mediaType, "anime");
+  assert.match(items[0].cover, /\/wp-content\/uploads\/2026\/01\/cover\.jpg/);
+});
+
+test("parseAnimedarCatalog reads src before class and normalizes wp.com CDN", () => {
+  const html = CARD_HTML
+    .replace(
+      '<img src="https://animedar.net/wp-content/uploads/2026/01/cover.jpg" class="ts-post-image wp-post-image"',
+      '<img src="https://i3.wp.com/animedar.net/wp-content/uploads/2026/01/cover.jpg?resize=247,350" class="ts-post-image wp-post-image"',
+    );
+  const items = parseAnimedarCatalog(html);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].cover, "https://animedar.net/wp-content/uploads/2026/01/cover.jpg");
+});
+
+test("parseAnimedarCatalog accepts relative anime links", () => {
+  const html = CARD_HTML.replace(
+    'href="https://animedar.net/anime-p/demo-anime/"',
+    'href="/anime-p/demo-anime/"',
+  );
+  const items = parseAnimedarCatalog(html);
+  assert.equal(items.length, 1);
+  assert.match(items[0].url, /\/anime-p\/demo-anime\//);
 });
 
 test("slugFromAnimeUrl and buildEpisodeUrl work with ep query", () => {

@@ -835,6 +835,19 @@ export async function handleWiflixRequest(requestUrl) {
     const { query, valid } = normalizeSearchQuery(requestUrl.searchParams.get("q"));
     if (!valid) return responseJson(200, { items: [] });
     const page = Math.min(Math.max(Number(requestUrl.searchParams.get("page")) || 1, 1), 2000);
+    const filterPath = assertFilterPath(requestUrl.searchParams.get("filterPath")?.trim() || MIXED_PATH);
+    if (filterPath !== MIXED_PATH) {
+      const html = await fetchWiflixHtml(buildCatalogUrl(page, filterPath));
+      const needle = query.toLocaleLowerCase("fr");
+      const items = parseWiflixCatalog(html).filter((item) => (
+        `${item.title || ""} ${item.altTitle || ""}`.toLocaleLowerCase("fr").includes(needle)
+      ));
+      return responseJson(200, {
+        items,
+        page,
+        hasMore: catalogHasMore(html, page),
+      });
+    }
     const result = await searchWiflix(query, page);
     return responseJson(200, {
       items: result.items,

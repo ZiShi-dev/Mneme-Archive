@@ -76,10 +76,14 @@ test("galaxyAuthorFilterEntry builds catalog filter payload", () => {
   });
 });
 
-test("galaxynovels filters skip author list", async () => {
+test("galaxynovels filters expose author list", async () => {
   const result = await handleGalaxyRequest(new URL("http://local/api/sources/galaxynovels/filters"));
   assert.equal(result.status, 200);
-  assert.deepEqual(result.body.authors, []);
+  assert.ok(Array.isArray(result.body.authors));
+  if (result.body.authors.length) {
+    assert.ok(result.body.authors[0].slug);
+    assert.ok(result.body.authors[0].name);
+  }
 });
 
 test("galaxynovels catalog author filter uses library search", async () => {

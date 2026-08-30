@@ -1,8 +1,8 @@
 import { isNativeStorage, dbQuery, dbRun } from "./database";
+import { MAX_KV_VALUE_BYTES } from "./constants";
 import {
   assertAllowedKey,
   isAllowedStorageKey,
-  safeJsonParse,
   safeJsonStringify,
 } from "./security";
 
@@ -77,7 +77,16 @@ function parseStoredValue(raw, fallback) {
     const parsed = Number(raw);
     return Number.isFinite(parsed) ? parsed : fallback;
   }
-  return safeJsonParse(raw, fallback);
+  try {
+    const parsed = JSON.parse(raw);
+    const bytes = new TextEncoder().encode(raw).byteLength;
+    if (bytes > MAX_KV_VALUE_BYTES) return fallback;
+    return parsed;
+  } catch {
+    // Valeurs texte legacy (ex. living-archive:appearance = sakura).
+    if (typeof raw === "string" && raw.length > 0 && raw.length < 256) return raw;
+    return fallback;
+  }
 }
 
 export function kvGetSync(key, fallback) {

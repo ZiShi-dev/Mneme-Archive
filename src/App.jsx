@@ -148,7 +148,6 @@ export function App() {
 
   useBackgroundFollowTask(settings);
 
-  const isDiscoverScreen = screen === "sources" || screen === "source-catalog";
   const showMainBottomNav = !isOverlayOpen
     && screen !== "source-management"
     && screen !== "reading-history"
@@ -156,7 +155,7 @@ export function App() {
     && !liveReader
     && !reader;
 
-  useHideBottomNavOnScroll(showMainBottomNav && isDiscoverScreen);
+  useHideBottomNavOnScroll(showMainBottomNav);
 
   const liveReaderContent = liveReader ? (() => {
     const isVideo = isVideoMediaType(getItemType(liveReader.manga));

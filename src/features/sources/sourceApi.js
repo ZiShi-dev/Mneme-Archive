@@ -65,7 +65,7 @@ function appendCatalogQueryFilters(query, sourceId, {
 
 let cloudflareNativeReady = false;
 
-const NATIVE_REQUEST_TIMEOUT_MS = 120_000;
+const NATIVE_REQUEST_TIMEOUT_MS = 180_000;
 
 async function withTimeout(promise, fallbackMessage, timeoutMs = NATIVE_REQUEST_TIMEOUT_MS) {
   let timeoutId;
@@ -217,24 +217,45 @@ export function fetchSourceDetails(sourceId, url) {
   return requestJson(path, t("errors.loadDetails"), { ttlMs: 180_000 });
 }
 
-async function fetchParadiseChapterNative(url, seriesUrl = "") {
-  const { ParadiseChapterFetcher } = await import("../../plugins/paradiseChapterFetcher.js");
-  const result = await ParadiseChapterFetcher.fetchChapter({ url, seriesUrl });
-  const paragraphs = Array.isArray(result?.paragraphs) ? result.paragraphs.filter(Boolean) : [];
-  if (!paragraphs.length) throw new Error(t("errors.extractChapter"));
-  return {
-    title: result.title || t("errors.chapterFallback"),
-    url: result.url || url,
-    kind: "novel",
-    paragraphs,
-    pages: [],
+async function fetchParadiseChapterNative(sourceId, url, seriesUrl = "") {
+  const mapNativeResult = (result) => {
+    const paragraphs = Array.isArray(result?.paragraphs) ? result.paragraphs.filter(Boolean) : [];
+    if (!paragraphs.length) throw new Error(t("errors.extractChapter"));
+    return {
+      title: result.title || t("errors.chapterFallback"),
+      url: result.url || url,
+      kind: "novel",
+      paragraphs,
+      pages: [],
+    };
   };
+
+  const isCloudflareError = (error) => /cloudflare|حماية/i.test(
+    error instanceof Error ? error.message : String(error || ""),
+  );
+
+  try {
+    const { ParadiseChapterFetcher } = await import("../../plugins/paradiseChapterFetcher.js");
+    const result = await ParadiseChapterFetcher.fetchChapter({ url, seriesUrl });
+    return mapNativeResult(result);
+  } catch (error) {
+    if (!isCloudflareError(error)) throw error;
+  }
+
+  await ensureCloudflareNative();
+  const query = new URLSearchParams({ url });
+  if (seriesUrl) query.set("series", seriesUrl);
+  appendSourceQueryParams(query, sourceId);
+  return requestJson(`${sourcePath(sourceId, "chapter")}?${query}`, t("errors.loadChapter"));
 }
 
 export async function fetchSourceChapter(sourceId, url, options = "") {
   const opts = typeof options === "string" ? { contentApi: options } : (options || {});
-  if (isNative() && sourceId === "novelsparadise") {
-    return fetchParadiseChapterNative(url, opts.seriesUrl || "");
+  if (isNative() && (sourceId === "novelsparadise" || sourceId === "kolnovel")) {
+    return fetchParadiseChapterNative(sourceId, url, opts.seriesUrl || "");
+  }
+  if (isNative() && WEBVIEW_SOURCE_ID_SET.has(sourceId)) {
+    await ensureCloudflareNative();
   }
   const query = new URLSearchParams({ url });
   if (opts.contentApi) query.set("api", opts.contentApi);

@@ -19,6 +19,7 @@ import {
 } from "../../lib/onboarding/constants";
 import { requestNotificationPermission } from "../../lib/notifications/pushNotifications";
 import { peekStorageString } from "../../lib/storage/peek";
+import { persistStorageString } from "../../lib/storage/kvStore";
 import { IMAGE_CACHE_DIR } from "../../lib/storage/constants";
 import {
   THEME_INK,
@@ -357,9 +358,13 @@ function OnboardingFlow({ onComplete }) {
   }, [isNative]);
 
   const finish = useCallback(() => {
+    persistStorageString("living-archive:appearance", appearanceId);
+    persistStorageString("living-archive:typeface", typefaceId);
+    applyAppearance(appearanceId);
+    applyTypeface(typefaceId);
     void hideNativeSplash();
     onComplete();
-  }, [onComplete]);
+  }, [appearanceId, onComplete, typefaceId]);
 
   const goToTheme = useCallback(() => setStep("theme"), []);
 

@@ -43,6 +43,39 @@ export async function ensureEncryptionSecret() {
   }
 }
 
+function isUnknownDatabaseError(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes("Database unknown") || message.includes("does not exist");
+}
+
+async function resetUnknownDatabase(sqliteConnection, databaseName) {
+  try {
+    await sqliteConnection.deleteDatabase(databaseName);
+  } catch {
+    // La base peut déjà être absente ou verrouillée ; on tente quand même une recréation.
+  }
+}
+
+export async function resolveExistingDatabaseOpenOptions(sqliteConnection, databaseName) {
+  const exists = (await sqliteConnection.isDatabase(databaseName)).result;
+  if (!exists) {
+    return { encrypted: true, mode: "secret" };
+  }
+
+  try {
+    const isEncrypted = (await sqliteConnection.isDatabaseEncrypted(databaseName)).result;
+    if (isEncrypted) {
+      return { encrypted: true, mode: "secret" };
+    }
+
+    return { encrypted: true, mode: "encryption" };
+  } catch (error) {
+    if (!isUnknownDatabaseError(error)) throw error;
+    await resetUnknownDatabase(sqliteConnection, databaseName);
+    return { encrypted: true, mode: "secret" };
+  }
+}
+
 export async function resolveDatabaseOpenOptions(sqliteConnection, databaseName) {
   const encryptionActive = await shouldUseDatabaseEncryption(sqliteConnection);
   if (!encryptionActive) {
@@ -50,16 +83,5 @@ export async function resolveDatabaseOpenOptions(sqliteConnection, databaseName)
   }
 
   await ensureEncryptionSecret();
-
-  const exists = (await sqliteConnection.isDatabase(databaseName)).result;
-  if (!exists) {
-    return { encrypted: true, mode: "secret" };
-  }
-
-  const isEncrypted = (await sqliteConnection.isDatabaseEncrypted(databaseName)).result;
-  if (isEncrypted) {
-    return { encrypted: true, mode: "secret" };
-  }
-
-  return { encrypted: true, mode: "encryption" };
+  return resolveExistingDatabaseOpenOptions(sqliteConnection, databaseName);
 }

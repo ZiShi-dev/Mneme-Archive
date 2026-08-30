@@ -958,6 +958,20 @@ export async function handleFrenchStreamRequest(requestUrl) {
   if (requestUrl.pathname.endsWith("/search")) {
     const { query, valid } = normalizeSearchQuery(requestUrl.searchParams.get("q"));
     if (!valid) return responseJson(200, { items: [] });
+    const page = Math.min(Math.max(Number(requestUrl.searchParams.get("page")) || 1, 1), 2000);
+    const filterPath = assertFilterPath(requestUrl.searchParams.get("filterPath")?.trim() || MIXED_PATH);
+    if (filterPath !== MIXED_PATH) {
+      const html = await fetchFrenchStreamHtml(buildCatalogUrl(page, filterPath));
+      const needle = query.toLocaleLowerCase("fr");
+      const items = parseFrenchStreamCatalog(html).filter((item) => (
+        `${item.title || ""} ${item.altTitle || ""}`.toLocaleLowerCase("fr").includes(needle)
+      ));
+      return responseJson(200, {
+        items,
+        page,
+        hasMore: catalogHasMore(html, page),
+      });
+    }
     const html = await fetchSearchHtml(query, ctx.baseUrl);
     return responseJson(200, { items: parseFrenchStreamSearch(html) });
   }

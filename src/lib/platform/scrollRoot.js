@@ -7,7 +7,9 @@ function isWindowScrollRoot(root) {
 
 export function getStandaloneReaderElement() {
   if (typeof document === "undefined") return null;
-  return document.querySelector("#root > .live-reader:not(.live-reader--video), #root > .reader");
+  const reader = document.querySelector("#root > .live-reader:not(.live-reader--video), #root > .reader");
+  if (!reader) return null;
+  return reader.querySelector(".live-reader__body") || reader;
 }
 
 export function getAppScrollElement() {

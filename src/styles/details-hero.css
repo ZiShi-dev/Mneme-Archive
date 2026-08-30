@@ -138,22 +138,29 @@
 
 /* Android / Capacitor : encoches, barre de navigation et zones tactiles Material (48dp) */
 .native-app .screen--live-details {
-  padding-bottom: max(24px, env(safe-area-inset-bottom));
-  scroll-padding-bottom: max(24px, env(safe-area-inset-bottom));
+  padding-bottom: max(24px, var(--safe-bottom));
+  scroll-padding-bottom: max(24px, var(--safe-bottom));
 }
 
 .native-app .live-details-hero--reading.live-details-hero--cinematic {
-  padding-top: max(12px, env(safe-area-inset-top));
+  padding-top: calc(var(--safe-top) + 12px);
   padding-inline:
-    max(18px, env(safe-area-inset-left))
-    max(18px, env(safe-area-inset-right));
+    max(18px, var(--safe-left))
+    max(18px, var(--safe-right));
 }
 
 .native-app .live-details-hero--cinematic:not(.live-details-hero--reading) {
-  padding-top: max(14px, env(safe-area-inset-top));
+  padding-top: calc(var(--safe-top) + 14px);
   padding-inline:
-    max(20px, env(safe-area-inset-left))
-    max(20px, env(safe-area-inset-right));
+    max(20px, var(--safe-left))
+    max(20px, var(--safe-right));
+}
+
+.native-app .live-details-hero:not(.live-details-hero--cinematic) {
+  padding-top: calc(var(--safe-top) + 18px);
+  padding-inline:
+    max(20px, var(--safe-left))
+    max(20px, var(--safe-right));
 }
 
 .native-app .details-hero__nav .icon-button {
@@ -175,13 +182,13 @@
 
 .native-app .screen--live-details .details-content {
   padding-inline:
-    max(18px, env(safe-area-inset-left))
-    max(18px, env(safe-area-inset-right));
+    max(18px, var(--safe-left))
+    max(18px, var(--safe-right));
 }
 
 .native-app .screen--live-details .details-related__scroller,
 .native-app .screen--live-details .chapter-list {
-  scroll-padding-inline: max(18px, env(safe-area-inset-left));
+  scroll-padding-inline: max(18px, var(--safe-left));
 }
 
 @media (prefers-reduced-motion: reduce) {

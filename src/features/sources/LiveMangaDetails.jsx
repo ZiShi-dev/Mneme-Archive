@@ -4,7 +4,7 @@ import { useToast } from "../../components/ui/ToastProvider";
 import { getSourceProfile, resolveSourceId } from "../../config/sources";
 import { ChipFilterBar, ChipFilterButton } from "../../components/ui/ChipFilterBar";
 import { isChromebookApp, isNotifiableMediaType, PREFERRED_AUDIO_LANGUAGE } from "../../config/appFlavor";
-import { fetchSourceDetails } from "./sourceApi";
+import { fetchSourceDetails, formatSourceError } from "./sourceApi";
 import { normalizeChapterList, chapterSortKey } from "../../../server/lib/chapterOrdering.js";
 import { DetailsActionHub } from "./DetailsActionHub";
 import { DetailsCinematicHero } from "./details/DetailsCinematicHero";
@@ -168,7 +168,7 @@ export function LiveMangaDetails({
       setStatus("ready");
     } catch (reason) {
       if (generation !== loadGeneration.current) return;
-      const message = reason instanceof Error ? reason.message : t("details.loadFailed");
+      const message = formatSourceError(reason, t("details.loadFailed"));
       setError(message);
       setStatus("error");
       pushToast({ type: "error", message });

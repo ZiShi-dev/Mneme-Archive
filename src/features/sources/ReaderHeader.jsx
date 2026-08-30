@@ -17,6 +17,7 @@ export function ReaderHeader({
   unitLabel,
   hideSettings = false,
   variant = "default",
+  chromeHidden = false,
   previousChapter = null,
   nextChapter = null,
   onPrevious,
@@ -121,7 +122,7 @@ export function ReaderHeader({
   }
 
   return (
-    <header className="reader-header">
+    <header className={`reader-header${chromeHidden ? " reader-header--chrome-hidden" : ""}`}>
       <div className="reader-header__lead">
         <button type="button" className="reader-header__back" onClick={onBack} aria-label={t("reader.header.back")}>
           <ArrowRight size={20} />

@@ -1411,10 +1411,28 @@ html.native-app[dir="rtl"] .app-shell__view > * {
   padding-right: max(var(--page-header-padding-x), calc(var(--safe-right) + 16px));
 }
 
+html.native-app[data-nav-mode="gesture"] .page-header {
+  padding-top: var(--safe-top);
+}
+
+html.native-app[data-nav-mode="buttons"] .page-header {
+  padding-top: max(12px, calc(var(--safe-top) + 8px));
+}
+
+html.native-app[data-nav-mode="gesture"] .screen--home .page-header {
+  padding-top: var(--safe-top);
+  padding-bottom: 10px;
+}
+
+html.native-app[data-nav-mode="buttons"] .screen--home .page-header {
+  padding-top: max(12px, calc(var(--safe-top) + 6px));
+  padding-bottom: 12px;
+}
+
 .native-app .content {
   padding-left: max(var(--content-padding-x), calc(var(--safe-left) + 16px));
   padding-right: max(var(--content-padding-x), calc(var(--safe-right) + 16px));
-  padding-bottom: max(var(--content-padding-bottom), calc(var(--safe-bottom) + 12px));
+  padding-bottom: max(16px, var(--content-padding-bottom));
 }
 
 .native-app .screen {
@@ -1422,11 +1440,20 @@ html.native-app[dir="rtl"] .app-shell__view > * {
 }
 
 html.native-app {
-  /* Insets Android (gestes) plutôt que env() souvent trop grand en mode glisser */
-  --safe-bottom: var(--app-safe-area-bottom, env(safe-area-inset-bottom, 0px));
-  --safe-top: max(var(--app-safe-area-top, 0px), env(safe-area-inset-top, 0px));
-  --safe-left: max(var(--app-safe-area-left, 0px), env(safe-area-inset-left, 0px));
-  --safe-right: max(var(--app-safe-area-right, 0px), env(safe-area-inset-right, 0px));
+  --safe-top: var(--app-safe-area-top, 0px);
+  --safe-bottom: var(--app-safe-area-bottom, 0px);
+  --safe-left: var(--app-safe-area-left, 0px);
+  --safe-right: var(--app-safe-area-right, 0px);
+  --bottom-nav-height: 52px;
+  --screen-bottom-padding: var(--bottom-nav-height);
+}
+
+html.native-app[data-nav-mode="gesture"] {
+  --screen-bottom-padding: var(--bottom-nav-height);
+}
+
+html.native-app[data-nav-mode="buttons"] {
+  --screen-bottom-padding: calc(var(--bottom-nav-height) + var(--safe-bottom));
 }
 
 .native-app .bottom-nav {
@@ -1437,15 +1464,29 @@ html.native-app {
   margin: 0;
   box-sizing: border-box;
   padding:
-    6px max(4px, var(--safe-right))
-    max(12px, var(--safe-bottom))
+    2px max(4px, var(--safe-right))
+    0
     max(4px, var(--safe-left));
-  min-height: calc(var(--bottom-nav-height) + var(--safe-bottom));
+  min-height: var(--bottom-nav-height);
+  background: var(--bottom-nav-bg);
   z-index: 30;
+}
+
+html.native-app[data-nav-mode="buttons"] .bottom-nav {
+  padding-bottom: var(--safe-bottom);
+  min-height: calc(var(--bottom-nav-height) + var(--safe-bottom));
+}
+
+.native-app .bottom-nav__icon-wrap {
+  margin-top: 2px;
 }
 
 .native-app .bottom-nav__tab,
 .native-app .bottom-nav button {
+  min-height: 44px;
+  padding: 2px 4px 0;
+  position: relative;
+  z-index: 1;
   cursor: default;
   user-select: none;
   -webkit-user-select: none;
@@ -1461,4 +1502,8 @@ html.native-app {
 .native-app .live-reader-pages__placeholder {
   min-height: 60vh;
   background: color-mix(in srgb, var(--line) 35%, transparent);
+}
+
+.native-app .screen--live-details .details-hero__nav {
+  padding-inline: 0;
 }

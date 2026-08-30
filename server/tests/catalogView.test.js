@@ -95,6 +95,13 @@ test("sanitizeCatalogKind drops unsupported manga/novel filters", () => {
   assert.equal(sanitizeCatalogKind("kolnovel", { slug: "all", name: "الكل" }), null);
 });
 
+test("sanitizeCatalogKind keeps server sort presets on single-content sources", () => {
+  const popular = { slug: "popular", name: "الأكثر شعبية", type: "kind", queryValue: "popular" };
+  const views = { slug: "views", name: "الأكثر مشاهدة", type: "kind", queryValue: "views" };
+  assert.equal(sanitizeCatalogKind("novelphoenix", popular)?.queryValue, "popular");
+  assert.equal(sanitizeCatalogKind("hentairead", views)?.queryValue, "views");
+});
+
 test("shouldUseCatalogScopedSearch keeps kind-only search on the site search", () => {
   const series = { type: "kind", slug: "series", name: "مسلسلات", filterPath: "/serie-en-streaming/" };
   const movies = { type: "kind", slug: "movies", name: "أفلام", filterPath: "/anime-type/movie/" };

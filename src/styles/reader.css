@@ -1,6 +1,11 @@
 .reader,
 .live-reader {
-  --reader-header-height: 64px;
+  --reader-header-height: 52px;
+  --reader-safe-top: var(--safe-top, env(safe-area-inset-top, 0px));
+  --reader-safe-bottom: var(--safe-bottom, env(safe-area-inset-bottom, 0px));
+  --reader-safe-left: var(--safe-left, env(safe-area-inset-left, 0px));
+  --reader-safe-right: var(--safe-right, env(safe-area-inset-right, 0px));
+  --reader-header-offset: calc(var(--reader-header-height) + var(--reader-safe-top));
   --reader-chrome-bg: rgba(5, 6, 10, 0.96);
   --reader-chrome-fg: #f4f1ea;
   --reader-chrome-icon: #f6f7f8;
@@ -21,6 +26,7 @@
 .native-app .live-reader {
   max-width: 100%;
   overflow-x: hidden;
+  --reader-safe-top: var(--app-safe-area-top, 0px);
 }
 
 .desktop-app .reader.live-reader--watch,
@@ -34,6 +40,102 @@
 .native-app .reader-playback {
   width: calc(100% - 16px);
   max-width: calc(100vw - 16px);
+}
+
+.live-reader:not(.live-reader--video) {
+  display: flex;
+  flex-direction: column;
+}
+
+.live-reader:not(.live-reader--video) .live-reader__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding-top: var(--reader-header-offset);
+  box-sizing: border-box;
+  transition: padding-top 0.22s ease;
+}
+
+.live-reader:not(.live-reader--video).live-reader--chrome-hidden .live-reader__body {
+  padding-top: 0;
+}
+
+.live-reader:not(.live-reader--video) .live-reader__body > .live-reader-pages,
+.live-reader:not(.live-reader--video) .live-reader__body > .reader-live-state,
+.live-reader:not(.live-reader--video) .live-reader__body > .novel-reader-content,
+.live-reader:not(.live-reader--video) .live-reader__body > .novel-reader-skeleton,
+.live-reader:not(.live-reader--video) .live-reader__body > .ui-skeleton-stack {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.live-reader:not(.live-reader--video) .live-reader__body > .reader-pages-skeleton {
+  margin-top: 0;
+  padding-top: 18px;
+}
+
+.live-reader:not(.live-reader--video) .live-reader__dock {
+  flex: 0 0 auto;
+  padding: 0 max(8px, var(--reader-safe-left, 0px)) max(8px, var(--reader-safe-bottom, env(safe-area-inset-bottom, 0px))) max(8px, var(--reader-safe-right, 0px));
+  background: #05060a;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+html.native-app[data-nav-mode="gesture"] .live-reader:not(.live-reader--video) .live-reader__dock {
+  padding-bottom: 8px;
+}
+
+html.native-app[data-nav-mode="buttons"] .live-reader:not(.live-reader--video) .live-reader__dock {
+  padding-bottom: max(8px, var(--reader-safe-bottom, 0px));
+}
+
+.live-reader:not(.live-reader--video) .live-reader__dock .reader-playback {
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  transform: none;
+  margin: 0 auto;
+  width: 100%;
+  max-width: 100%;
+  border-radius: 15px 15px 0 0;
+  box-shadow: none;
+  animation: none;
+}
+
+.live-reader:not(.live-reader--video).live-reader--auto-scroll.live-reader--chrome-hidden .live-reader__body {
+  padding-top: 0;
+}
+
+.live-reader:not(.live-reader--video).live-reader--auto-scroll.live-reader--chrome-hidden .reader-header {
+  opacity: 0;
+  pointer-events: none;
+  transform: translate3d(-50%, calc(-100% - 4px), 0);
+}
+
+.native-app .live-reader:not(.live-reader--video).live-reader--auto-scroll.live-reader--chrome-hidden .reader-header {
+  transform: translate3d(0, calc(-100% - 4px), 0);
+}
+
+.live-reader:not(.live-reader--video) .live-reader__dock--hidden {
+  padding: 0;
+  border-top: 0;
+  min-height: 0;
+}
+
+.live-reader:not(.live-reader--video) .live-reader__dock .reader-playback-reopen {
+  position: relative;
+  inset-inline-end: auto;
+  bottom: auto;
+  margin-inline-start: auto;
+}
+
+.live-reader:not(.live-reader--video) .reader-live-state {
+  min-height: min(52vh, calc(100dvh - var(--reader-header-offset) - 140px));
+  padding-bottom: 20px;
 }
 
 .live-reader-pages {
@@ -138,13 +240,20 @@
 @media (max-width: 420px) {
   .reader,
   .live-reader {
-    --reader-header-height: 58px;
+    --reader-header-height: 48px;
   }
 
   .reader-header {
     gap: 6px;
-    padding: 6px 8px;
-    padding-top: max(6px, env(safe-area-inset-top));
+    padding-inline: max(8px, var(--reader-safe-left)) max(8px, var(--reader-safe-right));
+    padding-top: calc(var(--reader-safe-top) + 2px);
+    padding-bottom: 4px;
+  }
+
+  .native-app .reader-header {
+    top: 0;
+    padding-top: var(--reader-safe-top);
+    padding-bottom: 2px;
   }
 
   .reader-header__cover {
@@ -178,7 +287,7 @@
   }
 
   .reader-live-state {
-    min-height: calc(100dvh - var(--reader-header-height));
+    min-height: calc(100dvh - var(--reader-header-offset));
     padding: 24px 16px;
   }
 
@@ -204,30 +313,62 @@
   left: 50%;
   z-index: 12;
   width: min(100%, 430px);
-  min-height: var(--reader-header-height);
+  box-sizing: border-box;
+  min-height: auto;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 8px 10px;
-  padding-top: max(8px, env(safe-area-inset-top));
+  padding-inline: max(10px, var(--reader-safe-left)) max(10px, var(--reader-safe-right));
+  padding-top: calc(var(--reader-safe-top) + 4px);
+  padding-bottom: 4px;
   background: var(--reader-chrome-bg);
   border-bottom: 1px solid var(--reader-chrome-border);
   color: var(--reader-chrome-fg);
   backdrop-filter: blur(14px);
+  transition: transform 0.22s ease, opacity 0.22s ease;
+  will-change: transform, opacity;
+}
+
+.reader-header--chrome-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.live-reader:not(.live-reader--video) .reader-header--chrome-hidden {
+  transform: translate3d(-50%, calc(-100% - 4px), 0);
 }
 
 .native-app .reader-header {
   left: 0;
   width: 100%;
   max-width: 100%;
+  top: 0;
+  padding-top: var(--reader-safe-top);
+  padding-bottom: 2px;
   transform: none;
+}
+
+.native-app .live-reader:not(.live-reader--video) .reader-header--chrome-hidden {
+  transform: translate3d(0, calc(-100% - 4px), 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reader-header,
+  .live-reader:not(.live-reader--video) .live-reader__body {
+    transition: none;
+  }
 }
 
 .live-reader-pages,
 .reader-live-state {
-  padding-top: calc(var(--reader-header-height) + env(safe-area-inset-top, 0px));
+  padding-top: var(--reader-header-offset);
+}
+
+.live-reader:not(.live-reader--video) .live-reader__body > .live-reader-pages,
+.live-reader:not(.live-reader--video) .live-reader__body > .reader-live-state {
+  padding-top: 0;
 }
 
 .reader.live-reader--loading,
@@ -241,11 +382,11 @@
 }
 
 .novel-reader-content {
-  margin-top: calc(var(--reader-header-height) + env(safe-area-inset-top, 0px));
+  margin-top: 0;
 }
 
 .novel-reader-skeleton {
-  margin-top: calc(var(--reader-header-height) + env(safe-area-inset-top, 0px));
+  margin-top: 0;
 }
 
 .novel-reader-content--loading {
@@ -260,7 +401,7 @@
 
 .novel-reader-content__refresh {
   position: sticky;
-  top: calc(var(--reader-header-height) + env(safe-area-inset-top, 0px) + 8px);
+  top: calc(var(--reader-header-offset) + 8px);
   z-index: 2;
   display: grid;
   gap: 8px;
@@ -551,6 +692,138 @@
   min-width: 0;
 }
 
+/* ── Mobile episode page — video-first layout ── */
+.live-reader--video:not(.live-reader--watch) .live-video-immersive-root {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.live-reader--video:not(.live-reader--watch) .live-video-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.live-reader--video:not(.live-reader--watch) .live-video-player-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  padding: 0;
+  gap: 0;
+}
+
+.live-reader--video:not(.live-reader--watch) .live-video-stage--embed,
+.live-reader--video:not(.live-reader--watch) .live-video-stage--embed .live-video-embed {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+.live-reader--video:not(.live-reader--watch) .live-video-stage:has(.live-video-player-frame--native),
+.live-reader--video:not(.live-reader--watch) .live-video-player-wrap:has(.live-video-player-frame--native),
+.live-reader--video:not(.live-reader--watch) .live-video-player-frame--native {
+  min-height: 0;
+  height: 100%;
+}
+
+.live-reader--video:not(.live-reader--watch) .live-video-embed__frame {
+  min-height: 0;
+  height: 100%;
+}
+
+.live-reader--video:not(.live-reader--watch) .live-video-servers--dock {
+  position: absolute;
+  z-index: 11;
+  inset-inline-end: 8px;
+  inset-block-end: calc(76px + var(--reader-safe-bottom));
+  left: auto;
+  right: auto;
+  width: auto;
+  max-width: min(72vw, 280px);
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+}
+
+.live-reader--video:not(.live-reader--watch) .live-video-immersive-root.is-embed .live-video-servers--dock {
+  inset-block-end: calc(52px + var(--reader-safe-bottom));
+}
+
+.live-reader--video:not(.live-reader--watch) .live-video-immersive-root.is-cinema .live-video-servers--dock {
+  inset-block-start: max(52px, calc(var(--reader-safe-top) + 46px));
+  inset-block-end: auto;
+}
+
+.live-reader--video:not(.live-reader--watch) .live-video-servers--dock .live-video-servers__chips {
+  justify-content: flex-end;
+  pointer-events: auto;
+}
+
+.live-reader--video:not(.live-reader--watch) .live-video-servers--embed .live-video-servers__hint {
+  display: none;
+}
+
+.live-reader--video:not(.live-reader--watch) .live-video-servers--dock .live-video-servers__chip {
+  min-height: 34px;
+  padding: 7px 12px;
+  font-size: 11px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.live-reader--video:not(.live-reader--watch) .live-video-mark-complete:not(.live-video-mark-complete--meta) {
+  position: absolute;
+  z-index: 11;
+  inset-block-end: max(10px, var(--reader-safe-bottom));
+  inset-inline-start: 10px;
+  left: auto;
+  right: auto;
+  min-height: 34px;
+  padding: 7px 12px;
+  font-size: 10px;
+}
+
+.live-reader--video:not(.live-reader--watch) .live-video-immersive-root.is-embed .live-video-mark-complete:not(.live-video-mark-complete--meta) {
+  inset-block-end: max(10px, var(--reader-safe-bottom));
+}
+
+.live-reader--video:not(.live-reader--watch) .live-video-chrome--controls .reader-playback--docked {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .live-reader--video:not(.live-reader--watch):not(.live-reader--cinema) > .reader-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 14;
+    border-bottom: none;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.35) 72%, transparent 100%);
+    pointer-events: none;
+  }
+
+  .live-reader--video:not(.live-reader--watch):not(.live-reader--cinema) > .reader-header button,
+  .live-reader--video:not(.live-reader--watch):not(.live-reader--cinema) > .reader-header a {
+    pointer-events: auto;
+  }
+
+  .live-reader--video:not(.live-reader--watch):not(.live-reader--cinema) .live-video-immersive-root {
+    flex: 1 1 100%;
+    min-height: 100%;
+  }
+
+  .live-reader--video:not(.live-reader--watch) .live-video-servers--dock {
+    inset-block-end: calc(64px + var(--reader-safe-bottom));
+  }
+
+  .live-reader--video:not(.live-reader--watch) .live-video-immersive-root.is-embed .live-video-servers--dock {
+    inset-block-end: calc(44px + var(--reader-safe-bottom));
+  }
+}
+
 .live-video-immersive-root {
   flex: 1 1 auto;
   display: flex;
@@ -635,7 +908,7 @@
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  padding: max(10px, env(safe-area-inset-top)) 10px 0;
+  padding: max(10px, var(--reader-safe-top)) max(10px, var(--reader-safe-right)) 0 max(10px, var(--reader-safe-left));
   background: linear-gradient(to bottom, rgba(0, 0, 0, 0.72), transparent);
 }
 
@@ -645,7 +918,7 @@
   right: 0;
   bottom: 0;
   z-index: 12;
-  padding: 0 8px max(8px, env(safe-area-inset-bottom));
+  padding: 0 max(8px, var(--reader-safe-right)) max(8px, var(--reader-safe-bottom)) max(8px, var(--reader-safe-left));
 }
 
 .live-video-chrome--controls .reader-playback {
@@ -706,7 +979,7 @@
 
 .live-video-immersive-root.is-cinema .live-video-chrome--servers {
   position: absolute;
-  top: max(52px, calc(env(safe-area-inset-top) + 46px));
+  top: max(52px, calc(var(--reader-safe-top) + 46px));
   inset-inline: 8px;
   left: auto;
   right: auto;
@@ -848,11 +1121,11 @@
 
 @media (orientation: landscape) and (max-height: 520px) {
   .live-video-chrome--controls {
-    padding: 0 6px max(6px, env(safe-area-inset-bottom));
+    padding: 0 6px max(6px, var(--reader-safe-bottom));
   }
 
   .live-video-immersive-root.is-cinema .live-video-chrome--servers {
-    top: max(44px, calc(env(safe-area-inset-top) + 38px));
+    top: max(44px, calc(var(--reader-safe-top) + 38px));
   }
 
   .reader-playback--compact {
@@ -891,7 +1164,7 @@
 
 @media (max-width: 420px) {
   .live-video-chrome--controls {
-    padding: 0 6px max(6px, env(safe-area-inset-bottom));
+    padding: 0 6px max(6px, var(--reader-safe-bottom));
   }
 
   .reader-playback--compact .reader-playback__actions--primary {
@@ -901,12 +1174,14 @@
 
 .reader-header--video {
   --reader-video-header-height: 52px;
-  min-height: var(--reader-video-header-height);
+  box-sizing: border-box;
+  min-height: calc(var(--reader-video-header-height) + var(--reader-safe-top));
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 10px;
-  padding-top: max(6px, env(safe-area-inset-top));
+  padding-inline: max(10px, var(--reader-safe-left)) max(10px, var(--reader-safe-right));
+  padding-top: calc(var(--reader-safe-top) + 6px);
+  padding-bottom: 6px;
   background: rgba(8, 9, 14, 0.88);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(16px) saturate(140%);
@@ -1154,8 +1429,9 @@
 
 @media (max-width: 420px) {
   .reader-header--video {
-    padding: 5px 8px;
-    padding-top: max(5px, env(safe-area-inset-top));
+    padding-inline: max(8px, var(--reader-safe-left)) max(8px, var(--reader-safe-right));
+    padding-top: calc(var(--reader-safe-top) + 5px);
+    padding-bottom: 5px;
     gap: 6px;
   }
 
@@ -1199,13 +1475,30 @@
 }
 
 html.native-app #root > .live-reader:not(.live-reader--video),
-html.native-app #root > .reader {
+html.native-app #root > .reader,
+.desktop-app #root > .live-reader:not(.live-reader--video),
+.desktop-app #root > .reader {
   height: 100dvh;
   max-height: 100dvh;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
   overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
+}
+
+html.native-app #root > .live-reader:not(.live-reader--video) .live-reader__body,
+html.native-app #root > .reader .live-reader__body,
+.desktop-app #root > .live-reader:not(.live-reader--video) .live-reader__body,
+.desktop-app #root > .reader .live-reader__body {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html.native-app #root > .live-reader:not(.live-reader--video) .live-reader__body::-webkit-scrollbar,
+html.native-app #root > .reader .live-reader__body::-webkit-scrollbar,
+.desktop-app #root > .live-reader:not(.live-reader--video) .live-reader__body::-webkit-scrollbar,
+.desktop-app #root > .reader .live-reader__body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 .live-reader--novel .novel-reader-content {
@@ -1950,7 +2243,7 @@ html.native-app #root > .reader {
 
 .live-video-immersive-root:fullscreen .live-video-chrome--docked-nav,
 .live-video-immersive-root:-webkit-full-screen .live-video-chrome--docked-nav {
-  padding-bottom: max(8px, env(safe-area-inset-bottom));
+  padding-bottom: max(8px, var(--reader-safe-bottom));
 }
 
 .reader-playback--embed .reader-playback__actions--primary {

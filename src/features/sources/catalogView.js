@@ -314,6 +314,8 @@ export function sanitizeCatalogKind(sourceId, kind) {
   const profile = getSourceProfile(sourceId);
   const supported = profile?.contentTypes || [];
   if (!supported.length) return null;
+  if (kind.type === "kind" && kind.queryValue) return kind;
+  if (kind.queryParam) return kind;
   if (supported.length === 1) return null;
   if (!isMediaKindFilter(kind)) return kind;
   if (supported.includes(kind.slug)) return kind;

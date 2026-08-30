@@ -85,6 +85,13 @@ test("buildCatalogUrl and catalogHasMore handle movies pagination", () => {
   assert.equal(catalogHasMore('<a href="/films/page/2/">2</a>', 1, "/films/"), true);
 });
 
+test("buildCatalogUrl paginates genre filters", () => {
+  const filterPath = "/genres/?genre=action";
+  assert.equal(buildCatalogUrl(1, filterPath, ctx), "https://coflix.esq/genres/?genre=action");
+  assert.equal(buildCatalogUrl(2, filterPath, ctx), "https://coflix.esq/genres/page/2/?genre=action");
+  assert.equal(catalogHasMore('<a href="/genres/page/2/?genre=action">2</a>', 1, filterPath), true);
+});
+
 test("parseCoflixDetails and players extract playback sources", () => {
   const details = parseCoflixDetails(DETAILS_HTML, "https://coflix.esq/film/jack-reacher/", ctx);
   assert.equal(details.title, "Jack Reacher");
