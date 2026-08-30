@@ -13,6 +13,15 @@ export function ChapterListSkeleton({ count = 6, label }) {
   );
 }
 
+export function ReaderPlaybackChapterSkeleton() {
+  return (
+    <span className="reader-playback__chapter-skeletons" aria-hidden="true">
+      <span className="reader-playback__chapter-skeleton ui-skeleton" />
+      <span className="reader-playback__chapter-skeleton reader-playback__chapter-skeleton--short ui-skeleton" />
+    </span>
+  );
+}
+
 export function DetailsDockSkeleton() {
   return (
     <div className="details-dock-skeleton" aria-hidden="true">

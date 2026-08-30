@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { ChevronDown, ChevronLeft, ChevronRight, RefreshCw, Search, Wifi, X } from "lucide-react";
 import { useToast } from "../../components/ui/ToastProvider";
-import { defaultContentKinds, enrichKindWithFilterPath, getSourceProfile, initialSourcePreferences, initialSources } from "../../config/sources";
+import { defaultContentKinds, enrichKindWithFilterPath, getSourceProfile, initialSourcePreferences, initialSources, isKnownSourceId } from "../../config/sources";
 import { useI18n } from "../../i18n/I18nProvider";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { kvGetSync, kvSet } from "../../lib/storage/initStorage";
@@ -220,6 +220,7 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
   const { t } = useI18n();
   const activeSource = sources.find((entry) => entry.id === activeSourceId) || sources[0] || initialSources[0];
   const profile = getSourceProfile(activeSource.id);
+  const sourceRemoved = !isKnownSourceId(activeSourceId);
   const preference = { ...initialSourcePreferences[activeSource.id], ...sourcePreferences[activeSource.id] };
   const effectiveMode = preference.mode;
   const selectedItems = preference.selectedItems || [];
@@ -753,7 +754,20 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
             onSelect={applyTaxonomyFilter}
           />
         )}
-        {status === "disabled" ? <div className="live-error"><Wifi size={30} /><h2>{t("sources.sourceOffline")}</h2><p>{t("sources.enableFromSettings")}</p></div> : status === "error" ? <div className="live-error"><Wifi size={30} /><h2>{t("sources.connectFailed", { name: profile.name })}</h2><p>{error}</p><button className="button button--primary" onClick={() => refreshCatalog({ kind: selectedKind, filter: selectedFilter, catalogQuery: query, page, notify: true })}><RefreshCw size={17} /> {t("common.retry")}</button></div> : <>
+        {sourceRemoved ? (
+          <div className="live-error">
+            <Wifi size={30} />
+            <h2>{t("sources.sourceRemovedTitle")}</h2>
+            <p>{t("sources.sourceRemovedHint")}</p>
+            <button
+              className="button button--primary"
+              type="button"
+              onClick={() => onSetActiveSource(sources.find((entry) => entry.enabled !== false)?.id || initialSources[0]?.id)}
+            >
+              <RefreshCw size={17} /> {t("sources.pickAnotherSource")}
+            </button>
+          </div>
+        ) : status === "disabled" ? <div className="live-error"><Wifi size={30} /><h2>{t("sources.sourceOffline")}</h2><p>{t("sources.enableFromSettings")}</p></div> : status === "error" ? <div className="live-error"><Wifi size={30} /><h2>{t("sources.connectFailed", { name: profile.name })}</h2><p>{error}</p><button className="button button--primary" onClick={() => refreshCatalog({ kind: selectedKind, filter: selectedFilter, catalogQuery: query, page, notify: true })}><RefreshCw size={17} /> {t("common.retry")}</button></div> : <>
           <div className="live-catalog__meta" ref={catalogAnchorRef}><strong>{catalogBusy ? "…" : `${visible.length} ${unitLabel}`}</strong><span>{catalogBusy ? reloadLabel : viewDescription}</span></div>
           {catalogInitialBusy ? (
             <>

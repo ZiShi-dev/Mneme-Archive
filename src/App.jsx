@@ -123,6 +123,16 @@ export function App() {
 
   useBackgroundFollowTask(settings);
 
+  const isDiscoverScreen = screen === "sources" || screen === "source-catalog";
+  const showMainBottomNav = !isOverlayOpen
+    && screen !== "source-management"
+    && screen !== "reading-history"
+    && screen !== "notification-center"
+    && !liveReader
+    && !reader;
+
+  useHideBottomNavOnScroll(showMainBottomNav && isDiscoverScreen);
+
   const liveReaderContent = liveReader ? (() => {
     const isVideo = isVideoMediaType(getItemType(liveReader.manga));
     const commonProps = {
@@ -165,15 +175,6 @@ export function App() {
       />
     );
   }
-
-  const showMainBottomNav = !isOverlayOpen
-    && screen !== "source-management"
-    && screen !== "reading-history"
-    && screen !== "notification-center"
-    && !liveReaderContent;
-
-  const isDiscoverScreen = screen === "sources" || screen === "source-catalog";
-  useHideBottomNavOnScroll(showMainBottomNav && isDiscoverScreen);
 
   const routeProps = {
     liveReaderContent,

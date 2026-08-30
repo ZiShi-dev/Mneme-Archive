@@ -14,6 +14,8 @@ import { handleFrenchStreamRequest } from "./sources/frenchstream.js";
 import { handleWiflixRequest } from "./sources/wiflix.js";
 import { handleCoflixRequest } from "./sources/coflix.js";
 import { handleDilarRequest } from "./sources/dilar.js";
+import { handleWtrlabRequest } from "./sources/wtrlab.js";
+import { handleNovelphoenixRequest } from "./sources/novelphoenix.js";
 
 export async function handleSourceRequest(rawUrl) {
   const isMangaLik = rawUrl?.startsWith("/api/sources/mangalik/");
@@ -30,9 +32,13 @@ export async function handleSourceRequest(rawUrl) {
   const isWiflix = rawUrl?.startsWith("/api/sources/wiflix/");
   const isCoflix = rawUrl?.startsWith("/api/sources/coflix/");
   const isDilar = rawUrl?.startsWith("/api/sources/dilar/");
-  if (!isMangaLik && !isAzora && !isGalaxy && !isParadise && !isNightNovel && !isAnimedar && !isCenele && !isKolnovel && !isAnime4up && !isAnimesama && !isFrenchStream && !isWiflix && !isCoflix && !isDilar) return null;
+  const isWtrlab = rawUrl?.startsWith("/api/sources/wtrlab/");
+  const isNovelphoenix = rawUrl?.startsWith("/api/sources/novelphoenix/");
+  if (!isMangaLik && !isAzora && !isGalaxy && !isParadise && !isNightNovel && !isAnimedar && !isCenele && !isKolnovel && !isAnime4up && !isAnimesama && !isFrenchStream && !isWiflix && !isCoflix && !isDilar && !isWtrlab && !isNovelphoenix) return null;
   try {
     const requestUrl = new URL(rawUrl, "http://localhost");
+    if (isNovelphoenix) return await handleNovelphoenixRequest(requestUrl);
+    if (isWtrlab) return await handleWtrlabRequest(requestUrl);
     if (isDilar) return await handleDilarRequest(requestUrl);
     if (isWiflix) return await handleWiflixRequest(requestUrl);
     if (isCoflix) return await handleCoflixRequest(requestUrl);

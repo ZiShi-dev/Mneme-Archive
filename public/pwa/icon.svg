@@ -1,51 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Mneme Archive">
   <defs>
-    <linearGradient id="bg" x1="80" y1="64" x2="432" y2="464" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#24161c" />
-      <stop offset="100%" stop-color="#120c10" />
-    </linearGradient>
-    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
-      <feGaussianBlur stdDeviation="8" result="blur" />
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="11.2" result="blur" />
       <feMerge>
         <feMergeNode in="blur" />
         <feMergeNode in="SourceGraphic" />
       </feMerge>
     </filter>
   </defs>
-
-  <rect x="32" y="32" width="448" height="448" rx="136" fill="url(#bg)" />
-  <rect x="36" y="36" width="440" height="440" rx="132" fill="none" stroke="rgba(255,240,245,0.16)" stroke-width="8" />
-
-  <g filter="url(#glow)">
-    <circle cx="368" cy="136" r="42" fill="#e8a8ba" opacity="0.22" />
-    <circle cx="368" cy="136" r="27" fill="#e8a8ba" />
-    <circle cx="368" cy="136" r="9" fill="#f6f1ea" />
-  </g>
-
-  <path
-    d="M136 168 C136 150, 244 138, 256 146 C268 138, 376 150, 376 168 V344 C174 374, 256 379, 256 379 C256 379, 242 374, 136 344 Z"
-    fill="#f6f1ea"
-  />
-  <path
-    d="M136 168 C136 150, 244 138, 256 146 C268 138, 376 150, 376 168 V344 C174 374, 256 379, 256 379 C256 379, 242 374, 136 344 Z"
-    fill="none"
-    stroke="#efe8df"
-    stroke-width="9"
-    opacity="0.88"
-  />
-  <path d="M256 146 V379" stroke="#efe8df" stroke-width="8" opacity="0.72" />
-
-  <path d="M168 216 H216" stroke="rgba(239,232,223,0.42)" stroke-width="12" stroke-linecap="round" />
-  <path d="M168 252 H224" stroke="rgba(239,232,223,0.42)" stroke-width="12" stroke-linecap="round" />
-  <path d="M168 288 H208" stroke="rgba(239,232,223,0.42)" stroke-width="12" stroke-linecap="round" />
-
-  <path d="M296 216 H344" stroke="rgba(239,232,223,0.42)" stroke-width="12" stroke-linecap="round" />
-  <path d="M288 252 H344" stroke="rgba(239,232,223,0.42)" stroke-width="12" stroke-linecap="round" />
-  <path d="M296 288 H336" stroke="rgba(239,232,223,0.42)" stroke-width="12" stroke-linecap="round" />
-
-  <path d="M256 304 L294 330 L278 370 H234 L218 330 Z" fill="#c94f6d" opacity="0.92" />
-
-  <circle cx="112" cy="368" r="9" fill="#e8a8ba" opacity="0.55" />
-  <circle cx="400" cy="336" r="7" fill="#e8a8ba" opacity="0.42" />
+  <rect width="512" height="512" rx="120" fill="#090A12" />
+  <circle cx="256" cy="256" r="172" fill="#151925" />
+  <circle cx="256" cy="256" r="220" fill="none" stroke="#5A6178" stroke-width="7.2" opacity="0.88" />
+  <circle cx="256" cy="52" r="16.8" fill="none" stroke="#727A92" stroke-width="6.8" />
+  <circle cx="460" cy="256" r="16.8" fill="none" stroke="#727A92" stroke-width="6.8" />
+  <path d="M 256.00 100.00 L 315.40 196.60 L 412.00 256.00 L 315.40 315.40 L 256.00 412.00 L 196.60 315.40 L 100.00 256.00 L 196.60 196.60 Z" fill="#4B5168" />
+  <path d="M 168.00 150.40 L 172.93 163.07 L 185.60 168.00 L 172.93 172.93 L 168.00 185.60 L 163.07 172.93 L 150.40 168.00 L 163.07 163.07 Z" fill="#353A4E" opacity="0.9" />
+    <path d="M 344.00 150.40 L 348.93 163.07 L 361.60 168.00 L 348.93 172.93 L 344.00 185.60 L 339.07 172.93 L 326.40 168.00 L 339.07 163.07 Z" fill="#353A4E" opacity="0.9" />
+    <path d="M 168.00 326.40 L 172.93 339.07 L 185.60 344.00 L 172.93 348.93 L 168.00 361.60 L 163.07 348.93 L 150.40 344.00 L 163.07 339.07 Z" fill="#353A4E" opacity="0.9" />
+    <path d="M 344.00 326.40 L 348.93 339.07 L 361.60 344.00 L 348.93 348.93 L 344.00 361.60 L 339.07 348.93 L 326.40 344.00 L 339.07 339.07 Z" fill="#353A4E" opacity="0.9" />
+  <circle cx="256" cy="256" r="41.6" fill="#8B7CFF" opacity="0.22" filter="url(#glow)" />
+  <path d="M 256.00 219.20 L 266.30 245.70 L 292.80 256.00 L 266.30 266.30 L 256.00 292.80 L 245.70 266.30 L 219.20 256.00 L 245.70 245.70 Z" fill="#F8F6F2" filter="url(#glow)" />
 </svg>

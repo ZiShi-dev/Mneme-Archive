@@ -103,9 +103,17 @@ h1, h2, h3,
   line-height: 1.4;
 }
 
+.bottom-nav__tab,
 .bottom-nav button {
   font-size: 10px;
-  line-height: 1.2;
+  line-height: 1.15;
+}
+
+@media (max-width: 360px) {
+  .bottom-nav__label,
+  .bottom-nav button > span:not(.bottom-nav__icon) {
+    font-size: 9px;
+  }
 }
 
 .content p,

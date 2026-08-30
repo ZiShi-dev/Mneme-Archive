@@ -34,11 +34,11 @@ function pathUsesCloudflareNative(path = "") {
 
 const GENRE_FILTER_SOURCES = [
   "mangalik", "azorafly", "novelsparadise", "nightnovel",
-  "kolnovel", "dilar",
+  "kolnovel", "dilar", "wtrlab", "novelphoenix",
 ];
 const TAG_FILTER_SOURCES = [
   "mangalik", "novelsparadise", "nightnovel",
-  "kolnovel",
+  "kolnovel", "wtrlab", "novelphoenix",
 ];
 
 let cloudflareNativeReady = false;
@@ -152,6 +152,8 @@ export function fetchCatalog(sourceId, { page = 1, genre = "", tag = "", tagPath
       query.set("queryValue", queryValue);
     }
   }
+  if (sourceId === "wtrlab" && queryParam === "type" && queryValue) query.set("kind", queryValue);
+  if (sourceId === "novelphoenix" && queryParam === "type" && queryValue) query.set("kind", queryValue);
   appendSourceQueryParams(query, sourceId);
   return requestJson(`${sourcePath(sourceId, "catalog")}?${query}`, t("errors.loadCatalog"), { ttlMs: 90_000 });
 }
@@ -189,6 +191,8 @@ export function searchSource(sourceId, query, {
       params.set("queryValue", queryValue);
     }
   }
+  if (sourceId === "wtrlab" && queryParam === "type" && queryValue) params.set("kind", queryValue);
+  if (sourceId === "novelphoenix" && queryParam === "type" && queryValue) params.set("kind", queryValue);
   appendSourceQueryParams(params, sourceId);
   return requestJson(`${sourcePath(sourceId, "search")}?${params}`, t("errors.searchFailed"), { ttlMs: 120_000 });
 }

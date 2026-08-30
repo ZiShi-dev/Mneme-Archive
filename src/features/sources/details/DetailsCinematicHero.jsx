@@ -14,13 +14,19 @@ export function DetailsCinematicHero({
 
   if (isReadingLayout) {
     return (
-      <div className="live-details-hero__content live-details-hero__content--reading">
-        {isLoading ? <DetailsDockSkeleton /> : heroCover}
-        <div className="live-details-hero__reading-panel">
-          {heroMeta}
-          {isLoading ? null : heroActions}
+      <>
+        <div className="live-details-hero__content live-details-hero__content--reading">
+          {isLoading ? <DetailsDockSkeleton /> : heroCover}
+          <div className="live-details-hero__reading-panel">
+            {heroMeta}
+          </div>
         </div>
-      </div>
+        {!isLoading && heroActions ? (
+          <div className="live-details-hero__actions">
+            {heroActions}
+          </div>
+        ) : null}
+      </>
     );
   }
 

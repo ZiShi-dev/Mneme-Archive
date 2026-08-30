@@ -163,18 +163,20 @@ export function LibraryScreen({ favorites, liveFavorites, toggleFavorite, toggle
         <Header title={t("favorites.title")} eyebrow={totalItems ? t("favorites.savedN", { count: totalItems }) : t("favorites.personal")} onSearch={() => navigate("search")} onReadingHistory={() => navigate("reading-history")} onNotifications={() => navigate("updates")} />
       )}
       <main className="content bookmarks-page">
-        <FavoritesOverview
-          totalItems={overviewItems.length}
-          mangaCount={overviewPrimaryCount}
-          novelCount={overviewSecondaryCount}
-          sourceCount={new Set(overviewItems.map((entry) => entry.sourceId)).size}
-          previewItems={previewItems}
-          variant={isChromebookApp ? "video" : "reading"}
-          desktop={isChromebookApp}
-          onDiscover={() => navigate("sources")}
-        />
+        {totalItems > 0 && (
+          <FavoritesOverview
+            totalItems={overviewItems.length}
+            mangaCount={overviewPrimaryCount}
+            novelCount={overviewSecondaryCount}
+            sourceCount={new Set(overviewItems.map((entry) => entry.sourceId)).size}
+            previewItems={previewItems}
+            variant={isChromebookApp ? "video" : "reading"}
+            desktop={isChromebookApp}
+            onDiscover={() => navigate("sources")}
+          />
+        )}
 
-        {(totalItems > 0 || isChromebookApp) && (
+        {totalItems > 0 && (
           <section className="bookmarks-controls" aria-label={t("favorites.filterAria")}>
             <AccessibleSearchField
               className="global-search bookmarks-controls__search"
@@ -350,6 +352,8 @@ export function LibraryScreen({ favorites, liveFavorites, toggleFavorite, toggle
             variant="accent"
             title={t("favorites.empty")}
             description={isChromebookApp ? t("favorites.emptyHintVideo") : t("favorites.emptyHint")}
+            actionLabel={t("favorites.startDiscover")}
+            onAction={() => navigate("sources")}
           />
         )}
       </main>

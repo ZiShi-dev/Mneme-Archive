@@ -6,6 +6,7 @@ import { getItemType, contentTypes } from "./contentTypes";
 import { isVideoMediaType } from "./mediaPresentation";
 import { CoverAudioBadge } from "./CatalogCard";
 import { RemoteCover } from "./RemoteCover";
+import { usesContainCover } from "./coverDisplay";
 import { SourceLogo } from "./SourceLogo";
 
 export const SEARCH_RESULTS_PAGE_SIZE = 8;
@@ -20,8 +21,14 @@ export function SearchResultRow({ item, onOpen, showSource = true }) {
   return (
     <article className="search-result-row">
       <button type="button" className="search-result-row__open" onClick={() => onOpen(item)}>
-        <span className="search-result-row__media">
-          <RemoteCover src={item.cover} title={item.title} sourceId={item.sourceId} video={isVideoMediaType(type)} />
+        <span className={`search-result-row__media${usesContainCover(item.sourceId) ? " search-result-row__media--contain" : ""}`}>
+          <RemoteCover
+            src={item.cover}
+            title={item.title}
+            sourceId={item.sourceId}
+            video={isVideoMediaType(type)}
+            contain={usesContainCover(item.sourceId)}
+          />
           <span className={`search-result-row__type search-result-row__type--${type}`}>{typeLabel}</span>
           {item.audioLabel ? <CoverAudioBadge label={item.audioLabel} /> : null}
         </span>

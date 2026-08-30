@@ -9,6 +9,7 @@ export function RemoteCover({
   hero = false,
   novel = false,
   video = false,
+  contain = false,
   sourceId,
   priority = false,
   className = "",
@@ -25,6 +26,7 @@ export function RemoteCover({
     hero ? "remote-cover--hero" : "",
     novel ? "remote-cover--novel" : "",
     video ? "remote-cover--video" : "",
+    contain ? "remote-cover--contain" : "",
     loading ? "remote-cover--loading" : "",
     className,
   ].filter(Boolean).join(" ");

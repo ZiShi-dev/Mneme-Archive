@@ -2,8 +2,10 @@ import React from "react";
 import { BookOpen, Clapperboard } from "lucide-react";
 import { t } from "../../i18n/runtime";
 import { RemoteCover } from "./RemoteCover";
+import { usesContainCover, usesWideCover, isStandaloneVideoCatalogItem } from "./coverDisplay";
 import { getItemType, contentTypes } from "./contentTypes";
 import { getMediaPresentation, isVideoMediaType } from "./mediaPresentation";
+import { formatChapterPublishedLabel } from "../../lib/media/chapterTiming";
 
 function audioBadgeKind(label = "") {
   const text = String(label).toUpperCase();
@@ -20,6 +22,7 @@ export function CoverAudioBadge({ label }) {
 }
 
 function resolveCatalogChapters(item) {
+  if (isStandaloneVideoCatalogItem(item)) return [];
   if (item.recentChapters?.length) {
     const openable = item.recentChapters
       .filter((chapter) => chapter?.url)
@@ -50,14 +53,21 @@ export function CatalogCard({ item, profile, onOpenDetails, onOpenChapter }) {
   const presentation = getMediaPresentation(mediaType);
   const isVideo = isVideoMediaType(mediaType);
   const UnitIcon = isVideo ? Clapperboard : BookOpen;
+  const coverContain = usesContainCover(item.sourceId || profile?.id);
+  const coverWide = usesWideCover(item.sourceId || profile?.id);
+  const standaloneVideo = isStandaloneVideoCatalogItem(item);
+  const postedLabel = formatChapterPublishedLabel(item.publishedAt);
 
   return (
-    <article className="live-manga-card">
+    <article className={`live-manga-card${coverContain ? " live-manga-card--cover-contain" : ""}${coverWide ? " live-manga-card--cover-wide" : ""}`}>
       <button className="live-manga-card__main" onClick={() => onOpenDetails(item)} aria-label={t("sources.detailsOf", { title: item.title })}>
         <span className={`media-type-badge media-type-badge--${item.mediaType || "manga"}`}>{contentTypes[item.mediaType]?.singular || item.mediaTypeLabel || contentTypes.manga.singular}</span>
         <CoverAudioBadge label={item.audioLabel} />
-        <RemoteCover src={item.cover} title={item.title} sourceId={item.sourceId || profile?.id} video={isVideo} />
+        <span className="live-manga-card__cover">
+          <RemoteCover src={item.cover} title={item.title} sourceId={item.sourceId || profile?.id} video={isVideo} contain={coverContain} />
+        </span>
         <strong dir="auto">{item.title}</strong>
+        {standaloneVideo && postedLabel ? <small className="live-manga-card__posted">{postedLabel}</small> : null}
       </button>
       {recentChapters.length ? (
         <div className="live-manga-card__chapters">
@@ -76,6 +86,18 @@ export function CatalogCard({ item, profile, onOpenDetails, onOpenChapter }) {
               </button>
             );
           })}
+        </div>
+      ) : standaloneVideo && item.url ? (
+        <div className="live-manga-card__chapters">
+          <button
+            type="button"
+            onClick={() => onOpenChapter(item, { url: item.url, name: item.title, number: "1" })}
+            aria-label={`${presentation.watchLatest} — ${item.title}`}
+          >
+            <i>{presentation.watchLatest}</i>
+            <b>{postedLabel || presentation.watchLatest}</b>
+            <UnitIcon size={12} />
+          </button>
         </div>
       ) : item.chapterCount > 0 ? (
         <div className="live-manga-card__no-chapters" role="status" aria-label={t("sources.chapterCount", { count: item.chapterCount })}>

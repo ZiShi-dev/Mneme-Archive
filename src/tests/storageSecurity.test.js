@@ -17,6 +17,7 @@ test("isAllowedStorageKey accepts chromebook nav collapsed key", () => {
 
 test("isAllowedStorageKey accepts locale and reader preference keys", () => {
   assert.equal(isAllowedStorageKey("cromebook:locale"), true);
+  assert.equal(isAllowedStorageKey("living-archive:onboarding-complete"), true);
   assert.equal(isAllowedStorageKey("living-archive:reader-preferences"), true);
   assert.equal(isAllowedStorageKey("cinevault:pwa-install-dismissed"), true);
 });
