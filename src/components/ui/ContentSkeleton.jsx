@@ -92,10 +92,13 @@ export function ReaderPagesSkeleton({ label, pages = 2 }) {
 export function NovelReaderSkeleton({ label }) {
   return (
     <div className="novel-reader-skeleton" role="status" aria-live="polite" aria-label={label}>
-      {Array.from({ length: 6 }, (_, index) => (
+      <span className="novel-reader-skeleton__source ui-skeleton" aria-hidden="true" />
+      <p className="novel-reader-skeleton__label">{label}</p>
+      {Array.from({ length: 12 }, (_, index) => (
         <span
           key={index}
-          className={`novel-reader-skeleton__line ui-skeleton${index % 3 === 2 ? " novel-reader-skeleton__line--short" : ""}`}
+          className={`novel-reader-skeleton__line ui-skeleton${index % 4 === 3 ? " novel-reader-skeleton__line--short" : index % 5 === 1 ? " novel-reader-skeleton__line--medium" : ""}`}
+          aria-hidden="true"
         />
       ))}
     </div>

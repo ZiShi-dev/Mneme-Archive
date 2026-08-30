@@ -31,14 +31,39 @@ import { PwaInstallBanner } from "./components/pwa/PwaInstallBanner";
 import { useHideBottomNavOnScroll } from "./hooks/useHideBottomNavOnScroll";
 import { usePwaInstall } from "./hooks/usePwaInstall";
 import { getAppBrandText } from "./lib/brand/appBrand";
+import { NovelReaderSkeleton, ReaderPagesSkeleton, VideoStageSkeleton } from "./components/ui/ContentSkeleton";
 
 const LiveVideoPlayer = lazy(() => import("./features/sources/LiveVideoPlayer").then((module) => ({ default: module.LiveVideoPlayer })));
 const LiveReader = lazy(() => import("./features/sources/LiveReader").then((module) => ({ default: module.LiveReader })));
 
-function FeatureSuspense({ children }) {
+function ReaderSuspenseFallback({ manga }) {
+  const { t } = useI18n();
+  const mediaType = getItemType(manga);
+  if (isVideoMediaType(mediaType)) {
+    return (
+      <div className="reader live-reader live-reader--video">
+        <VideoStageSkeleton label={t("reader.loadingChapter")} />
+      </div>
+    );
+  }
+  if (mediaType === "novel") {
+    return (
+      <div className="reader live-reader live-reader--novel reader--theme-night">
+        <NovelReaderSkeleton label={t("reader.loadingChapter")} />
+      </div>
+    );
+  }
+  return (
+    <div className="reader live-reader">
+      <ReaderPagesSkeleton label={t("reader.loadingChapter")} />
+    </div>
+  );
+}
+
+function FeatureSuspense({ children, fallback }) {
   const { t } = useI18n();
   return (
-    <Suspense fallback={(
+    <Suspense fallback={fallback || (
       <div className="boot-screen" role="status">
         <div className="boot-screen__inner">
           <p>{getAppBrandText(t).loading}</p>
@@ -146,12 +171,12 @@ export function App() {
     const readerKey = `${liveReader.manga?.url || "live"}:${liveReader.chapter?.url || "chapter"}`;
     return isVideo
       ? (
-        <FeatureSuspense>
+        <FeatureSuspense fallback={<ReaderSuspenseFallback manga={liveReader.manga} />}>
           <LiveVideoPlayer key={readerKey} {...commonProps} />
         </FeatureSuspense>
       )
       : (
-        <FeatureSuspense>
+        <FeatureSuspense fallback={<ReaderSuspenseFallback manga={liveReader.manga} />}>
           <LiveReader
             key={readerKey}
             {...commonProps}

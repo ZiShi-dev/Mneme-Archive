@@ -2,10 +2,12 @@ import { applyDocumentLocale, DEFAULT_LOCALE, DEFAULT_UI_LOCALE, LOCALES, LOCALE
 import { translate } from "./translate.js";
 import { ar } from "./ar.js";
 import { fr } from "./fr.js";
+import { en } from "./en.js";
 import { getAppDocumentTitle } from "../lib/brand/appBrand.js";
 import { peekStorageString } from "../lib/storage/peek.js";
 
-const DICTIONARIES = { ar, fr };
+const DICTIONARIES = { ar, fr, en };
+const LOCALE_FALLBACK = { ar: "ar", fr: "ar", en: "fr" };
 const listeners = new Set();
 
 let currentLocale = DEFAULT_LOCALE;
@@ -19,7 +21,8 @@ export function getLocaleMeta(localeId = currentLocale) {
 }
 
 export function t(key, vars) {
-  return translate(DICTIONARIES[currentLocale], key, vars, DICTIONARIES[DEFAULT_LOCALE]);
+  const fallback = LOCALE_FALLBACK[currentLocale] || DEFAULT_LOCALE;
+  return translate(DICTIONARIES[currentLocale], key, vars, DICTIONARIES[fallback]);
 }
 
 function applyLocaleToDocument(locale) {

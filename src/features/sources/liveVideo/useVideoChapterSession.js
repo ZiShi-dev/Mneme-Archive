@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Capacitor } from "@capacitor/core";
 import { getChapterProgress } from "../../../lib/storage/chapterProgress";
-import { pickBestPlaybackSourceIndex, sortPlaybackSources } from "../../../lib/hls/playbackQuality";
+import { findDriveEmbedSourceIndex, isDriveMkvStreamSource, pickBestPlaybackSourceIndex, sortPlaybackSources } from "../../../lib/hls/playbackQuality";
 import { fetchSourceChapter, fetchSourceDetails, formatSourceError } from "../sourceApi";
 import { buildSubtitleTracks, resolveLivePlayback } from "./resolveLivePlayback";
 
@@ -36,10 +37,27 @@ export function useVideoChapterSession({
   const preferEmbedRef = useRef(preferEmbedPlayback);
   preferEmbedRef.current = preferEmbedPlayback;
 
+  const preferDriveEmbed = useMemo(() => {
+    if (Capacitor.isNativePlatform()) return true;
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(max-width: 900px)").matches;
+  }, []);
+
   const handleHlsError = useCallback(() => {
     const sources = orderedSourcesRef.current;
     const index = activeSourceIndexRef.current;
     const current = sources[index];
+
+    if (isDriveMkvStreamSource(current)) {
+      const embedIndex = findDriveEmbedSourceIndex(sources);
+      if (embedIndex >= 0 && embedIndex !== index) {
+        pushToast({ type: "info", message: t("reader.stream.switchingServer") });
+        setPreferEmbedPlayback(false);
+        setActiveSourceIndex(embedIndex);
+        setHlsRetryKey((value) => value + 1);
+        return;
+      }
+    }
 
     if (current?.streamUrl && current?.url && !preferEmbedRef.current) {
       pushToast({ type: "info", message: t("reader.stream.embedFallback") });
@@ -115,7 +133,10 @@ export function useVideoChapterSession({
       .then((result) => {
         if (!active) return;
         setData(result);
-        setActiveSourceIndex(pickBestPlaybackSourceIndex(sortPlaybackSources(result.sources)));
+        setActiveSourceIndex(pickBestPlaybackSourceIndex(
+          sortPlaybackSources(result.sources),
+          { preferDriveEmbed },
+        ));
       })
       .catch((reason) => {
         if (!active) return;
@@ -132,6 +153,7 @@ export function useVideoChapterSession({
     onChapterLoadStart,
     presentation.loadError,
     pushToast,
+    preferDriveEmbed,
     sourceId,
   ]);
 

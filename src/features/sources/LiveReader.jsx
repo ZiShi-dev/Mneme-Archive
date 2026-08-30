@@ -14,6 +14,7 @@ import { useReaderPagePreload } from "../../hooks/useReaderPagePreload";
 import { DEFAULT_APP_SETTINGS } from "../../lib/settings/defaults";
 import { fetchSourceChapter, fetchSourceDetails, formatSourceError } from "./sourceApi";
 import { normalizeChapterList } from "../../../server/lib/chapterOrdering.js";
+import { resolveBookmarkType } from "./contentTypes";
 import { resolveVideoPlayback } from "./mediaPresentation";
 import { ReaderPageList } from "./ReaderPageList";
 import { ReaderHeader } from "./ReaderHeader";
@@ -44,10 +45,12 @@ export function LiveReader({
   const { t, dir } = useI18n();
   const sourceId = resolveSourceId(manga);
   const profile = getSourceProfile(sourceId);
+  const expectsNovel = useMemo(() => resolveBookmarkType(manga) === "novel", [manga]);
   const [activeChapter, setActiveChapter] = useState(chapter);
   const [chapters, setChapters] = useState(manga.recentChapters || [chapter]);
   const [chaptersLoading, setChaptersLoading] = useState(() => !(manga.chapters?.length || manga.recentChapters?.length > 1));
   const [data, setData] = useState(null);
+  const [loadingChapter, setLoadingChapter] = useState(true);
   const [error, setError] = useState("");
   const [progress, setProgress] = useState(0);
   const [autoScroll, setAutoScroll] = useState(false);
@@ -103,8 +106,9 @@ export function LiveReader({
 
   useEffect(() => {
     let active = true;
-    setData(null);
+    setLoadingChapter(true);
     setError("");
+    if (!expectsNovel) setData(null);
     const saved = getChapterProgress(sourceId, activeChapter.url);
     setProgress(saved > 0 && saved < 100 ? saved : 0);
     setAutoScroll(false);
@@ -127,10 +131,14 @@ export function LiveReader({
         if (!active) return;
         const message = formatSourceError(reason, t("reader.loadChapterFailed"));
         setError(message);
+        if (!expectsNovel) setData(null);
         pushToast({ type: "error", message });
+      })
+      .finally(() => {
+        if (active) setLoadingChapter(false);
       });
     return () => { active = false; };
-  }, [activeChapter.url, progressKey, sourceId, pushToast, t]);
+  }, [activeChapter.url, activeChapter.contentApi, expectsNovel, manga.url, progressKey, sourceId, pushToast, t]);
 
   useEffect(() => {
     const updateProgress = () => {
@@ -299,7 +307,10 @@ export function LiveReader({
     if (!embedPlayback || !Capacitor.isNativePlatform()) return undefined;
     return installEmbedPopupGuards();
   }, [embedPlayback]);
-  const isNovel = data?.kind === "novel";
+  const isNovel = expectsNovel || data?.kind === "novel";
+  const showNovelSkeleton = isNovel && loadingChapter && !data && !error;
+  const showPagesSkeleton = !isNovel && loadingChapter && !data && !error;
+  const showNovelRefresh = isNovel && loadingChapter && Boolean(data) && !error;
   const contentDir = useMemo(() => {
     if (!isNovel) return dir;
     return resolveNovelContentDirection({
@@ -346,10 +357,10 @@ export function LiveReader({
         unitLabel={data?.kind === "video" ? t("media.theEpisode") : t("media.theChapter")}
         hideSettings={!isNovel}
       />
-      {error ? <div className="reader-live-state"><Wifi size={30} /><h2>{t("reader.loadChapterFailed")}</h2><p>{error}</p></div> : !data ? (
-        isNovel
-          ? <NovelReaderSkeleton label={t("reader.loadingChapter")} />
-          : <ReaderPagesSkeleton label={t("reader.loadingChapter")} />
+      {error ? <div className="reader-live-state"><Wifi size={30} /><h2>{t("reader.loadChapterFailed")}</h2><p>{error}</p></div> : showNovelSkeleton ? (
+        <NovelReaderSkeleton label={t("reader.loadingChapter")} />
+      ) : showPagesSkeleton ? (
+        <ReaderPagesSkeleton label={t("reader.loadingChapter")} />
       ) : data.kind === "video" ? (
         <div className="live-video-stage">
           {!playback ? (
@@ -372,7 +383,13 @@ export function LiveReader({
           )}
         </div>
       ) : data.kind === "novel" ? (
-        <article className="novel-reader-content" dir={contentDir}>
+        <article className={`novel-reader-content${showNovelRefresh ? " novel-reader-content--loading" : ""}`} dir={contentDir} aria-busy={showNovelRefresh}>
+          {showNovelRefresh && (
+            <div className="novel-reader-content__refresh" role="status" aria-live="polite">
+              <span className="novel-reader-content__refresh-bar" aria-hidden="true" />
+              <span className="novel-reader-content__refresh-label">{t("reader.loadingChapter")}</span>
+            </div>
+          )}
           <div className="novel-reader-content__source">
             <SourceLogo sourceId={sourceId} />
             <span>{t("reader.novelFromSource", { source: profile.name })}</span>

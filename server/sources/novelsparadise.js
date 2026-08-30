@@ -441,7 +441,13 @@ const SCRAMBLED_PARAGRAPH_RATIO = 0.32;
 const KOLNOVEL_HASH_PARAGRAPH_RE = /<p class='[a-f0-9]{16,}'[^>]*>[\s\S]*?<p class="[a-f0-9]{16,}"/i;
 const PARADISE_JUNK_PARAGRAPH_RE = /\.shola-|function\s+sholaTab|#366ad3|wp-admin\/admin-ajax|chapter-countdown/i;
 
+function isParadiseDialogueMarker(text = "") {
+  const trimmed = String(text || "").trim();
+  return trimmed.length > 0 && /^[-—–‐‑‒―….\s]+$/.test(trimmed);
+}
+
 function isParadiseParagraphText(text) {
+  if (isParadiseDialogueMarker(text)) return true;
   return Boolean(
     text
     && text.length > 1

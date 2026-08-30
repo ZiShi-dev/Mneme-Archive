@@ -10,5 +10,5 @@ export { EnableSourcesSheet } from "./EnableSourcesSheet";
 export { SourceHubOverview } from "./SourceHubOverview";
 export { SourceManagementScreen } from "./SourceManagementScreen";
 export { SourcesScreen } from "./SourcesScreen";
-export { SearchResultsList, SearchResultsPagination, SearchResultsSkeleton, SearchResultRow, SEARCH_RESULTS_PAGE_SIZE } from "./SearchResults";
+export { SearchResultsList, SearchResultsPagination, SearchResultsSkeleton, SearchResultRow, SEARCH_RESULTS_PAGE_SIZE, COLLECTION_PAGE_SIZE, COLLECTION_DESKTOP_PAGE_SIZE } from "./SearchResults";
 export { contentTypes, getItemType } from "./contentTypes";

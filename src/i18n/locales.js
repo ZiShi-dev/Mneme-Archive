@@ -12,6 +12,13 @@ export const LOCALES = {
     nativeName: "العربية",
     latinName: "Arabe",
   },
+  en: {
+    id: "en",
+    dir: "ltr",
+    htmlLang: "en",
+    nativeName: "English",
+    latinName: "English",
+  },
   fr: {
     id: "fr",
     dir: "ltr",

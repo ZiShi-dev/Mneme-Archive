@@ -1,10 +1,8 @@
-const CONTAIN_COVER_SOURCES = new Set();
-
-export function usesContainCover(sourceId) {
-  return CONTAIN_COVER_SOURCES.has(sourceId);
+export function usesContainCover(_sourceId) {
+  return false;
 }
 
-export function usesWideCover(sourceId) {
+export function usesWideCover(_sourceId) {
   return false;
 }
 

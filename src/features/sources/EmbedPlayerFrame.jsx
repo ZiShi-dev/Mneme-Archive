@@ -1,5 +1,10 @@
 import React, { useEffect } from "react";
-import { isAllowedEmbedUrl, resolveEmbedIframeSandbox } from "../../lib/video/embedHosts";
+import {
+  isAllowedEmbedUrl,
+  resolveEmbedAllow,
+  resolveEmbedIframeSandbox,
+  resolveEmbedReferrerPolicy,
+} from "../../lib/video/embedHosts";
 import { useI18n } from "../../i18n/I18nProvider";
 
 export function EmbedPlayerFrame({
@@ -31,10 +36,10 @@ export function EmbedPlayerFrame({
       title={title}
       className={className}
       {...(sandbox ? { sandbox } : {})}
-      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+      allow={resolveEmbedAllow(src)}
       allowFullScreen
-      referrerPolicy="no-referrer"
-      loading="lazy"
+      referrerPolicy={resolveEmbedReferrerPolicy(src)}
+      loading="eager"
     />
   );
 }

@@ -9,7 +9,7 @@ import { AccessibleSearchField } from "../components/ui/AccessibleSearchField";
 import { manga } from "../data/demoManga";
 import { VISIBLE_MEDIA_TYPES, isChromebookApp, isNotifiableMediaType } from "../config/appFlavor";
 import { getSourceProfile } from "../config/sources";
-import { RemoteCover, SEARCH_RESULTS_PAGE_SIZE, SearchResultsList, SearchResultsPagination, SearchResultsSkeleton, SourceLogo } from "../features/sources";
+import { RemoteCover, SEARCH_RESULTS_PAGE_SIZE, SearchResultsList, SearchResultsPagination, SearchResultsSkeleton, SourceLogo, COLLECTION_DESKTOP_PAGE_SIZE, COLLECTION_PAGE_SIZE } from "../features/sources";
 import { contentTypes, getItemType } from "../features/sources/contentTypes";
 import { SourceScopeBar } from "../components/sources/SourceScopeBar";
 import { filterItemsByAudioLanguage } from "../features/sources/audioLanguage";
@@ -106,6 +106,8 @@ export function LibraryScreen({ favorites, liveFavorites, toggleFavorite, toggle
   const [typeFilter, setTypeFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [sortMode, setSortMode] = useState("saved");
+  const [listPage, setListPage] = useState(1);
+  const listHeadRef = useRef(null);
   const libraryItems = useMemo(
     () => (isChromebookApp ? [] : manga.filter((item) => favorites.includes(item.id))),
     [favorites],
@@ -131,6 +133,26 @@ export function LibraryScreen({ favorites, liveFavorites, toggleFavorite, toggle
     .filter((entry) => sourceFilter === "all" || entry.sourceId === sourceFilter)
     .filter((entry) => !normalizedQuery || `${entry.item.title} ${entry.item.altTitle || entry.item.subtitle || ""} ${entry.sourceName}`.toLowerCase().includes(normalizedQuery))
     .sort((a, b) => (sortMode === "title" ? a.item.title.localeCompare(b.item.title, locale) : b.savedOrder - a.savedOrder)), [bookmarkedItems, locale, normalizedQuery, sortMode, sourceFilter, typeFilter]);
+  const listPageSize = isChromebookApp ? COLLECTION_DESKTOP_PAGE_SIZE : COLLECTION_PAGE_SIZE;
+  const totalListPages = Math.max(1, Math.ceil(visibleItems.length / listPageSize));
+  const pagedVisibleItems = useMemo(
+    () => visibleItems.slice((listPage - 1) * listPageSize, listPage * listPageSize),
+    [listPage, listPageSize, visibleItems],
+  );
+
+  useEffect(() => {
+    setListPage(1);
+  }, [normalizedQuery, sortMode, sourceFilter, typeFilter]);
+
+  useEffect(() => {
+    if (listPage > totalListPages) setListPage(totalListPages);
+  }, [listPage, totalListPages]);
+
+  const goToListPage = (page) => {
+    setListPage(page);
+    listHeadRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   const totalItems = bookmarkedItems.length;
   const mangaCount = bookmarkedItems.filter((entry) => entry.type === "manga").length;
   const novelCount = bookmarkedItems.filter((entry) => entry.type === "novel").length;
@@ -251,8 +273,9 @@ export function LibraryScreen({ favorites, liveFavorites, toggleFavorite, toggle
 
         {totalItems ? (
           visibleItems.length ? (
-            <div className="bookmark-list">
-              {visibleItems.map((entry) => {
+            <>
+            <div className="bookmark-list" ref={listHeadRef}>
+              {pagedVisibleItems.map((entry) => {
                 const item = entry.item;
                 const latestChapter = entry.kind === "live" ? item.recentChapters?.[0] : null;
                 const subtitle = item.altTitle || item.subtitle;
@@ -336,6 +359,15 @@ export function LibraryScreen({ favorites, liveFavorites, toggleFavorite, toggle
                 );
               })}
             </div>
+            <SearchResultsPagination
+              page={listPage}
+              totalPages={totalListPages}
+              totalItems={visibleItems.length}
+              pageSize={listPageSize}
+              onPageChange={goToListPage}
+              ariaLabel={t("favorites.pagesAria")}
+            />
+            </>
           ) : (
             <EmptyState
               icon={Search}

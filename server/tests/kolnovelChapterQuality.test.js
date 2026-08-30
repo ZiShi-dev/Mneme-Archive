@@ -66,11 +66,7 @@ function pickSampleChapters(chapters, count = 8) {
   return [...picks].sort((a, b) => a - b).map((index) => chapters[index]);
 }
 
-test("kolnovel sampled chapters parse without junk or decoy merges", { timeout: 120_000 }, async () => {
-  if (process.env.SKIP_LIVE_SOURCES === "1") {
-    return;
-  }
-
+test("kolnovel sampled chapters parse without junk or decoy merges", { timeout: 120_000, skip: !process.env.RUN_LIVE_SOURCE_TESTS }, async () => {
   const seriesHtml = await fetchKolnovelHtml(LORD_SERIES_URL);
   const chapters = parseKolnovelChapters(seriesHtml, LORD_SERIES_URL);
   assert.ok(chapters.length >= 100, `expected full chapter list, got ${chapters.length}`);

@@ -1,6 +1,6 @@
-const EMBED_HOST_PATTERN = /(^|\.)(4h\.b9p2m6c\.shop|[a-z0-9-]+\.b9p2m6c\.shop|[a-z0-9-]+\.anime4up\.rest|(?:[a-z0-9-]+\.)?embed4me\.com|voe\.sx|vidzy\.(?:cc|live|org)|(?:[a-z0-9-]+\.)?filemoon\.(?:to|sx|com)|(?:[a-z0-9-]+\.)?mp4upload\.com|(?:[a-z0-9-]+\.)?share4max\.(?:com|org)|vkvideo\.ru|(?:[a-z0-9-]+\.)?playmogo\.com|(?:[a-z0-9-]+\.)?rubyvidhub\.com|(?:[a-z0-9-]+\.)?uqload\.(?:com|net|to|cx)|(?:[a-z0-9-]+\.)?dood\.(?:com|watch)|(?:[a-z0-9-]+\.)?streamruby\.com|videa\.hu|96ar\.com|(?:[a-z0-9-]+\.)?fsvid\.lol|(?:[a-z0-9-]+\.)?kakaflix\.[a-z]{2,}|(?:[a-z0-9-]+\.)?netu\.[a-z]{2,}|(?:[a-z0-9-]+\.)?filmoon\.[a-z]{2,}|sandratableother\.com|diananatureforeign\.com)$/i;
+const EMBED_HOST_PATTERN = /(^|\.)(4h\.b9p2m6c\.shop|[a-z0-9-]+\.b9p2m6c\.shop|[a-z0-9-]+\.anime4up\.rest|(?:[a-z0-9-]+\.)?embed4me\.com|voe\.sx|vidzy\.(?:cc|live|org)|(?:[a-z0-9-]+\.)?filemoon\.(?:to|sx|com)|(?:[a-z0-9-]+\.)?mp4upload\.com|(?:[a-z0-9-]+\.)?share4max\.(?:com|org)|vkvideo\.ru|(?:[a-z0-9-]+\.)?playmogo\.com|(?:[a-z0-9-]+\.)?rubyvidhub\.com|(?:[a-z0-9-]+\.)?uqload\.(?:com|net|to|cx)|(?:[a-z0-9-]+\.)?dood\.(?:com|watch)|(?:[a-z0-9-]+\.)?streamruby\.com|videa\.hu|96ar\.com|(?:[a-z0-9-]+\.)?fsvid\.lol|(?:[a-z0-9-]+\.)?kakaflix\.[a-z]{2,}|(?:[a-z0-9-]+\.)?netu\.[a-z]{2,}|(?:[a-z0-9-]+\.)?filmoon\.[a-z]{2,}|sandratableother\.com|diananatureforeign\.com|drive\.google\.com|(?:www\.)?dailymotion\.com|(?:www\.)?ok\.ru|bysezoxexe\.com)$/i;
 
-const EMBED_NO_SANDBOX_HOSTS = /(^|\.)(voe\.sx|sandratableother\.com|diananatureforeign\.com)$/i;
+const EMBED_NO_SANDBOX_HOSTS = /(^|\.)(voe\.sx|sandratableother\.com|diananatureforeign\.com|drive\.google\.com|(?:www\.)?dailymotion\.com|(?:www\.)?ok\.ru)$/i;
 
 const AD_HOST_PATTERN = /(doubleclick|googlesyndication|popads|exoclick|clickadu|adsterra|propellerads|outbrain|taboola|mgid|revcontent)/i;
 
@@ -18,6 +18,37 @@ export function isAllowedEmbedHost(hostname = "") {
 
 export function embedHostRequiresOpenIframe(hostname = "") {
   return EMBED_NO_SANDBOX_HOSTS.test(String(hostname).toLowerCase());
+}
+
+export function isGoogleDriveEmbedUrl(url = "") {
+  try {
+    return new URL(url).hostname.toLowerCase() === "drive.google.com";
+  } catch {
+    return false;
+  }
+}
+
+export function resolveEmbedReferrerPolicy(url = "") {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    if (host === "drive.google.com" || host.endsWith(".googleusercontent.com")) {
+      return "strict-origin-when-cross-origin";
+    }
+    if (/dailymotion\.com$/i.test(host) || host === "ok.ru" || host.endsWith(".ok.ru")) {
+      return "strict-origin-when-cross-origin";
+    }
+  } catch {
+    // ignore
+  }
+  return "no-referrer";
+}
+
+export function resolveEmbedAllow(url = "") {
+  const base = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen";
+  if (isGoogleDriveEmbedUrl(url)) {
+    return `${base}; autoplay`;
+  }
+  return base;
 }
 
 export function resolveEmbedIframeSandbox(url = "") {

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   BookOpen,
   Check,
@@ -20,7 +20,7 @@ import { manga as demoCatalog } from "../data/demoManga";
 import { isChromebookApp, VISIBLE_MEDIA_TYPES } from "../config/appFlavor";
 import { getSourceProfile } from "../config/sources";
 import { resolveBookmarkType } from "../features/sources/contentTypes";
-import { RemoteCover, SourceLogo } from "../features/sources";
+import { RemoteCover, SearchResultsPagination, SourceLogo, COLLECTION_DESKTOP_PAGE_SIZE, COLLECTION_PAGE_SIZE } from "../features/sources";
 import { isVideoMediaType } from "../features/sources/mediaPresentation";
 import { listTitleChapterReads } from "../lib/reading/chapterReadLog";
 import { ReadingChapterLogButton, ReadingChapterLogSheet } from "./ReadingChapterLogSheet";
@@ -68,6 +68,8 @@ export function ReadingHistoryScreen({
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [listPage, setListPage] = useState(1);
+  const listHeadRef = useRef(null);
   const [confirmAction, setConfirmAction] = useState(null);
   const [chapterLogEntry, setChapterLogEntry] = useState(null);
 
@@ -105,7 +107,27 @@ export function ReadingHistoryScreen({
       return haystack.toLowerCase().includes(normalizedQuery);
     }), [scopedEntries, normalizedQuery, statusFilter, typeFilter]);
 
-  const timeline = useMemo(() => groupHistoryEntries(visibleEntries), [visibleEntries]);
+  const listPageSize = isChromebookApp ? COLLECTION_DESKTOP_PAGE_SIZE : COLLECTION_PAGE_SIZE;
+  const totalListPages = Math.max(1, Math.ceil(visibleEntries.length / listPageSize));
+  const pagedEntries = useMemo(
+    () => visibleEntries.slice((listPage - 1) * listPageSize, listPage * listPageSize),
+    [listPage, listPageSize, visibleEntries],
+  );
+
+  useEffect(() => {
+    setListPage(1);
+  }, [normalizedQuery, statusFilter, typeFilter]);
+
+  useEffect(() => {
+    if (listPage > totalListPages) setListPage(totalListPages);
+  }, [listPage, totalListPages]);
+
+  const goToListPage = (page) => {
+    setListPage(page);
+    listHeadRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const timeline = useMemo(() => groupHistoryEntries(pagedEntries), [pagedEntries]);
 
   const stats = useMemo(() => ({
     total: scopedEntries.length,
@@ -303,7 +325,8 @@ export function ReadingHistoryScreen({
 
         {stats.total ? (
           visibleEntries.length ? (
-            <div className="history-timeline">
+            <>
+            <div className="history-timeline" ref={listHeadRef}>
               {timeline.map((group) => (
                 <section className="history-day" key={group.id} aria-label={group.label}>
                   <header className="history-day__head">
@@ -413,6 +436,15 @@ export function ReadingHistoryScreen({
                 </section>
               ))}
             </div>
+            <SearchResultsPagination
+              page={listPage}
+              totalPages={totalListPages}
+              totalItems={visibleEntries.length}
+              pageSize={listPageSize}
+              onPageChange={goToListPage}
+              ariaLabel={t("history.pagesAria")}
+            />
+            </>
           ) : (
             <EmptyState
               icon={Sparkles}

@@ -3,7 +3,7 @@ const SHARED_CSP_DIRECTIVES = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com data:",
   "img-src 'self' data: blob: https: http://127.0.0.1:* http://localhost:*",
-  "media-src 'self' blob: mediastream:",
+  "media-src 'self' blob: mediastream: https:",
   "worker-src 'self' blob:",
   "child-src 'self' blob:",
   "frame-src 'self' https: blob:",

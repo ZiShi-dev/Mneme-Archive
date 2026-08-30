@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, Bookmark, Check, ChevronRight, Clapperboard, ExternalLink, RefreshCw, RotateCcw, RotateCw, Wifi } from "lucide-react";
+import { ArrowRight, Bookmark, Check, ChevronRight, Clapperboard, ExternalLink, Maximize2, RefreshCw, RotateCcw, RotateCw, Wifi } from "lucide-react";
 import { burstSakuraFrom } from "../../lib/sakura/burst";
 import { unlockOrientation } from "../../lib/video/orientationLock";
 import { useToast } from "../../components/ui/ToastProvider";
@@ -30,6 +30,8 @@ import { useVideoChapterSession } from "./liveVideo/useVideoChapterSession";
 import { useVideoCinemaChrome } from "./liveVideo/useVideoCinemaChrome";
 import { VideoStageSkeleton } from "../../components/ui/ContentSkeleton";
 import { VideoEpisodePlaylist } from "./liveVideo/VideoEpisodePlaylist";
+import { VideoSubtitleOverlay } from "./liveVideo/VideoSubtitleOverlay";
+import { useFetchedSubtitles } from "./liveVideo/useFetchedSubtitles";
 
 export function LiveVideoPlayer({
   manga,
@@ -105,6 +107,11 @@ export function LiveVideoPlayer({
     onChapterLoadStart,
   });
 
+  const { cues: subtitleCues, loading: subtitlesLoading } = useFetchedSubtitles(
+    subtitleTracks,
+    !embedMode && subtitlesEnabled,
+  );
+
   const chapterRef = useRef(activeChapter);
   chapterRef.current = activeChapter;
 
@@ -135,6 +142,24 @@ export function LiveVideoPlayer({
     plyrInstance,
     plyrInstanceRef,
   });
+
+  const requestEmbedFullscreen = useCallback(async () => {
+    const node = embedRef.current;
+    if (!node) return;
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+        return;
+      }
+      if (node.requestFullscreen) {
+        await node.requestFullscreen();
+      } else if (node.webkitRequestFullscreen) {
+        await node.webkitRequestFullscreen();
+      }
+    } catch {
+      pushToast({ type: "error", message: t("reader.stream.playFailed") });
+    }
+  }, [pushToast, t]);
 
   useEffect(() => {
     resetChromeOnChapterChange();
@@ -224,6 +249,34 @@ export function LiveVideoPlayer({
       video.removeEventListener("pause", onPause);
     };
   }, [activeChapter, manga, markComplete, onSaveProgress, playback?.mode, playback?.url, sourceId]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || playback?.mode !== "video" || embedMode) return undefined;
+
+    const syncSubtitleTracks = () => {
+      const captionTracks = [...video.textTracks].filter(
+        (track) => track.kind === "subtitles" || track.kind === "captions",
+      );
+      if (!captionTracks.length) return;
+
+      for (const track of captionTracks) {
+        track.mode = "hidden";
+      }
+      if (!subtitlesEnabled) return;
+
+      const activeTrack = captionTracks.find((track) => track.default) || captionTracks[0];
+      if (activeTrack) activeTrack.mode = "showing";
+    };
+
+    video.addEventListener("loadedmetadata", syncSubtitleTracks);
+    video.addEventListener("addtrack", syncSubtitleTracks);
+    syncSubtitleTracks();
+    return () => {
+      video.removeEventListener("loadedmetadata", syncSubtitleTracks);
+      video.removeEventListener("addtrack", syncSubtitleTracks);
+    };
+  }, [embedMode, playback?.mode, playback?.url, subtitleTracks, subtitlesEnabled]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -499,9 +552,12 @@ export function LiveVideoPlayer({
     const last = tapStateRef.current;
 
     if (embedMode) {
+      if (event.target.closest(".live-video-embed, .live-video-embed__frame, iframe")) {
+        return;
+      }
       if (now - last.time <= DOUBLE_TAP_MS && xRatio > SKIP_ZONE_RATIO && xRatio < 1 - SKIP_ZONE_RATIO) {
         tapStateRef.current = { time: 0, x: 0 };
-        void requestFullscreen(videoRef);
+        void requestEmbedFullscreen();
         return;
       }
       tapStateRef.current = { time: now, x: xRatio };
@@ -579,20 +635,22 @@ export function LiveVideoPlayer({
 
   const serverBar = orderedSources.length > 0 && data && !cinemaMode ? (
     <div
-      className="live-video-servers live-video-servers--dock"
+      className={`live-video-servers live-video-servers--dock${embedMode ? " live-video-servers--embed" : ""}`}
       aria-label={t("reader.stream.serversAria")}
     >
-      {orderedSources.map((source, index) => (
-        <button
-          key={`${source.url}-${index}`}
-          type="button"
-          className={`live-video-servers__chip${index === activeSourceIndex ? " active" : ""}${source.streamUrl ? " live-video-servers__chip--native" : ""}`}
-          onClick={() => selectSource(index)}
-          aria-pressed={index === activeSourceIndex}
-        >
-          {formatServerLabel(source, t)}
-        </button>
-      ))}
+      <div className="live-video-servers__chips">
+        {orderedSources.map((source, index) => (
+          <button
+            key={`${source.url}-${index}`}
+            type="button"
+            className={`live-video-servers__chip${index === activeSourceIndex ? " active" : ""}${source.streamUrl ? " live-video-servers__chip--native" : ""}`}
+            onClick={() => selectSource(index)}
+            aria-pressed={index === activeSourceIndex}
+          >
+            {formatServerLabel(source, t)}
+          </button>
+        ))}
+      </div>
       {embedMode ? (
         <p className="live-video-servers__hint">{t("reader.stream.embedFallback")}</p>
       ) : null}
@@ -602,7 +660,7 @@ export function LiveVideoPlayer({
   const immersiveRoot = (
       <div
         ref={bindImmersiveRoot}
-        className={`live-video-immersive-root${cinemaMode ? " is-cinema" : ""}${cssFullscreen ? " plyr--fullscreen-fallback" : ""}${chromeVisible ? " is-chrome-visible" : " is-chrome-hidden"}`}
+        className={`live-video-immersive-root${cinemaMode ? " is-cinema" : ""}${embedMode ? " is-embed" : ""}${cssFullscreen ? " plyr--fullscreen-fallback" : ""}${chromeVisible ? " is-chrome-visible" : " is-chrome-hidden"}`}
         onPointerMove={(event) => {
           if (cinemaMode) {
             revealChrome();
@@ -639,7 +697,7 @@ export function LiveVideoPlayer({
             </div>
           </div>
         )}
-        <div className="live-video-stage" onPointerUp={handleVideoSurfacePointerUp}>
+        <div className={`live-video-stage${embedMode ? " live-video-stage--embed" : ""}`} onPointerUp={handleVideoSurfacePointerUp}>
         {error ? (
           <div className="reader-live-state live-video-state">
             <Wifi size={30} />
@@ -660,40 +718,71 @@ export function LiveVideoPlayer({
         ) : (
           <div className="live-video-player-wrap">
             {playback.mode === "hls" ? (
-              <PlyrHlsPlayer
-                key={`${activeChapter.url}-${activeSourceIndex}-${hlsRetryKey}`}
-                videoRef={videoRef}
-                className="live-video-player"
-                src={playback.url}
-                poster={manga.cover}
-                subtitles={subtitleTracks}
-                subtitlesEnabled={subtitlesEnabled}
-                loadingLabel={presentation.loadingContent}
-                onError={handleHlsError}
-                onReady={handleHlsReady}
-                onPlyrInstance={(instance) => {
-                  plyrInstanceRef.current = instance;
-                  setPlyrInstance(instance);
-                }}
-              />
+              <>
+                <PlyrHlsPlayer
+                  key={`${activeChapter.url}-${activeSourceIndex}-${hlsRetryKey}`}
+                  videoRef={videoRef}
+                  className="live-video-player"
+                  src={playback.url}
+                  poster={manga.cover}
+                  subtitles={[]}
+                  subtitlesEnabled={false}
+                  loadingLabel={presentation.loadingContent}
+                  onError={handleHlsError}
+                  onReady={handleHlsReady}
+                  onPlyrInstance={(instance) => {
+                    plyrInstanceRef.current = instance;
+                    setPlyrInstance(instance);
+                  }}
+                />
+                {!embedMode && subtitleTracks.length > 0 ? (
+                  <VideoSubtitleOverlay
+                    cues={subtitleCues}
+                    currentTime={currentTime}
+                    enabled={subtitlesEnabled}
+                    loading={subtitlesLoading}
+                    loadingLabel={t("reader.playback.preparingSubtitles")}
+                  />
+                ) : null}
+              </>
             ) : playback.mode === "embed" ? (
               <div className="live-video-embed" ref={embedRef}>
                 <EmbedPlayerFrame
                   src={playback.url}
                   title={data.title || episodeLabel}
                 />
+                <button
+                  type="button"
+                  className="live-video-embed-fullscreen"
+                  onClick={() => { void requestEmbedFullscreen(); }}
+                  aria-label={t("reader.plyr.enterFullscreen")}
+                >
+                  <Maximize2 size={16} aria-hidden="true" />
+                </button>
               </div>
             ) : (
-              <video
-                ref={videoRef}
-                className="live-video-player"
-                src={playback.url}
-                playsInline
-                preload="metadata"
-                controls={false}
-                controlsList="nodownload noremoteplayback"
-                disablePictureInPicture={false}
-              />
+              <div className="live-video-player-frame live-video-player-frame--native">
+                <video
+                  ref={videoRef}
+                  className="live-video-player"
+                  src={playback.url}
+                  playsInline
+                  preload="metadata"
+                  controls={false}
+                  controlsList="nodownload noremoteplayback"
+                  disablePictureInPicture={false}
+                  onError={handleHlsError}
+                />
+                {!embedMode && subtitleTracks.length > 0 ? (
+                  <VideoSubtitleOverlay
+                    cues={subtitleCues}
+                    currentTime={currentTime}
+                    enabled={subtitlesEnabled}
+                    loading={subtitlesLoading}
+                    loadingLabel={t("reader.playback.preparingSubtitles")}
+                  />
+                ) : null}
+              </div>
             )}
           </div>
         )}

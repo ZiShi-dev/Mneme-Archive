@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
-import { ChevronDown, ChevronLeft, ChevronRight, RefreshCw, Search, Wifi, X } from "lucide-react";
+import { RefreshCw, Search, Wifi, X } from "lucide-react";
 import { useToast } from "../../components/ui/ToastProvider";
 import { defaultContentKinds, enrichKindWithFilterPath, getSourceProfile, initialSourcePreferences, initialSources, isKnownSourceId } from "../../config/sources";
 import { useI18n } from "../../i18n/I18nProvider";
 import { usePersistedState } from "../../hooks/usePersistedState";
-import { kvGetSync, kvSet } from "../../lib/storage/initStorage";
+import { kvSet } from "../../lib/storage/initStorage";
 import { contentTypes } from "./contentTypes";
 import { Header } from "../../components/layout/Header";
 import { clearSourceApiCache, fetchCatalog, fetchSourceDetails, fetchSourceFilters, searchSource } from "./sourceApi";
@@ -33,187 +33,20 @@ import { getCatalogSkeletonCount } from "../../lib/catalog/catalogLayout";
 import { scrollAppToElement } from "../../lib/platform/scrollRoot";
 import { shouldDeferCatalogFilters } from "../../lib/platform/webViewSources";
 
-const CATALOG_STATE_KEY = "living-archive:catalog-state";
-const EMPTY_CATALOG_STATE = { pages: {}, filters: {}, kinds: {}, queries: {}, hasMore: {}, audioFilters: {} };
-const CATALOG_SNAPSHOT_MAX_AGE_MS = 2 * 60 * 1000;
-const catalogSnapshotCache = new Map();
-const catalogFiltersCache = new Map();
-const catalogLiveViewCache = new Map();
-
-function readCatalogState() {
-  return kvGetSync(CATALOG_STATE_KEY, EMPTY_CATALOG_STATE);
-}
-
-function writeCatalogStateSync(nextState) {
-  void kvSet(CATALOG_STATE_KEY, nextState);
-}
-
-function catalogSnapshotKey(sourceId, filter, page, query = "", kind = null) {
-  return `${catalogViewKey(sourceId, filter, query, kind)}:p${page}`;
-}
-
-function readCatalogSnapshot(sourceId, filter, page, query = "", kind = null) {
-  return catalogSnapshotCache.get(catalogSnapshotKey(sourceId, filter, page, query, kind));
-}
-
-function writeCatalogSnapshot(sourceId, filter, page, items, hasMore, query = "", kind = null) {
-  if (!Array.isArray(items) || !items.length) return;
-  catalogSnapshotCache.set(catalogSnapshotKey(sourceId, filter, page, query, kind), {
-    items,
-    hasMore: Boolean(hasMore),
-    at: Date.now(),
-  });
-}
-
-function invalidateCatalogSnapshots(sourceId) {
-  const prefix = `${sourceId}:`;
-  for (const key of catalogSnapshotCache.keys()) {
-    if (key.startsWith(prefix)) catalogSnapshotCache.delete(key);
-  }
-}
-
-function resolveCatalogBoot(sourceId, enabled, mode) {
-  if (!enabled) {
-    return { status: "disabled", items: [], page: 1, hasMore: false, filter: null, kind: null, audioFilter: "all", query: "" };
-  }
-  if (mode === "selected") {
-    return { status: "ready", items: [], page: 1, hasMore: false, filter: null, kind: null, audioFilter: "all", query: "" };
-  }
-
-  const live = catalogLiveViewCache.get(sourceId);
-  const stored = readCatalogState();
-  let filter = live?.filter ?? stored.filters?.[sourceId] ?? null;
-  if (sourceId === "galaxynovels" && (filter?.type === "author" || filter?.author)) {
-    filter = null;
-  }
-  const kind = live?.kind ?? stored.kinds?.[sourceId] ?? null;
-  const audioFilter = live?.audioFilter ?? stored.audioFilters?.[sourceId] ?? "all";
-  const query = live?.query ?? stored.queries?.[sourceId] ?? "";
-  const viewKey = catalogViewKey(sourceId, filter, query, kind);
-  const page = live?.page ?? stored.pages?.[viewKey] ?? 1;
-  const snapshot = readCatalogSnapshot(sourceId, filter, page, query, kind);
-  const items = live?.items?.length ? live.items : snapshot?.items || [];
-  const hasMore = live?.hasMore ?? snapshot?.hasMore ?? Boolean(stored.hasMore?.[viewKey]);
-
-  if (items.length) {
-    return {
-      status: "ready",
-      items,
-      page,
-      hasMore,
-      filter,
-      kind,
-      audioFilter,
-      query,
-    };
-  }
-
-  return { status: "loading", items: [], page, hasMore, filter, kind, audioFilter, query };
-}
-
-function CatalogCarouselNav({ page, hasMore, loadingMore, error, onPrevious, onNext, onGoToPage }) {
-  const { t } = useI18n();
-  const [open, setOpen] = useState(false);
-  const [draftPage, setDraftPage] = useState(String(page));
-
-  useEffect(() => {
-    setDraftPage(String(page));
-  }, [page]);
-
-  const commitPage = async () => {
-    const nextPage = Number.parseInt(draftPage, 10);
-    if (!Number.isFinite(nextPage) || nextPage < 1) {
-      setDraftPage(String(page));
-      return;
-    }
-    if (nextPage === page) return;
-    const landedPage = await onGoToPage(nextPage);
-    setDraftPage(String(typeof landedPage === "number" ? landedPage : page));
-  };
-
-  const navLabel = `${t("sources.catalogNav")} — ${t("sources.view.page", { page })}`;
-
-  return (
-    <section
-      className={`catalog-carousel-nav${open ? " is-open" : ""}`}
-      aria-label={navLabel}
-    >
-      <div className="catalog-carousel-nav__shell">
-        <div className="catalog-carousel-nav__rail">
-          <button
-            type="button"
-            className="catalog-carousel-nav__icon"
-            onClick={onPrevious}
-            disabled={page === 1 || loadingMore}
-            aria-label={t("common.previous")}
-          >
-            <ChevronRight size={16} />
-          </button>
-
-          <button
-            type="button"
-            className="catalog-carousel-nav__page"
-            onClick={() => setOpen(true)}
-            aria-label={open ? navLabel : t("sources.catalogNavShow")}
-          >
-            <span className="catalog-carousel-nav__page-value">{page}</span>
-            {!open && <span className="catalog-carousel-nav__page-label">{t("common.page")}</span>}
-          </button>
-
-          <button
-            type="button"
-            className="catalog-carousel-nav__icon"
-            onClick={onNext}
-            disabled={!hasMore || loadingMore}
-            aria-label={t("common.next")}
-          >
-            <ChevronLeft size={16} />
-          </button>
-
-          <span className="catalog-carousel-nav__divider" aria-hidden="true" />
-
-          <button
-            type="button"
-            className="catalog-carousel-nav__icon catalog-carousel-nav__icon--toggle"
-            onClick={() => setOpen((current) => !current)}
-            aria-expanded={open}
-            aria-label={open ? t("sources.catalogNavHide") : t("sources.catalogNavShow")}
-          >
-            <ChevronDown size={15} />
-          </button>
-        </div>
-
-        {open && (
-          <div className="catalog-carousel-nav__drawer">
-            <p className="catalog-carousel-nav__hint catalog-carousel-nav__hint--touch">{t("sources.swipeHint")}</p>
-            <label className="catalog-carousel-nav__jump">
-              <span>{t("sources.goToPage")}</span>
-              <input
-                type="number"
-                min="1"
-                inputMode="numeric"
-                className="catalog-carousel-nav__jump-input"
-                value={draftPage}
-                onChange={(event) => setDraftPage(event.target.value)}
-                onBlur={commitPage}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    commitPage();
-                    event.currentTarget.blur();
-                  }
-                }}
-                aria-label={t("sources.pageNumber")}
-                disabled={loadingMore}
-              />
-            </label>
-          </div>
-        )}
-      </div>
-      {error && <p className="catalog-carousel-nav__error">{error}</p>}
-    </section>
-  );
-}
+import { CatalogCarouselNav } from "./CatalogCarouselNav";
+import {
+  CATALOG_SNAPSHOT_MAX_AGE_MS,
+  CATALOG_STATE_KEY,
+  catalogFiltersCache,
+  catalogLiveViewCache,
+  EMPTY_CATALOG_STATE,
+  invalidateCatalogSnapshots,
+  readCatalogSnapshot,
+  readCatalogState,
+  resolveCatalogBoot,
+  writeCatalogSnapshot,
+  writeCatalogStateSync,
+} from "./catalogCache";
 
 export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sourcePreferences, openLiveManga, openLiveChapter, navigate }) {
   const { pushToast } = useToast();

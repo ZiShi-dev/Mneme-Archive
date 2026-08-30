@@ -23,6 +23,7 @@ import { resolveBookmarkType } from "../features/sources/contentTypes";
 import { applyAppearance, isDarkTheme, normalizeThemeId } from "../lib/theme/appearance";
 import { applyTypeface, FONT_SANS, normalizeTypefaceId } from "../lib/theme/typeface";
 import { usePersistedState } from "./usePersistedState";
+import { clearReadingData } from "../lib/storage/clearLocalData.js";
 
 export function useAppPreferences() {
   const [favorites, setFavorites] = usePersistedState("mangashelf:favorites", []);
@@ -191,6 +192,8 @@ export function useAppPreferences() {
   const clearReadingHistory = () => {
     setReadingHistory({});
     setChapterReadLog({});
+    setReaderProgress(0);
+    void clearReadingData();
   };
 
   const visibleSources = useMemo(() => sanitizeSourcesList(sources), [sources]);

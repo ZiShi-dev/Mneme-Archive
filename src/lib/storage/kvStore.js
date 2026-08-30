@@ -165,6 +165,22 @@ export function listKeysByPrefix(prefix) {
   return [...memoryCache.keys()].filter((key) => key.startsWith(prefix));
 }
 
+export function listAllStoredKeys() {
+  return [...memoryCache.keys()].filter(isAllowedStorageKey);
+}
+
+export async function clearAllKvEntries() {
+  const keys = listAllStoredKeys();
+  if (isNativeStorage()) {
+    await dbRun("DELETE FROM kv_store");
+  } else {
+    for (const key of keys) {
+      removeWebRaw(key);
+    }
+  }
+  memoryCache.clear();
+}
+
 export function listChapterProgressEntries() {
   const prefix = "living-archive:chapter-progress:";
   return listKeysByPrefix(prefix)

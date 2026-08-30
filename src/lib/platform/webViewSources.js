@@ -3,6 +3,9 @@ export const WEBVIEW_SOURCE_IDS = Object.freeze([
   "mangalik",
   "azorafly",
   "galaxynovels",
+  "arabshentai",
+  "hentairead",
+  "mangaforfree",
 ]);
 
 export const WEBVIEW_SOURCE_ID_SET = new Set(WEBVIEW_SOURCE_IDS);

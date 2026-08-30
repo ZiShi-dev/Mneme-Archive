@@ -23,6 +23,7 @@ export async function initStorage() {
 }
 
 export { clearImageCache } from "./imageCache";
+export { clearAllLocalData, clearReadingData } from "./clearLocalData.js";
 export {
   kvGet,
   kvGetStringSync,

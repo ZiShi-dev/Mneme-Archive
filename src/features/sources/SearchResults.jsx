@@ -10,6 +10,8 @@ import { usesContainCover } from "./coverDisplay";
 import { SourceLogo } from "./SourceLogo";
 
 export const SEARCH_RESULTS_PAGE_SIZE = 8;
+export const COLLECTION_PAGE_SIZE = 12;
+export const COLLECTION_DESKTOP_PAGE_SIZE = 24;
 const SEARCH_GROUP_PREVIEW_SIZE = 3;
 
 export function SearchResultRow({ item, onOpen, showSource = true }) {
@@ -81,14 +83,14 @@ export function SearchResultsSkeleton({ count = 4 }) {
   );
 }
 
-export function SearchResultsPagination({ page, totalPages, totalItems, pageSize, onPageChange }) {
+export function SearchResultsPagination({ page, totalPages, totalItems, pageSize, onPageChange, ariaLabel }) {
   const { t } = useI18n();
   if (totalPages <= 1) return null;
   const start = (page - 1) * pageSize + 1;
   const end = Math.min(page * pageSize, totalItems);
 
   return (
-    <nav className="search-results-pagination" aria-label={t("search.pagesAria")}>
+    <nav className="search-results-pagination" aria-label={ariaLabel || t("search.pagesAria")}>
       <button type="button" onClick={() => onPageChange(page - 1)} disabled={page === 1} aria-label={t("common.previous")}>
         <ChevronRight size={16} />
       </button>

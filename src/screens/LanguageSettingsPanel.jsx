@@ -73,9 +73,14 @@ export function LanguageSettingsSheet({ open, onClose }) {
                 aria-pressed={locale === entry.id}
                 onClick={() => {
                   setLocale(entry.id);
+                  const toastKey = entry.id === "fr"
+                    ? "toast.languageFr"
+                    : entry.id === "en"
+                      ? "toast.languageEn"
+                      : "toast.languageAr";
                   pushToast({
                     type: "success",
-                    message: runtimeT(entry.id === "fr" ? "toast.languageFr" : "toast.languageAr"),
+                    message: runtimeT(toastKey),
                   });
                   onClose();
                 }}
@@ -83,7 +88,7 @@ export function LanguageSettingsSheet({ open, onClose }) {
                 <Languages size={19} />
                 <span>
                   <strong>{entry.nativeName}</strong>
-                  <small>{entry.id === "ar" ? t("settings.languageArHint") : t("settings.languageFrHint")}</small>
+                  <small>{entry.id === "ar" ? t("settings.languageArHint") : entry.id === "en" ? t("settings.languageEnHint") : t("settings.languageFrHint")}</small>
                 </span>
                 <Check size={16} />
               </button>

@@ -8,10 +8,11 @@ import { Capacitor } from "@capacitor/core";
 import { getRuntimeSettings } from "../../lib/settings/runtimeSettings.js";
 import { getDefaultSourceBaseUrl, getEffectiveSourceBaseUrl } from "../../lib/settings/sourceBaseUrls.js";
 import { WEBVIEW_SOURCE_ID_SET } from "../../lib/platform/webViewSources.js";
+import { getKindQueryParam, sourcesWithCapability } from "../../config/sourceCapabilities.js";
 
-const FILTER_PATH_SOURCES = new Set([
-  "galaxynovels", "cenele", "anime4up", "animedar", "animesama", "frenchstream", "wiflix", "coflix",
-]);
+const FILTER_PATH_SOURCES = new Set(sourcesWithCapability("filterPath"));
+const GENRE_FILTER_SOURCES = sourcesWithCapability("genreFilter");
+const TAG_FILTER_SOURCES = sourcesWithCapability("tagFilter");
 
 function appendSourceQueryParams(query, sourceId) {
   const settings = getRuntimeSettings();
@@ -32,14 +33,35 @@ function pathUsesCloudflareNative(path = "") {
   return false;
 }
 
-const GENRE_FILTER_SOURCES = [
-  "mangalik", "azorafly", "novelsparadise", "nightnovel",
-  "kolnovel", "dilar", "wtrlab", "novelphoenix",
-];
-const TAG_FILTER_SOURCES = [
-  "mangalik", "novelsparadise", "nightnovel",
-  "kolnovel", "wtrlab", "novelphoenix",
-];
+function appendKindFilter(query, sourceId, queryParam, queryValue) {
+  const kindParam = getKindQueryParam(sourceId);
+  if (kindParam && queryParam === "type" && queryValue) {
+    query.set(kindParam, queryValue);
+  }
+}
+
+function appendCatalogQueryFilters(query, sourceId, {
+  genre = "",
+  tag = "",
+  tagPath = "",
+  filterPath = "",
+  queryParam = "",
+  queryValue = "",
+} = {}) {
+  if (GENRE_FILTER_SOURCES.includes(sourceId) && genre) query.set("genre", genre);
+  if (TAG_FILTER_SOURCES.includes(sourceId) && tag) {
+    query.set("tag", tag);
+    if (tagPath) query.set("tagPath", tagPath);
+  }
+  if (FILTER_PATH_SOURCES.has(sourceId) && filterPath) {
+    query.set("filterPath", filterPath);
+    if (queryParam && queryValue) {
+      query.set("queryParam", queryParam);
+      query.set("queryValue", queryValue);
+    }
+  }
+  appendKindFilter(query, sourceId, queryParam, queryValue);
+}
 
 let cloudflareNativeReady = false;
 
@@ -140,20 +162,7 @@ export async function resolveSourceImageUrl(sourceId, url) {
 
 export function fetchCatalog(sourceId, { page = 1, genre = "", tag = "", tagPath = "", filterPath = "", queryParam = "", queryValue = "" } = {}) {
   const query = new URLSearchParams({ page: String(page) });
-  if (GENRE_FILTER_SOURCES.includes(sourceId) && genre) query.set("genre", genre);
-  if (TAG_FILTER_SOURCES.includes(sourceId) && tag) {
-    query.set("tag", tag);
-    if (tagPath) query.set("tagPath", tagPath);
-  }
-  if (FILTER_PATH_SOURCES.has(sourceId) && filterPath) {
-    query.set("filterPath", filterPath);
-    if (queryParam && queryValue) {
-      query.set("queryParam", queryParam);
-      query.set("queryValue", queryValue);
-    }
-  }
-  if (sourceId === "wtrlab" && queryParam === "type" && queryValue) query.set("kind", queryValue);
-  if (sourceId === "novelphoenix" && queryParam === "type" && queryValue) query.set("kind", queryValue);
+  appendCatalogQueryFilters(query, sourceId, { genre, tag, tagPath, filterPath, queryParam, queryValue });
   appendSourceQueryParams(query, sourceId);
   return requestJson(`${sourcePath(sourceId, "catalog")}?${query}`, t("errors.loadCatalog"), { ttlMs: 90_000 });
 }
@@ -177,22 +186,7 @@ export function searchSource(sourceId, query, {
   const normalized = String(query ?? "").trim().slice(0, MAX_SEARCH_QUERY_LENGTH);
   const params = new URLSearchParams({ q: normalized });
   if (page > 1) params.set("page", String(page));
-  if (GENRE_FILTER_SOURCES.includes(sourceId) && genre) {
-    params.set("genre", genre);
-  }
-  if (TAG_FILTER_SOURCES.includes(sourceId) && tag) {
-    params.set("tag", tag);
-    if (tagPath) params.set("tagPath", tagPath);
-  }
-  if (FILTER_PATH_SOURCES.has(sourceId) && filterPath) {
-    params.set("filterPath", filterPath);
-    if (queryParam && queryValue) {
-      params.set("queryParam", queryParam);
-      params.set("queryValue", queryValue);
-    }
-  }
-  if (sourceId === "wtrlab" && queryParam === "type" && queryValue) params.set("kind", queryValue);
-  if (sourceId === "novelphoenix" && queryParam === "type" && queryValue) params.set("kind", queryValue);
+  appendCatalogQueryFilters(params, sourceId, { genre, tag, tagPath, filterPath, queryParam, queryValue });
   appendSourceQueryParams(params, sourceId);
   return requestJson(`${sourcePath(sourceId, "search")}?${params}`, t("errors.searchFailed"), { ttlMs: 120_000 });
 }
@@ -238,6 +232,9 @@ export function sourceImageUrl(sourceId, url) {
 }
 
 export function sourceStreamUrl(sourceId, streamUrl, referer = "") {
+  if (/drive\.usercontent\.google\.com\/download/i.test(streamUrl)) {
+    return streamUrl;
+  }
   const query = new URLSearchParams({ url: streamUrl });
   if (referer) query.set("referer", referer);
   appendSourceQueryParams(query, sourceId);
@@ -248,9 +245,10 @@ export function sourceStreamUrl(sourceId, streamUrl, referer = "") {
   return path;
 }
 
-export function sourceSubtitleUrl(sourceId, subtitleUrl, referer = "") {
+export function sourceSubtitleUrl(sourceId, subtitleUrl, referer = "", options = {}) {
   const query = new URLSearchParams({ url: subtitleUrl });
   if (referer) query.set("referer", referer);
+  if (options.episodeId) query.set("episodeId", String(options.episodeId));
   appendSourceQueryParams(query, sourceId);
   const path = `${sourcePath(sourceId, "subtitle")}?${query}`;
   if (typeof window !== "undefined" && window.location?.origin) {

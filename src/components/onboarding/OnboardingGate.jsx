@@ -9,7 +9,7 @@ import { useStorage } from "../storage/StorageProvider";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { useI18n } from "../../i18n/I18nProvider";
 import { applyDocumentLocale } from "../../i18n/locales";
-import { resolveMnemeMarkPalette } from "../../lib/brand/mnemeMarkPalettes";
+import { resolveMnemeMarkPalette } from "../../lib/brand/mnemeMarkPalettes.js";
 import { t as runtimeT } from "../../i18n/runtime";
 import { getAppBrandText } from "../../lib/brand/appBrand";
 import {

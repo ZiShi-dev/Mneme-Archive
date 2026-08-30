@@ -1,5 +1,8 @@
 import { t } from "../../i18n/runtime.js";
+import { sourceCapability, sourcesWithCapability } from "../../config/sourceCapabilities.js";
 import { localizeCatalogKind } from "./contentTypes.js";
+
+const CATALOG_SCOPED_SEARCH_SOURCES = new Set(sourcesWithCapability("catalogScopedSearch"));
 
 export const MULTI_TAXONOMY_SOURCES = new Set(["wiflix", "frenchstream", "coflix"]);
 
@@ -88,21 +91,8 @@ export function shouldUseCatalogScopedSearch(sourceId, kind, taxonomy, query) {
   const primary = primaryTaxonomyFilter(taxonomy);
   if (isMediaKindFilter(kind) && !primary) return false;
   if (!primary) return false;
-  if (["frenchstream", "wiflix", "coflix"].includes(sourceId) && primary.filterPath) return true;
-  return [
-    "mangalik",
-    "dilar",
-    "azorafly",
-    "anime4up",
-    "animedar",
-    "animesama",
-    "cenele",
-    "galaxynovels",
-    "novelsparadise",
-    "kolnovel",
-    "nightnovel",
-    "novelphoenix",
-  ].includes(sourceId);
+  if (sourceCapability(sourceId, "multiTaxonomy") && primary.filterPath) return true;
+  return CATALOG_SCOPED_SEARCH_SOURCES.has(sourceId);
 }
 
 export function filterCatalogItemsByQuery(items, query) {

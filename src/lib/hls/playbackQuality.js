@@ -18,6 +18,22 @@ function resolutionScore(value = "") {
   return Math.min(Math.round(Number(match[1]) / 90), 12);
 }
 
+export function isDriveMkvStreamSource(source = {}) {
+  const url = `${source.streamUrl || ""} ${source.url || ""}`;
+  return Boolean(source.embeddedSubtitles)
+    || (/drive\.usercontent\.google\.com/i.test(url) && /download\?id=/i.test(url));
+}
+
+export function findDriveEmbedSourceIndex(sources = []) {
+  return sources.findIndex((source) => /\(Drive\)/i.test(source?.label || "")
+    || /drive\.google\.com\/file\/d\/[^/]+\/preview/i.test(source?.url || ""));
+}
+
+export function shouldPreferDriveEmbed(sources = [], { preferDriveEmbed = false } = {}) {
+  if (!preferDriveEmbed) return false;
+  return sources.some(isDriveMkvStreamSource) && findDriveEmbedSourceIndex(sources) >= 0;
+}
+
 export function scorePlaybackSource(source = {}) {
   if (!source || typeof source !== "object") return 0;
   const url = `${source.streamUrl || ""} ${source.url || ""} ${source.label || ""}`;
@@ -35,7 +51,14 @@ export function sortPlaybackSources(sources = []) {
   return [...sources].sort((left, right) => scorePlaybackSource(right) - scorePlaybackSource(left));
 }
 
-export function pickBestPlaybackSourceIndex(sources = []) {
+export function pickBestPlaybackSourceIndex(sources = [], options = {}) {
+  const { preferDriveEmbed = false } = options;
+  if (preferDriveEmbed) {
+    const hasDirectMkv = sources.some(isDriveMkvStreamSource);
+    const embedIndex = findDriveEmbedSourceIndex(sources);
+    if (hasDirectMkv && embedIndex >= 0) return embedIndex;
+  }
+
   const ranked = sortPlaybackSources(sources);
   if (!ranked.length) return 0;
   const best = ranked[0];

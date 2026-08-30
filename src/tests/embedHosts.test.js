@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isAllowedEmbedUrl, isBlockedAdUrl, resolveEmbedIframeSandbox, EMBED_IFRAME_SANDBOX } from "../lib/video/embedHosts.js";
+import { isAllowedEmbedUrl, isBlockedAdUrl, resolveEmbedIframeSandbox, resolveEmbedReferrerPolicy, EMBED_IFRAME_SANDBOX } from "../lib/video/embedHosts.js";
 
 test("isAllowedEmbedUrl accepts known embed hosts", () => {
   assert.equal(isAllowedEmbedUrl("https://voe.sx/e/qonxoejekgfo"), true);
@@ -12,6 +12,9 @@ test("isAllowedEmbedUrl accepts known embed hosts", () => {
   assert.equal(isAllowedEmbedUrl("https://vidzy.org/embed-3y1qhyxv6mly.html"), true);
   assert.equal(isAllowedEmbedUrl("https://filemoon.to/e/isugfy4c2zta"), true);
   assert.equal(isAllowedEmbedUrl("https://diananatureforeign.com/e/wbhrkoio8ptz"), true);
+  assert.equal(isAllowedEmbedUrl("https://drive.google.com/file/d/abc123/preview"), true);
+  assert.equal(isAllowedEmbedUrl("https://www.dailymotion.com/embed/video/x9wub4g"), true);
+  assert.equal(isAllowedEmbedUrl("https://www.ok.ru/videoembed/123456"), true);
 });
 
 test("isAllowedEmbedUrl rejects unknown and ad hosts", () => {
@@ -21,7 +24,19 @@ test("isAllowedEmbedUrl rejects unknown and ad hosts", () => {
   assert.equal(isBlockedAdUrl("https://pagead2.googlesyndication.com/pagead/js"), true);
 });
 
+test("resolveEmbedReferrerPolicy allows Google Drive preview", () => {
+  assert.equal(
+    resolveEmbedReferrerPolicy("https://drive.google.com/file/d/abc/preview"),
+    "strict-origin-when-cross-origin",
+  );
+  assert.equal(
+    resolveEmbedReferrerPolicy("https://voe.sx/e/test"),
+    "no-referrer",
+  );
+});
+
 test("resolveEmbedIframeSandbox skips sandbox for hosts that reject it", () => {
   assert.equal(resolveEmbedIframeSandbox("https://voe.sx/e/qonxoejekgfo"), undefined);
+  assert.equal(resolveEmbedIframeSandbox("https://drive.google.com/file/d/abc/preview"), undefined);
   assert.equal(resolveEmbedIframeSandbox("https://vkvideo.ru/video_ext.php?oid=1"), EMBED_IFRAME_SANDBOX);
 });

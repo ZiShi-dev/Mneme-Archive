@@ -1,6 +1,6 @@
 /* LTR / RTL : la direction suit html[dir], pas des left/right figés */
 
-[dir="ltr"] .page-header .eyebrow {
+[dir="ltr"] .page-header:not(.page-header--brand) .eyebrow {
   max-width: 11rem;
   text-wrap: balance;
   letter-spacing: 0.04em;

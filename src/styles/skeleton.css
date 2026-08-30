@@ -22,7 +22,8 @@
 }
 
 .reader.live-reader--video .ui-skeleton,
-.reader--theme-night .ui-skeleton {
+.reader--theme-night .ui-skeleton,
+.reader.live-reader--novel .ui-skeleton {
   background: linear-gradient(
     90deg,
     rgba(255, 255, 255, 0.08) 0%,
@@ -189,12 +190,34 @@
 .novel-reader-skeleton {
   display: grid;
   gap: 12px;
-  padding: 24px 22px 40px;
+  width: 100%;
+  max-width: 760px;
+  min-height: calc(100dvh - var(--reader-header-height, 64px));
+  margin: 0 auto;
+  padding: 38px clamp(16px, 5vw, 64px) 60px;
+  box-sizing: border-box;
+}
+
+.novel-reader-skeleton__source {
+  width: min(220px, 72%);
+  height: 28px;
+  border-radius: 999px;
+  margin-bottom: 4px;
+}
+
+.novel-reader-skeleton__label {
+  margin: 0 0 8px;
+  color: var(--reader-muted, #a7a8b4);
+  font: 600 12px/1.4 var(--font-sans, "Alexandria", sans-serif);
 }
 
 .novel-reader-skeleton__line {
   height: 14px;
   border-radius: 8px;
+}
+
+.novel-reader-skeleton__line--medium {
+  width: 88%;
 }
 
 .novel-reader-skeleton__line--short {

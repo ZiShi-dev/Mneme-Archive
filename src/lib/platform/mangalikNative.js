@@ -1,5 +1,8 @@
 import { Capacitor } from "@capacitor/core";
 import { configureMangalikNativeFetch } from "../../../server/sources/mangalik.js";
+import { configureArabshentaiNativeFetch } from "../../../server/sources/arabshentai.js";
+import { configureHentaireadNativeFetch } from "../../../server/sources/hentairead.js";
+import { configureMangaforfreeNativeFetch } from "../../../server/sources/mangaforfree.js";
 import { configureAzoraflyNativeFetch } from "../../../server/sources/azorafly.js";
 import { configureGalaxynovelsNativeFetch } from "../../../server/sources/galaxynovels.js";
 import { t } from "../../i18n/runtime.js";
@@ -95,6 +98,9 @@ export async function initCloudflareNative() {
   if (!Capacitor.isNativePlatform() || cloudflareNativeReady) return;
   const fetchers = await createCloudflareNativeFetchers();
   configureMangalikNativeFetch(fetchers);
+  configureArabshentaiNativeFetch(fetchers);
+  configureHentaireadNativeFetch(fetchers);
+  configureMangaforfreeNativeFetch(fetchers);
   configureAzoraflyNativeFetch(fetchers);
   configureGalaxynovelsNativeFetch(fetchers);
   cloudflareNativeReady = true;

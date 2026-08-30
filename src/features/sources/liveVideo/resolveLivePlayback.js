@@ -1,6 +1,11 @@
 import { resolveVideoPlayback } from "../mediaPresentation.js";
 import { sourceStreamUrl, sourceSubtitleUrl } from "../sourceApi.js";
 
+function resolveStreamPlaybackMode(streamUrl = "", streamType = "") {
+  if (streamType === "hls" || /\.m3u8/i.test(streamUrl)) return "hls";
+  return "video";
+}
+
 export function resolveLivePlayback({
   data,
   currentSource,
@@ -13,7 +18,7 @@ export function resolveLivePlayback({
   if (currentSource?.streamUrl && !preferEmbedPlayback) {
     const referer = currentSource.streamReferer || data.streamReferer || data.url || activeChapterUrl;
     return {
-      mode: "hls",
+      mode: resolveStreamPlaybackMode(currentSource.streamUrl, currentSource.streamType),
       url: sourceStreamUrl(sourceId, currentSource.streamUrl, referer),
       referer,
     };
@@ -29,6 +34,16 @@ export function resolveLivePlayback({
     const referer = data.streamReferer || data.url || activeChapterUrl;
     return {
       mode: "hls",
+      url: sourceStreamUrl(sourceId, streamUrl, referer),
+      referer,
+    };
+  }
+
+  if (resolved?.mode === "video" && (data.streamUrl || data.videoUrl || resolved.url)) {
+    const streamUrl = data.streamUrl || data.videoUrl || resolved.url;
+    const referer = data.streamReferer || data.url || activeChapterUrl;
+    return {
+      mode: "video",
       url: sourceStreamUrl(sourceId, streamUrl, referer),
       referer,
     };
@@ -55,6 +70,6 @@ export function buildSubtitleTracks({
     : (data.subtitleTracks || []);
   return tracks.map((track) => ({
     ...track,
-    url: sourceSubtitleUrl(sourceId, track.url, referer),
+    url: sourceSubtitleUrl(sourceId, track.url, referer, { episodeId: track.episodeId }),
   }));
 }

@@ -1,8 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { ArrowRight, ArrowUpDown, Bell, BellRing, BookOpen, Bookmark, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ExternalLink, Lock, RefreshCw, Search, Wifi } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowRight, Bell, BellRing, Bookmark, ChevronDown, ChevronUp, ExternalLink, RefreshCw, Wifi } from "lucide-react";
 import { useToast } from "../../components/ui/ToastProvider";
 import { getSourceProfile, resolveSourceId } from "../../config/sources";
-import { AccessibleSearchField } from "../../components/ui/AccessibleSearchField";
 import { ChipFilterBar, ChipFilterButton } from "../../components/ui/ChipFilterBar";
 import { isChromebookApp, isNotifiableMediaType, PREFERRED_AUDIO_LANGUAGE } from "../../config/appFlavor";
 import { fetchSourceDetails } from "./sourceApi";
@@ -24,14 +23,12 @@ import { usesContainCover } from "./coverDisplay";
 import { CoverAudioBadge } from "./CatalogCard";
 import { useResolvedCoverUrl } from "./useResolvedCoverUrl";
 import { findChapterByRecord } from "../../lib/readingProgress";
-import {
-  ChapterListSkeleton,
-  DetailsContentSkeleton,
-} from "../../components/ui/ContentSkeleton";
+import { DetailsChapterSection } from "./details/DetailsChapterSection";
+import { DetailsContentSkeleton } from "../../components/ui/ContentSkeleton";
 import { FollowAlertSheet } from "../updates/FollowAlertSheet";
 import { contentTypes, resolveBookmarkType } from "./contentTypes";
 import { burstSakuraFrom } from "../../lib/sakura/burst";
-import { getMediaPresentation, formatEpisodeHeaderLabel } from "./mediaPresentation";
+import { getMediaPresentation } from "./mediaPresentation";
 import {
   applyAudioLanguageToChapter,
   AUDIO_LANGUAGE_LABELS,
@@ -40,17 +37,12 @@ import {
 } from "./audioLanguage";
 import { useI18n } from "../../i18n/I18nProvider";
 import {
-  formatChapterPublishedLabel,
   isChapterWithinNewWindow,
   parseChapterPublishedAt,
 } from "../../lib/media/chapterTiming";
 
 const chapterPageSize = 20;
 const GALAXY_AUTHOR_CHAPTER_FILTER_SLUGS = new Set(["netherils-brilliance"]);
-
-function escapeRegExp(value) {
-  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
 
 function isNoiseTag(value) {
   return /^(vf|vostfr|vf\+vostfr|vostfr\+vf|hd|4k|fhd)$/i.test(String(value).replace(/\s/g, ""));
@@ -65,20 +57,6 @@ function isMetadataAltTitle(value) {
   if (/^\d{4}(\s*[·•|,/\-].*)?$/i.test(text) && text.length < 48) return true;
   if (/^(Ep|Ép)\.?\s*\d+/i.test(text)) return true;
   return false;
-}
-
-function chapterDisplayTitle(chapter, presentation) {
-  const number = String(chapter.number || "").trim();
-  const name = String(chapter.name || "").trim();
-  const unit = presentation.rowPrefix;
-  if (name && name !== number) {
-    const stripped = name
-      .replace(new RegExp(`^${escapeRegExp(unit)}\\s*`, "i"), "")
-      .replace(new RegExp(`^${escapeRegExp(number)}\\s*[·•\\-–:]\\s*`), "")
-      .trim();
-    if (stripped && stripped !== number) return stripped;
-  }
-  return formatEpisodeHeaderLabel(number || name, unit);
 }
 
 function AudioLanguagePicker({ languages, value, onChange, className = "" }) {
@@ -100,56 +78,6 @@ function AudioLanguagePicker({ languages, value, onChange, className = "" }) {
         ))}
       </ChipFilterBar>
     </div>
-  );
-}
-
-function ChapterListRow({ chapter, sourceName, isLatest, onOpen, presentation, activeAudioLanguage = "" }) {
-  const { t } = useI18n();
-  const isPaid = Boolean(chapter.locked);
-  const priceLabel = Number(chapter.price) > 0 ? t("details.coins", { n: chapter.price }) : "";
-  const publishedLabel = formatChapterPublishedLabel(parseChapterPublishedAt(chapter));
-  const title = chapterDisplayTitle(chapter, presentation);
-  const episodeLanguages = Object.keys(chapter.audioLanguages || {}).filter((entry) => AUDIO_LANGUAGE_LABELS[entry]);
-  const metaLabel = isPaid
-    ? t("details.requiresPurchase", { source: sourceName })
-    : publishedLabel || "";
-
-  return (
-    <button
-      className={`chapter-row ${isPaid ? "chapter-row--locked" : ""}${presentation.isVideo ? " chapter-row--video" : ""}`}
-      onClick={() => onOpen(chapter)}
-      type="button"
-      aria-label={isPaid ? presentation.lockedAria(chapter.name) : presentation.openAria(chapter.name)}
-    >
-      <span className="chapter-number">{chapter.number || "—"}</span>
-      <span className="chapter-row__body">
-        <span className="chapter-row__title">
-          <strong>{title}</strong>
-          {isPaid && (
-            <span className="chapter-badge chapter-badge--paid">
-              <Lock size={11} aria-hidden="true" />
-              <span>{t("details.paid")}</span>
-              {priceLabel && <span className="chapter-badge__price">{priceLabel}</span>}
-            </span>
-          )}
-        </span>
-        {metaLabel ? <small>{metaLabel}</small> : null}
-        {episodeLanguages.length > 0 && (
-          <span className="chapter-row__audio-tags" aria-label={t("details.audioVersionAria")}>
-            {episodeLanguages.map((language) => (
-              <em
-                key={language}
-                className={`chapter-row__audio-tag${activeAudioLanguage === language ? " is-active" : ""}`}
-              >
-                {AUDIO_LANGUAGE_LABELS[language] || language}
-              </em>
-            ))}
-          </span>
-        )}
-      </span>
-      {isLatest && <span className={`new-badge ${isPaid ? "new-badge--paid" : ""}`}>{isPaid ? t("details.newPaid") : t("common.new")}</span>}
-      {isPaid ? <ExternalLink size={16} className="chapter-row__external" aria-hidden="true" /> : <ChevronLeft size={18} aria-hidden="true" />}
-    </button>
   );
 }
 
@@ -220,12 +148,15 @@ export function LiveMangaDetails({
   const [chapterPage, setChapterPage] = useState(1);
   const [followSheetOpen, setFollowSheetOpen] = useState(false);
   const [audioLanguage, setAudioLanguage] = useState(PREFERRED_AUDIO_LANGUAGE);
+  const loadGeneration = useRef(0);
 
-  async function load() {
+  const loadDetails = useCallback(async () => {
+    const generation = ++loadGeneration.current;
     setStatus("loading");
     setError("");
     try {
       const data = await fetchSourceDetails(sourceId, seed.url);
+      if (generation !== loadGeneration.current) return;
       const badCover = !data.cover || /\/images\.png$|Anime4up-Icon/i.test(data.cover);
       const seedCover = seed.cover && !/\/images\.png$|Anime4up-Icon/i.test(seed.cover) ? seed.cover : "";
       setItem({
@@ -236,12 +167,13 @@ export function LiveMangaDetails({
       });
       setStatus("ready");
     } catch (reason) {
+      if (generation !== loadGeneration.current) return;
       const message = reason instanceof Error ? reason.message : t("details.loadFailed");
       setError(message);
       setStatus("error");
       pushToast({ type: "error", message });
     }
-  }
+  }, [pushToast, seed, sourceId, t]);
 
   useEffect(() => {
     setItem(seed);
@@ -253,8 +185,9 @@ export function LiveMangaDetails({
     setChapterPage(1);
     setFollowSheetOpen(false);
     setAudioLanguage(PREFERRED_AUDIO_LANGUAGE);
-    load();
-  }, [seed.url, sourceId]);
+    loadDetails();
+    return () => { loadGeneration.current += 1; };
+  }, [seed.url, sourceId, loadDetails]);
 
   const chapters = item.chapters || [];
   const categories = normalizeTaxonomy(item.categories || item.genres).filter((entry) => !isNoiseTag(entry));
@@ -502,7 +435,7 @@ export function LiveMangaDetails({
             showSidebar={isVideo || isNovel || Boolean(seed.summary)}
             chapterCount={showChapterListSection ? 0 : (showChapterList ? 8 : 0)}
           />
-        ) : status === "error" ? <div className="live-error"><Wifi size={30} /><h2>{t("details.loadDetailsFailed")}</h2><p>{error}</p><button className="button button--primary" onClick={load}><RefreshCw size={17} /> {t("common.retry")}</button></div> : <>
+        ) : status === "error" ? <div className="live-error"><Wifi size={30} /><h2>{t("details.loadDetailsFailed")}</h2><p>{error}</p><button className="button button--primary" onClick={loadDetails}><RefreshCw size={17} /> {t("common.retry")}</button></div> : <>
           {(showAbout || (isVideo && onOpenRelated)) && (
             <div className="details-sidebar">
           {showAbout && (
@@ -557,48 +490,30 @@ export function LiveMangaDetails({
           )}
         </>}
         {showChapterListSection && status !== "error" && (
-          <section className={`details-chapters${isChromebookApp ? " details-chapters--desktop" : ""}${status === "loading" ? " details-chapters--loading" : ""}`} aria-labelledby="details-chapters-title" aria-busy={status === "loading"}>
-            <div className="details-section-heading">
-              <h2 id="details-chapters-title">{presentation.sectionTitle}</h2>
-              <strong>{status === "loading" ? "…" : filteredChapters.length}</strong>
-            </div>
-            {status === "loading" ? (
-              <ChapterListSkeleton count={8} label={presentation.loadingList} />
-            ) : (
-              <>
-            {chapters.length > 15 && <div className="chapter-tools"><AccessibleSearchField className="global-search chapter-search" value={chapterQuery} onChange={setChapterQuery} placeholder={presentation.searchPlaceholder} ariaLabel={t("details.searchInUnits", { units: presentation.units })} /><button className="chapter-order" onClick={() => setChapterOrder((order) => order === "desc" ? "asc" : "desc")}><ArrowUpDown size={16} /><span>{chapterOrder === "desc" ? t("details.newestFirst") : t("details.oldestFirst")}</span></button></div>}
-            {chapterAuthors.length > 0 && (
-              <ChipFilterBar variant="segmented" className="details-chapter-author-filter" role="group" ariaLabel={t("details.authorFilterAria")}>
-                {chapterAuthors.map((author) => (
-                  <ChipFilterButton
-                    key={author}
-                    active={chapterAuthor === author}
-                    onClick={() => setChapterAuthor(author)}
-                  >
-                    {author}
-                  </ChipFilterButton>
-                ))}
-              </ChipFilterBar>
-            )}
-            {pagedChapters.length ? (
-              <div className="chapter-list live-chapter-list">
-                {pagedChapters.map((chapter) => (
-                  <ChapterListRow
-                    key={chapter.url}
-                    chapter={chapter}
-                    sourceName={profile.name}
-                    isLatest={chapter.url === latestChapter?.url && isLatestChapterNew}
-                    onOpen={openChapter}
-                    presentation={presentation}
-                    activeAudioLanguage={audioLanguage}
-                  />
-                ))}
-              </div>
-            ) : chapters.length ? <div className="empty-state empty-state--compact"><Search size={29} /><h2>{presentation.noMatch}</h2><p>{t("details.tryDifferentSearch")}</p><button onClick={() => setChapterQuery("")}>{t("common.clearSearch")}</button></div> : <div className="empty-state empty-state--compact"><BookOpen size={31} /><h2>{presentation.emptyList}</h2></div>}
-            {filteredChapters.length > chapterPageSize && <nav className="chapter-pagination" aria-label={presentation.paginationAria}><button onClick={() => setChapterPage((page) => Math.max(1, page - 1))} disabled={chapterPage === 1} aria-label={t("common.previous")}><ChevronRight size={17} /></button><span><small>{t("common.page")}</small><strong>{chapterPage}</strong><small>{t("common.of", { total: totalChapterPages })}</small></span><button onClick={() => setChapterPage((page) => Math.min(totalChapterPages, page + 1))} disabled={chapterPage === totalChapterPages} aria-label={t("common.next")}><ChevronLeft size={17} /></button></nav>}
-              </>
-            )}
-          </section>
+          <DetailsChapterSection
+            status={status}
+            isChromebookApp={isChromebookApp}
+            presentation={presentation}
+            chapters={chapters}
+            filteredChapters={filteredChapters}
+            pagedChapters={pagedChapters}
+            chapterQuery={chapterQuery}
+            onChapterQueryChange={setChapterQuery}
+            chapterAuthors={chapterAuthors}
+            chapterAuthor={chapterAuthor}
+            onChapterAuthorChange={setChapterAuthor}
+            chapterOrder={chapterOrder}
+            onChapterOrderToggle={() => setChapterOrder((order) => (order === "desc" ? "asc" : "desc"))}
+            chapterPage={chapterPage}
+            onChapterPageChange={setChapterPage}
+            totalChapterPages={totalChapterPages}
+            chapterPageSize={chapterPageSize}
+            latestChapter={latestChapter}
+            isLatestChapterNew={isLatestChapterNew}
+            sourceName={profile.name}
+            audioLanguage={audioLanguage}
+            onOpenChapter={openChapter}
+          />
         )}
       </main>
     </div>

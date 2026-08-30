@@ -22,7 +22,7 @@ test("novelsparadise search URL encodes spaces without double-encoding plus sign
   assert.doesNotMatch(target.toString(), /%2B/);
 });
 
-test("novelsparadise search finds Arabic title on live site", async () => {
+test("novelsparadise search finds Arabic title on live site", { skip: !process.env.RUN_LIVE_SOURCE_TESTS }, async () => {
   const url = new URL("http://localhost/api/sources/novelsparadise/search");
   url.searchParams.set("q", "أنا الشرير المقدر");
   const result = await handleNovelsParadiseRequest(url);
