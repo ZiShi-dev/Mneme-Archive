@@ -22,6 +22,9 @@ test("isAllowedEmbedUrl rejects unknown and ad hosts", () => {
   assert.equal(isAllowedEmbedUrl("https://megamax.me/embed/abc"), false);
   assert.equal(isAllowedEmbedUrl("http://voe.sx/e/test"), false);
   assert.equal(isBlockedAdUrl("https://pagead2.googlesyndication.com/pagead/js"), true);
+  assert.equal(isBlockedAdUrl("https://www.google.com/aclk?sa=L"), true);
+  assert.equal(isBlockedAdUrl("https://play.google.com/store/apps/details?id=x"), true);
+  assert.equal(isBlockedAdUrl("https://drive.google.com/file/d/abc/preview"), false);
 });
 
 test("resolveEmbedReferrerPolicy allows Google Drive preview", () => {

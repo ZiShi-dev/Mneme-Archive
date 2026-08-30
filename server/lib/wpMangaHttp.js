@@ -60,6 +60,7 @@ export function createWpMangaFetchers({
   forbiddenMessage,
   userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
   catalogHtmlLooksValid = defaultWpMangaCatalogHtmlLooksValid,
+  preferFlareSolverr = false,
 }) {
   function configureNativeFetch(options = {}) {
     configureSourceNativeFetch(options);
@@ -87,9 +88,13 @@ export function createWpMangaFetchers({
     buildError: (lastStatus) => (lastStatus === 403 && forbiddenMessage
       ? forbiddenMessage
       : `${sourceName} a répondu ${lastStatus || "sans réponse"}`),
+    preferFlareSolverr,
   });
 
-  async function resolveHtml(url) {
+  async function resolveHtml(url, options = {}) {
+    if (preferFlareSolverr) {
+      return fetchHtmlRemote(url, options);
+    }
     if (!hasNativeHtmlFetcher()) {
       const html = await fetchHtmlRemote(url);
       if (isCloudflareChallengeHtml(html)) {

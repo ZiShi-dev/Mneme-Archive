@@ -25,6 +25,7 @@ const { configureNativeFetch, resolveHtml, resolveImage } = createWpMangaFetcher
   timeoutMs: 40_000,
   forbiddenMessage: "حماية Arabs Hentai منعت الاتصال مؤقتًا",
   catalogHtmlLooksValid: defaultWpMangaPageHtmlLooksValid,
+  preferFlareSolverr: true,
 });
 
 export function configureArabshentaiNativeFetch(options) {
@@ -65,7 +66,6 @@ export function assertArabshentaiUrl(rawUrl, chapter = null) {
 function assertArabshentaiImageUrl(rawUrl) {
   const url = new URL(rawUrl);
   if (url.protocol !== "https:" || !HOST_PATTERN.test(url.hostname)) throw new Error("رابط الصورة غير مسموح");
-  if (!url.pathname.startsWith("/wp-content/uploads/")) throw new Error("رابط الصورة غير مسموح");
   return normalizeHost(url).toString();
 }
 
@@ -76,28 +76,74 @@ function chapterNumberFromLabel(label = "", segment = "") {
   return match?.[1] || label.trim() || fromSegment || "—";
 }
 
+function isArabshentaiChapterUrl(rawUrl = "") {
+  try {
+    const url = new URL(rawUrl, BASE_URL);
+    if (url.protocol !== "https:" || !HOST_PATTERN.test(url.hostname)) return false;
+    const parts = url.pathname.split("/").filter(Boolean);
+    return parts[0] === "manga" && parts.length >= 3 && isChapterSegment(parts.at(-1) || "");
+  } catch {
+    return false;
+  }
+}
+
+function pushArabshentaiChapter(chapters, seen, { url: rawUrl, label = "", date = "" }) {
+  const url = normalizeAssetUrl(rawUrl);
+  if (!url || seen.has(url) || !isArabshentaiChapterUrl(url)) return;
+  const segment = new URL(url).pathname.split("/").filter(Boolean).pop() || "";
+  const number = chapterNumberFromLabel(label, segment);
+  const cleanDate = textOnly(date);
+  const publishedAt = parseChapterDateString(cleanDate);
+  const looksLikeDate = Boolean(publishedAt) || /\d{4}/.test(cleanDate);
+  seen.add(url);
+  chapters.push({
+    url,
+    name: textOnly(label) || number,
+    number,
+    date: looksLikeDate ? cleanDate : "",
+    ...(publishedAt ? { publishedAt } : {}),
+  });
+}
+
 export function parseArabshentaiChapters(html = "") {
   const chapters = [];
   const seen = new Set();
-  const listBlock = html.match(/<div[^>]*id=["']chapter-list["'][^>]*>([\s\S]*?)<\/div>\s*<\/div>/i)?.[1] ?? html;
-  for (const match of listBlock.matchAll(/<li[^>]*>[\s\S]*?<a[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>[\s\S]*?<\/li>/gi)) {
-    const url = normalizeAssetUrl(match[1]);
-    if (!url || seen.has(url)) continue;
-    const block = match[2];
-    const label = textOnly(block.match(/class=["'][^"']*chapternum[^"']*["'][^>]*>([\s\S]*?)<\/span>/i)?.[1] ?? block);
-    const date = textOnly(block.match(/class=["'][^"']*chapterdate[^"']*["'][^>]*>([\s\S]*?)<\/span>/i)?.[1] ?? "");
-    const segment = new URL(url).pathname.split("/").filter(Boolean).pop() || "";
-    const number = chapterNumberFromLabel(label, segment);
-    const publishedAt = parseChapterDateString(date);
-    seen.add(url);
-    chapters.push({
-      url,
-      name: label || number,
-      number,
-      date,
-      ...(publishedAt ? { publishedAt } : {}),
-    });
+
+  const listStart = html.search(/<div[^>]*id=["']chapter-list["'][^>]*>/i);
+  let listBlock = "";
+  if (listStart >= 0) {
+    const afterOpen = html.slice(listStart).replace(/^<div[^>]*>/i, "");
+    const closed = afterOpen.match(/^([\s\S]*?)<\/div>/i)?.[1];
+    // Prefer content through the chapter <ul>; otherwise keep first-level inner HTML.
+    listBlock = afterOpen.match(/^([\s\S]*?<\/ul>)/i)?.[1] ?? closed ?? afterOpen;
   }
+
+  if (listBlock) {
+    for (const match of listBlock.matchAll(/<li[^>]*>[\s\S]*?<a[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>[\s\S]*?<\/li>/gi)) {
+      const block = match[2];
+      pushArabshentaiChapter(chapters, seen, {
+        url: match[1],
+        label: textOnly(block.match(/class=["'][^"']*chapternum[^"']*["'][^>]*>([\s\S]*?)<\/span>/i)?.[1] ?? block),
+        date: textOnly(block.match(/class=["'][^"']*chapterdate[^"']*["'][^>]*>([\s\S]*?)<\/span>/i)?.[1] ?? ""),
+      });
+    }
+  }
+
+  if (!chapters.length) {
+    for (const match of html.matchAll(/<option[^>]*data-redirect=["']([^"']+)["'][^>]*>([\s\S]*?)<\/option>/gi)) {
+      pushArabshentaiChapter(chapters, seen, {
+        url: match[1],
+        label: textOnly(match[2]),
+      });
+    }
+  }
+
+  if (!chapters.length) {
+    for (const match of html.matchAll(/href=["']([^"']*\/manga\/[^"'#?]+\/\d+(?:_\d+)?\/?)["']/gi)) {
+      pushArabshentaiChapter(chapters, seen, { url: match[1] });
+    }
+  }
+
   return chapters;
 }
 
@@ -234,10 +280,16 @@ function parseArabshentaiSearch(html = "", catalogType = "") {
 }
 
 function parseArabshentaiManga(html, url) {
-  const title = textOnly(html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ?? "");
+  const title = textOnly(
+    html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1]
+    ?? html.match(/<div[^>]*class=["'][^"']*chapter_name[^"']*["'][^>]*>([\s\S]*?)<\/div>/i)?.[1]
+    ?? html.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)/i)?.[1]
+    ?? html.match(/<title[^>]*>([^<]+)/i)?.[1]
+    ?? "",
+  ).replace(/\s*[|\-–]\s*هنتاي العرب\s*$/i, "").trim();
   const cover = normalizeAssetUrl(
-    html.match(/<div[^>]*class=["'][^"']*poster[^"']*["'][^>]*>[\s\S]*?<img[^>]*src=["']([^"']+)"/i)?.[1]
-    ?? html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)"/i)?.[1]
+    html.match(/<div[^>]*class=["'][^"']*poster[^"']*["'][^>]*>[\s\S]*?<img[^>]*(?:src|data-src)=["']([^"']+)/i)?.[1]
+    ?? html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)/i)?.[1]
     ?? "",
   );
   const altTitle = textOnly(html.match(/<b[^>]*class=["'][^"']*variante[^"']*["'][^>]*>[\s\S]*?<\/b>[\s\S]*?<span[^>]*class=["'][^"']*valor[^"']*["'][^>]*>([\s\S]*?)<\/span>/i)?.[1] ?? "");
@@ -259,13 +311,50 @@ function parseArabshentaiManga(html, url) {
   }, { html, parser: "dooplay" });
 }
 
+function chapterImageFromTag(tag = "") {
+  return tag.match(/(?:data-src|data-lazy-src|data-original|\ssrc)=["']([^"']+)["']/i)?.[1]
+    ?? tag.match(/\ssrc=["']([^"']+)["']/i)?.[1]
+    ?? "";
+}
+
+function isJunkChapterImage(raw = "") {
+  return !raw
+    || /^data:image\/svg/i.test(raw)
+    || /(?:spinner|loading|placeholder|avatar|logo|emoji|blank\.|1x1|pixel\.gif)/i.test(raw);
+}
+
 export function parseArabshentaiChapter(html, url) {
-  const title = textOnly(html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ?? "");
+  const title = textOnly(
+    html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1]
+    ?? html.match(/<div[^>]*class=["'][^"']*chapter_name[^"']*["'][^>]*>([\s\S]*?)<\/div>/i)?.[1]
+    ?? html.match(/<title[^>]*>([^<]+)/i)?.[1]
+    ?? "",
+  );
   const pages = [];
-  for (const tag of html.matchAll(/<img[^>]*class="[^"]*wp-manga-chapter-img[^"]*"[^>]*>/gi)) {
-    const src = normalizeAssetUrl(tag[0].match(/(?:src|data-src)=["']([^"']+)["']/i)?.[1] ?? "");
-    const alt = decodeHtml(tag[0].match(/alt=["']([^"']*)["']/i)?.[1] ?? title);
-    if (src && !pages.some((page) => page.src === src)) pages.push({ src, alt });
+  const push = (raw, alt = "") => {
+    if (isJunkChapterImage(raw)) return;
+    const src = /^data:image\//i.test(raw) ? raw : normalizeAssetUrl(raw);
+    if (src && !pages.some((page) => page.src === src)) {
+      pages.push({ src, alt: decodeHtml(alt || title) });
+    }
+  };
+
+  for (const tag of html.matchAll(/<img[^>]*class="[^"]*(?:wp-manga-chapter-img|chapter-image)[^"]*"[^>]*>/gi)) {
+    push(chapterImageFromTag(tag[0]), tag[0].match(/alt=["']([^"']*)["']/i)?.[1] ?? "");
+  }
+  if (pages.length) return { title, url, pages };
+
+  for (const tag of html.matchAll(/<div[^>]*class=["'][^"']*chapter_image[^"']*["'][^>]*>[\s\S]*?<img\b([^>]*)>/gi)) {
+    push(chapterImageFromTag(`<img ${tag[1]}>`));
+  }
+  if (pages.length) return { title, url, pages };
+
+  const readerBlock = html.match(/<div[^>]*(?:id=["']readerarea["']|class=["'][^"']*reading-content[^"']*["'])[^>]*>([\s\S]*?)<\/div>/i)?.[1]
+    ?? html.match(/<div[^>]*class=["'][^"']*page-break[^"']*["'][^>]*>[\s\S]*$/i)?.[0]
+    ?? "";
+  const scope = readerBlock || html;
+  for (const tag of scope.matchAll(/<img\b[^>]*>/gi)) {
+    push(chapterImageFromTag(tag[0]), tag[0].match(/alt=["']([^"']*)["']/i)?.[1] ?? "");
   }
   return { title, url, pages };
 }
@@ -373,7 +462,7 @@ export async function handleArabshentaiRequest(requestUrl) {
 
   if (requestUrl.pathname.endsWith("/chapter")) {
     const target = assertArabshentaiUrl(requestUrl.searchParams.get("url") ?? "", true);
-    const html = await resolveHtml(target);
+    const html = await resolveHtml(target, { includeAssets: true });
     return responseJson(200, parseArabshentaiChapter(html, target));
   }
 

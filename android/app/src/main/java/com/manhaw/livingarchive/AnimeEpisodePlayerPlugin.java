@@ -175,6 +175,18 @@ public class AnimeEpisodePlayerPlugin extends Plugin {
                     String target = request.getUrl().toString();
                     return !isAllowedNavigation(target);
                 }
+
+                @Override
+                public android.webkit.WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                    if (AdBlockingBridgeWebViewClient.shouldBlock(request.getUrl())) {
+                        return new android.webkit.WebResourceResponse(
+                            "text/plain",
+                            "utf-8",
+                            new java.io.ByteArrayInputStream(new byte[0])
+                        );
+                    }
+                    return super.shouldInterceptRequest(view, request);
+                }
             }
         );
 

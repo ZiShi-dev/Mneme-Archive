@@ -6,7 +6,6 @@ export const MANGAFORFREE_LOGO_URL = "https://mangaforfree.com/wp-content/upload
 export const AZORAFLY_LOGO_URL = "https://storage.azorafly.com/public/upload/2025/12/24/c925c7f3-2310-4e90-9b62-7fae04fe1c36.webp";
 export const GALAXY_NOVELS_LOGO_URL = "https://galaxynovels.com/wp-content/uploads/2026/05/cropped-مجرة-الروايات-شفافة-192x192.png";
 export const NOVELS_PARADISE_LOGO_URL = "https://novelsparadise.site/favicon.ico";
-export const NIGHT_NOVEL_LOGO_URL = "https://nightnovelapp.tech/open-book.svg";
 export const ANIMEDAR_LOGO_URL = "https://animedar.net/wp-content/uploads/2023/10/cropped-cropped-انمي-دار-180x180-1-150x150.png";
 export const CENELE_LOGO_URL = "https://cenele.com/wp-content/uploads/2026/08/cropped-%D9%81%D8%B6%D8%A7%D8%A1-%D8%B1%D9%88%D8%A7%D9%8A%D8%A7%D8%AA-192x192.png";
 export const KOLNOVEL_LOGO_URL = "https://kolnovel.com/wp-content/uploads/2026/07/cropped-%D8%A8%D8%AF%D9%88%D9%86-%D8%A7%D8%B3%D9%8596_20260720234820-1-192x192.png";
@@ -18,6 +17,9 @@ export const COFLIX_LOGO_URL = "https://coflix.esq/wp-content/uploads/2022/10/cr
 export const DILAR_LOGO_URL = "https://dilar.tube/favicon.ico";
 export const ARABS_HENTAI_LOGO_URL = "https://arabshentai.com/wp-content/themes/dooplay/assets/img/brand/arbs_logo_dark.webp";
 export const HENTAIREAD_LOGO_URL = "https://hentairead.com/favicon.ico";
+export const HENTAIGASM_LOGO_URL = "https://hentaigasm.com/favicon.ico";
+export const MANGADISTRICT_LOGO_URL = "https://mangadistrict.com/wp-content/uploads/2021/02/cropped-Copie-de-Copie-de-MANGADISTRICT_5-32x32.png";
+export const MANHWAREAD_LOGO_URL = "https://mancover.xyz/cover/2024/12/manhwaread-150x150.png";
 export const WTR_LAB_LOGO_URL = "https://wtr-lab.com/assets/favicon/apple-touch-icon.png";
 export const NOVELPHOENIX_LOGO_URL = "https://novelphoenix.com/apple-touch-icon.png?v=4.2";
 
@@ -79,18 +81,6 @@ export const sourceProfiles = {
     logo: NOVELS_PARADISE_LOGO_URL,
     initials: "NP",
     contentLabel: "روايات",
-    contentTypes: ["novel"],
-    languages: ["ar"],
-  },
-  nightnovel: {
-    id: "nightnovel",
-    name: "Night Novel",
-    arabicName: "روايات الليل",
-    domain: "nightnovelapp.tech",
-    url: "https://nightnovelapp.tech/home?lang=ar",
-    logo: NIGHT_NOVEL_LOGO_URL,
-    initials: "NN",
-    contentLabel: "روايات خفيفة",
     contentTypes: ["novel"],
     languages: ["ar"],
   },
@@ -226,6 +216,42 @@ export const sourceProfiles = {
     contentTypes: ["manga"],
     languages: ["en"],
   },
+  hentaigasm: {
+    id: "hentaigasm",
+    name: "HentaiGasm",
+    arabicName: "هنتاي غازم",
+    domain: "hentaigasm.com",
+    url: "https://hentaigasm.com/",
+    logo: HENTAIGASM_LOGO_URL,
+    initials: "HG",
+    contentLabel: "أنمي هنتاي",
+    contentTypes: ["anime"],
+    languages: ["en"],
+  },
+  mangadistrict: {
+    id: "mangadistrict",
+    name: "MangaDistrict",
+    arabicName: "مانغا ديستريكت",
+    domain: "mangadistrict.com",
+    url: "https://mangadistrict.com/manga/",
+    logo: MANGADISTRICT_LOGO_URL,
+    initials: "MD",
+    contentLabel: "مانغا ومانهوا",
+    contentTypes: ["manga"],
+    languages: ["en"],
+  },
+  manhwaread: {
+    id: "manhwaread",
+    name: "ManhwaRead",
+    arabicName: "مانهوا ريد",
+    domain: "manhwaread.com",
+    url: "https://manhwaread.com/manhwa/",
+    logo: MANHWAREAD_LOGO_URL,
+    initials: "MR",
+    contentLabel: "مانهوا",
+    contentTypes: ["manga"],
+    languages: ["en"],
+  },
   wtrlab: {
     id: "wtrlab",
     name: "WTR-LAB",
@@ -257,6 +283,7 @@ export const REMOVED_SOURCE_IDS = new Set([
   "realmnovel",
   "skynovel",
   "donghuaar",
+  "nightnovel",
 ]);
 
 export function isKnownSourceId(sourceId) {
@@ -348,7 +375,20 @@ export function defaultVideoKinds(sourceId) {
 export function enrichKindWithFilterPath(kind, sourceId) {
   if (!kind || kind.slug === "all" || kind.filterPath) return kind;
   const match = defaultContentKinds(sourceId).find((entry) => entry.slug === kind.slug);
-  return match?.filterPath ? { ...kind, filterPath: match.filterPath } : kind;
+  if (!match) return kind;
+  return {
+    ...kind,
+    type: kind.type || match.type || "kind",
+    ...(match.filterPath ? { filterPath: match.filterPath } : {}),
+    ...(match.queryValue && !kind.queryValue ? { queryValue: match.queryValue } : {}),
+  };
+}
+
+/** Sources sans filtre « الكل » : force un type par défaut (ex. Arabs Hentai). */
+export function getDefaultCatalogKind(sourceId) {
+  const kinds = defaultContentKinds(sourceId);
+  if (!kinds.length || kinds.some((entry) => entry.slug === "all")) return null;
+  return enrichKindWithFilterPath({ ...kinds[0], type: "kind" }, sourceId);
 }
 
 export function defaultContentKinds(sourceId) {
@@ -373,7 +413,6 @@ export function defaultContentKinds(sourceId) {
 
   if (sourceId === "arabshentai") {
     return [
-      { slug: "all", name: "الكل", type: "kind" },
       { slug: "manhwa", name: "مانهوا", type: "kind", queryValue: "manhwa" },
       { slug: "manga", name: "مانجا", type: "kind", queryValue: "manga" },
       { slug: "anime", name: "أنمي", type: "kind", queryValue: "anime" },
@@ -457,6 +496,12 @@ export function resolveSourceId(item) {
   if (item?.sourceId === "arabshentai") return "arabshentai";
   if (item?.source === "HentaiRead") return "hentairead";
   if (item?.sourceId === "hentairead") return "hentairead";
+  if (item?.source === "HentaiGasm") return "hentaigasm";
+  if (item?.sourceId === "hentaigasm") return "hentaigasm";
+  if (item?.source === "MangaDistrict") return "mangadistrict";
+  if (item?.sourceId === "mangadistrict") return "mangadistrict";
+  if (item?.source === "ManhwaRead") return "manhwaread";
+  if (item?.sourceId === "manhwaread") return "manhwaread";
   if (item?.source === "WTR-LAB") return "wtrlab";
   if (item?.sourceId === "wtrlab") return "wtrlab";
   if (item?.source === "Novel Phoenix") return "novelphoenix";

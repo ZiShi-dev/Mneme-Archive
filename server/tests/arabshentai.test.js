@@ -87,6 +87,33 @@ test("parseArabshentaiChapters reads dooplay chapter list", () => {
   assert.match(chapters[0].url, /60_035404$/);
 });
 
+test("parseArabshentaiChapters ignores nav links outside chapter-list", () => {
+  const html = `
+    <ul class="nav"><li><a href="https://arabshentai.com/">الرئيسية</a></li></ul>
+    <div id="chapter-list"><div>
+      <ul>
+        <li><a href="https://arabshentai.com/manga/sample-series/3_100"><span class="chapternum">3</span></a></li>
+      </ul>
+    </div></div>
+  `;
+  const chapters = parseArabshentaiChapters(html);
+  assert.equal(chapters.length, 1);
+  assert.equal(chapters[0].number, "3");
+});
+
+test("parseArabshentaiChapters reads reader chapter select fallback", () => {
+  const html = `
+    <select class="selectpicker single-chapter-select">
+      <option data-redirect="https://arabshentai.com/manga/sample-series/36_300008" selected>36</option>
+      <option data-redirect="https://arabshentai.com/manga/sample-series/35_303208">35</option>
+    </select>
+  `;
+  const chapters = parseArabshentaiChapters(html);
+  assert.equal(chapters.length, 2);
+  assert.equal(chapters[0].number, "36");
+  assert.match(chapters[1].url, /35_303208$/);
+});
+
 test("parseArabshentaiChapter reads manga pages", () => {
   const chapter = parseArabshentaiChapter(
     CHAPTER_PAGE,
@@ -94,6 +121,19 @@ test("parseArabshentaiChapter reads manga pages", () => {
   );
   assert.equal(chapter.pages.length, 2);
   assert.match(chapter.pages[0].src, /001\.webp$/);
+});
+
+test("parseArabshentaiChapter reads readerarea images without madara class", () => {
+  const html = `
+    <h1>فصل</h1>
+    <div id="readerarea">
+      <img data-src="/wp-content/uploads/WP-manga/data/x/01.jpg" alt="1" />
+      <img src="/wp-content/uploads/WP-manga/data/x/02.jpg" alt="2" />
+    </div>
+  `;
+  const chapter = parseArabshentaiChapter(html, "https://arabshentai.com/manga/sample/1_1/");
+  assert.equal(chapter.pages.length, 2);
+  assert.equal(chapter.pages[0].src, "https://arabshentai.com/wp-content/uploads/WP-manga/data/x/01.jpg");
 });
 
 test("assertArabshentaiUrl accepts series and chapter urls", () => {

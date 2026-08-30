@@ -1,5 +1,5 @@
 import { t } from "../../i18n/runtime.js";
-import { getSourceProfile } from "../../config/sources.js";
+import { getSourceProfile, getDefaultCatalogKind } from "../../config/sources.js";
 import { sourceCapability, sourcesWithCapability } from "../../config/sourceCapabilities.js";
 import { localizeCatalogKind } from "./contentTypes.js";
 
@@ -310,15 +310,17 @@ export function applyTaxonomyFilters(items, filter) {
 }
 
 export function sanitizeCatalogKind(sourceId, kind) {
-  if (!kind || kind.slug === "all") return null;
+  if (!kind || kind.slug === "all") return getDefaultCatalogKind(sourceId);
   const profile = getSourceProfile(sourceId);
   const supported = profile?.contentTypes || [];
-  if (!supported.length) return null;
+  if (!supported.length) return getDefaultCatalogKind(sourceId);
   if (kind.type === "kind" && kind.queryValue) return kind;
   if (kind.queryParam) return kind;
-  if (supported.length === 1) return null;
+  if (supported.length === 1 && isMediaKindFilter(kind) && !kind.queryValue) {
+    return getDefaultCatalogKind(sourceId) || kind;
+  }
   if (!isMediaKindFilter(kind)) return kind;
   if (supported.includes(kind.slug)) return kind;
   if (kind.queryValue && supported.includes(kind.queryValue)) return kind;
-  return null;
+  return getDefaultCatalogKind(sourceId);
 }

@@ -97,12 +97,50 @@ export function rewriteM3u8Playlist(body = "", baseUrl = "", buildProxyUrl) {
     .join("\n");
 }
 
+/** Lit le corps HTTP avec plafond optionnel (Content-Length + lecture progressive). */
+export async function readResponseBytesLimited(response, maxBytes = 0) {
+  const limit = Number(maxBytes) > 0 ? Number(maxBytes) : 0;
+  const contentLength = Number(response.headers.get("content-length") || 0);
+  if (limit && contentLength > limit) {
+    throw new Error(`Flux trop volumineux (${contentLength} octets)`);
+  }
+  if (!limit || !response.body?.getReader) {
+    const buffer = new Uint8Array(await response.arrayBuffer());
+    if (limit && buffer.byteLength > limit) {
+      throw new Error(`Flux trop volumineux (${buffer.byteLength} octets)`);
+    }
+    return buffer;
+  }
+
+  const reader = response.body.getReader();
+  const chunks = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > limit) {
+      try { await reader.cancel(); } catch { /* ignore */ }
+      throw new Error(`Flux trop volumineux (${total} octets)`);
+    }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return out;
+}
+
 export async function fetchProxiedHlsResource({
   target,
   referer = "",
   label = "stream",
   buildProxyUrl,
   timeoutMs = 60_000,
+  maxBytes = 0,
 }) {
   const response = await fetch(target, {
     headers: {
@@ -115,7 +153,7 @@ export async function fetchProxiedHlsResource({
   if (!response.ok) throw new Error(`Flux ${label} indisponible (${response.status})`);
 
   const contentType = response.headers.get("content-type") ?? "";
-  const rawBuffer = new Uint8Array(await response.arrayBuffer());
+  const rawBuffer = await readResponseBytesLimited(response, maxBytes);
   const bodyText = new TextDecoder().decode(rawBuffer);
 
   if (isM3u8Payload(contentType, bodyText)) {

@@ -70,7 +70,9 @@ export function CatalogFilters({
 
   const selectedKindSlug = useMemo(() => {
     if (!localizedKinds.length) return "";
-    if (!selectedKind || selectedKind.slug === "all") return "all";
+    if (!selectedKind || selectedKind.slug === "all") {
+      return localizedKinds.some((kind) => kind.slug === "all") ? "all" : (localizedKinds[0]?.slug || "");
+    }
     return selectedKind.slug;
   }, [localizedKinds, selectedKind]);
 

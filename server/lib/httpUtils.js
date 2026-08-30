@@ -1,5 +1,5 @@
 import { isCloudflareChallengeHtml } from "./cloudflareDetect.js";
-import { tryFlareSolverrHtml } from "./flareSolverr.js";
+import { requireFlareSolverrHtml, tryFlareSolverrHtml } from "./flareSolverr.js";
 
 export const responseCache = new Map();
 const MAX_CACHE_ENTRIES = 100;
@@ -57,12 +57,27 @@ function isCloudflareChallenge(response, html) {
   return isCloudflareChallengeHtml(html);
 }
 
-export function createCachedHtmlFetcher({ ttlMs, headers, getVariants, buildError, timeoutMs = 25_000, retries = 1 }) {
-  return async function fetchHtml(url) {
-    const cached = responseCache.get(url);
+export function createCachedHtmlFetcher({
+  ttlMs,
+  headers,
+  getVariants,
+  buildError,
+  timeoutMs = 25_000,
+  retries = 1,
+  preferFlareSolverr = false,
+}) {
+  return async function fetchHtml(url, options = {}) {
+    const includeAssets = Boolean(options.includeAssets);
+    const cacheKey = includeAssets ? `${url}#flare-assets` : url;
+    const cached = responseCache.get(cacheKey);
     if (cached && Date.now() - cached.at < ttlMs) {
-      touchCacheEntry(url, cached);
+      touchCacheEntry(cacheKey, cached);
       return cached.html;
+    }
+    if (preferFlareSolverr) {
+      const flareHtml = await requireFlareSolverrHtml(url, { includeAssets });
+      touchCacheEntry(cacheKey, { at: Date.now(), html: flareHtml });
+      return flareHtml;
     }
     const variants = getVariants(url);
     let lastStatus = 0;
@@ -83,7 +98,7 @@ export function createCachedHtmlFetcher({ ttlMs, headers, getVariants, buildErro
           continue;
         }
         if (response.ok) {
-          touchCacheEntry(url, { at: Date.now(), html });
+          touchCacheEntry(cacheKey, { at: Date.now(), html });
           return html;
         }
       } catch (error) {
@@ -94,7 +109,7 @@ export function createCachedHtmlFetcher({ ttlMs, headers, getVariants, buildErro
     if (sawCloudflare || lastStatus === 403) {
       const flareHtml = await tryFlareSolverrHtml(url);
       if (flareHtml) {
-        touchCacheEntry(url, { at: Date.now(), html: flareHtml });
+        touchCacheEntry(cacheKey, { at: Date.now(), html: flareHtml });
         return flareHtml;
       }
     }

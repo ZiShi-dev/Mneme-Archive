@@ -258,6 +258,7 @@ async function writeWebCache(cacheKey, sourceId, remoteUrl, buffer, contentType)
 }
 
 export async function resolveCachedImage(sourceId, remoteUrl, fetchImage) {
+  if (String(remoteUrl || "").startsWith("data:image/")) return remoteUrl;
   if (!isAllowedImageUrl(remoteUrl)) {
     throw new Error(t("errors.imageUrlNotAllowed"));
   }

@@ -48,11 +48,40 @@ test("parseKolnovelCatalog reads series cards", () => {
 });
 
 test("kolnovel catalog accepts latin genre filters", async () => {
-  const { handleKolnovelRequest } = await import("../sources/kolnovel.js");
-  const url = new URL("https://api.local/sources/kolnovel/catalog?page=1&genre=action");
-  const result = await handleKolnovelRequest(url);
-  assert.equal(result.status, 200);
-  assert.ok(result.body.items.length > 0);
+  const { configureFlareSolverr } = await import("../lib/flareSolverrConfig.js");
+  const { responseCache } = await import("../lib/httpUtils.js");
+  const originalFetch = globalThis.fetch;
+  responseCache.clear();
+  configureFlareSolverr(() => ({ baseUrl: "http://127.0.0.1:8191" }));
+  const catalogHtml = `
+    <article class="maindet">
+      <h2 itemprop="headline"><a href="https://kolnovel.com/series/novel-a/" title="Novel A">Novel A</a></h2>
+      <span class="mdgenre"><a href="https://kolnovel.com/genre/action/"># أكشن</a></span>
+      <div class="contexcerpt"><p>رواية أ مترجمة Novel A</p></div>
+      <img class="ts-post-image" src="https://kolnovel.com/cover.jpg" />
+    </article>
+  `;
+  globalThis.fetch = async (_url, options) => {
+    const body = JSON.parse(options.body);
+    assert.match(body.url, /genre(?:%5B%5D|\[\]).*action/);
+    return {
+      ok: true,
+      async json() {
+        return { status: "ok", solution: { response: catalogHtml } };
+      },
+    };
+  };
+  try {
+    const { handleKolnovelRequest } = await import("../sources/kolnovel.js");
+    const url = new URL("https://api.local/sources/kolnovel/catalog?page=1&genre=action");
+    const result = await handleKolnovelRequest(url);
+    assert.equal(result.status, 200);
+    assert.ok(result.body.items.length > 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+    configureFlareSolverr(() => null);
+    responseCache.clear();
+  }
 });
 
 test("extractKolnovelChapterNumber prefers الفصل over season number", () => {

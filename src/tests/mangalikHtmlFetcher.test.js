@@ -10,17 +10,35 @@ test("MangalikHtmlFetcher web stub rejects native-only call", async () => {
   );
 });
 
-test("configureMangalikNativeFetch injects custom html fetcher", async () => {
-  const { configureMangalikNativeFetch } = await import("../../server/sources/mangalik.js");
-  const { clearSourceNativeFetch } = await import("../../server/lib/nativeFetchBridge.js");
-  configureMangalikNativeFetch({
-    fetchHtml: async () => "<html><body><div class='page-item-detail manga'>test</div></body></html>",
-    fetchImage: null,
-  });
-  const { handleMangalikRequest } = await import("../../server/sources/mangalik.js");
-  const response = await handleMangalikRequest(new URL("http://localhost/api/sources/mangalik/catalog?page=1"));
-  assert.equal(response.status, 200);
-  clearSourceNativeFetch();
+test("mangalik catalog uses FlareSolverr directly", async () => {
+  const { configureFlareSolverr } = await import("../../server/lib/flareSolverrConfig.js");
+  const { responseCache } = await import("../../server/lib/httpUtils.js");
+  const originalFetch = globalThis.fetch;
+  responseCache.clear();
+  configureFlareSolverr(() => ({ baseUrl: "http://127.0.0.1:8191" }));
+  globalThis.fetch = async (url) => {
+    assert.match(String(url), /\/v1$/);
+    return {
+      ok: true,
+      async json() {
+        return {
+          status: "ok",
+          solution: {
+            response: '<html><body><div class="page-item-detail manga"><a href="/manga/sample/" title="Sample"><div class="post-title"><a>Sample</a></div></a></div></body></html>',
+          },
+        };
+      },
+    };
+  };
+  try {
+    const { handleMangalikRequest } = await import("../../server/sources/mangalik.js");
+    const response = await handleMangalikRequest(new URL("http://localhost/api/sources/mangalik/catalog?page=1"));
+    assert.equal(response.status, 200);
+  } finally {
+    globalThis.fetch = originalFetch;
+    configureFlareSolverr(() => null);
+    responseCache.clear();
+  }
 });
 
 test("configureAzoraflyNativeFetch injects custom html fetcher", async () => {
@@ -83,8 +101,10 @@ test("fetchNativeHtmlWithCache reuses in-flight fetch", async () => {
 });
 
 test("webViewSources marks native catalog sources", async () => {
-  const { WEBVIEW_SOURCE_IDS, shouldDeferCatalogFilters } = await import("../lib/platform/webViewSources.js");
-  assert.deepEqual(WEBVIEW_SOURCE_IDS, ["mangalik", "azorafly", "galaxynovels", "arabshentai", "hentairead", "mangaforfree", "novelsparadise", "kolnovel", "novelphoenix"]);
+  const { WEBVIEW_SOURCE_IDS, FLARE_DIRECT_SOURCE_IDS, shouldDeferCatalogFilters } = await import("../lib/platform/webViewSources.js");
+  assert.deepEqual(WEBVIEW_SOURCE_IDS, ["azorafly", "galaxynovels", "mangaforfree", "novelphoenix"]);
+  assert.deepEqual(FLARE_DIRECT_SOURCE_IDS, ["mangalik", "arabshentai", "hentairead", "hentaigasm", "mangadistrict", "manhwaread", "novelsparadise", "kolnovel"]);
   assert.equal(shouldDeferCatalogFilters("azorafly"), true);
+  assert.equal(shouldDeferCatalogFilters("mangalik"), true);
   assert.equal(shouldDeferCatalogFilters("paradise"), false);
 });

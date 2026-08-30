@@ -15,11 +15,16 @@ export function resolveBottomNavScrollHidden({
     return { hidden: false, lastScrollTop: safeScrollTop };
   }
 
-  if (delta > scrollDelta) {
+  // Ignore tiny jitter so hide/show needs a clear gesture.
+  if (Math.abs(delta) < scrollDelta) {
+    return { hidden: currentlyHidden, lastScrollTop };
+  }
+
+  if (delta > 0) {
     return { hidden: true, lastScrollTop: safeScrollTop };
   }
 
-  return { hidden: currentlyHidden, lastScrollTop: safeScrollTop };
+  return { hidden: false, lastScrollTop: safeScrollTop };
 }
 
 export function shouldRevealBottomNavOnTap(target) {

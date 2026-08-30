@@ -102,6 +102,32 @@ export function normalizeNativeHtmlUrl(url = "") {
       }
     }
 
+    if (host === "hentaigasm.com" || host === "www.hentaigasm.com") {
+      const path = stripTrailingSlash(parsed.pathname);
+      if (!path) {
+        parsed.search = "";
+        parsed.hash = "";
+        return `${parsed.origin}/`;
+      }
+    }
+
+    if (host === "mangadistrict.com" || host === "www.mangadistrict.com") {
+      if (stripTrailingSlash(parsed.pathname) === "/manga") {
+        parsed.search = "";
+        parsed.hash = "";
+        return `${parsed.origin}/manga/`;
+      }
+    }
+
+    if (host === "manhwaread.com" || host === "www.manhwaread.com"
+      || host === "manhwaread.org" || host === "www.manhwaread.org") {
+      if (stripTrailingSlash(parsed.pathname) === "/manhwa") {
+        parsed.search = "";
+        parsed.hash = "";
+        return `${parsed.origin}/manhwa/`;
+      }
+    }
+
     if (host === "novelsparadise.site" || host === "www.novelsparadise.site") {
       const path = stripTrailingSlash(parsed.pathname);
       if (path === "/series") {

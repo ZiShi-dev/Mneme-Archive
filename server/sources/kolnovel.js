@@ -6,15 +6,13 @@ import {
   parseParadiseChapter,
   parseParadiseFilters,
   paradiseCatalogHtmlLooksValid,
-  paradiseChapterHtmlLooksValid,
   resolveParadiseTitles,
   catalogHasMorePages,
   parseCatalogChaptersFromArticle,
   extractEplisterListBlocks,
 } from "./novelsparadise.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
-import { configureSourceNativeFetch, fetchNativeHtml, hasNativeHtmlFetcher } from "../lib/nativeFetchBridge.js";
-import { isCloudflareChallengeHtml } from "../lib/cloudflareDetect.js";
+import { configureSourceNativeFetch } from "../lib/nativeFetchBridge.js";
 
 const DEFAULT_BASE_URL = "https://kolnovel.com";
 const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
@@ -48,21 +46,9 @@ function createFetcher(baseUrl = DEFAULT_BASE_URL) {
     buildError: (lastStatus) => (lastStatus === 403
       ? "حماية Kol Novel تمنع الاتصال (Cloudflare)"
       : `Kol Novel a répondu ${lastStatus}`),
+    preferFlareSolverr: true,
   });
 }
-
-const KOLNOVEL_BROWSER_HEADERS = {
-  accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-  "accept-language": "ar,en-US;q=0.9,en;q=0.8",
-  "sec-ch-ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
-  "sec-ch-ua-mobile": "?0",
-  "sec-ch-ua-platform": '"Windows"',
-  "sec-fetch-dest": "document",
-  "sec-fetch-mode": "navigate",
-  "sec-fetch-site": "same-origin",
-  "upgrade-insecure-requests": "1",
-  "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-};
 
 function assertKolnovelHost(rawUrl, ctx = DEFAULT_CTX) {
   const url = new URL(rawUrl);
@@ -282,34 +268,6 @@ export function parseKolnovelChapters(html, seriesUrl) {
   return chapters;
 }
 
-async function fetchKolnovelChapterHtml(chapterUrl, ctx = DEFAULT_CTX) {
-  const seriesUrl = seriesUrlFromChapterUrl(chapterUrl);
-  const headers = { ...KOLNOVEL_BROWSER_HEADERS, referer: seriesUrl };
-  await fetch(seriesUrl, {
-    headers: { ...KOLNOVEL_BROWSER_HEADERS, referer: `${ctx.baseUrl}/series/` },
-    redirect: "follow",
-    signal: AbortSignal.timeout(35_000),
-  }).catch(() => {});
-  const response = await fetch(chapterUrl, {
-    redirect: "follow",
-    headers,
-    signal: AbortSignal.timeout(35_000),
-  });
-  const html = await response.text();
-  if (response.status === 403 || isCloudflareChallengeHtml(html)) {
-    throw new Error("حماية Kol Novel تمنع قراءة الفصول (Cloudflare)");
-  }
-  if (!response.ok) throw new Error(`Kol Novel a répondu ${response.status}`);
-  return html;
-}
-
-function seriesUrlFromChapterUrl(chapterUrl) {
-  const slug = slugFromPath(new URL(chapterUrl, DEFAULT_BASE_URL).pathname);
-  const match = slug.match(/^shaag24(.+?)z435ggye-\d+$/i);
-  if (!match?.[1]) throw new Error("رابط فصل Kol Novel غير صالح");
-  return buildSeriesUrl(match[1]);
-}
-
 function parseKolnovelDetails(html, url) {
   const primaryTitle = textOnly(
     html.match(/<h1[^>]*class="[^"]*entry-title[^"]*"[^>]*>([\s\S]*?)<\/h1>/i)?.[1]
@@ -351,30 +309,6 @@ function parseKolnovelDetails(html, url) {
   };
 }
 
-function kolnovelPageHtmlLooksValid(html = "", url = "") {
-  if (!html || isCloudflareChallengeHtml(html)) return false;
-  if (/shaag24/i.test(url)) return paradiseChapterHtmlLooksValid(html) || /epcontent/i.test(html);
-  return paradiseCatalogHtmlLooksValid(html);
-}
-
-async function fetchKolnovelHtml(url, remoteFetcher) {
-  const html = await fetchNativeHtml(url, () => remoteFetcher(url));
-  const looksValid = (value) => kolnovelPageHtmlLooksValid(value, url);
-  if (!hasNativeHtmlFetcher()) {
-    if (isCloudflareChallengeHtml(html)) throw new Error("حماية Kol Novel تمنع الاتصال (Cloudflare)");
-    return html;
-  }
-  if (looksValid(html)) return html;
-  try {
-    const remote = await remoteFetcher(url);
-    if (looksValid(remote)) return remote;
-  } catch {
-    // Garde le HTML WebView si le repli HTTP échoue aussi.
-  }
-  if (isCloudflareChallengeHtml(html)) throw new Error("حماية Kol Novel تمنع الاتصال (Cloudflare)");
-  return html;
-}
-
 function isKolnovelCatalogUrl(url = "") {
   try {
     const parsed = new URL(url);
@@ -392,7 +326,7 @@ function assertKolnovelCatalogHtml(url, html, items = []) {
 export async function handleKolnovelRequest(requestUrl) {
   const ctx = resolveSourceRequestContext(requestUrl, DEFAULT_BASE_URL, { label: SOURCE_NAME });
   const remoteFetcher = createFetcher(ctx.baseUrl);
-  const fetchKolnovelHtmlBound = (url) => fetchKolnovelHtml(url, remoteFetcher);
+  const fetchKolnovelHtmlBound = remoteFetcher;
 
   if (requestUrl.pathname.endsWith("/image")) {
     return fetchProxiedImage(assertKolnovelImageUrl(requestUrl.searchParams.get("url") ?? "", ctx), `${ctx.baseUrl}/`, SOURCE_NAME);
@@ -452,14 +386,7 @@ export async function handleKolnovelRequest(requestUrl) {
 
   if (requestUrl.pathname.endsWith("/chapter")) {
     const target = normalizeChapterUrl(requestUrl.searchParams.get("url") ?? "");
-    let html;
-    try {
-      html = await fetchKolnovelChapterHtml(target, ctx);
-    } catch {
-      const seriesUrl = seriesUrlFromChapterUrl(target);
-      await fetchKolnovelHtmlBound(seriesUrl).catch(() => {});
-      html = await fetchKolnovelChapterHtml(target, ctx);
-    }
+    const html = await remoteFetcher(target);
     return responseJson(200, parseParadiseChapter(html, target));
   }
 

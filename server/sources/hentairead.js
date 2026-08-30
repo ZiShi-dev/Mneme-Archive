@@ -26,6 +26,7 @@ const { configureNativeFetch, resolveHtml, resolveImage } = createWpMangaFetcher
   timeoutMs: 40_000,
   forbiddenMessage: "حماية HentaiRead منعت الاتصال مؤقتًا",
   catalogHtmlLooksValid: defaultWpMangaPageHtmlLooksValid,
+  preferFlareSolverr: true,
 });
 
 export function configureHentaireadNativeFetch(options) {
@@ -159,6 +160,14 @@ function parseHentaireadTags(html = "") {
 
 export function extractHentaireadChapterImages(html = "") {
   const source = String(html);
+  const inlined = [];
+  for (const tag of source.matchAll(/<img[^>]*class="[^"]*(?:chapter-image|wp-manga-chapter-img)[^"]*"[^>]*>/gi)) {
+    const src = tag[0].match(/(?:src|data-src)=["'](data:image\/[^"']+)["']/i)?.[1] ?? "";
+    if (src && !inlined.some((page) => page.src === src)) {
+      inlined.push({ src, alt: textOnly(tag[0].match(/alt=["']([^"']*)["']/i)?.[1] ?? "") });
+    }
+  }
+  if (inlined.length) return inlined;
   const baseUrlMatch = source.match(/["']baseUrl["']\s*:\s*["'](https?:\/\/[^"']+)["']/i)
     ?? source.match(/baseUrl["']\s*:\s*["'](https?:\/\/[^"']+)["']/i)
     ?? source.match(/var\s+single_chapter\s*=\s*\{[\s\S]*?["']baseUrl["']\s*:\s*["'](https?:\/\/[^"']+)["']/i);
@@ -328,7 +337,7 @@ export async function handleHentaireadRequest(requestUrl) {
 
   if (requestUrl.pathname.endsWith("/chapter")) {
     const target = assertHentaireadUrl(requestUrl.searchParams.get("url") ?? "", true);
-    const html = await resolveHtml(target);
+    const html = await resolveHtml(target, { includeAssets: true });
     return responseJson(200, parseHentaireadChapter(html, target));
   }
 

@@ -18,7 +18,7 @@ import {
   EMBED_PROGRESS_CAP,
   EMBED_SECONDS_PER_PERCENT,
   EMBED_TICK_MS,
-  formatServerLabel,
+  formatUniqueServerLabels,
   PLAYBACK_SPEEDS,
   SKIP_SECONDS,
   SINGLE_TAP_DELAY_MS,
@@ -637,21 +637,28 @@ export function LiveVideoPlayer({
     markCompleteAction && (watchDesktopLayout || embedMode || usePlyrPlayer),
   );
 
+  const serverLabels = useMemo(
+    () => formatUniqueServerLabels(orderedSources, t),
+    [orderedSources, t],
+  );
+
   const serverBar = orderedSources.length > 0 && data && !cinemaMode ? (
     <div
       className={`live-video-servers live-video-servers--dock${embedMode ? " live-video-servers--embed" : ""}`}
       aria-label={t("reader.stream.serversAria")}
     >
-      <div className="live-video-servers__chips">
+      <div className="live-video-servers__chips" role="list">
         {orderedSources.map((source, index) => (
           <button
             key={`${source.url}-${index}`}
             type="button"
+            role="listitem"
             className={`live-video-servers__chip${index === activeSourceIndex ? " active" : ""}${source.streamUrl ? " live-video-servers__chip--native" : ""}`}
             onClick={() => selectSource(index)}
             aria-pressed={index === activeSourceIndex}
+            title={serverLabels[index]}
           >
-            {formatServerLabel(source, t)}
+            {serverLabels[index]}
           </button>
         ))}
       </div>

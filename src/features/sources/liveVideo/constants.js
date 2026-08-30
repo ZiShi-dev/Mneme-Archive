@@ -17,3 +17,20 @@ export function formatServerLabel(source = {}, translate) {
   }
   return label || translate("reader.stream.server");
 }
+
+/** Ajoute un numéro quand plusieurs lecteurs portent le même nom (ex. Mp4upload ×3). */
+export function formatUniqueServerLabels(sources = [], translate) {
+  const baseLabels = sources.map((source) => formatServerLabel(source, translate));
+  const totals = new Map();
+  for (const label of baseLabels) {
+    totals.set(label, (totals.get(label) || 0) + 1);
+  }
+  const seen = new Map();
+  return baseLabels.map((label) => {
+    const total = totals.get(label) || 1;
+    if (total <= 1) return label;
+    const next = (seen.get(label) || 0) + 1;
+    seen.set(label, next);
+    return `${label} ${next}`;
+  });
+}

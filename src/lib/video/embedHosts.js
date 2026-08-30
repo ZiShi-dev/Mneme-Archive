@@ -2,7 +2,9 @@ const EMBED_HOST_PATTERN = /(^|\.)(4h\.b9p2m6c\.shop|[a-z0-9-]+\.b9p2m6c\.shop|[
 
 const EMBED_NO_SANDBOX_HOSTS = /(^|\.)(voe\.sx|sandratableother\.com|diananatureforeign\.com|drive\.google\.com|(?:www\.)?dailymotion\.com|(?:www\.)?ok\.ru)$/i;
 
-const AD_HOST_PATTERN = /(doubleclick|googlesyndication|popads|exoclick|clickadu|adsterra|propellerads|outbrain|taboola|mgid|revcontent)/i;
+const AD_HOST_PATTERN = /(doubleclick|googlesyndication|googleadservices|googletagmanager|googletagservices|google-analytics|adservice\.google|pagead2\.|fundingchoicesmessages\.google|popads|exoclick|clickadu|adsterra|propellerads|outbrain|taboola|mgid|revcontent|juicyads|trafficjunky|tsyndicate|adnxs|rubiconproject|pubmatic|openx\.net|play\.google\.com|market\.android\.com)/i;
+
+const ALLOWED_GOOGLE_HOST_PATTERN = /(^|\.)(drive\.google\.com|googleusercontent\.com)$/i;
 
 export const EMBED_IFRAME_SANDBOX = [
   "allow-scripts",
@@ -63,8 +65,15 @@ export function resolveEmbedIframeSandbox(url = "") {
 
 export function isBlockedAdUrl(url = "") {
   try {
-    const host = new URL(url).hostname.toLowerCase();
-    return AD_HOST_PATTERN.test(host);
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    if (ALLOWED_GOOGLE_HOST_PATTERN.test(host)) return false;
+    if (AD_HOST_PATTERN.test(host)) return true;
+    if (/(^|\.)google\.[a-z.]{2,}$/i.test(host)) {
+      const path = `${parsed.pathname}${parsed.search}`.toLowerCase();
+      return /\/aclk|\/pagead|\/ads|adurl=|\/url\?|\/search|\/store|^\/?\?|^\/$/.test(path);
+    }
+    return false;
   } catch {
     return true;
   }
@@ -85,13 +94,27 @@ export function installEmbedPopupGuards() {
   const originalOpen = window.open;
   window.open = () => null;
 
+  const shouldBlockHref = (href) => {
+    const target = String(href || "").trim();
+    if (!target || target.startsWith("#") || target.startsWith("javascript:")) return false;
+    try {
+      const url = new URL(target, window.location.href);
+      if (url.protocol === "intent:" || url.protocol === "market:") return true;
+      return isBlockedAdUrl(url.href);
+    } catch {
+      return true;
+    }
+  };
+
   const onClickCapture = (event) => {
     const anchor = event.target?.closest?.("a[href]");
     if (!anchor) return;
+    const href = anchor.getAttribute("href") || anchor.href || "";
     const target = (anchor.getAttribute("target") || "").toLowerCase();
-    if (target !== "_blank" && target !== "_new") return;
-    event.preventDefault();
-    event.stopPropagation();
+    if (shouldBlockHref(href) || target === "_blank" || target === "_new") {
+      event.preventDefault();
+      event.stopPropagation();
+    }
   };
 
   const onAuxClick = (event) => {

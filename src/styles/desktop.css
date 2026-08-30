@@ -3831,18 +3831,25 @@ html[dir="ltr"] .desktop-app .live-catalog {
   gap: 8px;
 }
 
+.desktop-app .live-reader--watch .live-video-servers--dock .live-video-servers__chips {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+
 .desktop-app .live-reader--watch .live-video-servers--dock .live-video-servers__chip {
   border-color: var(--line);
   background: color-mix(in srgb, var(--paper) 94%, transparent);
   color: var(--ink);
   backdrop-filter: none;
+  border-radius: 12px;
 }
 
 .desktop-app .live-reader--watch .live-video-servers__chip {
-  min-height: 34px;
-  padding: 6px 14px;
+  min-height: 38px;
+  padding: 8px 12px;
   font-size: 12px;
-  border-radius: 999px;
+  border-radius: 12px;
   border-color: rgba(255, 255, 255, 0.14);
   background: rgba(12, 14, 22, 0.82);
   backdrop-filter: blur(8px);

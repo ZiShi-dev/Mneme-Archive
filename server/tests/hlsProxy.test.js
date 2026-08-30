@@ -4,6 +4,7 @@ import {
   filterM3u8Ads,
   isAdSegmentUrl,
   isM3u8Payload,
+  readResponseBytesLimited,
   rewriteM3u8Playlist,
 } from "../lib/hlsProxy.js";
 
@@ -43,4 +44,27 @@ segment.ts`;
   );
   assert.match(rewritten, /\/proxy\?url=/);
   assert.match(rewritten, /segment\.ts/);
+});
+
+test("readResponseBytesLimited rejects oversized Content-Length", async () => {
+  const response = {
+    headers: { get: (name) => (name === "content-length" ? "100" : null) },
+    body: null,
+    arrayBuffer: async () => new ArrayBuffer(8),
+  };
+  await assert.rejects(
+    () => readResponseBytesLimited(response, 50),
+    /trop volumineux/i,
+  );
+});
+
+test("readResponseBytesLimited accepts under-limit body", async () => {
+  const bytes = new Uint8Array([1, 2, 3, 4]);
+  const response = {
+    headers: { get: () => null },
+    body: null,
+    arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+  };
+  const result = await readResponseBytesLimited(response, 100);
+  assert.deepEqual([...result], [1, 2, 3, 4]);
 });

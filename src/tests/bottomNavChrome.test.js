@@ -25,14 +25,24 @@ test("resolveBottomNavScrollHidden hides nav when scrolling down", () => {
   assert.deepEqual(result, { hidden: true, lastScrollTop: 180 });
 });
 
-test("resolveBottomNavScrollHidden does not reveal nav when scrolling up", () => {
+test("resolveBottomNavScrollHidden reveals nav when scrolling up", () => {
   const result = resolveBottomNavScrollHidden({
     scrollTop: 140,
     lastScrollTop: 180,
     currentlyHidden: true,
   });
 
-  assert.deepEqual(result, { hidden: true, lastScrollTop: 140 });
+  assert.deepEqual(result, { hidden: false, lastScrollTop: 140 });
+});
+
+test("resolveBottomNavScrollHidden ignores tiny scroll jitter", () => {
+  const result = resolveBottomNavScrollHidden({
+    scrollTop: 160,
+    lastScrollTop: 155,
+    currentlyHidden: true,
+  });
+
+  assert.deepEqual(result, { hidden: true, lastScrollTop: 155 });
 });
 
 test("shouldRevealBottomNavOnTap ignores interactive targets", () => {

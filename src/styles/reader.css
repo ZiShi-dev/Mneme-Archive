@@ -42,6 +42,12 @@
   max-width: calc(100vw - 16px);
 }
 
+.live-reader:not(.live-reader--video) .live-reader__dock .reader-playback,
+.native-app .live-reader:not(.live-reader--video) .live-reader__dock .reader-playback {
+  width: 100%;
+  max-width: none;
+}
+
 .live-reader:not(.live-reader--video) {
   display: flex;
   flex-direction: column;
@@ -79,17 +85,14 @@
 
 .live-reader:not(.live-reader--video) .live-reader__dock {
   flex: 0 0 auto;
-  padding: 0 max(8px, var(--reader-safe-left, 0px)) max(8px, var(--reader-safe-bottom, env(safe-area-inset-bottom, 0px))) max(8px, var(--reader-safe-right, 0px));
+  padding: 0;
   background: #05060a;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-html.native-app[data-nav-mode="gesture"] .live-reader:not(.live-reader--video) .live-reader__dock {
-  padding-bottom: 8px;
-}
-
+html.native-app[data-nav-mode="gesture"] .live-reader:not(.live-reader--video) .live-reader__dock,
 html.native-app[data-nav-mode="buttons"] .live-reader:not(.live-reader--video) .live-reader__dock {
-  padding-bottom: max(8px, var(--reader-safe-bottom, 0px));
+  padding-bottom: 0;
 }
 
 .live-reader:not(.live-reader--video) .live-reader__dock .reader-playback {
@@ -98,12 +101,17 @@ html.native-app[data-nav-mode="buttons"] .live-reader:not(.live-reader--video) .
   right: auto;
   bottom: auto;
   transform: none;
-  margin: 0 auto;
+  margin: 0;
   width: 100%;
-  max-width: 100%;
-  border-radius: 15px 15px 0 0;
+  max-width: none;
+  border-radius: 0;
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0;
   box-shadow: none;
   animation: none;
+  padding: 9px 12px max(10px, var(--reader-safe-bottom, env(safe-area-inset-bottom, 0px)));
+  box-sizing: border-box;
 }
 
 .live-reader:not(.live-reader--video).live-reader--auto-scroll.live-reader--chrome-hidden .live-reader__body {
@@ -283,7 +291,7 @@ html.native-app[data-nav-mode="buttons"] .live-reader:not(.live-reader--video) .
   }
 
   .novel-reader-content {
-    padding: 28px 16px 56px;
+    padding: 16px 16px 48px;
   }
 
   .reader-live-state {
@@ -733,30 +741,31 @@ html.native-app[data-nav-mode="buttons"] .live-reader:not(.live-reader--video) .
 }
 
 .live-reader--video:not(.live-reader--watch) .live-video-servers--dock {
-  position: absolute;
-  z-index: 11;
-  inset-inline-end: 8px;
-  inset-block-end: calc(76px + var(--reader-safe-bottom));
-  left: auto;
-  right: auto;
-  width: auto;
-  max-width: min(72vw, 280px);
+  position: static;
+  z-index: 5;
+  inset: auto;
+  width: 100%;
+  max-width: none;
   margin: 0;
-  padding: 0;
-  pointer-events: none;
+  padding: 10px 12px 0;
+  pointer-events: auto;
+  flex: 0 0 auto;
 }
 
 .live-reader--video:not(.live-reader--watch) .live-video-immersive-root.is-embed .live-video-servers--dock {
-  inset-block-end: calc(52px + var(--reader-safe-bottom));
+  inset-block-end: auto;
 }
 
 .live-reader--video:not(.live-reader--watch) .live-video-immersive-root.is-cinema .live-video-servers--dock {
-  inset-block-start: max(52px, calc(var(--reader-safe-top) + 46px));
+  inset-block-start: auto;
   inset-block-end: auto;
 }
 
 .live-reader--video:not(.live-reader--watch) .live-video-servers--dock .live-video-servers__chips {
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  justify-content: stretch;
   pointer-events: auto;
 }
 
@@ -765,26 +774,31 @@ html.native-app[data-nav-mode="buttons"] .live-reader:not(.live-reader--video) .
 }
 
 .live-reader--video:not(.live-reader--watch) .live-video-servers--dock .live-video-servers__chip {
-  min-height: 34px;
-  padding: 7px 12px;
-  font-size: 11px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  text-align: center;
+  justify-content: center;
+  box-shadow: none;
 }
 
 .live-reader--video:not(.live-reader--watch) .live-video-mark-complete:not(.live-video-mark-complete--meta) {
-  position: absolute;
-  z-index: 11;
-  inset-block-end: max(10px, var(--reader-safe-bottom));
-  inset-inline-start: 10px;
-  left: auto;
-  right: auto;
-  min-height: 34px;
-  padding: 7px 12px;
-  font-size: 10px;
+  position: static;
+  z-index: 5;
+  inset: auto;
+  display: flex;
+  width: calc(100% - 24px);
+  min-height: 40px;
+  margin: 10px 12px max(12px, var(--reader-safe-bottom));
+  padding: 8px 12px;
+  font-size: 12px;
+  justify-content: center;
 }
 
 .live-reader--video:not(.live-reader--watch) .live-video-immersive-root.is-embed .live-video-mark-complete:not(.live-video-mark-complete--meta) {
-  inset-block-end: max(10px, var(--reader-safe-bottom));
+  inset-block-end: auto;
 }
 
 .live-reader--video:not(.live-reader--watch) .live-video-chrome--controls .reader-playback--docked {
@@ -816,11 +830,33 @@ html.native-app[data-nav-mode="buttons"] .live-reader:not(.live-reader--video) .
   }
 
   .live-reader--video:not(.live-reader--watch) .live-video-servers--dock {
-    inset-block-end: calc(64px + var(--reader-safe-bottom));
+    padding: 6px 10px 0;
+  }
+
+  .live-reader--video:not(.live-reader--watch) .live-video-servers--dock .live-video-servers__chips {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  .live-reader--video:not(.live-reader--watch) .live-video-servers--dock .live-video-servers__chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .live-reader--video:not(.live-reader--watch) .live-video-servers--dock .live-video-servers__chip {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 108px;
+    max-width: 160px;
+    min-height: 36px;
   }
 
   .live-reader--video:not(.live-reader--watch) .live-video-immersive-root.is-embed .live-video-servers--dock {
-    inset-block-end: calc(44px + var(--reader-safe-bottom));
+    inset-block-end: auto;
   }
 }
 
@@ -1504,9 +1540,15 @@ html.native-app #root > .reader .live-reader__body::-webkit-scrollbar,
 .live-reader--novel .novel-reader-content {
   width: 100%;
   max-width: 100%;
+  min-height: 0;
   box-sizing: border-box;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+.live-reader--novel .novel-reader-content__source {
+  margin-bottom: 12px;
+  padding-bottom: 10px;
 }
 
 .live-reader--novel .novel-reader-content > p {
@@ -1789,21 +1831,20 @@ html.native-app #root > .reader .live-reader__body::-webkit-scrollbar,
 
 .live-video-servers {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 8px;
   padding: 0 2px;
   flex: 0 0 auto;
 }
 
 .live-video-servers--embed {
-  flex-direction: column;
   align-items: stretch;
   gap: 10px;
 }
 
 .live-video-servers__chips {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -1827,13 +1868,17 @@ html.native-app #root > .reader .live-reader__body::-webkit-scrollbar,
 }
 
 .live-video-servers__chip {
-  min-height: 32px;
-  padding: 6px 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
   border: 1px solid #303342;
-  border-radius: 999px;
+  border-radius: 12px;
   background: rgba(18, 20, 30, 0.92);
   color: #c8cad6;
-  font: 600 11px/1.25 var(--font-sans);
+  font: 600 12px/1.25 var(--font-sans);
   cursor: pointer;
   white-space: nowrap;
   max-width: 100%;

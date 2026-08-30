@@ -4,9 +4,8 @@ import { getFlareSolverrConfig } from "../../../server/lib/flareSolverrConfig.js
 import { configureSourceNativeFetch } from "../../../server/lib/nativeFetchBridge.js";
 import { t } from "../../i18n/runtime.js";
 import { fetchNativeHtmlWithCache, clearNativeHtmlCache } from "./nativeHtmlCache.js";
-import { WEBVIEW_SOURCE_IDS } from "./webViewSources.js";
 
-export { WEBVIEW_SOURCE_IDS, usesWebViewSource, shouldDeferCatalogFilters } from "./webViewSources.js";
+export { WEBVIEW_SOURCE_IDS, usesWebViewSource, usesFlareDirectSource, shouldDeferCatalogFilters } from "./webViewSources.js";
 export { clearNativeHtmlCache, invalidateNativeHtmlCache, normalizeNativeHtmlUrl } from "./nativeHtmlCache.js";
 
 function decodeBase64(base64) {
@@ -20,7 +19,7 @@ function decodeBase64(base64) {
 
 let htmlFetchChain = Promise.resolve();
 let imageFetchChain = Promise.resolve();
-const MAX_IMAGE_FETCH_CONCURRENCY = 3;
+const MAX_IMAGE_FETCH_CONCURRENCY = 5;
 let activeImageFetches = 0;
 const pendingImageResolvers = [];
 
@@ -74,30 +73,26 @@ async function createCloudflareNativeFetchers() {
   return {
     fetchHtml: async (url) => queueHtmlFetch(async () => {
       let lastError = null;
-      for (let attempt = 0; attempt < 3; attempt += 1) {
+      // Flare d’abord : le HTTP natif tombe souvent sur CF et coûte plusieurs secondes.
+      try {
+        return await fetchNativeHtmlWithCache(
+          (targetUrl) => fetchHtmlViaFlareSolverrIfConfigured(targetUrl),
+          url,
+        );
+      } catch (flareFirstError) {
+        lastError = flareFirstError;
+      }
+      for (let attempt = 0; attempt < 2; attempt += 1) {
         try {
           return await fetchNativeHtmlWithCache(async (targetUrl) => {
-            try {
-              const result = await MangalikHtmlFetcher.fetchHtml({ url: targetUrl });
-              if (!result?.html) throw new Error(t("errors.loadPage"));
-              return result.html;
-            } catch (error) {
-              if (!isCloudflareNativeError(error)) throw error;
-              return fetchHtmlViaFlareSolverrIfConfigured(targetUrl);
-            }
+            const result = await MangalikHtmlFetcher.fetchHtml({ url: targetUrl });
+            if (!result?.html) throw new Error(t("errors.loadPage"));
+            return result.html;
           }, url);
         } catch (error) {
           lastError = error;
-          if (isCloudflareNativeError(error)) {
-            try {
-              return await fetchHtmlViaFlareSolverrIfConfigured(url);
-            } catch (flareError) {
-              lastError = flareError;
-              break;
-            }
-          }
-          if (attempt < 2) {
-            await new Promise((resolve) => setTimeout(resolve, 2500 * (attempt + 1)));
+          if (attempt < 1) {
+            await new Promise((resolve) => setTimeout(resolve, 1200 * (attempt + 1)));
           }
         }
       }

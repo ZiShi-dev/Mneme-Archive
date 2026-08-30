@@ -310,9 +310,9 @@ html[dir="ltr"] .catalog-source-picker__footer > span:last-child { text-align: l
 .managed-sources-list { display: grid; gap: 9px; margin-bottom: 22px; }
 .managed-sources-list .built-in-source { margin: 0; }
 .source-mode-cards button:disabled { opacity: .42; cursor: not-allowed; }
-.novel-reader-content { min-height: calc(100vh - 67px); width: 100%; max-width: 760px; margin: 0 auto; padding: 38px clamp(16px, 5vw, 64px) 60px; box-sizing: border-box; color: #f4f1ea; background: #0b0c12; overflow-wrap: anywhere; word-break: break-word; }
+.novel-reader-content { min-height: 0; width: 100%; max-width: 760px; margin: 0 auto; padding: 20px clamp(16px, 5vw, 64px) 48px; box-sizing: border-box; color: #f4f1ea; background: #0b0c12; overflow-wrap: anywhere; word-break: break-word; }
 .novel-reader-content > p { overflow-wrap: anywhere; word-break: break-word; }
-.novel-reader-content__source { display: flex; align-items: center; gap: 10px; margin-bottom: 30px; padding-bottom: 18px; border-bottom: 1px solid #292c38; color: #a7a8b4; font-size: 9px; }
+.novel-reader-content__source { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid #292c38; color: #a7a8b4; font-size: 9px; }
 .novel-reader-content__source .source-logo { width: 34px; height: 34px; padding: 4px; }
 .novel-reader-content > p { margin: 0 0 1.25em; color: #f4f1ea; font: 400 18px/2.05 "Noto Naskh Arabic", "Literata", serif; text-align: start; }
 .live-reader--novel { background: #0b0c12; }
@@ -608,49 +608,19 @@ html[dir="ltr"] .catalog-source-picker__footer > span:last-child { text-align: l
   overflow: hidden;
   isolation: isolate;
   border-color: color-mix(in srgb, #8e3a4d 68%, #2d1616);
-  background-color: #1a0a0a;
-  background-image:
-    radial-gradient(120% 95% at 14% 10%, color-mix(in srgb, #b34e64 42%, transparent), transparent 58%),
-    radial-gradient(85% 70% at 88% 88%, color-mix(in srgb, #3d2b2b 50%, transparent), transparent 62%),
-    linear-gradient(155deg, #2d1616 0%, #1a0a0a 55%, #120e13 100%);
+  background-color: #0c0810;
   color: #fdeff2;
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, #fff0f5 12%, transparent),
     0 8px 20px rgba(0, 0, 0, .28);
 }
 
-.theme-selector__option--yozakura::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(circle at 16% 24%, rgba(255, 240, 245, .14) 0 1px, transparent 2px),
-    radial-gradient(circle at 68% 34%, rgba(253, 239, 242, .1) 0 1px, transparent 2px),
-    radial-gradient(circle at 42% 72%, rgba(255, 240, 245, .11) 0 1px, transparent 2px),
-    radial-gradient(circle at 82% 62%, rgba(244, 202, 213, .09) 0 1px, transparent 2px);
-  pointer-events: none;
-  opacity: .55;
-  mask-image:
-    radial-gradient(ellipse 72% 68% at 12% 16%, #000, transparent 72%),
-    radial-gradient(ellipse 58% 54% at 88% 84%, #000, transparent 70%);
-  -webkit-mask-image:
-    radial-gradient(ellipse 72% 68% at 12% 16%, #000, transparent 72%),
-    radial-gradient(ellipse 58% 54% at 88% 84%, #000, transparent 70%);
-}
-
+.theme-selector__option--yozakura::before,
 .theme-selector__option--yozakura::after {
-  content: "";
-  position: absolute;
-  inset: -28% auto auto -24%;
-  width: 52%;
-  height: 68%;
-  border-radius: 50%;
-  background: radial-gradient(circle, color-mix(in srgb, #b34e64 34%, transparent), transparent 72%);
-  pointer-events: none;
-  opacity: .45;
+  display: none;
 }
 
-.theme-selector__option--yozakura > * {
+.theme-selector__option--yozakura > *:not(.yozakura-preview) {
   position: relative;
   z-index: 1;
 }
@@ -692,10 +662,6 @@ html[dir="ltr"] .catalog-source-picker__footer > span:last-child { text-align: l
 .theme-selector__option--yozakura.active {
   border-color: color-mix(in srgb, #e8a8ba 78%, #fff0f5);
   color: #fff0f5;
-  background:
-    radial-gradient(125% 100% at 8% 4%, color-mix(in srgb, #c94f6d 48%, transparent), transparent 56%),
-    radial-gradient(90% 78% at 92% 90%, color-mix(in srgb, #8e3a4d 32%, transparent), transparent 60%),
-    linear-gradient(155deg, #3d2b2b 0%, #2d1616 48%, #1a0a0a 100%);
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, #fff0f5 22%, transparent),
     0 0 0 1px color-mix(in srgb, #e8a8ba 38%, transparent),
@@ -1445,36 +1411,40 @@ html.native-app {
   --safe-left: var(--app-safe-area-left, 0px);
   --safe-right: var(--app-safe-area-right, 0px);
   --bottom-nav-height: 52px;
-  --screen-bottom-padding: var(--bottom-nav-height);
+  --screen-bottom-padding: calc(var(--bottom-nav-height) + 24px);
 }
 
 html.native-app[data-nav-mode="gesture"] {
-  --screen-bottom-padding: var(--bottom-nav-height);
+  --screen-bottom-padding: calc(var(--bottom-nav-height) + 16px);
 }
 
 html.native-app[data-nav-mode="buttons"] {
-  --screen-bottom-padding: calc(var(--bottom-nav-height) + var(--safe-bottom));
+  --screen-bottom-padding: calc(var(--bottom-nav-height) + 24px + var(--safe-bottom));
 }
 
 .native-app .bottom-nav {
   position: fixed;
-  inset: auto 0 0 0;
-  width: 100%;
-  max-width: 100dvw;
-  margin: 0;
+  inset: auto 12px max(12px, var(--safe-bottom)) 12px;
+  width: auto;
+  max-width: calc(100dvw - 24px);
+  margin: 0 auto;
   box-sizing: border-box;
-  padding:
-    2px max(4px, var(--safe-right))
-    0
-    max(4px, var(--safe-left));
+  padding: 4px 8px 6px;
   min-height: var(--bottom-nav-height);
+  border-radius: 999px;
   background: var(--bottom-nav-bg);
   z-index: 30;
 }
 
+/* Mode glisser : barre plus basse (pas de barre à boutons). */
+html.native-app[data-nav-mode="gesture"] .bottom-nav {
+  bottom: 8px;
+}
+
 html.native-app[data-nav-mode="buttons"] .bottom-nav {
-  padding-bottom: var(--safe-bottom);
-  min-height: calc(var(--bottom-nav-height) + var(--safe-bottom));
+  bottom: max(8px, var(--safe-bottom));
+  padding-bottom: 6px;
+  min-height: var(--bottom-nav-height);
 }
 
 .native-app .bottom-nav__icon-wrap {

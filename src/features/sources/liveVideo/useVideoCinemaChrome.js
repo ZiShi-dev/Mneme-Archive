@@ -144,7 +144,7 @@ export function useVideoCinemaChrome({
   }, [cinemaMode]);
 
   useEffect(() => {
-    if (!embedMode || !Capacitor.isNativePlatform()) return undefined;
+    if (!embedMode) return undefined;
     return installEmbedPopupGuards();
   }, [embedMode]);
 

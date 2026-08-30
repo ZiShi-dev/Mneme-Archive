@@ -3,7 +3,6 @@ import { handleGalaxyRequest } from "../sources/galaxynovels.js";
 import { handleMangalikRequest } from "../sources/mangalik.js";
 import { handleMangaforfreeRequest } from "../sources/mangaforfree.js";
 import { handleAnimedarRequest } from "../sources/animedar.js";
-import { handleNightNovelRequest } from "../sources/nightnovel.js";
 import { handleNovelsParadiseRequest } from "../sources/novelsparadise.js";
 import { handleCeneleRequest } from "../sources/cenele.js";
 import { handleKolnovelRequest } from "../sources/kolnovel.js";
@@ -15,6 +14,9 @@ import { handleCoflixRequest } from "../sources/coflix.js";
 import { handleDilarRequest } from "../sources/dilar.js";
 import { handleArabshentaiRequest } from "../sources/arabshentai.js";
 import { handleHentaireadRequest } from "../sources/hentairead.js";
+import { handleHentaigasmRequest } from "../sources/hentaigasm.js";
+import { handleMangadistrictRequest } from "../sources/mangadistrict.js";
+import { handleManhwareadRequest } from "../sources/manhwaread.js";
 import { handleWtrlabRequest } from "../sources/wtrlab.js";
 import { handleNovelphoenixRequest } from "../sources/novelphoenix.js";
 
@@ -22,6 +24,9 @@ import { handleNovelphoenixRequest } from "../sources/novelphoenix.js";
 export const SOURCE_HANDLERS = Object.freeze({
   novelphoenix: handleNovelphoenixRequest,
   wtrlab: handleWtrlabRequest,
+  manhwaread: handleManhwareadRequest,
+  mangadistrict: handleMangadistrictRequest,
+  hentaigasm: handleHentaigasmRequest,
   hentairead: handleHentaireadRequest,
   arabshentai: handleArabshentaiRequest,
   dilar: handleDilarRequest,
@@ -33,7 +38,6 @@ export const SOURCE_HANDLERS = Object.freeze({
   kolnovel: handleKolnovelRequest,
   cenele: handleCeneleRequest,
   animedar: handleAnimedarRequest,
-  nightnovel: handleNightNovelRequest,
   novelsparadise: handleNovelsParadiseRequest,
   galaxynovels: handleGalaxyRequest,
   azorafly: handleAzoraRequest,

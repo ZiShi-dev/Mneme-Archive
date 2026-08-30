@@ -7,12 +7,16 @@ import { MAX_SEARCH_QUERY_LENGTH } from "../../../server/lib/queryLimits.js";
 import { Capacitor } from "@capacitor/core";
 import { getRuntimeSettings } from "../../lib/settings/runtimeSettings.js";
 import { getDefaultSourceBaseUrl, getEffectiveSourceBaseUrl } from "../../lib/settings/sourceBaseUrls.js";
-import { WEBVIEW_SOURCE_ID_SET } from "../../lib/platform/webViewSources.js";
+import { FLARE_DIRECT_SOURCE_ID_SET, WEBVIEW_SOURCE_ID_SET } from "../../lib/platform/webViewSources.js";
 import { getKindQueryParam, sourcesWithCapability } from "../../config/sourceCapabilities.js";
 
 const FILTER_PATH_SOURCES = new Set(sourcesWithCapability("filterPath"));
 const GENRE_FILTER_SOURCES = sourcesWithCapability("genreFilter");
 const TAG_FILTER_SOURCES = sourcesWithCapability("tagFilter");
+const CLOUDFLARE_NATIVE_SOURCE_IDS = new Set([
+  ...WEBVIEW_SOURCE_ID_SET,
+  ...FLARE_DIRECT_SOURCE_ID_SET,
+]);
 
 function appendSourceQueryParams(query, sourceId) {
   const settings = getRuntimeSettings();
@@ -27,7 +31,7 @@ const sourcePath = (sourceId, resource) => `/api/sources/${sourceId}/${resource}
 const isNative = () => Capacitor.isNativePlatform();
 
 function pathUsesCloudflareNative(path = "") {
-  for (const sourceId of WEBVIEW_SOURCE_ID_SET) {
+  for (const sourceId of CLOUDFLARE_NATIVE_SOURCE_IDS) {
     if (path.includes(`/api/sources/${sourceId}/`)) return true;
   }
   return false;
@@ -151,7 +155,7 @@ async function fetchImagePayload(sourceId, url) {
       contentType: response.headers.get("content-type") || "image/jpeg",
     };
   }
-  if (WEBVIEW_SOURCE_ID_SET.has(sourceId)) await ensureCloudflareNative();
+  if (CLOUDFLARE_NATIVE_SOURCE_IDS.has(sourceId)) await ensureCloudflareNative();
   const { handleSourceRequest } = await import("../../../server/mangaSourcesPlugin.js");
   const result = await handleSourceRequest(sourceImageUrl(sourceId, url));
   if (!result || result.kind !== "image") throw new Error(t("errors.loadImage"));
@@ -162,6 +166,7 @@ async function fetchImagePayload(sourceId, url) {
 }
 
 export async function resolveSourceImageUrl(sourceId, url) {
+  if (String(url || "").startsWith("data:image/")) return url;
   if (!isAllowedImageUrl(url)) {
     throw new Error(t("errors.imageUrlNotAllowed"));
   }
@@ -217,44 +222,9 @@ export function fetchSourceDetails(sourceId, url) {
   return requestJson(path, t("errors.loadDetails"), { ttlMs: 180_000 });
 }
 
-async function fetchParadiseChapterNative(sourceId, url, seriesUrl = "") {
-  const mapNativeResult = (result) => {
-    const paragraphs = Array.isArray(result?.paragraphs) ? result.paragraphs.filter(Boolean) : [];
-    if (!paragraphs.length) throw new Error(t("errors.extractChapter"));
-    return {
-      title: result.title || t("errors.chapterFallback"),
-      url: result.url || url,
-      kind: "novel",
-      paragraphs,
-      pages: [],
-    };
-  };
-
-  const isCloudflareError = (error) => /cloudflare|حماية/i.test(
-    error instanceof Error ? error.message : String(error || ""),
-  );
-
-  try {
-    const { ParadiseChapterFetcher } = await import("../../plugins/paradiseChapterFetcher.js");
-    const result = await ParadiseChapterFetcher.fetchChapter({ url, seriesUrl });
-    return mapNativeResult(result);
-  } catch (error) {
-    if (!isCloudflareError(error)) throw error;
-  }
-
-  await ensureCloudflareNative();
-  const query = new URLSearchParams({ url });
-  if (seriesUrl) query.set("series", seriesUrl);
-  appendSourceQueryParams(query, sourceId);
-  return requestJson(`${sourcePath(sourceId, "chapter")}?${query}`, t("errors.loadChapter"));
-}
-
 export async function fetchSourceChapter(sourceId, url, options = "") {
   const opts = typeof options === "string" ? { contentApi: options } : (options || {});
-  if (isNative() && (sourceId === "novelsparadise" || sourceId === "kolnovel")) {
-    return fetchParadiseChapterNative(sourceId, url, opts.seriesUrl || "");
-  }
-  if (isNative() && WEBVIEW_SOURCE_ID_SET.has(sourceId)) {
+  if (isNative() && CLOUDFLARE_NATIVE_SOURCE_IDS.has(sourceId)) {
     await ensureCloudflareNative();
   }
   const query = new URLSearchParams({ url });

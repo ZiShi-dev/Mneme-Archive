@@ -1,14 +1,13 @@
 import { decodeHtml, parseDetailTaxonomies, textOnly } from "../lib/htmlUtils.js";
-import { createCachedHtmlFetcher, fetchProxiedImage } from "../lib/httpUtils.js";
+import { createCachedHtmlFetcher, fetchProxiedImage, responseCache } from "../lib/httpUtils.js";
 import { normalizeSearchQuery } from "../lib/queryLimits.js";
 import { responseJson } from "../lib/response.js";
 import { applyRecentChapterFields, normalizeRecentChapters } from "../lib/catalogChapters.js";
 import { parseMadaraChapters, resolveMadaraChapters } from "../lib/madaraChapters.js";
 import { enrichSourceDetails } from "../lib/detailEnrichment.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
-import { configureSourceNativeFetch, fetchNativeHtml, fetchNativeImage, hasNativeHtmlFetcher } from "../lib/nativeFetchBridge.js";
+import { configureSourceNativeFetch, fetchNativeImage } from "../lib/nativeFetchBridge.js";
 import { isCloudflareChallengeHtml } from "../lib/cloudflareDetect.js";
-import { defaultWpMangaCatalogHtmlLooksValid, defaultWpMangaPageHtmlLooksValid } from "../lib/wpMangaHttp.js";
 
 const DEFAULT_BASE_URL = "https://mangalik.net";
 const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
@@ -39,28 +38,44 @@ function createFetcher(baseUrl = DEFAULT_BASE_URL) {
       }
     },
     buildError: (lastStatus) => (lastStatus === 403 ? "حماية MangaLik المؤقتة منعت الاتصال، أعد المحاولة بعد قليل" : `MangaLik a répondu ${lastStatus}`),
+    preferFlareSolverr: true,
   });
   return fetchHtmlRemote;
 }
 
-async function resolveHtml(url, fetchHtmlRemote) {
-  const html = await fetchNativeHtml(url, () => fetchHtmlRemote(url));
-  const looksValid = /\/manga\/[^/]+\/[^/]+\/?$/i.test(url)
-    ? defaultWpMangaPageHtmlLooksValid
-    : defaultWpMangaCatalogHtmlLooksValid;
-  if (!hasNativeHtmlFetcher()) {
-    if (isCloudflareChallengeHtml(html)) throw new Error("حماية MangaLik المؤقتة منعت الاتصال (Cloudflare)");
-    return html;
-  }
-  if (looksValid(html)) return html;
-  try {
-    const remote = await fetchHtmlRemote(url);
-    if (looksValid(remote)) return remote;
-  } catch {
-    // Garde le HTML WebView si le repli HTTP échoue aussi.
-  }
+async function resolveHtml(url, fetchHtmlRemote, options = {}) {
+  // Flare direct : éviter le HTTP natif (souvent bloqué CF, +5–25 s perdues).
+  const html = await fetchHtmlRemote(url, options);
   if (isCloudflareChallengeHtml(html)) throw new Error("حماية MangaLik المؤقتة منعت الاتصال (Cloudflare)");
   return html;
+}
+
+function withListStyle(chapterUrl) {
+  const target = new URL(chapterUrl);
+  if (!target.searchParams.has("style")) target.searchParams.set("style", "list");
+  return target.toString();
+}
+
+function bustHtmlCache(url) {
+  responseCache.delete(url);
+  responseCache.delete(`${url}#flare-assets`);
+}
+
+async function resolveChapter(target, fetchHtml) {
+  const listUrl = withListStyle(target);
+  const html = await resolveHtml(listUrl, fetchHtml);
+  const chapter = parseChapter(html, target);
+  if (chapter.pages.length) return chapter;
+
+  // Un seul retry si le HTML était une mauvaise page (session Flare).
+  bustHtmlCache(listUrl);
+  bustHtmlCache(target);
+  const retryUrl = `${listUrl}${listUrl.includes("?") ? "&" : "?"}_ts=${Date.now()}`;
+  const retryHtml = await resolveHtml(retryUrl, fetchHtml);
+  const retryChapter = parseChapter(retryHtml, target);
+  if (retryChapter.pages.length) return retryChapter;
+
+  throw new Error("تعذر استخراج صور فصل MangaLik، أعد المحاولة");
 }
 
 function assertMangaLikUrl(rawUrl, chapter = false, ctx = DEFAULT_CTX) {
@@ -240,13 +255,57 @@ function parseManga(html, url, ctx = DEFAULT_CTX) {
   }, { html, parser: "madara" });
 }
 
-function parseChapter(html, url) {
-  const title = textOnly(html.match(/<h1[^>]*id="chapter-heading"[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ?? "");
+function chapterImageFromTag(tag = "") {
+  return tag.match(/(?:data-src|data-lazy-src|data-original|\ssrc)=["']([^"']+)["']/i)?.[1]?.trim()
+    ?? tag.match(/\ssrc=["']([^"']+)["']/i)?.[1]?.trim()
+    ?? "";
+}
+
+function isJunkChapterImage(raw = "") {
+  return !raw
+    || /^data:image\/svg/i.test(raw)
+    || /(?:spinner|loading|placeholder|avatar|logo|emoji|blank\.|1x1|pixel\.gif)/i.test(raw);
+}
+
+function absoluteChapterImage(raw, pageUrl) {
+  const value = String(raw || "").trim();
+  if (!value || isJunkChapterImage(value)) return "";
+  if (/^data:image\//i.test(value)) return value;
+  try {
+    return new URL(value, pageUrl).toString();
+  } catch {
+    return "";
+  }
+}
+
+export function parseChapter(html, url) {
+  const title = textOnly(
+    html.match(/<h1[^>]*id="chapter-heading"[^>]*>([\s\S]*?)<\/h1>/i)?.[1]
+    ?? html.match(/<title[^>]*>([^<]+)/i)?.[1]
+    ?? "",
+  );
   const pages = [];
-  for (const tag of html.matchAll(/<img[^>]*class="[^"]*wp-manga-chapter-img[^"]*"[^>]*>/gi)) {
-    const src = tag[0].match(/(?:src|data-src)="\s*([^\"]+)"/i)?.[1]?.trim();
-    const alt = decodeHtml(tag[0].match(/alt="([^"]*)"/i)?.[1] ?? title);
-    if (src && !pages.some((page) => page.src === src)) pages.push({ src, alt });
+  const push = (raw, alt = "") => {
+    const src = absoluteChapterImage(raw, url);
+    if (!src || pages.some((page) => page.src === src)) return;
+    pages.push({ src, alt: decodeHtml(alt || title) });
+  };
+
+  for (const tag of html.matchAll(/<img[^>]*class=["'][^"']*(?:wp-manga-chapter-img|chapter-image)[^"']*["'][^>]*>/gi)) {
+    push(chapterImageFromTag(tag[0]), tag[0].match(/alt=["']([^"']*)["']/i)?.[1] ?? "");
+  }
+  if (pages.length) return { title, url, pages };
+
+  const readerBlock = html.match(/<div[^>]*class=["'][^"']*\breading-content\b(?![^"']*-wrap)[^"']*["'][^>]*>([\s\S]*?)<\/div>/i)?.[1]
+    ?? html.match(/<div[^>]*class=["'][^"']*\bpage-break\b[^"']*["'][^>]*>[\s\S]*$/i)?.[0]
+    ?? "";
+  const scope = readerBlock || html;
+  for (const tag of scope.matchAll(/<img\b[^>]*>/gi)) {
+    const src = chapterImageFromTag(tag[0])
+      || tag[0].match(/srcset=["']([^"']+)/i)?.[1]?.split(",")[0]?.trim()?.split(/\s+/)[0]
+      || "";
+    if (!src || !/(?:tempsolo\.|\/manga\/|\/wp-content\/uploads\/)/i.test(src)) continue;
+    push(src, tag[0].match(/alt=["']([^"']*)["']/i)?.[1] ?? "");
   }
   return { title, url, pages };
 }
@@ -258,6 +317,7 @@ async function resolveMangaDetails(url, ctx, fetchHtml) {
     baseUrl: ctx.baseUrl,
     refererUrl: url,
     normalizeUrl: (rawUrl) => rawUrl.replace(/^https?:\/\/www\./i, "https://"),
+    fetchHtml,
   });
   return details;
 }
@@ -342,7 +402,9 @@ export async function handleMangalikRequest(requestUrl) {
   }
   if (requestUrl.pathname.endsWith("/chapter")) {
     const target = assertMangaLikUrl(requestUrl.searchParams.get("url") ?? "", true, ctx);
-    return responseJson(200, parseChapter(await resolveHtml(target, fetchHtml), target));
+    // Pas d'includeAssets : les pages CDN (tempsolo.*) passent avec Referer,
+    // et inliner ~30–40 JPEG fait échouer le chargement (timeout / JSON trop gros).
+    return responseJson(200, await resolveChapter(target, fetchHtml));
   }
   return responseJson(404, { error: "Route inconnue" });
 }

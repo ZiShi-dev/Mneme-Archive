@@ -50,11 +50,21 @@ export async function fetchMadaraChapterListHtml(baseUrl, mangaId, refererUrl) {
   return await response.text();
 }
 
-export async function resolveMadaraChapters(html, { baseUrl, refererUrl, normalizeUrl }) {
+export async function resolveMadaraChapters(html, { baseUrl, refererUrl, normalizeUrl, fetchHtml }) {
   const inlineChapters = parseMadaraChapters(html, { normalizeUrl });
   const mangaId = extractMadaraMangaId(html);
   let chapters = inlineChapters;
-  if (mangaId) {
+  const ajaxGetUrl = refererUrl ? `${String(refererUrl).replace(/\/+$/, "")}/ajax/chapters/` : "";
+
+  if (typeof fetchHtml === "function" && ajaxGetUrl) {
+    try {
+      const chapterHtml = await fetchHtml(ajaxGetUrl);
+      const ajaxChapters = parseMadaraChapters(chapterHtml, { normalizeUrl });
+      chapters = ajaxChapters.length >= inlineChapters.length ? ajaxChapters : inlineChapters;
+    } catch {
+      chapters = inlineChapters;
+    }
+  } else if (mangaId) {
     try {
       const chapterHtml = await fetchMadaraChapterListHtml(baseUrl, mangaId, refererUrl);
       const ajaxChapters = parseMadaraChapters(chapterHtml, { normalizeUrl });

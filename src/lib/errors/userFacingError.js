@@ -19,7 +19,7 @@ const SAFE_ERROR_PREFIXES = [
 ];
 
 function isCloudflareBlockedMessage(message = "") {
-  return /cloudflare|cf-chl|just a moment|checking your browser|attention required|حماية.*تمنع/i.test(message);
+  return /cloudflare|cf-chl|just a moment|checking your browser|attention required|حماية.*تمنع|proxy Night-Novel|Challenge non résolu|bad gateway/i.test(message);
 }
 
 export function toUserFacingError(error, fallback) {

@@ -61,6 +61,7 @@
 .screen--live-details.screen--details-cinematic-anime .live-details-hero__dock,
 .screen--live-details.screen--details-cinematic-series .live-details-hero__dock {
   gap: 16px;
+  margin-top: 0;
   padding: 10px 0 20px;
 }
 
@@ -118,7 +119,7 @@
 
 .screen--live-details.screen--details-cinematic-anime .details-chapters,
 .screen--live-details.screen--details-cinematic-series .details-chapters {
-  margin-top: 4px;
+  margin-top: 0;
   padding-top: 0;
 }
 

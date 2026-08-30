@@ -1,5 +1,4 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
-import { Capacitor } from "@capacitor/core";
 import { ArrowRight, BookOpen, Check, Settings2, Wifi } from "lucide-react";
 import { useToast } from "../../components/ui/ToastProvider";
 import { getSourceProfile, resolveSourceId } from "../../config/sources";
@@ -355,7 +354,7 @@ export function LiveReader({
   const embedPlayback = playback?.mode === "embed";
 
   useEffect(() => {
-    if (!embedPlayback || !Capacitor.isNativePlatform()) return undefined;
+    if (!embedPlayback) return undefined;
     return installEmbedPopupGuards();
   }, [embedPlayback]);
   const isNovel = expectsNovel || data?.kind === "novel";

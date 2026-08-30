@@ -14,6 +14,7 @@ import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
     private View attachedInsetView = null;
+    private boolean embedGuardsInstalled = false;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -24,6 +25,19 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
         configureEdgeToEdgeWindow();
         scheduleSafeAreaInsetUpdates();
+        getWindow().getDecorView().post(this::installEmbedNavigationGuards);
+    }
+
+    private void installEmbedNavigationGuards() {
+        if (embedGuardsInstalled) return;
+        try {
+            if (getBridge() == null || getBridge().getWebView() == null) return;
+            getBridge().getWebView().setWebViewClient(new AdBlockingBridgeWebViewClient(getBridge()));
+            getBridge().getWebView().setWebChromeClient(new PopupBlockingWebChromeClient(getBridge()));
+            embedGuardsInstalled = true;
+        } catch (RuntimeException ignored) {
+            // Ne jamais faire planter le démarrage si le WebView n'est pas prêt.
+        }
     }
 
     private void scheduleSafeAreaInsetUpdates() {
@@ -83,9 +97,9 @@ public class MainActivity extends BridgeActivity {
             windowInsets.getInsets(WindowInsetsCompat.Type.displayCutout()).top,
             windowInsets.getInsets(WindowInsetsCompat.Type.systemBars()).top
         );
-        int navBottom = windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
-        int gestureBottom = windowInsets.getInsets(WindowInsetsCompat.Type.mandatorySystemGestures()).bottom;
-        int bottom = navBottom > 0 ? navBottom : gestureBottom;
+        // Ne pas utiliser mandatorySystemGestures : trop haut en mode glisser.
+        // navigationBars suffit (barre à boutons ou fine pastille home).
+        int bottom = windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
         int left = maxInset(
             windowInsets.getInsets(WindowInsetsCompat.Type.displayCutout()).left,
             windowInsets.getInsets(WindowInsetsCompat.Type.systemBars()).left,
@@ -99,16 +113,28 @@ public class MainActivity extends BridgeActivity {
         return Insets.of(left, top, right, bottom);
     }
 
+    /** Boutons système = zone "tappable" en bas ; sinon navigation par gestes. */
+    private static String resolveNavMode(WindowInsetsCompat windowInsets) {
+        int tappableBottom = windowInsets.getInsets(WindowInsetsCompat.Type.tappableElement()).bottom;
+        int navBottom = windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
+        if (tappableBottom > 0 || navBottom >= 40) {
+            return "buttons";
+        }
+        return "gesture";
+    }
+
     @Override
     public void onResume() {
         super.onResume();
         scheduleSafeAreaInsetUpdates();
+        if (!embedGuardsInstalled) {
+            getWindow().getDecorView().post(this::installEmbedNavigationGuards);
+        }
     }
 
     private void pushSafeAreaInsets(WindowInsetsCompat windowInsets) {
         Insets insets = resolveSafeAreaInsets(windowInsets);
-        int navBarBottom = windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
-        String navMode = navBarBottom > 0 ? "buttons" : "gesture";
+        String navMode = resolveNavMode(windowInsets);
         if (getBridge() == null || getBridge().getWebView() == null) return;
         String js = String.format(
             "document.documentElement.style.setProperty('--app-safe-area-top','%dpx');"

@@ -9,7 +9,7 @@ import {
 } from "../lib/catalogChapters.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
 import { isNovelBoilerplateParagraph } from "../lib/novelChapterText.js";
-import { configureSourceNativeFetch, fetchNativeHtml, hasNativeHtmlFetcher } from "../lib/nativeFetchBridge.js";
+import { configureSourceNativeFetch } from "../lib/nativeFetchBridge.js";
 import { isCloudflareChallengeHtml } from "../lib/cloudflareDetect.js";
 
 const DEFAULT_BASE_URL = "https://novelsparadise.site";
@@ -42,6 +42,7 @@ function createFetcher(baseUrl = DEFAULT_BASE_URL) {
     buildError: (lastStatus) => (lastStatus === 403
       ? "حماية Novels Paradise تمنع الاتصال (Cloudflare)"
       : `Novels Paradise a répondu ${lastStatus}`),
+    preferFlareSolverr: true,
   });
 }
 
@@ -61,31 +62,6 @@ export function paradiseCatalogHtmlLooksValid(html = "") {
 export function paradiseChapterHtmlLooksValid(html = "") {
   if (!html || isCloudflareChallengeHtml(html)) return false;
   return /epcontent|entry-content|text-chapter/i.test(html);
-}
-
-function paradisePageHtmlLooksValid(html = "", url = "") {
-  if (isParadiseChapterSlug(url.split("/").filter(Boolean).pop() || "")) {
-    return paradiseChapterHtmlLooksValid(html);
-  }
-  return paradiseCatalogHtmlLooksValid(html);
-}
-
-async function fetchParadiseHtml(url, remoteFetcher) {
-  const html = await fetchNativeHtml(url, () => remoteFetcher(url));
-  const looksValid = (value) => paradisePageHtmlLooksValid(value, url);
-  if (!hasNativeHtmlFetcher()) {
-    if (isCloudflareChallengeHtml(html)) throw new Error("حماية Novels Paradise تمنع الاتصال (Cloudflare)");
-    return html;
-  }
-  if (looksValid(html)) return html;
-  try {
-    const remote = await remoteFetcher(url);
-    if (looksValid(remote)) return remote;
-  } catch {
-    // Garde le HTML WebView si le repli HTTP échoue aussi.
-  }
-  if (isCloudflareChallengeHtml(html)) throw new Error("حماية Novels Paradise تمنع الاتصال (Cloudflare)");
-  return html;
 }
 
 function assertParadiseCatalogHtml(url, html) {
@@ -445,41 +421,8 @@ export function parseParadiseChapters(html, seriesUrl) {
   return chapters;
 }
 
-const PARADISE_BROWSER_HEADERS = {
-  accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-  "accept-language": "ar,en-US;q=0.9,en;q=0.8",
-  "sec-ch-ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
-  "sec-ch-ua-mobile": "?0",
-  "sec-ch-ua-platform": '"Windows"',
-  "sec-fetch-dest": "document",
-  "sec-fetch-mode": "navigate",
-  "sec-fetch-site": "same-origin",
-  "upgrade-insecure-requests": "1",
-  "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-};
-
-async function fetchParadiseChapterHtml(chapterUrl, seriesUrl = "", ctx = DEFAULT_CTX) {
-  const refererSeriesUrl = resolveParadiseSeriesUrl(chapterUrl, seriesUrl);
-  const headers = {
-    ...PARADISE_BROWSER_HEADERS,
-    referer: refererSeriesUrl,
-  };
-  await fetch(refererSeriesUrl, {
-    headers: { ...PARADISE_BROWSER_HEADERS, referer: `${ctx.baseUrl}/series/` },
-    redirect: "follow",
-    signal: AbortSignal.timeout(35_000),
-  }).catch(() => {});
-  const response = await fetch(chapterUrl, {
-    redirect: "follow",
-    headers,
-    signal: AbortSignal.timeout(35_000),
-  });
-  const html = await response.text();
-  if (response.status === 403 || isCloudflareChallengeHtml(html)) {
-    throw new Error("حماية Novels Paradise تمنع قراءة الفصول (Cloudflare)");
-  }
-  if (!response.ok) throw new Error(`Novels Paradise a répondu ${response.status}`);
-  return html;
+async function fetchParadiseChapterHtml(chapterUrl, remoteFetcher) {
+  return remoteFetcher(chapterUrl);
 }
 
 function parseParadiseDetails(html, url) {
@@ -710,7 +653,7 @@ export function parseParadiseChapter(html, url) {
 export async function handleNovelsParadiseRequest(requestUrl) {
   const ctx = resolveSourceRequestContext(requestUrl, DEFAULT_BASE_URL, { label: SOURCE_NAME });
   const remoteFetcher = createFetcher(ctx.baseUrl);
-  const fetchHtml = (url) => fetchParadiseHtml(url, remoteFetcher);
+  const fetchHtml = remoteFetcher;
 
   if (requestUrl.pathname.endsWith("/image")) {
     return fetchProxiedImage(assertParadiseImageUrl(requestUrl.searchParams.get("url") ?? "", ctx), `${ctx.baseUrl}/`, SOURCE_NAME);
@@ -765,8 +708,7 @@ export async function handleNovelsParadiseRequest(requestUrl) {
   }
   if (requestUrl.pathname.endsWith("/chapter")) {
     const target = normalizeChapterUrl(requestUrl.searchParams.get("url") ?? "");
-    const seriesUrl = requestUrl.searchParams.get("series") ?? "";
-    const html = await fetchParadiseChapterHtml(target, seriesUrl, ctx);
+    const html = await fetchParadiseChapterHtml(target, remoteFetcher);
     return responseJson(200, parseParadiseChapter(html, target));
   }
   return responseJson(404, { error: "Route Novels Paradise inconnue" });

@@ -32,7 +32,7 @@ export function parseDetailTaxonomies(html, baseUrl) {
     try { target = new URL(href, baseUrl); } catch { continue; }
     const pathname = target.pathname.toLowerCase();
     const itemProp = attributes.match(/itemprop\s*=\s*["']([^"']+)["']/i)?.[1]?.toLowerCase() ?? "";
-    if (itemProp === "genre" || /(?:^|\/)(?:manga-|novel-)?(?:genre|genres|category|categories)(?:\/|$)/i.test(pathname)) add(categories, seenCategories, match[2]);
+    if (itemProp === "genre" || /(?:^|\/)(?:manga-|novel-|publication-)?(?:genre|genres|category|categories)(?:\/|$)/i.test(pathname)) add(categories, seenCategories, match[2]);
     else if (["tag", "keywords"].includes(itemProp) || /(?:^|\/)(?:manga-|novel-)?(?:tag|tags)(?:\/|$)/i.test(pathname)) add(tags, seenTags, match[2]);
   }
 
@@ -50,7 +50,7 @@ export function parseTaxonomyFilterLinks(html, baseUrl, allowedHosts) {
     try { target = new URL(href, baseUrl); } catch { continue; }
     if (!allowedHosts.includes(target.hostname)) continue;
     const parts = target.pathname.split("/").filter(Boolean);
-    const categoryIndex = parts.findIndex((part) => /^(?:(?:manga|novel)-)?(?:genre|genres|category|categories)$/i.test(part));
+    const categoryIndex = parts.findIndex((part) => /^(?:(?:manga|novel|publication)-)?(?:genre|genres|category|categories)$/i.test(part));
     const tagIndex = parts.findIndex((part) => /^(?:(?:manga|novel)-)?tags?$/i.test(part));
     const categoryQuery = ["genres", "genre", "category"].find((key) => target.searchParams.has(key));
     const tagQuery = ["tags", "tag"].find((key) => target.searchParams.has(key));

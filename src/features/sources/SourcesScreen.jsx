@@ -9,7 +9,7 @@ import { kvSet } from "../../lib/storage/initStorage";
 import { contentTypes } from "./contentTypes";
 import { Header } from "../../components/layout/Header";
 import { clearSourceApiCache, fetchCatalog, fetchSourceDetails, fetchSourceFilters, formatSourceError, searchSource } from "./sourceApi";
-import { usesWebViewSource, shouldDeferCatalogFilters } from "../../lib/platform/webViewSources.js";
+import { usesWebViewSource, usesFlareDirectSource, shouldDeferCatalogFilters } from "../../lib/platform/webViewSources.js";
 import { CatalogCard, CatalogGridSkeleton } from "./CatalogCard";
 import { filterItemsByAudioLanguage, sourceSupportsAudioFilter } from "./audioLanguage";
 import { CatalogFilters } from "./CatalogFilters";
@@ -565,7 +565,7 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
   const reloadLabel = isSearchQueryActive(query)
     ? t("sources.searching", { name: profile.name })
     : t("sources.fetching", { name: profile.name });
-  const connectingHint = usesWebViewSource(activeSource.id)
+  const connectingHint = (usesWebViewSource(activeSource.id) || usesFlareDirectSource(activeSource.id))
     ? t("sources.connectingCloudflare")
     : t("sources.connecting");
 
