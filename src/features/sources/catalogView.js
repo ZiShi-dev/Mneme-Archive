@@ -316,12 +316,23 @@ export function sanitizeCatalogKind(sourceId, kind) {
   if (!supported.length) return getDefaultCatalogKind(sourceId);
   if (kind.type === "kind" && kind.queryValue) return kind;
   if (kind.queryParam) return kind;
+
+  const slug = String(kind.slug || "");
+  const matchesSupported = (() => {
+    if (supported.includes(slug)) return true;
+    if (slug === "movies" && supported.includes("movie")) return true;
+    if (slug === "series" && (supported.includes("series") || supported.includes("anime"))) return true;
+    if (slug === "anime" && supported.includes("anime")) return true;
+    if (slug === "manga" && supported.includes("manga")) return true;
+    if (slug === "novel" && supported.includes("novel")) return true;
+    if (kind.queryValue && supported.includes(kind.queryValue)) return true;
+    return false;
+  })();
+
   if (supported.length === 1 && isMediaKindFilter(kind) && !kind.queryValue) {
-    // Source mono-type (ex. Kol Novel = novel only) : jeter manga/anime orphelins.
-    return supported.includes(kind.slug) ? kind : getDefaultCatalogKind(sourceId);
+    // Source mono-type (ex. MangaLik = manga only) : jeter movies/series orphelins.
+    return matchesSupported ? kind : getDefaultCatalogKind(sourceId);
   }
   if (!isMediaKindFilter(kind)) return kind;
-  if (supported.includes(kind.slug)) return kind;
-  if (kind.queryValue && supported.includes(kind.queryValue)) return kind;
-  return getDefaultCatalogKind(sourceId);
+  return matchesSupported ? kind : getDefaultCatalogKind(sourceId);
 }

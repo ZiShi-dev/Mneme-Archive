@@ -95,6 +95,15 @@ test("sanitizeCatalogKind drops unsupported manga/novel filters", () => {
   assert.equal(sanitizeCatalogKind("kolnovel", { slug: "all", name: "الكل" }), null);
 });
 
+test("sanitizeCatalogKind drops video kinds on MangaLik", () => {
+  assert.equal(sanitizeCatalogKind("mangalik", { type: "kind", slug: "series", name: "مسلسلات" }), null);
+  assert.equal(sanitizeCatalogKind("mangalik", { type: "kind", slug: "movies", name: "أفلام" }), null);
+  assert.equal(
+    sanitizeCatalogKind("frenchstream", { type: "kind", slug: "movies", name: "أفلام", filterPath: "/films/" })?.slug,
+    "movies",
+  );
+});
+
 test("sanitizeCatalogKind keeps server sort presets on single-content sources", () => {
   const popular = { slug: "popular", name: "الأكثر شعبية", type: "kind", queryValue: "popular" };
   const views = { slug: "views", name: "الأكثر مشاهدة", type: "kind", queryValue: "views" };
