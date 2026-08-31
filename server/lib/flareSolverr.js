@@ -1,6 +1,6 @@
 import { isCloudflareChallengeHtml } from "./cloudflareDetect.js";
 
-const DEFAULT_TIMEOUT_MS = 60_000;
+const DEFAULT_TIMEOUT_MS = 45_000;
 /** FlareSolverr / Chrome tient mal le parallèle → file globale (1 par défaut). */
 const FLARE_MAX_CONCURRENT = Math.max(1, Number(globalThis?.process?.env?.FLARE_MAX_CONCURRENT) || 1);
 const FLARE_CRASH_COOLDOWN_MS = 2_500;
