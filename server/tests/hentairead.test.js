@@ -16,6 +16,14 @@ const CATALOG_CARD = `
   </a>
 </article>`;
 
+const CATALOG_CARD_DIV = `
+<div class="manga-item loop-item group/manga-item">
+  <div class="manga-item__img">
+    <img class="manga-item__img-inner" alt="Irodori Kazoku" src="https://hencover.xyz/cover/2026/08/hr_298785.jpg" />
+  </div>
+  <h3><a href="https://hentairead.com/hentai/irodori-kazoku/" class="manga-item__link leading-5">Irodori Kazoku</a></h3>
+</div>`;
+
 const CHAPTER_PAGE = `
 <h1>Sample Doujin</h1>
 <script id="single-chapter-js-extra">
@@ -29,6 +37,14 @@ test("parseHentaireadCatalog reads manga cards", () => {
   assert.equal(items[0].title, "Sample Doujin");
   assert.equal(items[0].sourceId, "hentairead");
   assert.match(items[0].cover, /hencover\.xyz/);
+});
+
+test("parseHentaireadCatalog reads current div-based cards", () => {
+  const items = parseHentaireadCatalog(CATALOG_CARD_DIV);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].title, "Irodori Kazoku");
+  assert.equal(items[0].url, "https://hentairead.com/hentai/irodori-kazoku/");
+  assert.match(items[0].cover, /hr_298785\.jpg$/);
 });
 
 test("assertHentaireadUrl validates manga and chapter links", () => {

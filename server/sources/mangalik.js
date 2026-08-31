@@ -100,28 +100,55 @@ async function proxyImage(rawUrl, ctx) {
   return fetchNativeImage(target, () => fetchProxiedImage(target, `${ctx.baseUrl}/`, "MangaLik"));
 }
 
+export function parseMangalikCatalog(html, ctx = DEFAULT_CTX) {
+  return parseCatalog(html, ctx);
+}
+
+function isMangaLikCatalogCard(tagAttrs = "") {
+  const classes = tagAttrs.match(/class=["']([^"']+)["']/i)?.[1] ?? "";
+  return /(^|\s)page-item-detail(\s|$)/.test(classes) && /(^|\s)manga(\s|$)/.test(classes);
+}
+
 function parseCatalog(html, ctx = DEFAULT_CTX) {
   const results = [];
   const seen = new Set();
-  const starts = [...html.matchAll(/<div[^>]*class="[^"]*page-item-detail[^"]*manga[^"]*"[^>]*>/gi)];
+  const starts = [...html.matchAll(/<div\b([^>]*)>/gi)].filter((match) => isMangaLikCatalogCard(match[1]));
   starts.forEach((match, index) => {
     const block = html.slice(match.index, starts[index + 1]?.index ?? html.length);
-    const link = block.match(/<a[^>]*href=["']([^"']+)["'][^>]*(?:title=["']([^"']*)["'])?/i);
+    const link = block.match(/<div[^>]*class=["'][^"']*post-title[^"']*["'][^>]*>[\s\S]*?<a[^>]*href=["']([^"']+)["'][^>]*(?:title=["']([^"']*)["'])?/i)
+      ?? block.match(/<a[^>]*href=["']([^"']*\/manga\/[^"']+)["'][^>]*(?:title=["']([^"']*)["'])?/i);
     if (!link) return;
     const slug = link[1].match(/\/manga\/([^/?#]+)/i)?.[1];
-    if (!slug) return;
+    if (!slug || slug === "feed" || slug === "page") return;
     const normalizedUrl = `${ctx.baseUrl}/manga/${slug}/`;
     if (seen.has(normalizedUrl)) return;
-    const title = textOnly(block.match(/<div[^>]*class="[^"]*post-title[^"]*"[^>]*>[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/i)?.[1] ?? link[2] ?? "");
+    const title = textOnly(
+      block.match(/<div[^>]*class=["'][^"']*post-title[^"']*["'][^>]*>[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/i)?.[1]
+      ?? link[2]
+      ?? block.match(/<img[^>]*alt=["']([^"']+)["']/i)?.[1]
+      ?? "",
+    );
     if (!title) return;
-    const imageTag = block.match(/<img[^>]*class="[^"]*img-responsive[^"]*"[^>]*>/i)?.[0] ?? block.match(/<img[^>]*>/i)?.[0] ?? "";
-    const cover = imageTag.match(/(?:src|data-src)="\s*([^\"]+)"/i)?.[1]?.trim() ?? "";
-    const chapters = normalizeRecentChapters([...block.matchAll(/<span[^>]*class="[^"]*chapter[^"]*"[^>]*>[\s\S]*?<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi)].map((entry) => {
+    const imageTag = block.match(/<img[^>]*class=["'][^"']*img-responsive[^"']*["'][^>]*>/i)?.[0]
+      ?? block.match(/<div[^>]*class=["'][^"']*item-thumb[^"']*["'][^>]*>[\s\S]*?<img[^>]*>/i)?.[0]
+      ?? block.match(/<img[^>]*>/i)?.[0]
+      ?? "";
+    const cover = imageTag.match(/(?:src|data-src)=["']\s*([^"']+)/i)?.[1]?.trim() ?? "";
+    const chapters = normalizeRecentChapters([...block.matchAll(/<span[^>]*class=["'][^"']*chapter[^"']*["'][^>]*>[\s\S]*?<a[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)].map((entry) => {
       const name = textOnly(entry[2]).replace(/^(?:Chapter|الفصل)\s*/i, "");
       return { url: entry[1], name, number: name };
     }));
     seen.add(normalizedUrl);
-    results.push(applyRecentChapterFields({ id: new URL(normalizedUrl).pathname.split("/").filter(Boolean).pop(), title, url: normalizedUrl, cover, source: "MangaLik", sourceId: "mangalik", mediaType: "manga", mediaTypeLabel: "مانغا" }, chapters));
+    results.push(applyRecentChapterFields({
+      id: new URL(normalizedUrl).pathname.split("/").filter(Boolean).pop(),
+      title,
+      url: normalizedUrl,
+      cover,
+      source: "MangaLik",
+      sourceId: "mangalik",
+      mediaType: "manga",
+      mediaTypeLabel: "مانغا",
+    }, chapters));
   });
   return results;
 }
@@ -340,7 +367,10 @@ export async function handleMangalikRequest(requestUrl) {
     if (!/^[a-z0-9/-]+$/i.test(tagPath) || tagPath.includes("..") || tagPath.startsWith("/") || tagPath.endsWith("/")) throw new Error("مسار وسم MangaLik غير صالح");
     if (genre && tag) throw new Error("اختر تصنيفًا أو وسمًا واحدًا");
     const basePath = genre ? `/manga-genre/${encodeURIComponent(genre)}` : tag ? `/${tagPath}/${encodeURIComponent(tag)}` : "/manga";
-    const target = page === 1 ? `${baseUrl}${basePath}/` : `${baseUrl}${basePath}/page/${page}/`;
+    const orderQuery = !genre && !tag ? "m_orderby=latest" : "";
+    const target = page === 1
+      ? `${baseUrl}${basePath}/${orderQuery ? `?${orderQuery}` : ""}`
+      : `${baseUrl}${basePath}/page/${page}/${orderQuery ? `?${orderQuery}` : ""}`;
     const html = await resolveHtml(target, fetchHtml);
     const items = parseCatalog(html, ctx);
     const nextPath = `${basePath}/page/${page + 1}/`;
@@ -357,7 +387,8 @@ export async function handleMangalikRequest(requestUrl) {
       try { tags = parseMangaTags(await resolveHtml(`${baseUrl}/manga/eleceed/`, fetchHtml), ctx); } catch { /* Continuez avec les fiches récentes. */ }
     }
     if (!tags.length) {
-      const samples = parseCatalog(html, ctx).slice(0, 6);
+      // Un seul échantillon pour éviter de saturer FlareSolverr (rate-limit proxy).
+      const samples = parseCatalog(html, ctx).slice(0, 1);
       const merged = new Map();
       for (const item of samples) {
         try {

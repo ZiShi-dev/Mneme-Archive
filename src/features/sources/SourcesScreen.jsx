@@ -27,9 +27,10 @@ import {
   filterCategoriesForKind,
   isTaxonomyCompatibleWithKind,
   isTaxonomySelectionEmpty,
+  sanitizeCatalogKind,
   supportsMultiTaxonomy,
 } from "./catalogView";
-import { fetchCatalogBatch, resolvePopulatedCatalogPage } from "./catalogPaging";
+import { fetchCatalogBatch, resolvePopulatedCatalogPage, shouldFetchCatalogSequentially } from "./catalogPaging";
 import { getCatalogSkeletonCount } from "../../lib/catalog/catalogLayout";
 import { scrollAppToElement } from "../../lib/platform/scrollRoot";
 import { cancelCloudflarePending } from "../../lib/platform/mangalikNative.js";
@@ -71,6 +72,7 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
   const [selectedLiveItems, setSelectedLiveItems] = useState(selectedItems);
   const cachedFilters = catalogFiltersCache.get(activeSource.id);
   const [filters, setFilters] = useState(cachedFilters || { categories: [], tags: [], kinds: [] });
+  const [filtersSourceId, setFiltersSourceId] = useState(activeSource.id);
   const [filtersLoading, setFiltersLoading] = useState(!cachedFilters && effectiveMode === "full" && activeSource.enabled !== false);
   const [selectedFilter, setSelectedFilter] = useState(boot.filter);
   const [selectedKind, setSelectedKind] = useState(boot.kind);
@@ -160,6 +162,8 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
     return fetchCatalogBatch(
       (serverPage) => fetchCatalogPageSingle(sourceId, kind, taxonomy, serverPage),
       uiPage,
+      undefined,
+      { sequential: shouldFetchCatalogSequentially(sourceId) },
     );
   }
 
@@ -167,6 +171,8 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
     return fetchCatalogBatch(
       (serverPage) => fetchSearchPageSingle(sourceId, kind, taxonomy, catalogQuery, serverPage),
       uiPage,
+      undefined,
+      { sequential: shouldFetchCatalogSequentially(sourceId) },
     );
   }
 
@@ -357,9 +363,10 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
 
     const nextBoot = resolveCatalogBoot(activeSource.id, activeSource.enabled !== false, effectiveMode);
     const savedFilter = nextBoot.filter;
-    const savedKind = nextBoot.kind
-      ? enrichKindWithFilterPath(nextBoot.kind, activeSource.id)
-      : null;
+    const savedKind = sanitizeCatalogKind(
+      activeSource.id,
+      nextBoot.kind ? enrichKindWithFilterPath(nextBoot.kind, activeSource.id) : null,
+    );
     const savedQuery = nextBoot.query;
     const savedPage = nextBoot.page;
     const cached = readCatalogSnapshot(activeSource.id, savedFilter, savedPage, savedQuery, savedKind);
@@ -401,9 +408,7 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
       return undefined;
     }
 
-    const shouldDeferFilters = Capacitor.isNativePlatform()
-      && shouldDeferCatalogFilters(activeSource.id)
-      && status === "loading";
+    const shouldDeferFilters = shouldDeferCatalogFilters(activeSource.id) && status === "loading";
     if (shouldDeferFilters) {
       return undefined;
     }
@@ -411,12 +416,17 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
     const cached = catalogFiltersCache.get(activeSource.id);
     if (cached) {
       catalogFiltersCache.set(activeSource.id, cached);
+      setFiltersSourceId(activeSource.id);
       setFilters(cached);
       setFiltersLoading(false);
       return undefined;
     }
 
     let cancelled = false;
+    // Ne pas laisser les kinds/catégories de la source précédente (ex. French Stream)
+    // filtrer MangaLik → grille vide (أفلام / مسلسلات).
+    setFiltersSourceId(activeSource.id);
+    setFilters({ categories: [], tags: [], kinds: [] });
     setFiltersLoading(true);
     fetchSourceFilters(activeSource.id).then((data) => {
       if (cancelled) return;
@@ -426,9 +436,13 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
         kinds: data.kinds || [],
       };
       catalogFiltersCache.set(activeSource.id, nextFilters);
+      setFiltersSourceId(activeSource.id);
       setFilters(nextFilters);
     }).catch(() => {
-      if (!cancelled) setFilters({ categories: [], tags: [], kinds: [] });
+      if (!cancelled) {
+        setFiltersSourceId(activeSource.id);
+        setFilters({ categories: [], tags: [], kinds: [] });
+      }
     }).finally(() => {
       if (!cancelled) setFiltersLoading(false);
     });
@@ -474,9 +488,13 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
         ? contentTypes.anime.singular
         : contentTypes.manga.singular;
   const mediaKindsFallback = defaultContentKinds(activeSource.id);
+  const kindsForActiveSource = filtersSourceId === activeSource.id ? (filters.kinds || []) : [];
   const visibleCategories = useMemo(
-    () => filterCategoriesForKind(filters.categories, selectedKind),
-    [filters.categories, selectedKind],
+    () => filterCategoriesForKind(
+      filtersSourceId === activeSource.id ? filters.categories : [],
+      selectedKind,
+    ),
+    [filters.categories, filtersSourceId, activeSource.id, selectedKind],
   );
 
   function handleOpenLiveManga(item) {
@@ -501,9 +519,10 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
   }
 
   function applyKindFilter(nextKind) {
-    const kind = !nextKind || nextKind.slug === "all"
+    const rawKind = !nextKind || nextKind.slug === "all"
       ? null
       : enrichKindWithFilterPath({ ...nextKind, type: "kind" }, activeSource.id);
+    const kind = sanitizeCatalogKind(activeSource.id, rawKind);
     const nextFilter = kind && selectedFilter && !isTaxonomyCompatibleWithKind(selectedFilter, kind)
       ? null
       : selectedFilter;
@@ -583,8 +602,8 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
         {effectiveMode === "full" && activeSource.enabled !== false && (
           <CatalogFilters
             categories={visibleCategories}
-            tags={filters.tags}
-            kinds={filters.kinds?.length ? filters.kinds : mediaKindsFallback}
+            tags={filtersSourceId === activeSource.id ? filters.tags : []}
+            kinds={kindsForActiveSource.length ? kindsForActiveSource : mediaKindsFallback}
             selected={selectedFilter}
             selectedKind={selectedKind}
             selectedAudioFilter={selectedAudioFilter}

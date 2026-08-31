@@ -80,26 +80,43 @@ function imageFromTag(tag = "") {
   return normalizeAssetUrl(first);
 }
 
+function isHentaireadMangaCard(tagAttrs = "") {
+  const classes = tagAttrs.match(/class=["']([^"']+)["']/i)?.[1] ?? "";
+  return /(^|\s)manga-item(\s|$)/.test(classes);
+}
+
+function extractCatalogCardBlock(html, startIndex, nextIndex) {
+  return html.slice(startIndex, nextIndex ?? html.length);
+}
+
 export function parseHentaireadCatalog(html = "") {
   const results = [];
   const seen = new Set();
-  for (const match of html.matchAll(/<article[^>]*class="[^"]*manga-item[^"]*"[^>]*>([\s\S]*?)<\/article>/gi)) {
-    const block = match[1];
-    const link = block.match(/<a[^>]*class="[^"]*manga-item__link[^"]*"[^>]*href="([^"]+)"/i)
-      ?? block.match(/<a[^>]*href="(https?:\/\/(?:www\.)?hentairead\.com\/hentai\/[^"?#]+\/?)"[^>]*class="[^"]*manga-item__link/i);
-    if (!link) continue;
+  const starts = [
+    ...html.matchAll(/<(?:article|div)\b([^>]*)>/gi),
+  ].filter((match) => isHentaireadMangaCard(match[1]));
+
+  starts.forEach((match, index) => {
+    const block = extractCatalogCardBlock(html, match.index, starts[index + 1]?.index);
+    const link = block.match(/<a[^>]*class=["'][^"']*manga-item__link[^"']*["'][^>]*href=["']([^"']+)["']/i)
+      ?? block.match(/<a[^>]*href=["']([^"']+)["'][^>]*class=["'][^"']*manga-item__link/i)
+      ?? block.match(/<a[^>]*href=["'](https?:\/\/(?:www\.)?hentairead\.com\/hentai\/[^"'?#]+\/?)["']/i)
+      ?? block.match(/href=["'](https?:\/\/(?:www\.)?hentairead\.com\/hentai\/[^"'?#]+\/?)["']/i);
+    if (!link) return;
     const slug = link[1].match(/\/hentai\/([^/?#]+)/i)?.[1];
-    if (!slug) continue;
+    if (!slug) return;
     const url = `https://hentairead.com/hentai/${slug}/`;
-    if (seen.has(url)) continue;
-    const title = textOnly(
-      block.match(/<img[^>]*class="[^"]*manga-item__img-inner[^"]*"[^>]*alt="([^"]+)"/i)?.[1]
-      ?? block.match(/class="[^"]*manga-item__detail[^"]*"[\s\S]*?line-clamp-2[^>]*>([\s\S]*?)<\/div>/i)?.[1]
-      ?? block.match(/<a[^>]*class="[^"]*manga-item__link[^"]*"[^>]*title="([^"]+)"/i)?.[1]
-      ?? "",
-    );
-    if (!title) continue;
-    const imageTag = block.match(/<img[^>]*class="[^"]*manga-item__img-inner[^"]*"[^>]*>/i)?.[0]
+    if (seen.has(url)) return;
+    const title = [
+      block.match(/<a[^>]*class=["'][^"']*manga-item__link[^"']*["'][^>]*title=["']([^"']+)["']/i)?.[1],
+      block.match(/<a[^>]*class=["'][^"']*manga-item__link[^"']*["'][^>]*>([\s\S]*?)<\/a>/i)?.[1],
+      block.match(/<img[^>]*class=["'][^"']*manga-item__img-inner[^"']*["'][^>]*alt=["']([^"']+)["']/i)?.[1],
+      block.match(/alt=["']([^"']+)["'][^>]*class=["'][^"']*manga-item__img-inner/i)?.[1],
+      block.match(/class=["'][^"']*line-clamp-2[^"']*["'][^>]*>([\s\S]*?)<\/div>/i)?.[1],
+    ].map((value) => textOnly(value || "")).find(Boolean) || "";
+    if (!title) return;
+    const imageTag = block.match(/<div[^>]*class=["'][^"']*manga-item__img[^"']*["'][^>]*>[\s\S]*?<img[^>]*>/i)?.[0]
+      ?? block.match(/<img[^>]*class=["'][^"']*manga-item__img-inner[^"']*["'][^>]*>/i)?.[0]
       ?? block.match(/<img[^>]*>/i)?.[0]
       ?? "";
     const cover = imageFromTag(imageTag)
@@ -116,7 +133,7 @@ export function parseHentaireadCatalog(html = "") {
       mediaTypeLabel: "مانغا",
       publicationStatus: "completed",
     }, []));
-  }
+  });
   return results;
 }
 
