@@ -58,7 +58,7 @@
   --safe-left: max(env(safe-area-inset-left, 0px), var(--app-safe-area-left));
   --safe-right: max(env(safe-area-inset-right, 0px), var(--app-safe-area-right));
   --bottom-nav-height: 80px;
-  --screen-bottom-padding: calc(var(--bottom-nav-height) + 12px + var(--safe-bottom));
+  --screen-bottom-padding: calc(var(--bottom-nav-height) + 24px + var(--safe-bottom));
   --bottom-nav-bg: color-mix(in srgb, var(--paper) 88%, transparent);
   --bottom-nav-border: color-mix(in srgb, var(--line) 72%, transparent);
   --bottom-nav-shadow: 0 -10px 40px color-mix(in srgb, var(--ink) 8%, transparent);
@@ -286,7 +286,7 @@ html[dir="ltr"] {
   --bottom-nav-active: var(--sakura);
 }
 
-/* Lune Mer · neige de verre sous la lune sur la mer */
+/* Lune Mer · mer au clair de lune */
 [data-theme="lune-neige"],
 [data-theme="lune-neige"] .app-shell,
 .app-shell--lune-neige {
@@ -339,6 +339,62 @@ html[dir="ltr"] {
   --bottom-nav-halo: color-mix(in srgb, var(--moon-glow) 55%, var(--frost));
   --bottom-nav-halo-glow: color-mix(in srgb, var(--frost) 40%, transparent);
   --bottom-nav-active: var(--moon-glow);
+}
+
+/* Galaxie · cosmos réaliste */
+[data-theme="galaxie"],
+[data-theme="galaxie"] .app-shell,
+.app-shell--galaxie {
+  --nebula: #7B5CFF;
+  --nova: #9BB0FF;
+  --cosmos: #07061A;
+  --void: #050414;
+
+  --brand: #9BB0FF;
+  --brand-warm: #C9A0FF;
+  --bg: #07061A;
+  --surface: #12102C;
+  --surface-raised: #1A1738;
+  --text: #EEF1FF;
+  --text-muted: #A8AECF;
+  --border: #2E2A55;
+  --success: #6ED6B0;
+  --manga: #E29AB8;
+  --novel: #D4B896;
+  --anime: #8EB4E8;
+  --film: #A8B0E0;
+  --danger: #E88AA8;
+
+  --ink: var(--text);
+  --muted: var(--text-muted);
+  --disabled: #6E7298;
+  --paper: var(--bg);
+  --white: var(--surface);
+  --outer: #03020E;
+  --outside: var(--surface-raised);
+  --line: var(--border);
+  --green: var(--brand);
+  --green-dark: var(--surface-raised);
+  --green-bright: var(--brand-warm);
+  --green-soft: #1E1A40;
+  --stamp: var(--nebula);
+  --favorite: #E2A8C8;
+  --indigo: var(--brand);
+  --gold: var(--brand-warm);
+  --moon-white: var(--text);
+  --shadow: 0 22px 54px rgba(0, 0, 12, 0.5);
+  --cta: #C9A0FF;
+  --cta-text: #07061A;
+  --radius-control: 14px;
+  --bottom-nav-bg: color-mix(in srgb, var(--surface) 90%, transparent);
+  --bottom-nav-border: color-mix(in srgb, var(--border) 58%, transparent);
+  --bottom-nav-shadow: 0 -14px 42px color-mix(in srgb, var(--void) 60%, transparent);
+  --bottom-nav-inactive: color-mix(in srgb, var(--text-muted) 88%, var(--text));
+  --bottom-nav-active-bg: color-mix(in srgb, var(--nebula) 22%, var(--surface));
+  --bottom-nav-focus-ring: color-mix(in srgb, var(--nova) 45%, transparent);
+  --bottom-nav-halo: color-mix(in srgb, var(--nova) 55%, var(--nebula));
+  --bottom-nav-halo-glow: color-mix(in srgb, var(--nebula) 40%, transparent);
+  --bottom-nav-active: var(--nova);
 }
 
 /* Papier */

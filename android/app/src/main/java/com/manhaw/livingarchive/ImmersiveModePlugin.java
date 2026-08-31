@@ -14,6 +14,7 @@ public class ImmersiveModePlugin extends Plugin {
     @PluginMethod
     public void enter(PluginCall call) {
         getActivity().runOnUiThread(() -> {
+            // Toujours edge-to-edge : le contenu peut couvrir la barre d'état.
             WindowCompat.setDecorFitsSystemWindows(getActivity().getWindow(), false);
             WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(
                 getActivity().getWindow(),
@@ -32,7 +33,8 @@ public class ImmersiveModePlugin extends Plugin {
     @PluginMethod
     public void exit(PluginCall call) {
         getActivity().runOnUiThread(() -> {
-            WindowCompat.setDecorFitsSystemWindows(getActivity().getWindow(), true);
+            // Ne pas réactiver decorFitsSystemWindows : l'app reste edge-to-edge.
+            WindowCompat.setDecorFitsSystemWindows(getActivity().getWindow(), false);
             WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(
                 getActivity().getWindow(),
                 getActivity().getWindow().getDecorView()

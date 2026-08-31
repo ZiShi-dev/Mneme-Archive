@@ -18,9 +18,9 @@ import { resolveVideoPlayback } from "./mediaPresentation";
 import { ReaderPageList } from "./ReaderPageList";
 import { ReaderHeader } from "./ReaderHeader";
 import { ReaderPlaybackControls } from "./ReaderPlaybackControls";
+import { ReaderChapterListSheet } from "./ReaderChapterListSheet";
 import { ReaderSettingsSheet } from "./ReaderSettingsSheet";
 import { EmbedPlayerFrame } from "./EmbedPlayerFrame";
-import { SourceLogo } from "./SourceLogo";
 import { installEmbedPopupGuards } from "../../lib/video/embedHosts";
 import { useI18n } from "../../i18n/I18nProvider";
 import { resolveNovelContentDirection } from "../../lib/text/contentDirection.js";
@@ -33,6 +33,7 @@ import {
   scrollReaderTo,
 } from "../../lib/platform/scrollRoot.js";
 import { resolveBottomNavScrollHidden } from "../../lib/platform/bottomNavChrome.js";
+import { setNativeImmersive } from "../../lib/video/nativeImmersive.js";
 
 const scrollSpeeds = [0.5, 1, 1.5, 2];
 const defaultReaderPreferences = { theme: "night", fontSize: 18, lineHeight: 1.9, fontFamily: "naskh", textAlign: "right", paragraphSpacing: 1.25, contentWidth: "normal" };
@@ -66,6 +67,7 @@ export function LiveReader({
   const [controlsMode, setControlsMode] = useState("panel");
   const [headerChromeVisible, setHeaderChromeVisible] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [chapterListOpen, setChapterListOpen] = useState(false);
   const [readerPreferences, setReaderPreferences] = usePersistedState(readerPreferencesKey, defaultReaderPreferences);
   const readerChromeHiddenRef = useRef(false);
   const pagesContainerRef = useRef(null);
@@ -83,6 +85,21 @@ export function LiveReader({
     setHeaderChromeVisible(true);
     setControlsMode(mode);
   }, []);
+
+  // Lecteur manga/roman : plein écran immersif (cache la barre d'info système).
+  const readerImmersive = !settingsOpen && !chapterListOpen;
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (cancelled) return;
+      await setNativeImmersive(readerImmersive);
+    })();
+    return () => {
+      cancelled = true;
+      setNativeImmersive(false).catch(() => {});
+    };
+  }, [readerImmersive]);
 
   const handleChapterComplete = useCallback(() => {
     const finalProgress = Math.max(computeReaderScrollProgress(), 100);
@@ -196,13 +213,19 @@ export function LiveReader({
 
   useLayoutEffect(() => {
     if (!autoScroll) return;
-    hideReaderChrome();
-  }, [autoScroll, hideReaderChrome]);
+    // Garder le bouton « rouvrir » visible pour pouvoir arrêter le défilement.
+    readerChromeHiddenRef.current = true;
+    setHeaderChromeVisible(false);
+    setControlsMode("launcher");
+  }, [autoScroll]);
 
   useEffect(() => {
     if (!autoScroll || controlsMode !== "panel") return;
-    hideReaderChrome();
-  }, [autoScroll, controlsMode, hideReaderChrome]);
+    // Pendant l’auto-scroll, rétrograder le panneau vers le launcher (accès pause).
+    setControlsMode("launcher");
+    setHeaderChromeVisible(false);
+    readerChromeHiddenRef.current = true;
+  }, [autoScroll, controlsMode]);
 
   useEffect(() => {
     if (!autoScroll || !data || touchPaused) return undefined;
@@ -216,7 +239,7 @@ export function LiveReader({
       }
     }, 16);
     return () => clearInterval(timer);
-  }, [autoScroll, data, hideReaderChrome, showReaderChrome, speedIndex, touchPaused]);
+  }, [autoScroll, data, showReaderChrome, speedIndex, touchPaused]);
 
   useEffect(() => {
     if (!data || data.kind === "video" || settingsOpen) return undefined;
@@ -229,9 +252,14 @@ export function LiveReader({
       ticking = true;
       window.requestAnimationFrame(() => {
         ticking = false;
+        // Ne pas masquer le launcher pendant l’auto-scroll (sinon on ne peut plus l’arrêter).
+        if (autoScroll) {
+          lastScrollTop = getScrollTop();
+          return;
+        }
         const scrollTop = getScrollTop();
         const delta = scrollTop - lastScrollTop;
-        const scrollDelta = autoScroll ? 4 : 12;
+        const scrollDelta = 12;
         const next = resolveBottomNavScrollHidden({
           scrollTop,
           lastScrollTop,
@@ -241,11 +269,9 @@ export function LiveReader({
         lastScrollTop = next.lastScrollTop;
 
         if (!next.hidden) {
-          if (!autoScroll) {
-            readerChromeHiddenRef.current = false;
-            setHeaderChromeVisible(true);
-            setControlsMode((current) => (current === "hidden" ? "panel" : current));
-          }
+          readerChromeHiddenRef.current = false;
+          setHeaderChromeVisible(true);
+          setControlsMode((current) => (current === "hidden" ? "panel" : current));
           return;
         }
 
@@ -259,8 +285,16 @@ export function LiveReader({
   }, [autoScroll, data, hideReaderChrome, settingsOpen]);
 
   useEffect(() => {
-    const isReaderControl = (target) => target.closest?.("button, a, .reader-playback, .reader-playback-reopen, .reader-settings, .reader-settings-backdrop, .reader-header");
+    if (settingsOpen || chapterListOpen) return undefined;
+    const isReaderControl = (target) => target.closest?.("button, a, .reader-playback, .reader-playback-reopen, .reader-settings, .reader-settings-backdrop, .reader-header, .reader-chapter-list");
     const revealChromeOnTap = () => {
+      if (autoScroll) {
+        // Tap pendant l’auto-scroll : garder/afficher le launcher pour pause.
+        readerChromeHiddenRef.current = true;
+        setHeaderChromeVisible(false);
+        setControlsMode("launcher");
+        return;
+      }
       showReaderChrome("launcher");
     };
     const pauseOnTouch = (event) => {
@@ -292,15 +326,27 @@ export function LiveReader({
       window.removeEventListener("click", handleTap);
       window.removeEventListener("wheel", stopOnWheel);
     };
-  }, [autoScroll, hideReaderChrome, settingsOpen, showReaderChrome]);
+  }, [autoScroll, chapterListOpen, hideReaderChrome, settingsOpen, showReaderChrome]);
 
   useEffect(() => {
     if (!autoScroll) setTouchPaused(false);
   }, [autoScroll]);
 
   const currentIndex = useMemo(() => chapters.findIndex((entry) => entry.url === activeChapter.url || (entry.number && String(entry.number) === String(activeChapter.number))), [activeChapter, chapters]);
-  const previousChapter = currentIndex >= 0 ? chapters[currentIndex + 1] : null;
-  const nextChapter = currentIndex > 0 ? chapters[currentIndex - 1] : null;
+  const previousChapter = useMemo(() => {
+    if (currentIndex < 0) return null;
+    for (let index = currentIndex + 1; index < chapters.length; index += 1) {
+      if (!chapters[index]?.locked) return chapters[index];
+    }
+    return null;
+  }, [chapters, currentIndex]);
+  const nextChapter = useMemo(() => {
+    if (currentIndex <= 0) return null;
+    for (let index = currentIndex - 1; index >= 0; index -= 1) {
+      if (!chapters[index]?.locked) return chapters[index];
+    }
+    return null;
+  }, [chapters, currentIndex]);
   const speed = scrollSpeeds[speedIndex];
 
   function seekTo(value) {
@@ -311,7 +357,7 @@ export function LiveReader({
   }
 
   function changeChapter(nextChapterToOpen) {
-    if (!nextChapterToOpen) return;
+    if (!nextChapterToOpen || nextChapterToOpen.locked) return;
     setActiveChapter(nextChapterToOpen);
   }
 
@@ -323,7 +369,9 @@ export function LiveReader({
     }
     setTouchPaused(false);
     setAutoScroll(true);
-    hideReaderChrome();
+    readerChromeHiddenRef.current = true;
+    setHeaderChromeVisible(false);
+    setControlsMode("launcher");
   }
 
   function openControls() {
@@ -339,8 +387,10 @@ export function LiveReader({
   function openSettings() {
     setAutoScroll(false);
     setTouchPaused(false);
+    setChapterListOpen(false);
     setControlsMode("hidden");
     setHeaderChromeVisible(true);
+    setNativeImmersive(false).catch(() => {});
     setSettingsOpen(true);
   }
 
@@ -348,6 +398,31 @@ export function LiveReader({
     setSettingsOpen(false);
     setHeaderChromeVisible(true);
     setControlsMode("launcher");
+  }
+
+  function openChapterList() {
+    setAutoScroll(false);
+    setTouchPaused(false);
+    setSettingsOpen(false);
+    setControlsMode("hidden");
+    setHeaderChromeVisible(true);
+    // Sortie immersif immédiate : sinon le lecteur (z-index élevé) bloque la sheet.
+    setNativeImmersive(false).catch(() => {});
+    setChapterListOpen(true);
+  }
+
+  function closeChapterList() {
+    setChapterListOpen(false);
+    setHeaderChromeVisible(true);
+    setControlsMode("panel");
+  }
+
+  function selectChapterFromList(chapter) {
+    if (!chapter || chapter.locked) return;
+    setChapterListOpen(false);
+    setHeaderChromeVisible(true);
+    setControlsMode("panel");
+    changeChapter(chapter);
   }
 
   const playback = useMemo(() => resolveVideoPlayback(data), [data]);
@@ -383,7 +458,7 @@ export function LiveReader({
     data?.kind === "video" ? "live-reader--video" : "",
     showChapterLoading ? "live-reader--loading" : "",
     autoScroll ? "live-reader--auto-scroll" : "",
-    !headerChromeVisible && !settingsOpen ? "live-reader--chrome-hidden" : "",
+    !headerChromeVisible && !settingsOpen && !chapterListOpen ? "live-reader--chrome-hidden" : "",
     isNovel ? `reader--theme-${readerPreferences.theme}` : "",
     isNovel ? `reader--font-${readerPreferences.fontFamily}` : "",
     isNovel ? `reader--align-${readerPreferences.textAlign}` : "",
@@ -403,7 +478,7 @@ export function LiveReader({
         chapterUrl={activeChapter.url}
         isFavorite={isFavorite}
         settingsOpen={settingsOpen}
-        chromeHidden={!settingsOpen && (autoScroll ? controlsMode === "hidden" : !headerChromeVisible)}
+        chromeHidden={!settingsOpen && (autoScroll || !headerChromeVisible)}
         onBack={onBack}
         onOpenDetails={onOpenDetails}
         onOpenSettings={openSettings}
@@ -445,17 +520,19 @@ export function LiveReader({
               <span className="novel-reader-content__refresh-label">{t("reader.loadingChapter")}</span>
             </div>
           )}
-          <div className="novel-reader-content__source">
-            <SourceLogo sourceId={sourceId} />
-            <span>{t("reader.novelFromSource", { source: profile.name })}</span>
-          </div>
           {data.paragraphs.map((paragraph, index) => (
             <p key={`${index}-${paragraph.slice(0, 16)}`}>{paragraph}</p>
           ))}
           {!data.paragraphs.length && (
             <div className="reader-live-state">
               <BookOpen size={30} />
-              <h2>{t("reader.textUnavailable")}</h2>
+              <h2>{data.locked ? t("reader.paidChapter") : t("reader.textUnavailable")}</h2>
+              {data.paywallMessage ? <p>{data.paywallMessage}</p> : null}
+              {data.locked ? (
+                <button type="button" className="primary-button" onClick={() => window.open(activeChapter.url, "_blank", "noopener,noreferrer")}>
+                  {t("reader.openOnSource", { source: profile.name })}
+                </button>
+              ) : null}
             </div>
           )}
           <div className="chapter-end">
@@ -465,12 +542,51 @@ export function LiveReader({
         </article>
       ) : <div className="live-reader-pages" ref={pagesContainerRef}><ReaderPageList sourceId={sourceId} pages={data.pages} onFirstPageReady={() => { if (pendingSeekRef.current != null) { const saved = pendingSeekRef.current; pendingSeekRef.current = null; window.setTimeout(() => seekTo(saved), 80); } }} />{!data.pages.length && <div className="reader-live-state"><BookOpen size={30} /><h2>{data.locked ? t("reader.paidChapter") : t("reader.noChapterImages")}</h2>{data.paywallMessage ? <p>{data.paywallMessage}</p> : null}{data.locked ? <button type="button" className="primary-button" onClick={() => window.open(activeChapter.url, "_blank", "noopener,noreferrer")}>{t("reader.openOnSource", { source: profile.name })}</button> : null}</div>}<div className="chapter-end"><Check size={25} /><h2>{t("media.endChapter")} {activeChapter.name}</h2></div></div>}
       </div>
-      {data?.kind !== "video" && !settingsOpen && (
-        <div className={`live-reader__dock${controlsMode === "hidden" ? " live-reader__dock--hidden" : ""}`}>
-          {controlsMode === "panel" && !autoScroll ? <ReaderPlaybackControls progress={progress} onSeek={seekTo} autoScroll={autoScroll} onToggleAutoScroll={toggleAutoScroll} speed={speed} onCycleSpeed={() => setSpeedIndex((index) => (index + 1) % scrollSpeeds.length)} previousChapter={previousChapter} nextChapter={nextChapter} chaptersLoading={chaptersLoading} onPrevious={() => changeChapter(previousChapter)} onNext={() => changeChapter(nextChapter)} onClose={closeControls} /> : controlsMode === "launcher" ? <button className="reader-playback-reopen" onClick={openControls} aria-label={t("reader.playback.showControls")}><Settings2 size={17} /><span>{progress}%</span></button> : null}
+      {data?.kind !== "video" && !settingsOpen && !chapterListOpen && (
+        <div className={`live-reader__dock${controlsMode === "hidden" && !autoScroll ? " live-reader__dock--hidden" : ""}`}>
+          {controlsMode === "panel" && !autoScroll ? (
+            <ReaderPlaybackControls
+              progress={progress}
+              onSeek={seekTo}
+              autoScroll={autoScroll}
+              onToggleAutoScroll={toggleAutoScroll}
+              speed={speed}
+              onCycleSpeed={() => setSpeedIndex((index) => (index + 1) % scrollSpeeds.length)}
+              previousChapter={previousChapter}
+              nextChapter={nextChapter}
+              chaptersLoading={chaptersLoading}
+              chapterCount={chapters.length}
+              onPrevious={() => changeChapter(previousChapter)}
+              onNext={() => changeChapter(nextChapter)}
+              onOpenChapterList={openChapterList}
+              onClose={closeControls}
+            />
+          ) : controlsMode === "launcher" || autoScroll ? (
+            <button
+              type="button"
+              className={`reader-playback-reopen${autoScroll ? " reader-playback-reopen--auto" : ""}`}
+              onClick={openControls}
+              aria-label={autoScroll ? t("reader.playback.stopAutoScroll") : t("reader.playback.showControls")}
+            >
+              <Settings2 size={17} />
+              <span>{progress}%</span>
+            </button>
+          ) : null}
         </div>
       )}
       {settingsOpen && isNovel && <ReaderSettingsSheet preferences={readerPreferences} onChange={setReaderPreferences} onClose={closeSettings} onReset={() => setReaderPreferences(defaultReaderPreferences)} />}
+      {chapterListOpen && (
+        <ReaderChapterListSheet
+          manga={manga}
+          chapters={chapters}
+          activeChapter={activeChapter}
+          sourceId={sourceId}
+          loading={chaptersLoading}
+          theme={isNovel ? readerPreferences.theme : "night"}
+          onSelect={selectChapterFromList}
+          onClose={closeChapterList}
+        />
+      )}
     </div>
   );
 }

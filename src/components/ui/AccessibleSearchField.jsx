@@ -10,10 +10,11 @@ export function AccessibleSearchField({ value, onChange, placeholder, ariaLabel,
       onChange={onChange}
       aria-label={ariaLabel}
       className={`accessible-search ${className}`.trim()}
+      onSubmit={() => {}}
     >
       <Search className="accessible-search__icon" size={21} aria-hidden="true" />
-      <Input autoFocus={autoFocus} placeholder={placeholder} />
-      {value && <Button className="accessible-search__clear" aria-label={t("common.clearSearch")}><X size={17} /></Button>}
+      <Input autoFocus={autoFocus} placeholder={placeholder} inputMode="search" enterKeyHint="search" />
+      {value ? <Button className="accessible-search__clear" aria-label={t("common.clearSearch")}><X size={17} /></Button> : null}
     </SearchField>
   );
 }

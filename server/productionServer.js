@@ -51,9 +51,12 @@ export function startProductionServer(options = {}) {
       if (checkRateLimit(req, res)) return;
     }
 
-    const sourceResult = await handleSourceRequest(req.url ?? "");
+    const sourceResult = await handleSourceRequest(req.url ?? "", {
+      method: req.method || "GET",
+      headers: req.headers || {},
+    });
     if (sourceResult) {
-      return sendSourceResponse(res, sourceResult);
+      return sendSourceResponse(res, sourceResult, req);
     }
 
     const filePath = resolveFile(root, new URL(req.url ?? "/", `http://${req.headers.host}`).pathname);

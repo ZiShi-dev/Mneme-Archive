@@ -131,7 +131,7 @@ export function useVideoCinemaChrome({
   }, [cinemaMode]);
 
   useEffect(() => {
-    if (!Capacitor.isNativePlatform() || !isChromebookApp) return undefined;
+    if (!Capacitor.isNativePlatform()) return undefined;
     let cancelled = false;
     (async () => {
       if (cancelled) return;
@@ -142,6 +142,14 @@ export function useVideoCinemaChrome({
       setNativeImmersive(false).catch(() => {});
     };
   }, [cinemaMode]);
+
+  useEffect(() => {
+    if (!playback || embedMode || isChromebookApp) return undefined;
+    if (phoneLandscape && !cinemaMode) {
+      activateCinemaMode();
+    }
+    return undefined;
+  }, [activateCinemaMode, cinemaMode, embedMode, phoneLandscape, playback]);
 
   useEffect(() => {
     if (!embedMode) return undefined;

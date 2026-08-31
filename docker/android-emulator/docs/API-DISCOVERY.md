@@ -7,7 +7,9 @@
 | عالم الروايات | `com.realmnovel.novel_app` | `https://api.novels-app.com/api` |
 | سماء الروايات | `com.myapp.novels_sky` | `baseUrl` dynamique (Firebase / app-update) |
 
-**Note :** le domaine `api.novels-app.com` ne résout plus (NXDOMAIN sur 8.8.8.8 / 1.1.1.1). L’APK Realm Novel 1.1.8 pointe encore vers ce host.
+**Note :** le domaine `api.novels-app.com` ne résout plus (NXDOMAIN). L’API live utilisée par Sky Novel est `http://62.171.141.197:5007` (embarquée dans `libapp.so`).
+
+**Chapitres 51+ (août 2026) :** `GET /novels/{novelId}/chapters/{n}` avec headers `x-app-version: 10.0.0` (minimum) et `x-app-package: com.myapp.novels_sky`. Toute version `< 10.0.0` renvoie HTTP 426 `forceUpdate`.
 
 ## Endpoints Realm Novel (libapp.so)
 

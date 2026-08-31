@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { AlignJustify, AlignRight, Check, Coffee, Minus, Moon, Pilcrow, Plus, RotateCcw, Sun, Type } from "lucide-react";
+import { AlignJustify, AlignRight, Check, Circle, Coffee, Minus, Moon, Pilcrow, Plus, RotateCcw, Sun, Type } from "lucide-react";
 import { SheetCloseButton } from "../../components/ui/SheetCloseButton";
 import { SheetPortal } from "../../components/ui/SheetPortal";
 import { useI18n } from "../../i18n/I18nProvider";
@@ -51,6 +51,7 @@ export function ReaderSettingsSheet({ preferences, onChange, onClose, onReset })
 
   const themes = useMemo(() => ([
     { id: "night", label: t("reader.settings.themes.night"), icon: Moon },
+    { id: "black", label: t("reader.settings.themes.black"), icon: Circle },
     { id: "paper", label: t("reader.settings.themes.paper"), icon: Coffee },
     { id: "light", label: t("reader.settings.themes.light"), icon: Sun },
   ]), [t]);

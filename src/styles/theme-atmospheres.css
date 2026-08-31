@@ -1,0 +1,734 @@
+/* Atmosphères plein écran : Sakura jour / Encre / Papier */
+
+.sakura-day,
+.ink-atmosphere,
+.paper-atmosphere {
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.sakura-day--stage,
+.ink-atmosphere--stage,
+.paper-atmosphere--stage {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 100dvh;
+  z-index: 0;
+}
+
+.sakura-day--frame,
+.ink-atmosphere--frame,
+.paper-atmosphere--frame {
+  position: sticky;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  margin-bottom: -100%;
+  z-index: 0;
+}
+
+.native-app [data-theme="sakura"] .sakura-day--frame,
+[data-theme="sakura"] .app-shell__view > .sakura-day--frame,
+.app-shell--sakura .phone-frame > .sakura-day--frame,
+.native-app [data-theme="ink"] .ink-atmosphere--frame,
+[data-theme="ink"] .app-shell__view > .ink-atmosphere--frame,
+.app-shell--ink .phone-frame > .ink-atmosphere--frame,
+.native-app [data-theme="paper"] .paper-atmosphere--frame,
+[data-theme="paper"] .app-shell__view > .paper-atmosphere--frame,
+.app-shell--paper .phone-frame > .paper-atmosphere--frame {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+  min-height: 100dvh;
+  margin-bottom: 0;
+  z-index: 0;
+}
+
+.sakura-day__canvas,
+.ink-atmosphere__canvas,
+.paper-atmosphere__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.sakura-day--frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 248, 249, 0.12) 0%, rgba(255, 248, 249, 0.28) 55%, rgba(247, 232, 236, 0.4) 100%);
+}
+
+.ink-atmosphere--frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(9, 10, 18, 0.12) 0%, rgba(9, 10, 18, 0.28) 55%, rgba(9, 10, 18, 0.42) 100%);
+}
+
+.paper-atmosphere--frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(243, 240, 234, 0.1) 0%, rgba(243, 240, 234, 0.22) 55%, rgba(232, 226, 214, 0.35) 100%);
+}
+
+[data-theme="sakura"] .phone-frame,
+.app-shell--sakura .phone-frame,
+[data-theme="ink"] .phone-frame,
+.app-shell--ink .phone-frame,
+[data-theme="paper"] .phone-frame,
+.app-shell--paper .phone-frame {
+  isolation: isolate;
+  background-color: transparent;
+  background-image: none;
+}
+
+.native-app [data-theme="sakura"] .app-shell,
+.app-shell--sakura,
+.native-app [data-theme="ink"] .app-shell,
+.app-shell--ink,
+.native-app [data-theme="paper"] .app-shell,
+.app-shell--paper {
+  background: transparent;
+}
+
+[data-theme="sakura"] .screen,
+[data-theme="sakura"] .phone-frame > .screen,
+[data-theme="ink"] .screen,
+[data-theme="ink"] .phone-frame > .screen,
+[data-theme="paper"] .screen,
+[data-theme="paper"] .phone-frame > .screen {
+  position: relative;
+  z-index: 2;
+  background: transparent;
+}
+
+body[data-theme="sakura"] {
+  background: linear-gradient(180deg, #FFF8F9 0%, #FDEDEB 50%, #F7E8EC 100%);
+}
+
+body[data-theme="ink"] {
+  background: linear-gradient(180deg, #070812 0%, #0c0e1a 50%, #090a12 100%);
+}
+
+body[data-theme="paper"] {
+  background: linear-gradient(180deg, #F7F3EC 0%, #F3F0EA 50%, #E8E2D6 100%);
+}
+
+/* ── Theme sheet gallery (popup lisible, cartes égales) ── */
+
+.notify-sheet.theme-sheet--gallery {
+  max-height: min(92dvh, calc(100dvh - var(--safe-top) - 12px));
+}
+
+.notify-sheet.theme-sheet--gallery header {
+  padding: 14px 16px 12px;
+  flex-shrink: 0;
+}
+
+.notify-sheet.theme-sheet--gallery header h2 {
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.notify-sheet.theme-sheet--gallery header small {
+  font-size: 11px;
+}
+
+.notify-sheet.theme-sheet--gallery .notify-sheet__body {
+  padding: 10px 14px 6px;
+  gap: 10px;
+  overflow: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.notify-sheet.theme-sheet--gallery footer {
+  padding: 10px 14px calc(12px + var(--safe-bottom));
+  flex-shrink: 0;
+  border-top: 1px solid var(--line);
+}
+
+.notify-sheet.theme-sheet--gallery .notify-sheet__done {
+  min-width: 96px;
+  min-height: 40px;
+  padding: 0 18px;
+  font-size: 13px;
+  border-radius: 12px;
+}
+
+.theme-selector--gallery {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+}
+
+.theme-selector--gallery > .theme-selector__option,
+.theme-selector--gallery > .theme-selector__option--ink,
+.theme-selector--gallery > .theme-selector__option--paper,
+.theme-selector--gallery > .theme-selector__option--sakura,
+.theme-selector--gallery > .theme-selector__option--yozakura,
+.theme-selector--gallery > .theme-selector__option--lune-neige {
+  grid-column: 1 / -1;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 104px;
+  height: 104px;
+  padding: 0;
+  border-radius: 16px;
+  display: block;
+  text-align: start;
+  border-width: 1.5px;
+  transform: none;
+}
+
+.theme-selector--gallery > .theme-selector__option:hover {
+  transform: translateY(-1px);
+}
+
+.theme-selector--gallery > .theme-selector__option > .ink-preview,
+.theme-selector--gallery > .theme-selector__option > .paper-preview,
+.theme-selector--gallery > .theme-selector__option > .sakura-day-preview,
+.theme-selector--gallery > .theme-selector__option > .yozakura-preview,
+.theme-selector--gallery > .theme-selector__option > .lune-neige-preview {
+  z-index: 0;
+}
+
+.theme-selector--gallery .ink-preview__veil,
+.theme-selector--gallery .paper-preview__veil,
+.theme-selector--gallery .sakura-day-preview__veil,
+.theme-selector--gallery .yozakura-preview__veil,
+.theme-selector--gallery .lune-neige-preview__veil {
+  display: none;
+}
+
+.theme-selector--gallery > .theme-selector__option > svg:nth-of-type(1),
+.theme-selector--gallery > .theme-selector__option > svg:first-of-type {
+  position: absolute;
+  z-index: 2;
+  inset-inline-start: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  padding: 8px;
+  border-radius: 12px;
+  box-sizing: content-box;
+  background: color-mix(in srgb, var(--surface) 78%, transparent) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid color-mix(in srgb, white 22%, transparent);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+
+.theme-selector--gallery > .theme-selector__option > span {
+  position: absolute;
+  z-index: 2;
+  inset-inline-start: 62px;
+  inset-inline-end: 46px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  gap: 3px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid color-mix(in srgb, white 16%, transparent);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
+  max-width: calc(100% - 108px);
+}
+
+.theme-selector--gallery > .theme-selector__option > span strong {
+  font: 700 14px/1.2 var(--font-sans);
+  letter-spacing: 0.01em;
+  color: var(--ink);
+  text-shadow: none;
+}
+
+.theme-selector--gallery > .theme-selector__option > span small {
+  font: 500 11px/1.35 var(--font-sans);
+  color: var(--muted);
+  opacity: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.theme-selector--gallery > .theme-selector__option > svg:last-of-type {
+  position: absolute;
+  z-index: 2;
+  inset-inline-end: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  padding: 6px;
+  border-radius: 999px;
+  box-sizing: content-box;
+  background: color-mix(in srgb, var(--brand) 22%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--brand) 40%, transparent);
+  opacity: 0;
+  color: var(--brand);
+  filter: none;
+}
+
+.theme-selector--gallery > .theme-selector__option.active {
+  border-color: var(--brand);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--brand) 45%, transparent),
+    0 10px 28px rgba(0, 0, 0, 0.22);
+}
+
+.theme-selector--gallery > .theme-selector__option.active > svg:last-of-type {
+  opacity: 1;
+}
+
+/* Contraste lisible sur fonds sombres des previews */
+.theme-selector--gallery > .theme-selector__option--ink > span,
+.theme-selector--gallery > .theme-selector__option--yozakura > span,
+.theme-selector--gallery > .theme-selector__option--lune-neige > span {
+  background: color-mix(in srgb, #0c0810 72%, transparent);
+  border-color: color-mix(in srgb, white 14%, transparent);
+}
+
+.theme-selector--gallery > .theme-selector__option--ink > span strong,
+.theme-selector--gallery > .theme-selector__option--yozakura > span strong,
+.theme-selector--gallery > .theme-selector__option--lune-neige > span strong {
+  color: #fff8fb;
+}
+
+.theme-selector--gallery > .theme-selector__option--ink > span small,
+.theme-selector--gallery > .theme-selector__option--yozakura > span small,
+.theme-selector--gallery > .theme-selector__option--lune-neige > span small {
+  color: color-mix(in srgb, #fff4f7 78%, transparent);
+}
+
+.theme-selector--gallery > .theme-selector__option--ink > svg:first-of-type,
+.theme-selector--gallery > .theme-selector__option--yozakura > svg:first-of-type,
+.theme-selector--gallery > .theme-selector__option--lune-neige > svg:first-of-type {
+  background: color-mix(in srgb, #120e16 70%, transparent) !important;
+  color: #fff0f5;
+  border-color: color-mix(in srgb, white 18%, transparent);
+}
+
+.theme-selector--gallery > .theme-selector__option--paper > span,
+.theme-selector--gallery > .theme-selector__option--sakura > span {
+  background: color-mix(in srgb, #fffcf7 86%, transparent);
+  border-color: color-mix(in srgb, #171722 8%, transparent);
+}
+
+.theme-selector--gallery > .theme-selector__option--paper > span strong,
+.theme-selector--gallery > .theme-selector__option--sakura > span strong {
+  color: #171722;
+}
+
+.theme-selector--gallery > .theme-selector__option--paper > span small,
+.theme-selector--gallery > .theme-selector__option--sakura > span small {
+  color: #5a4a52;
+}
+
+.theme-selector--gallery > .theme-selector__option--paper > svg:first-of-type,
+.theme-selector--gallery > .theme-selector__option--sakura > svg:first-of-type {
+  background: color-mix(in srgb, #fffcf7 88%, transparent) !important;
+  color: #793b55;
+  border-color: color-mix(in srgb, #171722 10%, transparent);
+}
+
+@media (min-width: 720px) {
+  .desktop-app .notify-sheet.theme-sheet--gallery {
+    width: min(100%, 460px);
+    max-height: min(86vh, 720px);
+  }
+
+  .desktop-app .theme-selector--gallery {
+    grid-template-columns: 1fr;
+  }
+
+  .desktop-app .theme-selector--gallery > .theme-selector__option {
+    min-height: 112px;
+    height: 112px;
+  }
+}
+
+.theme-selector__option--ink,
+.theme-selector__option--paper {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.sakura-day-preview,
+.ink-preview,
+.paper-preview {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.sakura-day-preview__sky {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 80% 10%, rgba(255, 250, 240, .85), transparent 38%),
+    radial-gradient(ellipse at 45% 0%, rgba(210, 230, 245, .35), transparent 45%),
+    radial-gradient(ellipse at 12% 8%, rgba(244, 179, 194, .4), transparent 48%),
+    radial-gradient(ellipse at 90% 80%, rgba(229, 151, 178, .22), transparent 45%),
+    linear-gradient(180deg, #FFF9FB 0%, #FDEEF2 40%, #F8E8EC 100%);
+}
+
+.sakura-day-preview__sun {
+  position: absolute;
+  top: 8%;
+  right: 10%;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 32%, #fffef8, #ffe8d0 60%, #f5c8a8);
+  box-shadow:
+    0 0 18px rgba(255, 240, 220, .7),
+    0 0 36px rgba(244, 179, 194, .35);
+}
+
+.sakura-day-preview__cloud {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(255, 255, 255, .7), rgba(255, 245, 248, .25), transparent 70%);
+  filter: blur(1px);
+  opacity: .7;
+}
+
+.sakura-day-preview__cloud--a {
+  top: 14%;
+  left: 18%;
+  width: 36%;
+  height: 12%;
+}
+
+.sakura-day-preview__cloud--b {
+  top: 8%;
+  left: 48%;
+  width: 26%;
+  height: 9%;
+  opacity: .55;
+}
+
+.sakura-day-preview__branch {
+  position: absolute;
+  width: 44%;
+  height: 50%;
+  background:
+    radial-gradient(circle at 20% 18%, rgba(255, 220, 230, .9) 0 4px, transparent 5.5px),
+    radial-gradient(circle at 36% 28%, rgba(244, 179, 194, .8) 0 4.5px, transparent 6px),
+    radial-gradient(circle at 48% 42%, rgba(255, 236, 242, .7) 0 3.5px, transparent 5px),
+    radial-gradient(circle at 28% 50%, rgba(229, 151, 178, .65) 0 4px, transparent 5.5px),
+    linear-gradient(140deg, transparent 40%, #4a2e2a 45%, #6b4540 47%, #4a2e2a 49%, transparent 54%);
+  opacity: .92;
+  filter: drop-shadow(0 0 4px rgba(244, 179, 194, .25));
+}
+.sakura-day-preview__branch--tl { top: -2%; left: -2%; }
+.sakura-day-preview__branch--tr { top: -2%; right: -2%; transform: scaleX(-1); }
+.sakura-day-preview__branch--bl { bottom: -4%; left: -2%; transform: scaleY(-1); }
+.sakura-day-preview__branch--br { bottom: -4%; right: -2%; transform: scale(-1); }
+
+.sakura-day-preview__blossoms {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 12% 14%, rgba(255, 240, 245, .85) 0 5px, transparent 7px),
+    radial-gradient(circle at 22% 26%, rgba(244, 179, 194, .7) 0 4px, transparent 6px),
+    radial-gradient(circle at 80% 16%, rgba(255, 236, 242, .8) 0 5px, transparent 7px),
+    radial-gradient(circle at 88% 30%, rgba(229, 151, 178, .6) 0 4px, transparent 6px),
+    radial-gradient(circle at 14% 80%, rgba(255, 220, 230, .65) 0 4px, transparent 6px),
+    radial-gradient(circle at 86% 84%, rgba(244, 179, 194, .55) 0 5px, transparent 7px);
+  filter: drop-shadow(0 0 5px rgba(244, 179, 194, .35));
+}
+
+.sakura-day-preview__petal {
+  position: absolute;
+  width: 7px;
+  height: 10px;
+  border-radius: 60% 60% 55% 55%;
+  background: linear-gradient(160deg, #FFE8EE, #E597B2);
+  box-shadow: 0 0 6px rgba(244, 179, 194, .45);
+  animation: sakura-day-preview-fall 4s linear infinite;
+  opacity: .85;
+}
+.sakura-day-preview__petal--1 { left: 18%; animation-delay: 0s; }
+.sakura-day-preview__petal--2 { left: 36%; animation-delay: .7s; width: 5px; height: 8px; }
+.sakura-day-preview__petal--3 { left: 52%; animation-delay: 1.4s; }
+.sakura-day-preview__petal--4 { left: 68%; animation-delay: .3s; width: 6px; height: 9px; animation-duration: 4.6s; }
+.sakura-day-preview__petal--5 { left: 82%; animation-delay: 2s; animation-duration: 3.8s; }
+
+@keyframes sakura-day-preview-fall {
+  0% { top: -10%; opacity: 0; transform: rotate(0deg) translateX(0); }
+  15% { opacity: .9; }
+  100% { top: 110%; opacity: 0; transform: rotate(220deg) translateX(14px); }
+}
+
+.sakura-day-preview__haze {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 38%;
+  background: linear-gradient(180deg, transparent, rgba(255, 230, 238, .35) 55%, rgba(240, 210, 220, .4));
+  pointer-events: none;
+}
+
+.sakura-day-preview__veil {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 18%, rgba(255, 248, 249, .42) 45%, rgba(255, 248, 249, .42) 65%, transparent 88%);
+}
+
+.ink-preview__sky {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 74% 14%, rgba(170, 185, 255, .22), transparent 38%),
+    radial-gradient(ellipse at 20% 28%, rgba(45, 60, 140, .35), transparent 48%),
+    radial-gradient(ellipse at 78% 70%, rgba(100, 70, 180, .22), transparent 45%),
+    linear-gradient(180deg, #05060e 0%, #0f1222 50%, #070812 100%);
+}
+
+.ink-preview__wash {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(10px);
+  opacity: .7;
+  mix-blend-mode: screen;
+}
+
+.ink-preview__wash--a {
+  top: 12%;
+  left: 6%;
+  width: 48%;
+  height: 40%;
+  background: radial-gradient(circle, rgba(70, 95, 200, .45), transparent 70%);
+}
+
+.ink-preview__wash--b {
+  right: 4%;
+  bottom: 12%;
+  width: 44%;
+  height: 38%;
+  background: radial-gradient(circle, rgba(120, 80, 200, .35), transparent 72%);
+}
+
+.ink-preview__stroke {
+  position: absolute;
+  width: 38%;
+  height: 28%;
+  opacity: .55;
+  background:
+    linear-gradient(135deg, transparent 42%, rgba(55, 65, 110, .7) 48%, rgba(55, 65, 110, .55) 52%, transparent 58%);
+  filter: blur(.6px);
+}
+
+.ink-preview__stroke--tl { top: 4%; left: 0; }
+.ink-preview__stroke--br { right: 0; bottom: 6%; transform: scale(-1); }
+
+.ink-preview__moon {
+  position: absolute;
+  top: 10%;
+  right: 12%;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #e8ecff, #6a78c0 70%, #3a4480);
+  box-shadow:
+    0 0 16px rgba(140, 160, 255, .45),
+    0 0 32px rgba(90, 70, 180, .25);
+}
+
+.ink-preview__mote {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(170, 185, 255, .7);
+  box-shadow: 0 0 10px rgba(140, 160, 255, .55);
+  animation: ink-preview-rise 5s ease-in-out infinite;
+}
+.ink-preview__mote--1 { left: 22%; bottom: 8%; animation-delay: 0s; }
+.ink-preview__mote--2 { left: 48%; bottom: 18%; animation-delay: 1s; }
+.ink-preview__mote--3 { left: 72%; bottom: 12%; animation-delay: 2s; }
+.ink-preview__mote--4 { left: 36%; bottom: 28%; animation-delay: .6s; width: 2px; height: 2px; background: rgba(190, 160, 255, .65); }
+.ink-preview__mote--5 { left: 84%; bottom: 32%; animation-delay: 1.8s; width: 2.5px; height: 2.5px; }
+
+@keyframes ink-preview-rise {
+  0% { transform: translateY(0); opacity: .15; }
+  45% { opacity: .9; }
+  100% { transform: translateY(-52px); opacity: 0; }
+}
+
+.ink-preview__veil {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 18%, rgba(9, 10, 18, .48) 45%, rgba(9, 10, 18, .48) 65%, transparent 88%);
+}
+
+.paper-preview__sky {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 78% 8%, rgba(255, 252, 240, .75), transparent 40%),
+    radial-gradient(ellipse at 12% 85%, rgba(140, 120, 90, .08), transparent 42%),
+    radial-gradient(ellipse at 20% 20%, rgba(232, 210, 170, .18), transparent 48%),
+    linear-gradient(180deg, #F8F4EC 0%, #F3F0EA 45%, #E2DACB 100%);
+}
+
+.paper-preview__fiber {
+  position: absolute;
+  inset: 0;
+  opacity: .45;
+  background:
+    repeating-linear-gradient(28deg, transparent 0 9px, rgba(120, 105, 80, .07) 9px 10px),
+    repeating-linear-gradient(-18deg, transparent 0 13px, rgba(170, 150, 120, .05) 13px 14px),
+    radial-gradient(circle at 30% 40%, rgba(150, 110, 70, .08) 0 1px, transparent 2px),
+    radial-gradient(circle at 62% 58%, rgba(90, 80, 65, .07) 0 1px, transparent 2px),
+    radial-gradient(circle at 78% 28%, rgba(150, 110, 70, .06) 0 1px, transparent 2px);
+}
+
+.paper-preview__light {
+  position: absolute;
+  top: -10%;
+  right: 5%;
+  width: 55%;
+  height: 55%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 248, 220, .55), rgba(255, 230, 180, .15), transparent 70%);
+  filter: blur(4px);
+}
+
+.paper-preview__shaft {
+  position: absolute;
+  top: 0;
+  width: 12%;
+  height: 70%;
+  background: linear-gradient(175deg, rgba(255, 248, 230, .35), transparent 75%);
+  clip-path: polygon(40% 0, 100% 0, 70% 100%, 0 100%);
+  opacity: .55;
+}
+
+.paper-preview__shaft--1 { right: 18%; }
+.paper-preview__shaft--2 { right: 28%; opacity: .35; }
+
+.paper-preview__wash {
+  position: absolute;
+  left: 4%;
+  bottom: 8%;
+  width: 36%;
+  height: 28%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(70, 60, 50, .12), transparent 70%);
+  transform: rotate(-18deg);
+  filter: blur(2px);
+}
+
+.paper-preview__dust {
+  position: absolute;
+  width: 2.5px;
+  height: 2.5px;
+  border-radius: 50%;
+  background: rgba(255, 250, 235, .95);
+  box-shadow: 0 0 8px rgba(255, 230, 180, .8);
+  animation: paper-preview-dust 4.5s ease-in-out infinite;
+}
+.paper-preview__dust--1 { left: 30%; top: 40%; animation-delay: 0s; }
+.paper-preview__dust--2 { left: 58%; top: 28%; animation-delay: 1s; }
+.paper-preview__dust--3 { left: 74%; top: 52%; animation-delay: 2s; }
+.paper-preview__dust--4 { left: 46%; top: 18%; animation-delay: .5s; width: 2px; height: 2px; }
+.paper-preview__dust--5 { left: 68%; top: 38%; animation-delay: 1.6s; }
+
+@keyframes paper-preview-dust {
+  0%, 100% { opacity: .2; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-12px); }
+}
+
+.paper-preview__veil {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 18%, rgba(243, 240, 234, .48) 45%, rgba(243, 240, 234, .48) 65%, transparent 88%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sakura-day-preview__petal,
+  .ink-preview__mote,
+  .paper-preview__dust {
+    animation: none;
+  }
+}
+
+.theme-selector__option--sakura > *:not(.sakura-day-preview),
+.theme-selector__option--ink > *:not(.ink-preview),
+.theme-selector__option--paper > *:not(.paper-preview) {
+  position: relative;
+  z-index: 1;
+}
+
+.theme-selector__option--ink {
+  border-color: color-mix(in srgb, #7a8cff 40%, #1a1c2e);
+  color: #e8eaf5;
+  background: #090a12;
+}
+
+.theme-selector__option--ink strong { color: #f2f4ff; text-shadow: 0 1px 3px rgba(0,0,0,.5); }
+.theme-selector__option--ink small { color: #c5cae0; }
+.theme-selector__option--ink > svg:first-child {
+  color: #c8d0ff;
+  background: color-mix(in srgb, #5b47d6 35%, #12141f);
+  border: 1px solid rgba(200, 208, 255, .2);
+}
+.theme-selector__option--ink > svg:last-child { color: #c8d0ff; }
+.theme-selector__option--ink.active {
+  border-color: color-mix(in srgb, #9aa8ff 70%, white);
+  box-shadow: 0 0 22px rgba(91, 71, 214, .35), 0 12px 28px rgba(0,0,0,.4);
+}
+
+.theme-selector__option--paper {
+  border-color: color-mix(in srgb, #b96828 35%, #ddd8ce);
+  color: #171722;
+  background: #F3F0EA;
+}
+
+.theme-selector__option--paper strong { color: #171722; }
+.theme-selector__option--paper small { color: #656575; }
+.theme-selector__option--paper > svg:first-child {
+  color: #b96828;
+  background: color-mix(in srgb, #b96828 12%, #fffcf7);
+  border: 1px solid rgba(185, 104, 40, .2);
+}
+.theme-selector__option--paper > svg:last-child { color: #b96828; }
+.theme-selector__option--paper.active {
+  border-color: color-mix(in srgb, #b96828 65%, #171722);
+  box-shadow: 0 0 18px rgba(185, 104, 40, .18), 0 10px 24px rgba(0,0,0,.08);
+}
+
+.theme-selector__option--sakura::before,
+.theme-selector__option--sakura::after {
+  display: none;
+}
+
+.theme-selector__option--sakura {
+  background: #FFF8F9;
+}

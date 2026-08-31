@@ -119,6 +119,15 @@ export function formatEpisodeHeaderLabel(chapterName, unitLabel = "") {
   return `${unit} ${name}`;
 }
 
+function resolveStreamSourceMode(source = {}, data = {}) {
+  const streamType = String(source.streamType || data.streamType || "").toLowerCase();
+  const url = String(source.streamUrl || data.streamUrl || data.videoUrl || "");
+  if (streamType === "mp4" || data.playbackMode === "video") return "video";
+  if (streamType === "hls" || data.playbackMode === "hls" || /\.m3u8|mpegurl/i.test(url)) return "hls";
+  if (/\.mp4(?:$|\?)/i.test(url)) return "video";
+  return "hls";
+}
+
 export function resolveVideoPlayback(data) {
   if (!data) return null;
 
@@ -128,7 +137,7 @@ export function resolveVideoPlayback(data) {
   if (streamSources.length > 0) {
     const source = streamSources[0];
     return {
-      mode: "hls",
+      mode: resolveStreamSourceMode(source, data),
       url: source.streamUrl,
       referer: source.streamReferer || data.streamReferer || data.url || "",
     };
@@ -137,9 +146,8 @@ export function resolveVideoPlayback(data) {
   const stream = data.videoUrl || data.streamUrl;
   if (stream && /^https?:\/\//i.test(String(stream))) {
     const url = String(stream);
-    const isHls = data.playbackMode === "hls" || /\.m3u8|mpegurl/i.test(url);
     return {
-      mode: isHls ? "hls" : "video",
+      mode: resolveStreamSourceMode({ streamUrl: url, streamType: data.streamType }, data),
       url,
       referer: data.streamReferer || data.url || "",
     };

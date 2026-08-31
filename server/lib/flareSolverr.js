@@ -1,9 +1,49 @@
 import { isCloudflareChallengeHtml } from "./cloudflareDetect.js";
 
 const DEFAULT_TIMEOUT_MS = 60_000;
+/** FlareSolverr / Chrome tient mal le parallèle → file globale (1 par défaut). */
+const FLARE_MAX_CONCURRENT = Math.max(1, Number(globalThis?.process?.env?.FLARE_MAX_CONCURRENT) || 1);
+const FLARE_CRASH_COOLDOWN_MS = 2_500;
+
+let flareActive = 0;
+const flareWaiters = [];
+let flareCooldownUntil = 0;
 
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function releaseFlareSlot() {
+  flareActive = Math.max(0, flareActive - 1);
+  const next = flareWaiters.shift();
+  if (next) next();
+}
+
+async function withFlareSlot(task) {
+  if (flareActive >= FLARE_MAX_CONCURRENT) {
+    await new Promise((resolve) => {
+      flareWaiters.push(resolve);
+    });
+  }
+  flareActive += 1;
+  try {
+    const cooldown = Math.max(0, flareCooldownUntil - Date.now());
+    if (cooldown) await wait(cooldown);
+    return await task();
+  } finally {
+    releaseFlareSlot();
+  }
+}
+
+function isFlareChromeCrash(message = "") {
+  return /tab crashed|chrome not reachable|Max retries exceeded with url: \/session|Failed to establish a new connection|session deleted|Unable to find session/i
+    .test(String(message || ""));
+}
+
+function markFlareCrashCooldown(error) {
+  if (isFlareChromeCrash(error?.message)) {
+    flareCooldownUntil = Date.now() + FLARE_CRASH_COOLDOWN_MS;
+  }
 }
 
 export function isFlareProxyUrl(baseUrl) {
@@ -45,7 +85,14 @@ function parseFlarePayload(rawText) {
 
 function errorFromFlareResponse(response, payload, rawText) {
   if (payload?.success === false && payload.error) {
+    if (isFlareChromeCrash(payload.error)) {
+      return new Error("FlareSolverr surchargé (Chrome a planté). Réessaie dans quelques secondes.");
+    }
     return new Error(payload.error);
+  }
+  const upstreamMessage = payload?.message || payload?.error || "";
+  if (isFlareChromeCrash(upstreamMessage) || isFlareChromeCrash(rawText)) {
+    return new Error("FlareSolverr surchargé (Chrome a planté). Réessaie dans quelques secondes.");
   }
   if (response.status === 429) {
     return new Error("Trop de requêtes FlareSolverr, réessaie dans quelques minutes");
@@ -62,19 +109,33 @@ function errorFromFlareResponse(response, payload, rawText) {
 
 function shouldRetryFlareError(error) {
   const message = String(error?.message || "");
-  if (/URL (invalide|non autorisée)|Hôte non autorisé|Trop de requêtes/i.test(message)) return false;
-  return /n'a pas répondu|Challenge non résolu|FlareSolverr a échoué|encore bloquée|indisponible|autre site/i.test(message);
+  // Crash Chrome / surcharge : un retry immédiat aggrave la panne.
+  if (
+    isFlareChromeCrash(message)
+    || /surchargé|Trop de requêtes|URL (invalide|non autorisée)|Hôte non autorisé|n'a pas répondu à temps|bad gateway/i.test(message)
+  ) {
+    return false;
+  }
+  return /Challenge non résolu|FlareSolverr a échoué|encore bloquée|indisponible|autre site/i.test(message);
 }
 
 function extractHtml(payload, proxyMode) {
   if (proxyMode) {
     if (payload?.success === false) {
-      throw new Error(payload.error || "FlareSolverr a échoué");
+      const err = payload.error || "FlareSolverr a échoué";
+      if (isFlareChromeCrash(err)) {
+        throw new Error("FlareSolverr surchargé (Chrome a planté). Réessaie dans quelques secondes.");
+      }
+      throw new Error(err);
     }
     return typeof payload?.html === "string" ? payload.html : "";
   }
   if (payload?.status !== "ok") {
-    throw new Error(payload?.message || "FlareSolverr a échoué");
+    const err = payload?.message || "FlareSolverr a échoué";
+    if (isFlareChromeCrash(err)) {
+      throw new Error("FlareSolverr surchargé (Chrome a planté). Réessaie dans quelques secondes.");
+    }
+    throw new Error(err);
   }
   return typeof payload?.solution?.response === "string" ? payload.solution.response : "";
 }
@@ -245,63 +306,66 @@ export async function fetchHtmlViaFlareSolverr(url, {
 } = {}) {
   if (!baseUrl) throw new Error("FlareSolverr non configuré");
 
-  const proxyMode = isFlareProxyUrl(baseUrl);
-  const endpoint = buildFlareSolverrEndpoint(baseUrl);
-  const body = proxyMode
-    ? { url, ...(includeAssets ? { includeAssets: true } : {}) }
-    : {
-      cmd: "request.get",
-      url,
-      maxTimeout,
-      ...(session ? { session } : {}),
-    };
+  return withFlareSlot(async () => {
+    const proxyMode = isFlareProxyUrl(baseUrl);
+    const endpoint = buildFlareSolverrEndpoint(baseUrl);
+    const body = proxyMode
+      ? { url, ...(includeAssets ? { includeAssets: true } : {}) }
+      : {
+        cmd: "request.get",
+        url,
+        maxTimeout,
+        ...(session ? { session } : {}),
+      };
 
-  const headers = { "Content-Type": "application/json" };
-  if (!proxyMode && apiKey) headers["X-FlareSolverr-Api-Key"] = apiKey;
-  if (!proxyMode && basicUser && basicPassword) {
-    headers.Authorization = `Basic ${toBase64(`${basicUser}:${basicPassword}`)}`;
-  }
-
-  let lastError;
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    try {
-      const timeoutSignal = AbortSignal.timeout(maxTimeout + 15_000);
-      const response = await fetchImpl(endpoint, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(body),
-        signal: timeoutSignal,
-      });
-      const rawText = await readFlareResponseBody(response);
-      const payload = parseFlarePayload(rawText);
-      if (response.ok === false && !payload.html) {
-        throw errorFromFlareResponse(response, payload, rawText);
-      }
-      const html = extractHtml(payload, proxyMode);
-      if (!html) {
-        throw new Error("FlareSolverr n'a pas renvoyé de HTML");
-      }
-      if (isCloudflareChallengeHtml(html)) {
-        throw new Error("FlareSolverr : page Cloudflare encore bloquée");
-      }
-      if (!flareHtmlMatchesRequest(html, url)) {
-        throw new Error("FlareSolverr a renvoyé une page d'un autre site");
-      }
-      if (!includeAssets) return html;
-      if (proxyMode) return inlineFlareAssets(html, payload.assets);
-      const assets = await collectLocalFlareAssets(html, payload, {
-        fetchImpl,
-        pageUrl: url,
-        userAgent: payload?.solution?.userAgent,
-      });
-      return inlineFlareAssets(html, assets);
-    } catch (error) {
-      lastError = error;
-      if (attempt < 1 && shouldRetryFlareError(error)) await wait(500);
-      else break;
+    const headers = { "Content-Type": "application/json" };
+    if (!proxyMode && apiKey) headers["X-FlareSolverr-Api-Key"] = apiKey;
+    if (!proxyMode && basicUser && basicPassword) {
+      headers.Authorization = `Basic ${toBase64(`${basicUser}:${basicPassword}`)}`;
     }
-  }
-  throw lastError ?? new Error("FlareSolverr indisponible");
+
+    let lastError;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        const timeoutSignal = AbortSignal.timeout(maxTimeout + 15_000);
+        const response = await fetchImpl(endpoint, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(body),
+          signal: timeoutSignal,
+        });
+        const rawText = await readFlareResponseBody(response);
+        const payload = parseFlarePayload(rawText);
+        if (response.ok === false && !payload.html) {
+          throw errorFromFlareResponse(response, payload, rawText);
+        }
+        const html = extractHtml(payload, proxyMode);
+        if (!html) {
+          throw new Error("FlareSolverr n'a pas renvoyé de HTML");
+        }
+        if (isCloudflareChallengeHtml(html)) {
+          throw new Error("FlareSolverr : page Cloudflare encore bloquée");
+        }
+        if (!flareHtmlMatchesRequest(html, url)) {
+          throw new Error("FlareSolverr a renvoyé une page d'un autre site");
+        }
+        if (!includeAssets) return html;
+        if (proxyMode) return inlineFlareAssets(html, payload.assets);
+        const assets = await collectLocalFlareAssets(html, payload, {
+          fetchImpl,
+          pageUrl: url,
+          userAgent: payload?.solution?.userAgent,
+        });
+        return inlineFlareAssets(html, assets);
+      } catch (error) {
+        lastError = error;
+        markFlareCrashCooldown(error);
+        if (attempt < 1 && shouldRetryFlareError(error)) await wait(500);
+        else break;
+      }
+    }
+    throw lastError ?? new Error("FlareSolverr indisponible");
+  });
 }
 
 export async function requireFlareSolverrHtml(url, { includeAssets = false } = {}) {

@@ -1,6 +1,6 @@
 import { decodeHtml, textOnly } from "../lib/htmlUtils.js";
 import { createCachedHtmlFetcher, fetchProxiedImage } from "../lib/httpUtils.js";
-import { fetchProxiedHlsResource } from "../lib/hlsProxy.js";
+import { fetchProxiedMediaBytes, pickHeader } from "../lib/hlsProxy.js";
 import { normalizeSearchQuery } from "../lib/queryLimits.js";
 import { responseJson } from "../lib/response.js";
 import { applyRecentChapterFields, normalizeRecentChapters } from "../lib/catalogChapters.js";
@@ -16,7 +16,7 @@ const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
 const HOST_PATTERN = /(?:^|\.)hentaigasm\.com$/i;
 const CDN_HOST_PATTERN = /(?:^|\.)hgasm[123]\.com$/i;
 const FILTER_SLUG_PATTERN = /^[\p{L}\p{N}+_%.\-]+$/u;
-/** Plafond mémoire pour le proxy MP4 (évite un DoS via un gros fichier CDN). */
+/** Plafond pour un GET complet sans Range (DoS) ; les plages Range restent limitées par le CDN. */
 const MAX_STREAM_BYTES = 512 * 1024 * 1024;
 const BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
@@ -78,6 +78,7 @@ export function isAllowedHentaigasmAssetHost(hostname = "") {
 function isAllowedHentaigasmImagePath(pathname = "") {
   const path = String(pathname || "");
   if (path.startsWith("/preview/")) return true;
+  if (path.startsWith("/thumbnail/")) return true;
   if (path.startsWith("/wp-content/")) return true;
   return /\.(?:webp|jpe?g|png|avif|gif)$/i.test(path);
 }
@@ -155,11 +156,6 @@ function stripHtml(value = "") {
   return textOnly(String(value).replace(/<[^>]+>/g, " "));
 }
 
-function buildStreamProxyPath(entry, referer) {
-  const params = new URLSearchParams({ url: entry, referer });
-  return `/api/sources/${SOURCE_ID}/stream?${params}`;
-}
-
 function mapPostToCatalogItem(post) {
   const title = stripHtml(post?.title?.rendered || "");
   const url = post?.link || "";
@@ -182,6 +178,7 @@ function mapPostToCatalogItem(post) {
     mediaType: "anime",
     mediaTypeLabel: "أنمي",
     publicationStatus: "completed",
+    catalogStyle: "standalone",
   }, chapters);
 }
 
@@ -310,7 +307,7 @@ async function resolveDetails(url, ctx, fetchHtml) {
   }, { parser: "wordpress-rest" });
 }
 
-export async function handleHentaigasmRequest(requestUrl) {
+export async function handleHentaigasmRequest(requestUrl, request = {}) {
   const ctx = resolveSourceRequestContext(requestUrl, DEFAULT_BASE_URL, { label: SOURCE_NAME });
   const fetchHtmlRemote = createFetcher(ctx.baseUrl);
   const { baseUrl } = ctx;
@@ -329,11 +326,12 @@ export async function handleHentaigasmRequest(requestUrl) {
         return `${baseUrl}/`;
       }
     })();
-    return fetchProxiedHlsResource({
+    return fetchProxiedMediaBytes({
       target,
       referer,
       label: SOURCE_NAME,
-      buildProxyUrl: (entry) => buildStreamProxyPath(entry, referer),
+      range: pickHeader(request.headers, "range"),
+      method: String(request.method || "GET").toUpperCase(),
       maxBytes: MAX_STREAM_BYTES,
     });
   }

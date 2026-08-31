@@ -22,8 +22,21 @@ export const MANGADISTRICT_LOGO_URL = "https://mangadistrict.com/wp-content/uplo
 export const MANHWAREAD_LOGO_URL = "https://mancover.xyz/cover/2024/12/manhwaread-150x150.png";
 export const WTR_LAB_LOGO_URL = "https://wtr-lab.com/assets/favicon/apple-touch-icon.png";
 export const NOVELPHOENIX_LOGO_URL = "https://novelphoenix.com/apple-touch-icon.png?v=4.2";
+export const REALM_NOVEL_LOGO_URL = "https://realmnovel.com/static/favicon-32.png";
 
 export const sourceProfiles = {
+  realmnovel: {
+    id: "realmnovel",
+    name: "Realm Novel",
+    arabicName: "عالم الروايات",
+    domain: "realmnovel.com",
+    url: "https://realmnovel.com/",
+    logo: REALM_NOVEL_LOGO_URL,
+    initials: "RN",
+    contentLabel: "روايات مترجمة",
+    contentTypes: ["novel"],
+    languages: ["ar"],
+  },
   mangalik: {
     id: "mangalik",
     name: "MangaLik",
@@ -280,7 +293,6 @@ export const sourceProfiles = {
 
 /** Sources retirées de l'app — données persistées nettoyées au démarrage. */
 export const REMOVED_SOURCE_IDS = new Set([
-  "realmnovel",
   "skynovel",
   "donghuaar",
   "nightnovel",
@@ -465,13 +477,18 @@ export function defaultContentKinds(sourceId) {
 }
 
 export function resolveSourceId(item) {
+  if (item?.sourceId && REMOVED_SOURCE_IDS.has(item.sourceId)) return DEFAULT_SOURCE_ID;
   if (item?.sourceId) return item.sourceId;
+  if (item?.source === "Realm Novel") return "realmnovel";
+  if (item?.sourceId === "realmnovel") return "realmnovel";
   if (item?.source === "AzoraFly") return "azorafly";
   if (item?.source === "Galaxy Novels") return "galaxynovels";
   if (item?.source === "Novels Paradise") return "novelsparadise";
   if (item?.sourceId === "novelsparadise") return "novelsparadise";
-  if (item?.source === "Night Novel") return "nightnovel";
-  if (item?.sourceId === "nightnovel") return "nightnovel";
+  if (item?.source === "Night Novel") return DEFAULT_SOURCE_ID;
+  if (item?.sourceId === "nightnovel") return DEFAULT_SOURCE_ID;
+  if (item?.source === "Sky Novel") return DEFAULT_SOURCE_ID;
+  if (item?.sourceId === "skynovel") return DEFAULT_SOURCE_ID;
   if (item?.source === "AnimeDar") return "animedar";
   if (item?.sourceId === "animedar") return "animedar";
   if (item?.source === "Cenele") return "cenele";

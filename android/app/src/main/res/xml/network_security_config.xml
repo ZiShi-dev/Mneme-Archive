@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Sky Novel API (Realm Novel chapitres 51+) : HTTP clair sur IP dédiée -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">62.171.141.197</domain>
+    </domain-config>
+</network-security-config>

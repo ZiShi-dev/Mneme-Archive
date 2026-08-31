@@ -506,7 +506,8 @@
 .la-sheet-portal {
   position: fixed;
   inset: 0;
-  z-index: 150;
+  /* Au-dessus du lecteur immersif (180) et immersive-lock (200). */
+  z-index: 320;
   pointer-events: none;
   isolation: isolate;
 }

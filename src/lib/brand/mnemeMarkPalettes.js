@@ -4,6 +4,7 @@ import {
   THEME_PAPER,
   THEME_SAKURA,
   THEME_YOZAKURA,
+  THEME_GALAXIE,
   isDarkTheme,
   normalizeThemeId,
 } from "../theme/appearance.js";
@@ -58,6 +59,16 @@ export const MNEME_MARK_PALETTES = {
     node: "#9AB4D8",
     star: "#F4F8FF",
     starGlow: "#8EB4E8",
+  },
+  [THEME_GALAXIE]: {
+    canvas: "#07061A",
+    disk: "#12102C",
+    glyph: "#5A5688",
+    glyphSoft: "#3A3660",
+    ring: "#7B5CFF",
+    node: "#9BB0FF",
+    star: "#EEF1FF",
+    starGlow: "#C9A0FF",
   },
 };
 

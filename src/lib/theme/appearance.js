@@ -3,8 +3,16 @@ export const THEME_PAPER = "paper";
 export const THEME_SAKURA = "sakura";
 export const THEME_YOZAKURA = "yozakura";
 export const THEME_LUNE_NEIGE = "lune-neige";
+export const THEME_GALAXIE = "galaxie";
 
-export const THEME_IDS = [THEME_INK, THEME_PAPER, THEME_SAKURA, THEME_YOZAKURA, THEME_LUNE_NEIGE];
+export const THEME_IDS = [
+  THEME_INK,
+  THEME_PAPER,
+  THEME_SAKURA,
+  THEME_YOZAKURA,
+  THEME_LUNE_NEIGE,
+  THEME_GALAXIE,
+];
 
 export const THEME_META_COLOR = {
   [THEME_INK]: "#090A12",
@@ -12,6 +20,7 @@ export const THEME_META_COLOR = {
   [THEME_SAKURA]: "#FFF8F9",
   [THEME_YOZAKURA]: "#171218",
   [THEME_LUNE_NEIGE]: "#0D1522",
+  [THEME_GALAXIE]: "#07061A",
 };
 
 const THEME_DEFAULT_TYPEFACE = {
@@ -20,6 +29,7 @@ const THEME_DEFAULT_TYPEFACE = {
   [THEME_SAKURA]: "naskh",
   [THEME_YOZAKURA]: "kufi",
   [THEME_LUNE_NEIGE]: "sans",
+  [THEME_GALAXIE]: "sans",
 };
 
 export function themeDefaultTypeface(themeId) {
@@ -27,11 +37,19 @@ export function themeDefaultTypeface(themeId) {
 }
 
 export function normalizeThemeId(value) {
-  if (value === THEME_INK || value === THEME_PAPER || value === THEME_SAKURA || value === THEME_YOZAKURA || value === THEME_LUNE_NEIGE) {
+  if (
+    value === THEME_INK
+    || value === THEME_PAPER
+    || value === THEME_SAKURA
+    || value === THEME_YOZAKURA
+    || value === THEME_LUNE_NEIGE
+    || value === THEME_GALAXIE
+  ) {
     return value;
   }
   if (value === "usuzakura") return THEME_SAKURA;
   if (value === "kurozakura") return THEME_INK;
+  if (value === "galaxy" || value === "cosmos") return THEME_GALAXIE;
   if (value === false || value === "false" || value === 0) return THEME_PAPER;
   if (value === true || value === "true" || value === 1) return THEME_INK;
   return THEME_INK;
@@ -39,7 +57,7 @@ export function normalizeThemeId(value) {
 
 export function isDarkTheme(themeId) {
   const id = normalizeThemeId(themeId);
-  return id === THEME_INK || id === THEME_YOZAKURA || id === THEME_LUNE_NEIGE;
+  return id === THEME_INK || id === THEME_YOZAKURA || id === THEME_LUNE_NEIGE || id === THEME_GALAXIE;
 }
 
 export function isSakuraTheme(themeId) {
@@ -51,8 +69,20 @@ export function isSnowTheme(themeId) {
   return normalizeThemeId(themeId) === THEME_LUNE_NEIGE;
 }
 
+export function isGalaxyTheme(themeId) {
+  return normalizeThemeId(themeId) === THEME_GALAXIE;
+}
+
 export function hasAtmosphereEffect(themeId) {
-  return isSakuraTheme(themeId) || isSnowTheme(themeId);
+  const id = normalizeThemeId(themeId);
+  return (
+    id === THEME_SAKURA
+    || id === THEME_YOZAKURA
+    || id === THEME_LUNE_NEIGE
+    || id === THEME_INK
+    || id === THEME_PAPER
+    || id === THEME_GALAXIE
+  );
 }
 
 export function themeNameKey(themeId) {
@@ -61,6 +91,7 @@ export function themeNameKey(themeId) {
   if (id === THEME_SAKURA) return "settings.themeSakura";
   if (id === THEME_YOZAKURA) return "settings.themeYozakura";
   if (id === THEME_LUNE_NEIGE) return "settings.themeLuneNeige";
+  if (id === THEME_GALAXIE) return "settings.themeGalaxie";
   return "settings.themeEncre";
 }
 
@@ -70,6 +101,7 @@ export function themeHintKey(themeId) {
   if (id === THEME_SAKURA) return "settings.themeSakuraHint";
   if (id === THEME_YOZAKURA) return "settings.themeYozakuraHint";
   if (id === THEME_LUNE_NEIGE) return "settings.themeLuneNeigeHint";
+  if (id === THEME_GALAXIE) return "settings.themeGalaxieHint";
   return "settings.themeEncreHint";
 }
 

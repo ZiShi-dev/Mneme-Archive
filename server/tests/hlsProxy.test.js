@@ -68,3 +68,46 @@ test("readResponseBytesLimited accepts under-limit body", async () => {
   const result = await readResponseBytesLimited(response, 100);
   assert.deepEqual([...result], [1, 2, 3, 4]);
 });
+
+test("pickHeader reads case-insensitive plain headers", async () => {
+  const { pickHeader } = await import("../lib/hlsProxy.js");
+  assert.equal(pickHeader({ Range: "bytes=0-1" }, "range"), "bytes=0-1");
+  assert.equal(pickHeader({ range: "bytes=2-3" }, "Range"), "bytes=2-3");
+});
+
+test("fetchProxiedMediaBytes returns stream-pipe with range", async () => {
+  const { fetchProxiedMediaBytes } = await import("../lib/hlsProxy.js");
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (_url, init) => {
+    assert.equal(init.headers.Range, "bytes=0-7");
+    return {
+      ok: false,
+      status: 206,
+      headers: {
+        get: (name) => ({
+          "content-type": "video/mp4",
+          "content-length": "8",
+          "content-range": "bytes 0-7/100",
+          "accept-ranges": "bytes",
+        }[name] || null),
+      },
+      body: {
+        getReader: () => ({ read: async () => ({ done: true, value: undefined }) }),
+      },
+    };
+  };
+  try {
+    const result = await fetchProxiedMediaBytes({
+      target: "https://example.com/a.mp4",
+      referer: "https://hentaigasm.com/",
+      range: "bytes=0-7",
+    });
+    assert.equal(result.kind, "stream-pipe");
+    assert.equal(result.status, 206);
+    assert.equal(result.contentType, "video/mp4");
+    assert.equal(result.contentRange, "bytes 0-7/100");
+    assert.ok(result.body);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

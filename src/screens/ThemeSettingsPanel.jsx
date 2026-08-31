@@ -1,9 +1,16 @@
 import React, { useEffect } from "react";
-import { Check, ChevronLeft, Moon, Snowflake, Sun } from "lucide-react";
+import { Check, ChevronLeft, Moon, Snowflake, Sparkles, Sun } from "lucide-react";
 import { SheetCloseButton } from "../components/ui/SheetCloseButton";
 import { SheetPortal } from "../components/ui/SheetPortal";
 import { SakuraIcon } from "../components/atmosphere/SakuraIcon";
 import { LuneNeigeThemePreview } from "../components/atmosphere/LuneNeigeThemePreview";
+import { YozakuraThemePreview } from "../components/atmosphere/YozakuraThemePreview";
+import { GalaxyThemePreview } from "../components/atmosphere/GalaxyAtmosphere";
+import {
+  SakuraDayThemePreview,
+  InkThemePreview,
+  PaperThemePreview,
+} from "../components/atmosphere/CoreThemePreviews";
 import { useI18n } from "../i18n/I18nProvider";
 import {
   THEME_INK,
@@ -11,16 +18,18 @@ import {
   THEME_PAPER,
   THEME_SAKURA,
   THEME_YOZAKURA,
+  THEME_GALAXIE,
   themeHintKey,
   themeNameKey,
 } from "../lib/theme/appearance";
 
 const THEME_OPTIONS = [
-  { id: THEME_INK, Icon: Moon },
   { id: THEME_PAPER, Icon: Sun },
+  { id: THEME_INK, Icon: Moon },
   { id: THEME_SAKURA, Icon: SakuraIcon },
   { id: THEME_YOZAKURA, Icon: SakuraIcon },
   { id: THEME_LUNE_NEIGE, Icon: Snowflake },
+  { id: THEME_GALAXIE, Icon: Sparkles },
 ];
 
 function ThemeOptionIcon({ Icon }) {
@@ -28,10 +37,20 @@ function ThemeOptionIcon({ Icon }) {
   return <Icon size={19} />;
 }
 
+function ThemeOptionPreview({ id }) {
+  if (id === THEME_INK) return <InkThemePreview />;
+  if (id === THEME_PAPER) return <PaperThemePreview />;
+  if (id === THEME_SAKURA) return <SakuraDayThemePreview />;
+  if (id === THEME_YOZAKURA) return <YozakuraThemePreview />;
+  if (id === THEME_LUNE_NEIGE) return <LuneNeigeThemePreview />;
+  if (id === THEME_GALAXIE) return <GalaxyThemePreview />;
+  return null;
+}
+
 export function ThemeSelector({ appearance, onSetAppearance }) {
   const { t } = useI18n();
   return (
-    <div className="theme-selector theme-selector--five" role="group" aria-label={t("settings.appearance")}>
+    <div className="theme-selector theme-selector--gallery" role="group" aria-label={t("settings.appearance")}>
       {THEME_OPTIONS.map(({ id, Icon }) => {
         const active = appearance === id;
         return (
@@ -41,14 +60,17 @@ export function ThemeSelector({ appearance, onSetAppearance }) {
             className={[
               "theme-selector__option",
               active ? "active" : "",
+              id === THEME_INK ? "theme-selector__option--ink" : "",
+              id === THEME_PAPER ? "theme-selector__option--paper" : "",
               id === THEME_YOZAKURA ? "theme-selector__option--yozakura" : "",
               id === THEME_SAKURA ? "theme-selector__option--sakura" : "",
               id === THEME_LUNE_NEIGE ? "theme-selector__option--lune-neige" : "",
+              id === THEME_GALAXIE ? "theme-selector__option--galaxie" : "",
             ].filter(Boolean).join(" ")}
             aria-pressed={active}
             onClick={() => onSetAppearance(id)}
           >
-            {id === THEME_LUNE_NEIGE ? <LuneNeigeThemePreview /> : null}
+            <ThemeOptionPreview id={id} />
             <ThemeOptionIcon Icon={Icon} />
             <span>
               <strong>{t(themeNameKey(id))}</strong>
@@ -96,7 +118,10 @@ export function ThemeSettingsSheet({ open, onClose, appearance, onSetAppearance 
         className={[
           "notify-sheet",
           "theme-sheet",
+          "theme-sheet--gallery",
           appearance === THEME_LUNE_NEIGE ? "theme-sheet--lune-neige" : "",
+          appearance === THEME_YOZAKURA ? "theme-sheet--yozakura" : "",
+          appearance === THEME_GALAXIE ? "theme-sheet--galaxie" : "",
         ].filter(Boolean).join(" ")}
         role="dialog"
         aria-modal="true"

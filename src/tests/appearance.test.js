@@ -4,12 +4,14 @@ import {
   isDarkTheme,
   isSakuraTheme,
   isSnowTheme,
+  isGalaxyTheme,
   normalizeThemeId,
   THEME_INK,
   THEME_LUNE_NEIGE,
   THEME_PAPER,
   THEME_SAKURA,
   THEME_YOZAKURA,
+  THEME_GALAXIE,
   themeDefaultTypeface,
 } from "../lib/theme/appearance.js";
 
@@ -19,6 +21,7 @@ test("normalizeThemeId keeps known appearance ids", () => {
   assert.equal(normalizeThemeId("sakura"), THEME_SAKURA);
   assert.equal(normalizeThemeId("yozakura"), THEME_YOZAKURA);
   assert.equal(normalizeThemeId("lune-neige"), THEME_LUNE_NEIGE);
+  assert.equal(normalizeThemeId("galaxie"), THEME_GALAXIE);
 });
 
 test("normalizeThemeId migrates the previous ink-mode boolean", () => {
@@ -32,10 +35,16 @@ test("normalizeThemeId maps retired sakura aliases", () => {
   assert.equal(normalizeThemeId("kurozakura"), THEME_INK);
 });
 
-test("isDarkTheme treats ink, yozakura and lune-neige as dark", () => {
+test("normalizeThemeId maps galaxy aliases", () => {
+  assert.equal(normalizeThemeId("galaxy"), THEME_GALAXIE);
+  assert.equal(normalizeThemeId("cosmos"), THEME_GALAXIE);
+});
+
+test("isDarkTheme treats ink, yozakura, lune-neige and galaxie as dark", () => {
   assert.equal(isDarkTheme(THEME_INK), true);
   assert.equal(isDarkTheme(THEME_YOZAKURA), true);
   assert.equal(isDarkTheme(THEME_LUNE_NEIGE), true);
+  assert.equal(isDarkTheme(THEME_GALAXIE), true);
   assert.equal(isDarkTheme(THEME_PAPER), false);
   assert.equal(isDarkTheme(THEME_SAKURA), false);
 });
@@ -53,10 +62,26 @@ test("isSnowTheme only matches lune-neige", () => {
   assert.equal(isSnowTheme(THEME_SAKURA), false);
 });
 
+test("isGalaxyTheme only matches galaxie", () => {
+  assert.equal(isGalaxyTheme(THEME_GALAXIE), true);
+  assert.equal(isGalaxyTheme(THEME_INK), false);
+});
+
+test("hasAtmosphereEffect covers every theme", async () => {
+  const { hasAtmosphereEffect } = await import("../lib/theme/appearance.js");
+  assert.equal(hasAtmosphereEffect(THEME_INK), true);
+  assert.equal(hasAtmosphereEffect(THEME_PAPER), true);
+  assert.equal(hasAtmosphereEffect(THEME_SAKURA), true);
+  assert.equal(hasAtmosphereEffect(THEME_YOZAKURA), true);
+  assert.equal(hasAtmosphereEffect(THEME_LUNE_NEIGE), true);
+  assert.equal(hasAtmosphereEffect(THEME_GALAXIE), true);
+});
+
 test("themeDefaultTypeface pairs each theme with a readable preset", () => {
   assert.equal(themeDefaultTypeface(THEME_INK), "sans");
   assert.equal(themeDefaultTypeface(THEME_PAPER), "classic");
   assert.equal(themeDefaultTypeface(THEME_SAKURA), "naskh");
   assert.equal(themeDefaultTypeface(THEME_YOZAKURA), "kufi");
   assert.equal(themeDefaultTypeface(THEME_LUNE_NEIGE), "sans");
+  assert.equal(themeDefaultTypeface(THEME_GALAXIE), "sans");
 });

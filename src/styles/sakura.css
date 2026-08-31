@@ -12,18 +12,13 @@
 }
 
 [data-theme="sakura"] .phone-frame {
-  background-image:
-    radial-gradient(ellipse at 16% -10%, color-mix(in srgb, var(--sakura) 28%, transparent), transparent 48%),
-    radial-gradient(ellipse at 100% 110%, color-mix(in srgb, var(--nadeshiko) 14%, transparent), transparent 44%),
-    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--ume) 6%, transparent) 0.55px, transparent 0.75px);
+  background-color: transparent;
+  background-image: none;
 }
 
 [data-theme="yozakura"] .phone-frame {
-  background-image:
-    radial-gradient(ellipse at 18% -4%, color-mix(in srgb, #b34e64 22%, transparent), transparent 46%),
-    radial-gradient(ellipse at 82% 108%, color-mix(in srgb, var(--ume) 16%, transparent), transparent 48%),
-    linear-gradient(180deg, #1a0a0a 0%, var(--paper) 38%, var(--paper) 100%),
-    radial-gradient(circle at 1px 1px, rgba(255,244,247,.05) 0.55px, transparent 0.75px);
+  background-color: transparent;
+  background-image: none;
 }
 
 /* ── Branches décoratives (Sakura / Yozakura) — arrière-plan uniquement ── */

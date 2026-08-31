@@ -21,3 +21,27 @@ test("resolveVideoPlayback keeps embed urls", () => {
     url: "https://uqload.net/embed-demo.html",
   });
 });
+
+test("resolveVideoPlayback uses video mode for mp4 stream sources", () => {
+  const playback = resolveVideoPlayback({
+    streamType: "mp4",
+    playbackMode: "video",
+    sources: [{
+      streamUrl: "https://hgasm2.com/sample.mp4",
+      streamType: "mp4",
+      streamReferer: "https://hentaigasm.com/",
+    }],
+  });
+  assert.equal(playback.mode, "video");
+  assert.equal(playback.url, "https://hgasm2.com/sample.mp4");
+});
+
+test("resolveVideoPlayback keeps hls mode for m3u8 stream sources", () => {
+  const playback = resolveVideoPlayback({
+    sources: [{
+      streamUrl: "https://cdn.example/master.m3u8",
+      streamType: "hls",
+    }],
+  });
+  assert.equal(playback.mode, "hls");
+});

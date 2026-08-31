@@ -54,12 +54,12 @@ export function CatalogCard({ item, profile, onOpenDetails, onOpenChapter }) {
   const isVideo = isVideoMediaType(mediaType);
   const UnitIcon = isVideo ? Clapperboard : BookOpen;
   const coverContain = usesContainCover(item.sourceId || profile?.id);
-  const coverWide = usesWideCover(item.sourceId || profile?.id);
+  const coverWide = isVideo || usesWideCover(item.sourceId || profile?.id);
   const standaloneVideo = isStandaloneVideoCatalogItem(item);
   const postedLabel = formatChapterPublishedLabel(item.publishedAt);
 
   return (
-    <article className={`live-manga-card${coverContain ? " live-manga-card--cover-contain" : ""}${coverWide ? " live-manga-card--cover-wide" : ""}`}>
+    <article className={`live-manga-card${coverContain ? " live-manga-card--cover-contain" : ""}${coverWide ? " live-manga-card--cover-wide" : ""}${isVideo ? " live-manga-card--video" : ""}`}>
       <button className="live-manga-card__main" onClick={() => onOpenDetails(item)} aria-label={t("sources.detailsOf", { title: item.title })}>
         <span className={`media-type-badge media-type-badge--${item.mediaType || "manga"}`}>{contentTypes[item.mediaType]?.singular || item.mediaTypeLabel || contentTypes.manga.singular}</span>
         <CoverAudioBadge label={item.audioLabel} />
@@ -115,8 +115,9 @@ export function CatalogCard({ item, profile, onOpenDetails, onOpenChapter }) {
 }
 
 export function CatalogCardSkeleton({ mediaType = "manga" }) {
+  const isVideo = mediaType === "anime" || mediaType === "movie" || mediaType === "series";
   return (
-    <article className={`live-manga-card live-manga-card--skeleton live-manga-card--skeleton-${mediaType}`} aria-hidden="true">
+    <article className={`live-manga-card live-manga-card--skeleton live-manga-card--skeleton-${mediaType}${isVideo ? " live-manga-card--cover-wide live-manga-card--video" : ""}`} aria-hidden="true">
       <div className="live-manga-card__main">
         <span className="live-manga-card__cover-skeleton" />
         <span className="live-manga-card__title-skeleton" />

@@ -116,7 +116,7 @@ export function DetailsChapterSection({
         <ChapterListSkeleton count={8} label={presentation.loadingList} />
       ) : (
         <>
-          {chapters.length > 15 && (
+          {chapters.length > 8 && (
             <div className="chapter-tools">
               <AccessibleSearchField
                 className="global-search chapter-search"

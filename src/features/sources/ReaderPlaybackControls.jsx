@@ -1,5 +1,5 @@
 import React from "react";
-import { ChevronLeft, ChevronRight, Gauge, Pause, Play, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Gauge, List, Pause, Play, X } from "lucide-react";
 import { Slider, SliderThumb, SliderTrack } from "react-aria-components";
 import { useI18n } from "../../i18n/I18nProvider";
 import { ReaderPlaybackChapterSkeleton } from "../../components/ui/ContentSkeleton";
@@ -14,8 +14,10 @@ export function ReaderPlaybackControls({
   previousChapter,
   nextChapter,
   chaptersLoading = false,
+  chapterCount = 0,
   onPrevious,
   onNext,
+  onOpenChapterList,
   onClose,
 }) {
   const { t, dir } = useI18n();
@@ -44,6 +46,16 @@ export function ReaderPlaybackControls({
             {chaptersLoading ? <ReaderPlaybackChapterSkeleton /> : nextChapter && <b dir="auto">{nextChapter.name || nextChapter.number}</b>}
           </span>
           <ChevronRight size={19} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className="reader-playback__list"
+          onClick={onOpenChapterList}
+          disabled={chaptersLoading && chapterCount < 1}
+          aria-label={t("reader.playback.openChapterList")}
+        >
+          <List size={15} aria-hidden="true" />
+          {chapterCount > 0 ? <span>{chapterCount}</span> : null}
         </button>
         <button type="button" className="reader-playback__speed" onClick={onCycleSpeed} aria-label={t("reader.playback.scrollSpeed", { speed })}><Gauge size={15} /><span>{speed}×</span></button>
       </div>

@@ -72,16 +72,21 @@ function SnowLayer({ flakes, variant = "near" }) {
 export function LuneNeigeThemePreview() {
   return (
     <div className="lune-neige-preview" aria-hidden="true">
-      <div className="lune-neige-preview__sky" />
+      <div className="lune-neige-preview__sea">
+        <span className="lune-neige-preview__sea-wave lune-neige-preview__sea-wave--a" />
+        <span className="lune-neige-preview__sea-wave lune-neige-preview__sea-wave--b" />
+        <span className="lune-neige-preview__sea-wave lune-neige-preview__sea-wave--c" />
+        <span className="lune-neige-preview__moon-reflection" />
+        <span className="lune-neige-preview__sea-glint lune-neige-preview__sea-glint--1" />
+        <span className="lune-neige-preview__sea-glint lune-neige-preview__sea-glint--2" />
+        <span className="lune-neige-preview__sea-glint lune-neige-preview__sea-glint--3" />
+        <span className="lune-neige-preview__sea-glint lune-neige-preview__sea-glint--4" />
+      </div>
       <div className="lune-neige-preview__aurora" />
       <div className="lune-neige-preview__stars" />
       <div className="lune-neige-preview__moon">
         <span className="lune-neige-preview__moon-disc" />
         <span className="lune-neige-preview__moon-glow" />
-      </div>
-      <div className="lune-neige-preview__sea">
-        <span className="lune-neige-preview__sea-wave" />
-        <span className="lune-neige-preview__moon-reflection" />
       </div>
       <div className="lune-neige-preview__snow lune-neige-preview__snow--far">
         <SnowLayer flakes={FAR_FLAKES} variant="far" />

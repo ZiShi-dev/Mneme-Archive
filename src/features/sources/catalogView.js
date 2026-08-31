@@ -317,7 +317,8 @@ export function sanitizeCatalogKind(sourceId, kind) {
   if (kind.type === "kind" && kind.queryValue) return kind;
   if (kind.queryParam) return kind;
   if (supported.length === 1 && isMediaKindFilter(kind) && !kind.queryValue) {
-    return getDefaultCatalogKind(sourceId) || kind;
+    // Source mono-type (ex. Kol Novel = novel only) : jeter manga/anime orphelins.
+    return supported.includes(kind.slug) ? kind : getDefaultCatalogKind(sourceId);
   }
   if (!isMediaKindFilter(kind)) return kind;
   if (supported.includes(kind.slug)) return kind;

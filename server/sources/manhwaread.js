@@ -9,9 +9,7 @@ import { createCachedHtmlFetcher, fetchProxiedImage } from "../lib/httpUtils.js"
 import { isCloudflareChallengeHtml } from "../lib/cloudflareDetect.js";
 import {
   configureSourceNativeFetch,
-  fetchNativeHtml,
   fetchNativeImage,
-  hasNativeHtmlFetcher,
 } from "../lib/nativeFetchBridge.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
 
@@ -44,11 +42,6 @@ function mirrorHostVariants(url) {
   }
 }
 
-function htmlLooksValid(html = "") {
-  if (!html || isCloudflareChallengeHtml(html)) return false;
-  return /manga-item|chaptersList|chapter-item|mangaSummary|chapterData|manga-desc__content/i.test(html);
-}
-
 function createFetcher(baseUrl = DEFAULT_BASE_URL) {
   return createCachedHtmlFetcher({
     ttlMs: 3 * 60_000,
@@ -72,14 +65,7 @@ export function configureManhwareadNativeFetch(options) {
 }
 
 async function resolveHtml(url, fetchHtmlRemote) {
-  if (hasNativeHtmlFetcher()) {
-    try {
-      const nativeHtml = await fetchNativeHtml(url, async () => "");
-      if (htmlLooksValid(nativeHtml)) return nativeHtml;
-    } catch {
-      // Fall through to Flare / HTTP variants.
-    }
-  }
+  // Flare direct : pas de WebView (comme MangaLik / HentaiRead).
   const html = await fetchHtmlRemote(url);
   if (isCloudflareChallengeHtml(html)) {
     throw new Error("حماية ManhwaRead منعت الاتصال (Cloudflare)");

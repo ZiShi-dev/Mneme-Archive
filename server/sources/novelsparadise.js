@@ -218,6 +218,7 @@ function parseCatalogChapterFromArticle(article) {
 
 export async function enrichParadiseCatalogItems(items, fetchHtml, parseChapters) {
   return enrichCatalogItems(items, {
+    concurrency: 1,
     enrichItem: async (item) => {
       const html = await fetchHtml(item.url);
       const chapters = parseChapters(html, item.url);

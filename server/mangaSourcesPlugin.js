@@ -16,9 +16,9 @@ async function ensureNativeSourceFetch() {
   await nativeInitPromise;
 }
 
-export async function handleSourceRequest(rawUrl) {
+export async function handleSourceRequest(rawUrl, request = {}) {
   await ensureNativeSourceFetch();
-  return handleSourceRequestCore(rawUrl);
+  return handleSourceRequestCore(rawUrl, request);
 }
 
 function createSourcesAdapter() {
@@ -30,9 +30,12 @@ function createSourcesAdapter() {
     return next();
   };
   const handler = async (req, res, next) => {
-    const result = await handleSourceRequest(req.url ?? "");
+    const result = await handleSourceRequest(req.url ?? "", {
+      method: req.method || "GET",
+      headers: req.headers || {},
+    });
     if (!result) return next();
-    return sendSourceResponse(res, result);
+    return sendSourceResponse(res, result, req);
   };
   return {
     name: "manga-sources-adapter",

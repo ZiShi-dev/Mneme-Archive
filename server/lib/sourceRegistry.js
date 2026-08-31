@@ -19,9 +19,11 @@ import { handleMangadistrictRequest } from "../sources/mangadistrict.js";
 import { handleManhwareadRequest } from "../sources/manhwaread.js";
 import { handleWtrlabRequest } from "../sources/wtrlab.js";
 import { handleNovelphoenixRequest } from "../sources/novelphoenix.js";
+import { handleRealmNovelRequest } from "../sources/realmnovel.js";
 
 /** @type {Record<string, (requestUrl: URL) => Promise<unknown>>} */
 export const SOURCE_HANDLERS = Object.freeze({
+  realmnovel: handleRealmNovelRequest,
   novelphoenix: handleNovelphoenixRequest,
   wtrlab: handleWtrlabRequest,
   manhwaread: handleManhwareadRequest,

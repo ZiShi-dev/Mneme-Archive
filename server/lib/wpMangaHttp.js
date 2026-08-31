@@ -3,11 +3,11 @@ import { createCachedHtmlFetcher, fetchProxiedImage } from "./httpUtils.js";
 import { isCloudflareChallengeHtml } from "./cloudflareDetect.js";
 import { fetchNativeHtml, fetchNativeImage, configureSourceNativeFetch, hasNativeHtmlFetcher } from "./nativeFetchBridge.js";
 
-const WP_MANGA_PAGE_MARKERS = /page-item-detail|c-tabs-item__content|\bitem\b[^"']*\bwp-manga\b|\bwp-manga\b[^"']*\bitem\b|reading-content|wp-manga-chapter|manga-reading|chapter-image|text-chapter/i;
+const WP_MANGA_PAGE_MARKERS = /page-item-detail|c-tabs-item__content|\bitem\b[^"']*\bwp-manga\b|\bwp-manga\b[^"']*\bitem\b|manga-item|reading-content|wp-manga-chapter|manga-reading|chapter-image|text-chapter/i;
 
 export function defaultWpMangaCatalogHtmlLooksValid(html = "") {
   if (!html || isCloudflareChallengeHtml(html)) return false;
-  return /page-item-detail|c-tabs-item__content|\bitem\b[^"']*\bwp-manga\b|\bwp-manga\b[^"']*\bitem\b/i.test(html);
+  return /page-item-detail|c-tabs-item__content|\bitem\b[^"']*\bwp-manga\b|\bwp-manga\b[^"']*\bitem\b|manga-item/i.test(html);
 }
 
 export function defaultWpMangaPageHtmlLooksValid(html = "") {

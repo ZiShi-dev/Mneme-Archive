@@ -134,6 +134,77 @@ export async function readResponseBytesLimited(response, maxBytes = 0) {
   return out;
 }
 
+const STREAM_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+
+function pickHeader(headers, name) {
+  if (!headers) return "";
+  if (typeof headers.get === "function") return String(headers.get(name) || "");
+  const lower = String(name).toLowerCase();
+  for (const [key, value] of Object.entries(headers)) {
+    if (String(key).toLowerCase() === lower) return String(value || "");
+  }
+  return "";
+}
+
+/**
+ * Proxy média progressif (MP4) avec Range : ne charge pas le fichier en mémoire.
+ * Le timeout ne s'applique qu'à l'établissement de la réponse (headers), pas au visionnage.
+ */
+export async function fetchProxiedMediaBytes({
+  target,
+  referer = "",
+  label = "stream",
+  range = "",
+  method = "GET",
+  connectTimeoutMs = 30_000,
+  maxBytes = 0,
+}) {
+  const upstreamHeaders = {
+    accept: "*/*",
+    referer,
+    "user-agent": STREAM_UA,
+  };
+  const rangeHeader = String(range || "").trim();
+  if (rangeHeader) upstreamHeaders.Range = rangeHeader;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), connectTimeoutMs);
+  let response;
+  try {
+    response = await fetch(target, {
+      method: method === "HEAD" ? "HEAD" : "GET",
+      headers: upstreamHeaders,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+
+  if (!(response.ok || response.status === 206)) {
+    throw new Error(`Flux ${label} indisponible (${response.status})`);
+  }
+
+  const contentType = response.headers.get("content-type") || "application/octet-stream";
+  const contentLength = response.headers.get("content-length") || "";
+  const contentRange = response.headers.get("content-range") || "";
+  const acceptRanges = response.headers.get("accept-ranges") || "bytes";
+  const limit = Number(maxBytes) > 0 ? Number(maxBytes) : 0;
+  if (limit && contentLength && Number(contentLength) > limit && !rangeHeader) {
+    throw new Error(`Flux trop volumineux (${contentLength} octets)`);
+  }
+
+  return {
+    kind: "stream-pipe",
+    status: response.status,
+    contentType,
+    contentLength,
+    contentRange,
+    acceptRanges,
+    cacheControl: "no-store",
+    body: method === "HEAD" ? null : response.body,
+  };
+}
+
 export async function fetchProxiedHlsResource({
   target,
   referer = "",
@@ -146,7 +217,7 @@ export async function fetchProxiedHlsResource({
     headers: {
       accept: "*/*",
       referer,
-      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "user-agent": STREAM_UA,
     },
     signal: AbortSignal.timeout(timeoutMs),
   });
@@ -174,3 +245,5 @@ export async function fetchProxiedHlsResource({
     cacheControl: "public, max-age=86400, immutable",
   };
 }
+
+export { pickHeader };

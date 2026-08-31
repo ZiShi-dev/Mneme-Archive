@@ -69,13 +69,65 @@
   padding-top: 0;
 }
 
+/* Plein écran immersif : ignore les safe-areas (barre info / gesture) */
+html.app-immersive-fullscreen,
+html.app-immersive-fullscreen body {
+  --safe-top: 0px;
+  --safe-bottom: 0px;
+  --safe-left: 0px;
+  --safe-right: 0px;
+  --app-safe-area-top: 0px;
+  --app-safe-area-bottom: 0px;
+  --app-safe-area-left: 0px;
+  --app-safe-area-right: 0px;
+}
+
+.native-app .live-reader--cinema,
+.native-app .live-reader--immersive-lock,
+.native-app .live-video-immersive-root.is-cinema,
+.native-app .live-video-immersive-root.plyr--fullscreen-fallback,
+html.app-immersive-fullscreen .live-reader {
+  --reader-safe-top: 0px;
+  --reader-safe-bottom: 0px;
+  --reader-safe-left: 0px;
+  --reader-safe-right: 0px;
+}
+
+.native-app .live-reader--cinema,
+.native-app .live-reader--immersive-lock,
+.native-app .live-video-immersive-root.plyr--fullscreen-fallback {
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  min-height: 100dvh;
+}
+
+/* Lecteur manga/roman immersif : occupe tout l'écran y compris sous la barre info */
+html.app-immersive-fullscreen .live-reader:not(.live-reader--video) {
+  position: fixed;
+  inset: 0;
+  z-index: 180;
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  min-height: 100dvh;
+}
+
+html.app-immersive-fullscreen .live-reader:not(.live-reader--video) .reader-header {
+  padding-top: max(8px, env(safe-area-inset-top, 0px));
+}
+
 .live-reader:not(.live-reader--video) .live-reader__body > .live-reader-pages,
 .live-reader:not(.live-reader--video) .live-reader__body > .reader-live-state,
-.live-reader:not(.live-reader--video) .live-reader__body > .novel-reader-content,
 .live-reader:not(.live-reader--video) .live-reader__body > .novel-reader-skeleton,
 .live-reader:not(.live-reader--video) .live-reader__body > .ui-skeleton-stack {
   margin-top: 0;
   padding-top: 0;
+}
+
+.live-reader:not(.live-reader--video) .live-reader__body > .novel-reader-content {
+  margin-top: 0;
+  padding-top: 28px;
 }
 
 .live-reader:not(.live-reader--video) .live-reader__body > .reader-pages-skeleton {
@@ -139,6 +191,27 @@ html.native-app[data-nav-mode="buttons"] .live-reader:not(.live-reader--video) .
   inset-inline-end: auto;
   bottom: auto;
   margin-inline-start: auto;
+}
+
+.live-reader:not(.live-reader--video).live-reader--auto-scroll .live-reader__dock {
+  background: transparent;
+  border-top: 0;
+  pointer-events: none;
+}
+
+.live-reader:not(.live-reader--video).live-reader--auto-scroll .live-reader__dock .reader-playback-reopen {
+  pointer-events: auto;
+  position: fixed;
+  z-index: 40;
+  inset-inline-end: max(12px, var(--reader-safe-right, 0px));
+  bottom: max(20px, calc(var(--reader-safe-bottom, env(safe-area-inset-bottom, 0px)) + 14px));
+  margin: 0;
+  border-color: color-mix(in srgb, var(--brand) 55%, #303342);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45), 0 0 0 3px color-mix(in srgb, var(--brand) 18%, transparent);
+}
+
+.live-reader:not(.live-reader--video).live-reader--auto-scroll .reader-playback-reopen--auto {
+  color: var(--brand);
 }
 
 .live-reader:not(.live-reader--video) .reader-live-state {
@@ -291,7 +364,7 @@ html.native-app[data-nav-mode="buttons"] .live-reader:not(.live-reader--video) .
   }
 
   .novel-reader-content {
-    padding: 16px 16px 48px;
+    padding: 24px 16px 48px;
   }
 
   .reader-live-state {
@@ -1015,13 +1088,18 @@ html.native-app[data-nav-mode="buttons"] .live-reader:not(.live-reader--video) .
 
 .live-video-immersive-root.is-cinema .live-video-chrome--servers {
   position: absolute;
-  top: max(52px, calc(var(--reader-safe-top) + 46px));
+  top: max(12px, calc(var(--reader-safe-top) + 10px));
   inset-inline: 8px;
   left: auto;
   right: auto;
   z-index: 13;
   justify-content: center;
   padding: 0;
+}
+
+html.app-immersive-fullscreen .live-video-immersive-root.is-cinema .live-video-chrome--servers,
+.live-video-immersive-root.plyr--fullscreen-fallback .live-video-chrome--servers {
+  top: max(10px, env(safe-area-inset-top, 0px));
 }
 
 .live-reader--cinema {
@@ -2406,4 +2484,241 @@ html.native-app #root > .reader .live-reader__body::-webkit-scrollbar,
 
 .chapter-row--video .chapter-number {
   color: var(--anime);
+}
+
+.reader-chapter-list {
+  max-height: min(82vh, 720px);
+}
+
+.reader-chapter-list > header h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.reader-chapter-list > header h2 span {
+  color: var(--reader-muted);
+  font: 600 13px/1.3 "Alexandria";
+}
+
+.reader-chapter-list__filtered-of {
+  color: var(--reader-muted);
+  font: 600 12px/1.3 "Alexandria";
+}
+
+.reader-chapter-list__tools {
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--reader-border);
+  background: var(--reader-surface);
+}
+
+.reader-chapter-list__search {
+  height: 40px;
+  min-width: 0;
+  padding: 0 10px;
+  border-radius: 12px;
+  border-color: var(--reader-border);
+  background: var(--reader-bg);
+  color: var(--reader-text);
+  box-shadow: none;
+}
+
+.reader-chapter-list__search input {
+  color: var(--reader-text);
+  font: 400 13px/1.4 "Alexandria";
+}
+
+.reader-chapter-list__search input::placeholder {
+  color: var(--reader-muted);
+}
+
+.reader-chapter-list__search .accessible-search__icon {
+  width: 18px;
+  height: 18px;
+  color: var(--reader-muted);
+}
+
+.reader-chapter-list__search .accessible-search__clear {
+  background: color-mix(in srgb, var(--reader-border) 55%, var(--reader-bg));
+  color: var(--reader-muted);
+}
+
+.reader-chapter-list__order {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 12px;
+  border: 1px solid var(--reader-border);
+  border-radius: 12px;
+  background: var(--reader-bg);
+  color: var(--reader-text);
+  font: 600 11px/1 "Alexandria";
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.reader-chapter-list__order:active {
+  transform: scale(0.98);
+}
+
+.reader-chapter-list__body {
+  padding-top: 6px;
+}
+
+.reader-chapter-list__items {
+  display: grid;
+  gap: 4px;
+}
+
+.reader-chapter-list__item {
+  content-visibility: auto;
+  contain-intrinsic-size: 48px;
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--reader-text);
+  text-align: start;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.reader-chapter-list__item:hover {
+  background: color-mix(in srgb, var(--brand) 8%, transparent);
+}
+
+.reader-chapter-list__item.is-active {
+  border-color: color-mix(in srgb, var(--brand) 45%, var(--reader-border));
+  background: color-mix(in srgb, var(--brand) 14%, transparent);
+}
+
+.reader-chapter-list__item.is-locked {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.reader-chapter-list__item.is-complete:not(.is-active) {
+  color: var(--reader-muted);
+}
+
+.reader-chapter-list__number {
+  color: var(--brand);
+  font: 700 12px/1 "Fragment Mono";
+  text-align: center;
+}
+
+.reader-chapter-list__copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.reader-chapter-list__copy strong {
+  overflow: hidden;
+  font: 700 13px/1.35 "Alexandria";
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reader-chapter-list__copy small {
+  color: var(--reader-muted);
+  font: 600 11px/1 "Fragment Mono";
+}
+
+.reader-chapter-list__item > svg {
+  color: var(--brand);
+}
+
+.reader-chapter-list__empty {
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  min-height: 160px;
+  color: var(--reader-muted);
+  text-align: center;
+  font: 600 13px/1.4 "Alexandria";
+}
+
+.reader-chapter-list__clear {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--reader-border);
+  border-radius: 10px;
+  background: var(--reader-bg);
+  color: var(--reader-text);
+  font: 600 12px/1 "Alexandria";
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.reader-chapter-list__pagination {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px max(12px, env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--reader-border);
+  background: var(--reader-surface);
+}
+
+.reader-chapter-list__pagination > button {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--reader-border);
+  border-radius: 11px;
+  background: var(--reader-bg);
+  color: var(--reader-text);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.reader-chapter-list__pagination > button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.reader-chapter-list__pagination > span {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 7px;
+  color: var(--reader-muted);
+}
+
+.reader-chapter-list__pagination small {
+  font: 500 11px/1 "Alexandria";
+}
+
+.reader-chapter-list__pagination strong {
+  color: var(--reader-text);
+  font: 700 13px/1 "Alexandria";
+}
+
+@media (max-width: 380px) {
+  .reader-chapter-list__tools {
+    grid-template-columns: 1fr;
+  }
+
+  .reader-chapter-list__order {
+    width: 100%;
+  }
 }

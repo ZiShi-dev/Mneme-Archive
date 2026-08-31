@@ -23,6 +23,7 @@
 
 .reader.live-reader--video .ui-skeleton,
 .reader--theme-night .ui-skeleton,
+.reader--theme-black .ui-skeleton,
 .reader.live-reader--novel .ui-skeleton {
   background: linear-gradient(
     90deg,

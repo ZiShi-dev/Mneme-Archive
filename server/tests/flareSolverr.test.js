@@ -114,19 +114,25 @@ test("fetchHtmlViaFlareSolverr uses the Night-Novel proxy contract", async () =>
 });
 
 test("fetchHtmlViaFlareSolverr maps a Cloudflare 502 HTML page", async () => {
+  let calls = 0;
   await assert.rejects(
     () => fetchHtmlViaFlareSolverr("https://kolnovel.com/series/", {
       baseUrl: "https://nightnovelapp.tech/api/public/flare",
-      fetchImpl: async () => ({
-        ok: false,
-        status: 502,
-        async text() {
-          return "<html><title>nightnovelapp.tech | 502: Bad gateway</title></html>";
-        },
-      }),
+      fetchImpl: async () => {
+        calls += 1;
+        return {
+          ok: false,
+          status: 502,
+          async text() {
+            return "<html><title>nightnovelapp.tech | 502: Bad gateway</title></html>";
+          },
+        };
+      },
     }),
     /proxy Night-Novel|Cloudflare/,
   );
+  // Pas de retry sur 502 : sinon le catalogue reste ~2 minutes en chargement.
+  assert.equal(calls, 1);
 });
 
 test("fetchHtmlViaFlareSolverr rejects HTML from another host", async () => {
@@ -262,12 +268,61 @@ test("tryFlareSolverrHtml uses configured base URL", async () => {
   }
 });
 
-test("getFlareSolverrConfig falls back to the VPS URL when unset", () => {
-  configureFlareSolverr(null);
-  try {
-    const config = getFlareSolverrConfig();
-    assert.equal(config?.baseUrl, BUILTIN_FLARESOLVERR_URL);
-  } finally {
-    configureFlareSolverr(() => null);
-  }
+test("fetchHtmlViaFlareSolverr maps Chrome tab crashes without retry storm", async () => {
+  let calls = 0;
+  await assert.rejects(
+    () => fetchHtmlViaFlareSolverr("https://arabshentai.com/manga/x/", {
+      baseUrl: "https://nightnovelapp.tech/api/public/flare",
+      fetchImpl: async () => {
+        calls += 1;
+        return {
+          ok: false,
+          status: 500,
+          async text() {
+            return JSON.stringify({
+              status: "error",
+              message: "Error: Error solving the challenge. Message: tab crashed",
+            });
+          },
+        };
+      },
+    }),
+    /surchargé|planté/i,
+  );
+  assert.equal(calls, 1);
+});
+
+test("fetchHtmlViaFlareSolverr serializes concurrent requests", async () => {
+  let inFlight = 0;
+  let peak = 0;
+  const fetchImpl = async () => {
+    inFlight += 1;
+    peak = Math.max(peak, inFlight);
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    inFlight -= 1;
+    return {
+      ok: true,
+      async text() {
+        return JSON.stringify({
+          success: true,
+          html: "<html><body><div class='page-item-detail manga'>ok</div></body></html>",
+        });
+      },
+    };
+  };
+  await Promise.all([
+    fetchHtmlViaFlareSolverr("https://mangalik.net/manga/a/", {
+      baseUrl: "https://nightnovelapp.tech/api/public/flare",
+      fetchImpl,
+    }),
+    fetchHtmlViaFlareSolverr("https://mangalik.net/manga/b/", {
+      baseUrl: "https://nightnovelapp.tech/api/public/flare",
+      fetchImpl,
+    }),
+    fetchHtmlViaFlareSolverr("https://mangalik.net/manga/c/", {
+      baseUrl: "https://nightnovelapp.tech/api/public/flare",
+      fetchImpl,
+    }),
+  ]);
+  assert.equal(peak, 1);
 });

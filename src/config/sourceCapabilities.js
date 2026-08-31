@@ -17,6 +17,7 @@ export const SOURCE_CAPABILITIES = Object.freeze({
   wtrlab: { genreFilter: true, tagFilter: true, catalogScopedSearch: true, kindQueryParam: "kind" },
   novelphoenix: { genreFilter: true, tagFilter: true, catalogScopedSearch: true, kindQueryParam: "kind" },
   galaxynovels: { filterPath: true, catalogScopedSearch: true },
+  realmnovel: { genreFilter: true, tagFilter: true, catalogScopedSearch: true },
   cenele: { filterPath: true, catalogScopedSearch: true },
   anime4up: { filterPath: true, catalogScopedSearch: true },
   animedar: { filterPath: true, catalogScopedSearch: true },

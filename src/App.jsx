@@ -16,13 +16,26 @@ import { usePersistedState } from "./hooks/usePersistedState";
 import { Reader } from "./screens/DemoMangaScreens";
 import { getItemType } from "./features/sources/contentTypes";
 import { isVideoMediaType } from "./features/sources/mediaPresentation";
-import { SakuraPetals } from "./components/atmosphere/SakuraPetals";
-import { SakuraBranches } from "./components/atmosphere/SakuraBranches";
+import { MoonSeaWater } from "./components/atmosphere/MoonSeaWater";
 import { MoonSnowfall } from "./components/atmosphere/MoonSnowfall";
+import { YozakuraNight } from "./components/atmosphere/YozakuraNight";
+import { SakuraDay } from "./components/atmosphere/SakuraDay";
+import { InkAtmosphere } from "./components/atmosphere/InkAtmosphere";
+import { PaperAtmosphere } from "./components/atmosphere/PaperAtmosphere";
+import { GalaxyAtmosphere } from "./components/atmosphere/GalaxyAtmosphere";
 import { SakuraIcon } from "./components/atmosphere/SakuraIcon";
 import { MnemeMark } from "./components/brand/MnemeMark";
 import { AppBrandName } from "./components/brand/AppBrandName";
-import { isSakuraTheme, isSnowTheme, hasAtmosphereEffect } from "./lib/theme/appearance";
+import {
+  isSakuraTheme,
+  isSnowTheme,
+  isGalaxyTheme,
+  hasAtmosphereEffect,
+  THEME_YOZAKURA,
+  THEME_SAKURA,
+  THEME_INK,
+  THEME_PAPER,
+} from "./lib/theme/appearance";
 import { isChromebookApp } from "./config/appFlavor";
 import { isDesktopAppLayout } from "./lib/platform/desktopAppLayout";
 import { isNativeMobileApp } from "./lib/platform/nativeAppLayout";
@@ -219,11 +232,21 @@ export function App() {
     chapterReadLog,
   };
 
+  const isYozakura = appearance === THEME_YOZAKURA;
+  const isDaySakura = appearance === THEME_SAKURA;
+  const isInk = appearance === THEME_INK;
+  const isPaper = appearance === THEME_PAPER;
+  const isGalaxy = isGalaxyTheme(appearance);
+
   const frameAtmosphere = (
     <>
+      {isYozakura ? <YozakuraNight variant="frame" /> : null}
+      {isDaySakura ? <SakuraDay variant="frame" /> : null}
+      {isInk ? <InkAtmosphere variant="frame" /> : null}
+      {isPaper ? <PaperAtmosphere variant="frame" /> : null}
+      {isGalaxy ? <GalaxyAtmosphere variant="frame" /> : null}
+      {isSnowTheme(appearance) ? <MoonSeaWater variant="frame" /> : null}
       {isSnowTheme(appearance) ? <MoonSnowfall variant="frame" /> : null}
-      {isSakuraTheme(appearance) ? <SakuraBranches appearance={appearance} variant="frame" /> : null}
-      {isSakuraTheme(appearance) ? <SakuraPetals appearance={appearance} variant="frame" /> : null}
     </>
   );
 
@@ -235,9 +258,13 @@ export function App() {
 
   return (
     <div className={`app-shell ${darkMode ? "app-shell--dark" : ""} ${hasAtmosphereEffect(appearance) ? `app-shell--${appearance}` : ""} ${desktopLayout ? "app-shell--desktop" : ""}`} dir={dir}>
+      {isYozakura ? <YozakuraNight variant="stage" /> : null}
+      {isDaySakura ? <SakuraDay variant="stage" /> : null}
+      {isInk ? <InkAtmosphere variant="stage" /> : null}
+      {isPaper ? <PaperAtmosphere variant="stage" /> : null}
+      {isGalaxy ? <GalaxyAtmosphere variant="stage" /> : null}
+      {isSnowTheme(appearance) ? <MoonSeaWater variant="stage" /> : null}
       {isSnowTheme(appearance) ? <MoonSnowfall variant="stage" /> : null}
-      {isSakuraTheme(appearance) ? <SakuraBranches appearance={appearance} variant="stage" /> : null}
-      {isSakuraTheme(appearance) ? <SakuraPetals appearance={appearance} variant="stage" /> : null}
       {desktopLayout ? (
         <div className="desktop-shell">
           <DesktopMenu current={screen} navigate={navigate} appearance={appearance} />
@@ -252,7 +279,6 @@ export function App() {
               />
             ) : null}
             <div className="phone-frame-wrap">
-              {isSakuraTheme(appearance) ? <SakuraBranches appearance={appearance} variant="bottom" /> : null}
               <div className="phone-frame" ref={desktopScrollerRef}>
                 {frameAtmosphere}
                 {screenContent}

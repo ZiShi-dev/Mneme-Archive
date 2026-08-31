@@ -45,7 +45,7 @@ export function applyRecentChapterFields(item, chapters = []) {
 }
 
 export async function enrichCatalogItems(items, {
-  concurrency = 5,
+  concurrency = 2,
   needsEnrich = (item) => (item.recentChapters?.length || 0) < CATALOG_RECENT_LIMIT,
   enrichItem,
 } = {}) {

@@ -200,7 +200,9 @@ export function LiveMangaDetails({
   }, [chapters, item.author, item.id]);
   const filteredChapters = useMemo(() => {
     const normalized = chapterQuery.trim().toLowerCase();
-    const matches = normalized ? chapters.filter((chapter) => `${chapter.number || ""} ${chapter.name || ""}`.toLowerCase().includes(normalized)) : chapters;
+    const matches = normalized
+      ? chapters.filter((chapter) => `${chapter.number || ""} ${chapter.name || ""}`.toLowerCase().includes(normalized))
+      : chapters;
     const byAuthor = chapterAuthor
       ? matches.filter((chapter) => (chapter.author || item.author || "") === chapterAuthor)
       : matches;
@@ -209,7 +211,7 @@ export function LiveMangaDetails({
       if (diff !== 0) return diff;
       return String(b.url || "").localeCompare(String(a.url || ""), undefined, { numeric: true });
     });
-    return chapterOrder === "desc" ? sorted : [...sorted].reverse();
+    return chapterOrder === "desc" ? sorted : sorted.slice().reverse();
   }, [chapterAuthor, chapterOrder, chapterQuery, chapters, item.author]);
   const totalChapterPages = Math.max(1, Math.ceil(filteredChapters.length / chapterPageSize));
   const pagedChapters = filteredChapters.slice((chapterPage - 1) * chapterPageSize, chapterPage * chapterPageSize);

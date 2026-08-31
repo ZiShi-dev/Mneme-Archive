@@ -1,0 +1,323 @@
+/* Galaxie — cosmos plein écran */
+
+.galaxy-atmosphere {
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.galaxy-atmosphere--stage {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 100dvh;
+  z-index: 0;
+}
+
+.galaxy-atmosphere--frame {
+  position: sticky;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  margin-bottom: -100%;
+  z-index: 0;
+}
+
+.native-app [data-theme="galaxie"] .galaxy-atmosphere--frame,
+[data-theme="galaxie"] .app-shell__view > .galaxy-atmosphere--frame,
+.app-shell--galaxie .phone-frame > .galaxy-atmosphere--frame {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+  min-height: 100dvh;
+  margin-bottom: 0;
+  z-index: 0;
+}
+
+.galaxy-atmosphere__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.galaxy-atmosphere--frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg,
+      rgba(5, 4, 20, 0.12) 0%,
+      rgba(5, 4, 20, 0.28) 48%,
+      rgba(5, 4, 20, 0.48) 100%);
+}
+
+[data-theme="galaxie"] .phone-frame,
+.app-shell--galaxie .phone-frame {
+  isolation: isolate;
+  background-color: transparent;
+  background-image: none;
+}
+
+.native-app [data-theme="galaxie"] .app-shell,
+.app-shell--galaxie {
+  background: transparent;
+}
+
+[data-theme="galaxie"] .screen,
+[data-theme="galaxie"] .phone-frame > .screen {
+  position: relative;
+  z-index: 2;
+  background: transparent;
+}
+
+[data-theme="galaxie"] .page-header,
+[data-theme="galaxie"] .content {
+  position: relative;
+  z-index: 2;
+}
+
+body[data-theme="galaxie"] {
+  background-color: #050414;
+  background-image:
+    radial-gradient(ellipse at 72% 18%, rgba(120, 90, 220, 0.22), transparent 42%),
+    radial-gradient(ellipse at 20% 70%, rgba(40, 90, 180, 0.14), transparent 48%),
+    linear-gradient(180deg, #050414 0%, #0a0824 50%, #060512 100%);
+}
+
+[data-theme="galaxie"] .button--primary,
+[data-theme="galaxie"] .hero-card__cta,
+[data-theme="galaxie"] .notify-sheet__done {
+  background: linear-gradient(135deg, #7b5cff, #9bb0ff);
+  color: #07061a;
+  border-color: color-mix(in srgb, #c9a0ff 40%, transparent);
+}
+
+[data-theme="galaxie"] .hero-card {
+  background:
+    radial-gradient(ellipse at 88% 0%, rgba(155, 176, 255, 0.16), transparent 46%),
+    linear-gradient(150deg, #12102c 0%, #1a1738 52%, #24204a 100%);
+  border: 1px solid color-mix(in srgb, var(--nova) 28%, transparent);
+  box-shadow: 0 18px 42px rgba(0, 0, 16, 0.45);
+}
+
+/* Preview carte */
+.galaxy-preview {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.galaxy-preview__sky {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 25%, rgba(45, 30, 95, .35), transparent 50%),
+    radial-gradient(ellipse at 78% 55%, rgba(20, 55, 110, .28), transparent 48%),
+    linear-gradient(180deg, #03020c 0%, #0a0824 48%, #02010a 100%);
+}
+
+.galaxy-preview__nebula {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(11px);
+  mix-blend-mode: screen;
+  opacity: .78;
+}
+
+.galaxy-preview__nebula--a {
+  top: 6%;
+  left: 2%;
+  width: 58%;
+  height: 50%;
+  background: radial-gradient(circle, rgba(120, 50, 180, .6), rgba(70, 30, 130, .2), transparent 72%);
+}
+
+.galaxy-preview__nebula--b {
+  right: -4%;
+  bottom: 8%;
+  width: 54%;
+  height: 48%;
+  background: radial-gradient(circle, rgba(40, 110, 200, .5), rgba(25, 55, 130, .18), transparent 74%);
+}
+
+.galaxy-preview__nebula--c {
+  left: 28%;
+  top: 42%;
+  width: 48%;
+  height: 36%;
+  background: radial-gradient(circle, rgba(180, 55, 130, .38), transparent 70%);
+  opacity: .55;
+}
+
+.galaxy-preview__band {
+  position: absolute;
+  inset: 26% -28% 32%;
+  background:
+    linear-gradient(90deg, transparent, rgba(255, 210, 170, .1) 42%, rgba(220, 215, 255, .22) 50%, rgba(160, 180, 255, .1) 58%, transparent),
+    linear-gradient(180deg, transparent, rgba(3, 2, 10, .35) 48%, transparent 52%, transparent);
+  transform: rotate(-28deg);
+  filter: blur(1.2px);
+}
+
+.galaxy-preview__dust {
+  position: absolute;
+  inset: 30% -10% 38%;
+  background: linear-gradient(90deg, transparent, rgba(4, 3, 12, .45), transparent);
+  transform: rotate(-28deg) translateY(4px);
+  opacity: .55;
+}
+
+.galaxy-preview__galaxy {
+  position: absolute;
+  top: 14%;
+  left: 12%;
+  width: 22px;
+  height: 7px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(220, 210, 255, .65), rgba(140, 150, 230, .2), transparent 70%);
+  transform: rotate(-35deg);
+  filter: blur(.4px);
+}
+
+.galaxy-preview__stars {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(235, 240, 255, .9) 0 1px, transparent 2px),
+    radial-gradient(circle at 22% 56%, rgba(255, 210, 160, .7) 0 1px, transparent 2px),
+    radial-gradient(circle at 28% 42%, rgba(170, 210, 255, .75) 0 1px, transparent 2px),
+    radial-gradient(circle at 48% 14%, rgba(255, 230, 200, .7) 0 1px, transparent 2px),
+    radial-gradient(circle at 55% 68%, rgba(200, 220, 255, .55) 0 1px, transparent 2px),
+    radial-gradient(circle at 66% 36%, rgba(235, 240, 255, .8) 0 1px, transparent 2px),
+    radial-gradient(circle at 82% 58%, rgba(160, 200, 255, .65) 0 1px, transparent 2px),
+    radial-gradient(circle at 38% 72%, rgba(235, 240, 255, .55) 0 1px, transparent 2px),
+    radial-gradient(circle at 74% 22%, rgba(255, 255, 255, .95) 0 1.4px, transparent 2.6px),
+    radial-gradient(circle at 74% 22%, rgba(200, 220, 255, .35) 0 4px, transparent 7px);
+  animation: galaxy-preview-twinkle 4.2s ease-in-out infinite alternate;
+}
+
+@keyframes galaxy-preview-twinkle {
+  0% { opacity: .55; }
+  100% { opacity: 1; }
+}
+
+.galaxy-preview__planet {
+  position: absolute;
+  top: 10%;
+  right: 9%;
+  width: 30px;
+  height: 30px;
+}
+
+.galaxy-preview__planet-disc {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 28%, #e8efff, #5a6bb8 58%, #0c1235 100%);
+  box-shadow:
+    0 0 16px rgba(155, 176, 255, .5),
+    inset -4px -2px 8px rgba(8, 12, 40, .45);
+}
+
+.galaxy-preview__planet-ring {
+  position: absolute;
+  left: -42%;
+  right: -42%;
+  top: 42%;
+  height: 9px;
+  border: 1.5px solid rgba(200, 210, 255, .4);
+  border-radius: 50%;
+  transform: rotate(-18deg) scaleY(0.32);
+}
+
+.galaxy-preview__planet-ring--back {
+  z-index: 0;
+  opacity: .55;
+}
+
+.galaxy-preview__planet-ring--front {
+  z-index: 2;
+  border-color: rgba(220, 230, 255, .55);
+  box-shadow: 0 0 6px rgba(180, 200, 255, .25);
+}
+
+.galaxy-preview__shoot {
+  position: absolute;
+  top: 30%;
+  left: 18%;
+  width: 48px;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent, rgba(220, 235, 255, .95));
+  transform: rotate(28deg);
+  animation: galaxy-preview-shoot 3.8s linear infinite;
+  opacity: 0;
+  filter: drop-shadow(0 0 2px rgba(200, 220, 255, .6));
+}
+
+@keyframes galaxy-preview-shoot {
+  0%, 70% { opacity: 0; transform: rotate(28deg) translateX(0); }
+  75% { opacity: 1; }
+  100% { opacity: 0; transform: rotate(28deg) translateX(36px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .galaxy-preview__stars,
+  .galaxy-preview__shoot {
+    animation: none;
+  }
+}
+
+.theme-selector__option--galaxie {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border-color: color-mix(in srgb, #7b5cff 55%, #1a1738);
+  background: #07061a;
+  color: #eef1ff;
+}
+
+.theme-selector--gallery > .theme-selector__option--galaxie > span {
+  background: color-mix(in srgb, #07061a 74%, transparent);
+  border-color: color-mix(in srgb, white 14%, transparent);
+}
+
+.theme-selector--gallery > .theme-selector__option--galaxie > span strong {
+  color: #eef1ff;
+}
+
+.theme-selector--gallery > .theme-selector__option--galaxie > span small {
+  color: color-mix(in srgb, #c8d0ff 82%, transparent);
+}
+
+.theme-selector--gallery > .theme-selector__option--galaxie > svg:first-of-type {
+  background: color-mix(in srgb, #12102c 75%, transparent) !important;
+  color: #c9a0ff;
+  border-color: color-mix(in srgb, white 16%, transparent);
+}
+
+.theme-sheet--galaxie {
+  border-color: color-mix(in srgb, #9bb0ff 30%, #12102c);
+  background:
+    radial-gradient(ellipse at 18% 0%, color-mix(in srgb, #7b5cff 22%, transparent), transparent 48%),
+    linear-gradient(180deg, #12102c, #07061a 60%, #050414);
+}
+
+.theme-sheet--galaxie header h2,
+.theme-sheet--galaxie header small {
+  color: #eef1ff;
+}
+
+.theme-sheet--galaxie .notify-sheet__done {
+  background: linear-gradient(135deg, #7b5cff, #9bb0ff);
+  color: #07061a;
+}
