@@ -1,21 +1,18 @@
-/** Sources Cloudflare : HTML via FlareSolverr, sans WebView ni fetch HTTP d’abord. */
+/** Sources avec challenge Cloudflare : HTML via FlareSolverr d’abord. */
 export const FLARE_DIRECT_SOURCE_IDS = Object.freeze([
   "mangalik",
   "arabshentai",
   "hentairead",
-  "hentaigasm",
-  "mangadistrict",
-  "manhwaread",
   "novelsparadise",
-  "kolnovel",
 ]);
 
 export const FLARE_DIRECT_SOURCE_ID_SET = new Set(FLARE_DIRECT_SOURCE_IDS);
 
-/** Sources Cloudflare : HTTP natif + Custom Tabs Android si vérification requise. */
+/** Sources Cloudflare : WebView Android d’abord, Flare VPS en secours uniquement. */
 export const WEBVIEW_SOURCE_IDS = Object.freeze([
   "azorafly",
   "galaxynovels",
+  "manhwaread",
   "mangaforfree",
   "novelphoenix",
 ]);

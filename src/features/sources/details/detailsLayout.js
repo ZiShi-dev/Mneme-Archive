@@ -4,16 +4,23 @@ export const DETAILS_HERO_LAYOUT = {
   CINEMATIC_VIDEO: "cinematic-video",
 };
 
+export function isStandaloneVideoCatalogItem(item) {
+  return item?.catalogStyle === "standalone";
+}
+
 export function isMovieMediaType(mediaType) {
   return mediaType === "movie";
 }
 
 /**
- * Reading layout (cover + meta side by side) for manga, novels and movies.
- * Cinematic stacked layout for series and anime.
+ * Reading layout (cover + meta side by side) for manga, novels, movies and standalone video feeds.
+ * Cinematic stacked layout for series and anime catalogs with seasons.
  */
-export function getDetailsHeroLayout({ isVideo, mediaType }) {
+export function getDetailsHeroLayout({ isVideo, mediaType, catalogStyle, sourceId }) {
   if (!isVideo || isMovieMediaType(mediaType)) {
+    return DETAILS_HERO_LAYOUT.READING;
+  }
+  if (catalogStyle === "standalone" || sourceId === "hentaigasm") {
     return DETAILS_HERO_LAYOUT.READING;
   }
   return DETAILS_HERO_LAYOUT.CINEMATIC_VIDEO;
@@ -30,6 +37,7 @@ export function buildDetailsScreenClasses({
   isChromebookApp,
   isMoviePage,
   mediaType,
+  catalogStyle,
 }) {
   const classes = ["screen", "screen--live-details"];
   if (isVideo) classes.push("screen--live-video", "screen--live-anime");
@@ -37,6 +45,7 @@ export function buildDetailsScreenClasses({
   if (isManga) classes.push("screen--live-manga");
   if (isChromebookApp) classes.push("screen--details-desktop");
   if (isMoviePage) classes.push("screen--details-movie");
+  if (catalogStyle === "standalone") classes.push("screen--details-standalone-video");
   classes.push("screen--details-cinematic", `screen--details-cinematic-${mediaType}`);
   return classes.join(" ");
 }

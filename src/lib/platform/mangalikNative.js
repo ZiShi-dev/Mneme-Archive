@@ -1,4 +1,5 @@
 import { Capacitor } from "@capacitor/core";
+import { isCloudflareChallengeHtml } from "../../../server/lib/cloudflareDetect.js";
 import { fetchHtmlViaFlareSolverr } from "../../../server/lib/flareSolverr.js";
 import { getFlareSolverrConfig } from "../../../server/lib/flareSolverrConfig.js";
 import { configureSourceNativeFetch } from "../../../server/lib/nativeFetchBridge.js";
@@ -7,6 +8,17 @@ import { fetchNativeHtmlWithCache, clearNativeHtmlCache } from "./nativeHtmlCach
 
 export { WEBVIEW_SOURCE_IDS, usesWebViewSource, usesFlareDirectSource, shouldDeferCatalogFilters } from "./webViewSources.js";
 export { clearNativeHtmlCache, invalidateNativeHtmlCache, normalizeNativeHtmlUrl } from "./nativeHtmlCache.js";
+
+/** Hôtes avec challenge CF réel → Flare d’abord. Les autres (WebView) passent par le natif. */
+const FLARE_FIRST_HOST_RE = /(?:^|\.)(?:mangalik\.net|arabshentai\.com|hentairead\.com|novelsparadise\.site)$/i;
+
+function prefersFlareFirst(url = "") {
+  try {
+    return FLARE_FIRST_HOST_RE.test(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
 
 function decodeBase64(base64) {
   const binary = atob(base64);
@@ -70,33 +82,67 @@ async function fetchHtmlViaFlareSolverrIfConfigured(url) {
 
 async function createCloudflareNativeFetchers() {
   const { MangalikHtmlFetcher } = await import("../../plugins/mangalikHtmlFetcher.js");
+
+  async function fetchViaFlare(url) {
+    return fetchNativeHtmlWithCache(
+      (targetUrl) => fetchHtmlViaFlareSolverrIfConfigured(targetUrl),
+      url,
+    );
+  }
+
+  async function fetchViaWebView(url) {
+    let lastError = null;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        return await fetchNativeHtmlWithCache(async (targetUrl) => {
+          const result = await MangalikHtmlFetcher.fetchHtml({ url: targetUrl });
+          if (!result?.html) throw new Error(t("errors.loadPage"));
+          if (isCloudflareChallengeHtml(result.html)) {
+            throw new Error(t("errors.cloudflareBlocked"));
+          }
+          return result.html;
+        }, url);
+      } catch (error) {
+        lastError = error;
+        if (attempt < 1) {
+          await new Promise((resolve) => setTimeout(resolve, 1200 * (attempt + 1)));
+        }
+      }
+    }
+    throw lastError ?? new Error(t("errors.loadPage"));
+  }
+
   return {
     fetchHtml: async (url) => queueHtmlFetch(async () => {
       let lastError = null;
-      // Flare d’abord : le HTTP natif tombe souvent sur CF et coûte plusieurs secondes.
-      try {
-        return await fetchNativeHtmlWithCache(
-          (targetUrl) => fetchHtmlViaFlareSolverrIfConfigured(targetUrl),
-          url,
-        );
-      } catch (flareFirstError) {
-        lastError = flareFirstError;
-      }
-      for (let attempt = 0; attempt < 2; attempt += 1) {
+      const flareFirst = prefersFlareFirst(url);
+
+      if (flareFirst) {
+        // Challenge CF connu : Flare d’abord, WebView en secours.
         try {
-          return await fetchNativeHtmlWithCache(async (targetUrl) => {
-            const result = await MangalikHtmlFetcher.fetchHtml({ url: targetUrl });
-            if (!result?.html) throw new Error(t("errors.loadPage"));
-            return result.html;
-          }, url);
+          return await fetchViaFlare(url);
+        } catch (flareFirstError) {
+          lastError = flareFirstError;
+        }
+        try {
+          return await fetchViaWebView(url);
         } catch (error) {
-          lastError = error;
-          if (attempt < 1) {
-            await new Promise((resolve) => setTimeout(resolve, 1200 * (attempt + 1)));
-          }
+          throw lastError || error;
         }
       }
-      throw lastError ?? new Error(t("errors.loadPage"));
+
+      // Galaxy Novels / Azora / etc. : WebView d’abord — ne pas saturer Flare.
+      try {
+        return await fetchViaWebView(url);
+      } catch (webViewError) {
+        lastError = webViewError;
+        if (!isCloudflareNativeError(webViewError)) throw webViewError;
+      }
+      try {
+        return await fetchViaFlare(url);
+      } catch (flareError) {
+        throw lastError || flareError;
+      }
     }),
     fetchImage: async (url) => queueImageFetch(async () => {
       const result = await MangalikHtmlFetcher.fetchImage({ url });

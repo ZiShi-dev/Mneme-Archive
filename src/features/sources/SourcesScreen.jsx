@@ -36,6 +36,7 @@ import { scrollAppToElement } from "../../lib/platform/scrollRoot";
 import { cancelCloudflarePending } from "../../lib/platform/mangalikNative.js";
 
 import { CatalogCarouselNav } from "./CatalogCarouselNav";
+import { CatalogLoadingToast } from "./CatalogLoadingToast";
 import {
   CATALOG_SNAPSHOT_MAX_AGE_MS,
   CATALOG_STATE_KEY,
@@ -629,18 +630,14 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
             </button>
           </div>
         ) : status === "disabled" ? <div className="live-error"><Wifi size={30} /><h2>{t("sources.sourceOffline")}</h2><p>{t("sources.enableFromSettings")}</p></div> : status === "error" ? <div className="live-error"><Wifi size={30} /><h2>{t("sources.connectFailed", { name: profile.name })}</h2><p>{error}</p><button className="button button--primary" onClick={() => refreshCatalog({ kind: selectedKind, filter: selectedFilter, catalogQuery: query, page, notify: true })}><RefreshCw size={17} /> {t("common.retry")}</button></div> : <>
+          <CatalogLoadingToast
+            visible={catalogBusy}
+            label={reloadLabel}
+            hint={catalogInitialBusy ? connectingHint : ""}
+          />
           <div className="live-catalog__meta" ref={catalogAnchorRef}><strong>{catalogBusy ? "…" : `${visible.length} ${unitLabel}`}</strong><span>{catalogBusy ? reloadLabel : viewDescription}</span></div>
           {catalogInitialBusy ? (
-            <>
-              <div className="catalog-reload" role="status" aria-live="polite">
-                <RefreshCw size={15} aria-hidden="true" />
-                <span>
-                  <strong>{reloadLabel}</strong>
-                  <small>{connectingHint}</small>
-                </span>
-              </div>
-              <CatalogGridSkeleton mediaType={skeletonType} count={skeletonCount} label={reloadLabel} />
-            </>
+            <CatalogGridSkeleton mediaType={skeletonType} count={skeletonCount} label={reloadLabel} />
           ) : (
             <>
           <div
@@ -650,12 +647,6 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
             onTouchEnd={(event) => { if (effectiveMode !== "full" || loadingMore) return; const distance = event.changedTouches[0].clientX - swipeStart.current; if (Math.abs(distance) < 55) return; if (distance < 0) changePage(page + 1, "next"); else changePage(page - 1, "prev"); }}
             aria-busy={catalogPaging}
           >
-            {catalogPaging && (
-              <div className="catalog-page-carousel__status" role="status" aria-live="polite">
-                <RefreshCw size={16} aria-hidden="true" />
-                <span>{reloadLabel}</span>
-              </div>
-            )}
             <div className="live-manga-grid">{visible.map((item) => <CatalogCard key={item.url} item={item} profile={profile} onOpenDetails={handleOpenLiveManga} onOpenChapter={openLiveChapter} />)}</div>
           </div>
           {!visible.length && !catalogPaging && <div className="empty-state"><Search size={31} /><h2>{effectiveMode === "selected" ? t("sources.noTitlesYet") : t("sources.noResults")}</h2><p>{effectiveMode === "selected" ? t("sources.pickMangaNovels") : t("sources.tryOtherName")}</p>{effectiveMode === "selected" && <button className="button button--primary" onClick={() => navigate("source-management")}>{t("sources.managePicks")}</button>}</div>}

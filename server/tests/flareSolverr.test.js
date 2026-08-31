@@ -135,6 +135,29 @@ test("fetchHtmlViaFlareSolverr maps a Cloudflare 502 HTML page", async () => {
   assert.equal(calls, 1);
 });
 
+test("fetchHtmlViaFlareSolverr ne retente pas quand l'IP serveur est bannie", async () => {
+  let calls = 0;
+  await assert.rejects(
+    () => fetchHtmlViaFlareSolverr("https://mangalik.net/manga/", {
+      baseUrl: "https://nightnovelapp.tech/api/public/flare",
+      fetchImpl: async () => {
+        calls += 1;
+        return {
+          ok: true,
+          async text() {
+            return JSON.stringify({
+              success: false,
+              error: "Cloudflare a bloqué l'IP du serveur pour ce site. Réessaie plus tard.",
+            });
+          },
+        };
+      },
+    }),
+    /bloqué l'IP/i,
+  );
+  assert.equal(calls, 1);
+});
+
 test("fetchHtmlViaFlareSolverr rejects HTML from another host", async () => {
   await assert.rejects(
     () => fetchHtmlViaFlareSolverr("https://arabshentai.com/manga/x/", {

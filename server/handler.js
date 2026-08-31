@@ -1,4 +1,4 @@
-import { responseJson } from "./lib/response.js";
+import { responseJson } from "./lib/responseJson.js";
 import { toPublicSourceError } from "./lib/errors.js";
 import { resolveSourceHandler } from "./lib/sourceRegistry.js";
 

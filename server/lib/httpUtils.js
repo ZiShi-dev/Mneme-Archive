@@ -74,16 +74,47 @@ export function createCachedHtmlFetcher({
       touchCacheEntry(cacheKey, cached);
       return cached.html;
     }
+    const variants = typeof getVariants === "function" ? getVariants(url) : [url];
+    // Respecter l’ordre de getVariants (miroirs prioritaires) plutôt que forcer l’URL d’origine en tête.
+    const targets = [...new Set((variants?.length ? variants : [url]))];
+
     if (preferFlareSolverr) {
-      const flareHtml = await requireFlareSolverrHtml(url, { includeAssets });
-      touchCacheEntry(cacheKey, { at: Date.now(), html: flareHtml });
-      return flareHtml;
+      let flareError;
+      try {
+        const flareHtml = await requireFlareSolverrHtml(url, { includeAssets });
+        touchCacheEntry(cacheKey, { at: Date.now(), html: flareHtml });
+        return flareHtml;
+      } catch (error) {
+        flareError = error;
+      }
+      // Flare HS : tenter les miroirs en HTTP direct (ex. manhwaread.org sans CF).
+      let lastStatus = 0;
+      let lastError = flareError;
+      for (const target of targets) {
+        try {
+          const response = await fetchWithRetries(target, {
+            redirect: "follow",
+            headers,
+            timeoutMs,
+          }, retries);
+          lastStatus = response.status;
+          const html = await response.text();
+          if (isCloudflareChallenge(response, html)) continue;
+          if (response.ok) {
+            touchCacheEntry(cacheKey, { at: Date.now(), html });
+            return html;
+          }
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      throw lastError ?? new Error(buildError(lastStatus));
     }
-    const variants = getVariants(url);
+
     let lastStatus = 0;
     let lastError;
     let sawCloudflare = false;
-    for (const target of variants) {
+    for (const target of targets) {
       try {
         const response = await fetchWithRetries(target, {
           redirect: "follow",
@@ -103,7 +134,7 @@ export function createCachedHtmlFetcher({
         }
       } catch (error) {
         lastError = error;
-        if (variants.length === 1 && retries < 1) throw error;
+        if (targets.length === 1 && retries < 1) throw error;
       }
     }
     if (sawCloudflare || lastStatus === 403) {

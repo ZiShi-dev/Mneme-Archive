@@ -50,6 +50,30 @@ test("buildDetailsHeroClasses marks reading hero state", () => {
   assert.match(classes, /live-details-hero--movie/);
 });
 
+test("getDetailsHeroLayout uses reading layout for standalone anime feeds", () => {
+  assert.equal(
+    getDetailsHeroLayout({ isVideo: true, mediaType: "anime", catalogStyle: "standalone", sourceId: "hentaigasm" }),
+    DETAILS_HERO_LAYOUT.READING,
+  );
+  assert.equal(
+    getDetailsHeroLayout({ isVideo: true, mediaType: "anime", sourceId: "hentaigasm" }),
+    DETAILS_HERO_LAYOUT.READING,
+  );
+});
+
+test("buildDetailsScreenClasses adds standalone video modifier", () => {
+  const classes = buildDetailsScreenClasses({
+    isVideo: true,
+    isNovel: false,
+    isManga: false,
+    isChromebookApp: false,
+    isMoviePage: false,
+    mediaType: "anime",
+    catalogStyle: "standalone",
+  });
+  assert.match(classes, /screen--details-standalone-video/);
+});
+
 test("shouldShowChapterList hides single-chapter movies", () => {
   assert.equal(shouldShowChapterList("movie", 1), false);
   assert.equal(shouldShowChapterList("movie", 2), true);

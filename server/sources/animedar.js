@@ -2,7 +2,7 @@ import { decodeHtml, textOnly } from "../lib/htmlUtils.js";
 import { createCachedHtmlFetcher, fetchProxiedImage } from "../lib/httpUtils.js";
 import { enrichSourcesWithStreams } from "../lib/embedResolvers.js";
 import { normalizeSearchQuery } from "../lib/queryLimits.js";
-import { responseJson } from "../lib/response.js";
+import { responseJson } from "../lib/responseJson.js";
 import { applyRecentChapterFields, recentChaptersFromCount } from "../lib/catalogChapters.js";
 import { enrichSourceDetails } from "../lib/detailEnrichment.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";

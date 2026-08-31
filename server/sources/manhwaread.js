@@ -1,6 +1,6 @@
 import { decodeHtml, parseDetailTaxonomies, textOnly } from "../lib/htmlUtils.js";
 import { normalizeSearchQuery } from "../lib/queryLimits.js";
-import { responseJson } from "../lib/response.js";
+import { responseJson } from "../lib/responseJson.js";
 import { applyRecentChapterFields, normalizeRecentChapters } from "../lib/catalogChapters.js";
 import { enrichChapterDates, parseChapterDateString } from "../lib/chapterDates.js";
 import { extractChapterNumber, normalizeChapterList } from "../lib/chapterOrdering.js";
@@ -9,15 +9,18 @@ import { createCachedHtmlFetcher, fetchProxiedImage } from "../lib/httpUtils.js"
 import { isCloudflareChallengeHtml } from "../lib/cloudflareDetect.js";
 import {
   configureSourceNativeFetch,
+  fetchNativeHtml,
   fetchNativeImage,
+  hasNativeHtmlFetcher,
 } from "../lib/nativeFetchBridge.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
 
-const DEFAULT_BASE_URL = "https://manhwaread.com";
+// .org répond sans challenge Cloudflare ; .com est souvent bloqué (Flare obligatoire).
+const DEFAULT_BASE_URL = "https://manhwaread.org";
 const SOURCE_NAME = "ManhwaRead";
 const SOURCE_ID = "manhwaread";
 const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
-const ALLOWED_APEX_HOSTS = ["manhwaread.com", "manhwaread.org", "mgread.io"];
+const ALLOWED_APEX_HOSTS = ["manhwaread.org", "manhwaread.com", "mgread.io"];
 const HOST_PATTERN = /^(?:www\.)?(?:manhwaread\.(?:com|org)|mgread\.io)$/i;
 const IMAGE_HOST_PATTERN = /^(?:(?:www\.)?(?:manhwaread\.(?:com|org)|mgread\.io)|(?:[\w-]+\.)?(?:mancover|manread)\.xyz)$/i;
 const SERIES_PREFIX = "manhwa";
@@ -27,12 +30,19 @@ const BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
 function mirrorHostVariants(url) {
   try {
     const parsed = new URL(url);
-    const hosts = new Set([parsed.hostname]);
-    for (const apex of ALLOWED_APEX_HOSTS) {
-      hosts.add(apex);
-      hosts.add(`www.${apex}`);
-    }
-    return [...hosts].map((host) => {
+    // Priorité .org (accessible) avant .com (CF) pour éviter Flare quand possible.
+    const preferred = [
+      "manhwaread.org",
+      "www.manhwaread.org",
+      "manhwaread.com",
+      "www.manhwaread.com",
+      "mgread.io",
+      "www.mgread.io",
+    ];
+    const hosts = preferred.includes(parsed.hostname)
+      ? preferred
+      : [parsed.hostname, ...preferred];
+    return hosts.map((host) => {
       const next = new URL(url);
       next.hostname = host;
       return next.toString();
@@ -43,7 +53,7 @@ function mirrorHostVariants(url) {
 }
 
 function createFetcher(baseUrl = DEFAULT_BASE_URL) {
-  return createCachedHtmlFetcher({
+  const fetchHtmlRemote = createCachedHtmlFetcher({
     ttlMs: 3 * 60_000,
     timeoutMs: 45_000,
     headers: {
@@ -56,21 +66,33 @@ function createFetcher(baseUrl = DEFAULT_BASE_URL) {
     buildError: (lastStatus) => (lastStatus === 403
       ? "حماية ManhwaRead منعت الاتصال مؤقتًا"
       : `ManhwaRead a répondu ${lastStatus || "sans réponse"}`),
-    preferFlareSolverr: true,
+    // HTTP direct (.org) en secours ; Flare uniquement si tous les miroirs renvoient CF.
+    preferFlareSolverr: false,
   });
+  return async function fetchManhwaHtml(url) {
+    const html = await fetchNativeHtml(url, () => fetchHtmlRemote(url));
+    if (!hasNativeHtmlFetcher()) {
+      if (isCloudflareChallengeHtml(html)) {
+        throw new Error("حماية ManhwaRead منعت الاتصال (Cloudflare)");
+      }
+      return html;
+    }
+    if (!isCloudflareChallengeHtml(html) && String(html || "").length > 400) return html;
+    try {
+      const remote = await fetchHtmlRemote(url);
+      if (!isCloudflareChallengeHtml(remote)) return remote;
+    } catch {
+      // Garde le HTML WebView si le repli HTTP échoue aussi.
+    }
+    if (isCloudflareChallengeHtml(html)) {
+      throw new Error("حماية ManhwaRead منعت الاتصال (Cloudflare)");
+    }
+    return html;
+  };
 }
 
 export function configureManhwareadNativeFetch(options) {
   configureSourceNativeFetch(options);
-}
-
-async function resolveHtml(url, fetchHtmlRemote) {
-  // Flare direct : pas de WebView (comme MangaLik / HentaiRead).
-  const html = await fetchHtmlRemote(url);
-  if (isCloudflareChallengeHtml(html)) {
-    throw new Error("حماية ManhwaRead منعت الاتصال (Cloudflare)");
-  }
-  return html;
 }
 
 function normalizeSiteUrl(rawUrl = "", ctx = DEFAULT_CTX, { chapter = false } = {}) {
@@ -370,8 +392,7 @@ export async function handleManhwareadRequest(requestUrl) {
     label: SOURCE_NAME,
     allowedApexHosts: ALLOWED_APEX_HOSTS,
   });
-  const fetchHtmlRemote = createFetcher(ctx.baseUrl);
-  const fetchHtml = (url) => resolveHtml(url, fetchHtmlRemote);
+  const fetchHtml = createFetcher(ctx.baseUrl);
 
   if (requestUrl.pathname.endsWith("/image")) {
     const target = assertManhwareadImageUrl(requestUrl.searchParams.get("url") ?? "", ctx);

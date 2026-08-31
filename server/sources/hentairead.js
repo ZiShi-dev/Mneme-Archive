@@ -1,6 +1,6 @@
 import { decodeHtml, parseDetailTaxonomies, textOnly } from "../lib/htmlUtils.js";
 import { normalizeSearchQuery } from "../lib/queryLimits.js";
-import { responseJson } from "../lib/response.js";
+import { responseJson } from "../lib/responseJson.js";
 import { applyRecentChapterFields, normalizeRecentChapters } from "../lib/catalogChapters.js";
 import { enrichSourceDetails } from "../lib/detailEnrichment.js";
 import { createWpMangaFetchers, createWpMangaHostHelpers, defaultWpMangaPageHtmlLooksValid } from "../lib/wpMangaHttp.js";

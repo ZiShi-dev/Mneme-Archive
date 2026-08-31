@@ -9,7 +9,7 @@ import {
   resolveEmbedDirectStream,
 } from "../lib/embedResolvers.js";
 import { normalizeSearchQuery } from "../lib/queryLimits.js";
-import { responseJson } from "../lib/response.js";
+import { responseJson } from "../lib/responseJson.js";
 import { applyRecentChapterFields } from "../lib/catalogChapters.js";
 import { sortSourcesByVideoHost } from "../lib/videoHosts.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";

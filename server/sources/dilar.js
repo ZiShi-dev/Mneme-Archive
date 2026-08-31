@@ -4,7 +4,7 @@ import {
   openDilarPayload,
 } from "../lib/dilarCrypto.js";
 import { normalizeSearchQuery } from "../lib/queryLimits.js";
-import { responseJson } from "../lib/response.js";
+import { responseJson } from "../lib/responseJson.js";
 import { applyRecentChapterFields, recentChaptersFromCount } from "../lib/catalogChapters.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
 

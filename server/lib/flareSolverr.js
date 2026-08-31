@@ -40,6 +40,36 @@ function isFlareChromeCrash(message = "") {
     .test(String(message || ""));
 }
 
+function isCloudflareIpBlockedMessage(message = "") {
+  return /cloudflare has blocked this request|probably your ip is banned|ip is banned|cloudflare a bloqué l'ip|bloqué l'ip du serveur/i
+    .test(String(message || ""));
+}
+
+const FLARE_IP_BLOCK_COOLDOWN_MS = process.env.NODE_ENV === "test" ? 0 : 5 * 60 * 1000;
+const hostBlockCooldownUntil = new Map();
+
+function hostKeyFromUrl(rawUrl = "") {
+  try {
+    return new URL(String(rawUrl)).hostname.replace(/^www\./i, "").toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+function markFlareHostBlockCooldown(url = "", error) {
+  const message = String(error?.message || error || "");
+  if (!isCloudflareIpBlockedMessage(message)) return;
+  const host = hostKeyFromUrl(url);
+  if (host) hostBlockCooldownUntil.set(host, Date.now() + FLARE_IP_BLOCK_COOLDOWN_MS);
+  flareCooldownUntil = Date.now() + FLARE_IP_BLOCK_COOLDOWN_MS;
+}
+
+function isFlareHostBlockCooldown(url = "") {
+  const host = hostKeyFromUrl(url);
+  const hostUntil = host ? (hostBlockCooldownUntil.get(host) || 0) : 0;
+  return Date.now() < Math.max(hostUntil, flareCooldownUntil);
+}
+
 function markFlareCrashCooldown(error) {
   if (isFlareChromeCrash(error?.message)) {
     flareCooldownUntil = Date.now() + FLARE_CRASH_COOLDOWN_MS;
@@ -85,12 +115,18 @@ function parseFlarePayload(rawText) {
 
 function errorFromFlareResponse(response, payload, rawText) {
   if (payload?.success === false && payload.error) {
+    if (isCloudflareIpBlockedMessage(payload.error)) {
+      return new Error("Cloudflare a bloqué l'IP du serveur pour ce site. Réessaie plus tard.");
+    }
     if (isFlareChromeCrash(payload.error)) {
       return new Error("FlareSolverr surchargé (Chrome a planté). Réessaie dans quelques secondes.");
     }
     return new Error(payload.error);
   }
   const upstreamMessage = payload?.message || payload?.error || "";
+  if (isCloudflareIpBlockedMessage(upstreamMessage) || isCloudflareIpBlockedMessage(rawText)) {
+    return new Error("Cloudflare a bloqué l'IP du serveur pour ce site. Réessaie plus tard.");
+  }
   if (isFlareChromeCrash(upstreamMessage) || isFlareChromeCrash(rawText)) {
     return new Error("FlareSolverr surchargé (Chrome a planté). Réessaie dans quelques secondes.");
   }
@@ -109,9 +145,10 @@ function errorFromFlareResponse(response, payload, rawText) {
 
 function shouldRetryFlareError(error) {
   const message = String(error?.message || "");
-  // Crash Chrome / surcharge : un retry immédiat aggrave la panne.
+  // Crash Chrome / IP bannie / surcharge : un retry immédiat aggrave la panne.
   if (
     isFlareChromeCrash(message)
+    || isCloudflareIpBlockedMessage(message)
     || /surchargé|Trop de requêtes|URL (invalide|non autorisée)|Hôte non autorisé|n'a pas répondu à temps|bad gateway/i.test(message)
   ) {
     return false;
@@ -123,6 +160,9 @@ function extractHtml(payload, proxyMode) {
   if (proxyMode) {
     if (payload?.success === false) {
       const err = payload.error || "FlareSolverr a échoué";
+      if (isCloudflareIpBlockedMessage(err)) {
+        throw new Error("Cloudflare a bloqué l'IP du serveur pour ce site. Réessaie plus tard.");
+      }
       if (isFlareChromeCrash(err)) {
         throw new Error("FlareSolverr surchargé (Chrome a planté). Réessaie dans quelques secondes.");
       }
@@ -307,6 +347,9 @@ export async function fetchHtmlViaFlareSolverr(url, {
   if (!baseUrl) throw new Error("FlareSolverr non configuré");
 
   return withFlareSlot(async () => {
+    if (isFlareHostBlockCooldown(url)) {
+      throw new Error("Cloudflare a bloqué l'IP du serveur pour ce site. Réessaie plus tard.");
+    }
     const proxyMode = isFlareProxyUrl(baseUrl);
     const endpoint = buildFlareSolverrEndpoint(baseUrl);
     const body = proxyMode
@@ -360,6 +403,7 @@ export async function fetchHtmlViaFlareSolverr(url, {
       } catch (error) {
         lastError = error;
         markFlareCrashCooldown(error);
+        markFlareHostBlockCooldown(url, error);
         if (attempt < 1 && shouldRetryFlareError(error)) await wait(500);
         else break;
       }

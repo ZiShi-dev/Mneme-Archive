@@ -17,7 +17,7 @@
 /* Anime / série — hero cinématique + synopsis */
 .screen--live-details.screen--details-cinematic-anime .live-details-hero--cinematic:not(.live-details-hero--reading),
 .screen--live-details.screen--details-cinematic-series .live-details-hero--cinematic:not(.live-details-hero--reading) {
-  padding: 16px 20px 0;
+  padding-bottom: 0;
 }
 
 .screen--live-details.screen--details-cinematic-anime .details-hero__nav,
@@ -38,6 +38,10 @@
 .screen--live-details.screen--details-cinematic-anime .live-details-hero__head .live-details-hero__title,
 .screen--live-details.screen--details-cinematic-series .live-details-hero__head .live-details-hero__title {
   line-height: 1.32;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
 }
 
 .screen--live-details.screen--details-cinematic-anime .live-details-hero__head .live-details-hero__subtitle,
@@ -143,25 +147,33 @@
   scroll-padding-bottom: max(24px, var(--safe-bottom));
 }
 
+.screen--live-details .live-details-hero {
+  padding-top: max(12px, calc(var(--safe-top) + 8px));
+  padding-inline: max(20px, var(--safe-left)) max(20px, var(--safe-right));
+}
+
+.screen--live-details .live-details-hero--cinematic:not(.live-details-hero--reading) {
+  padding-bottom: 0;
+}
+
+.screen--live-details .live-details-hero--reading.live-details-hero--cinematic {
+  padding-bottom: max(18px, calc(var(--safe-bottom) * 0.15 + 12px));
+}
+
+.native-app .screen--live-details .live-details-hero {
+  padding-top: max(12px, calc(var(--safe-top) + 10px));
+}
+
+.native-app .screen--live-details .details-hero__nav {
+  margin-bottom: 6px;
+  min-height: 48px;
+  align-items: center;
+}
+
 .native-app .live-details-hero--reading.live-details-hero--cinematic {
-  padding-top: calc(var(--safe-top) + 12px);
   padding-inline:
     max(18px, var(--safe-left))
     max(18px, var(--safe-right));
-}
-
-.native-app .live-details-hero--cinematic:not(.live-details-hero--reading) {
-  padding-top: calc(var(--safe-top) + 14px);
-  padding-inline:
-    max(20px, var(--safe-left))
-    max(20px, var(--safe-right));
-}
-
-.native-app .live-details-hero:not(.live-details-hero--cinematic) {
-  padding-top: calc(var(--safe-top) + 18px);
-  padding-inline:
-    max(20px, var(--safe-left))
-    max(20px, var(--safe-right));
 }
 
 .native-app .details-hero__nav .icon-button {
@@ -190,6 +202,79 @@
 .native-app .screen--live-details .details-related__scroller,
 .native-app .screen--live-details .chapter-list {
   scroll-padding-inline: max(18px, var(--safe-left));
+}
+
+@media (max-width: 420px) {
+  .screen--live-details.screen--details-cinematic-anime .live-details-hero--cinematic:not(.live-details-hero--reading) .live-details-hero__dock,
+  .screen--live-details.screen--details-cinematic-series .live-details-hero--cinematic:not(.live-details-hero--reading) .live-details-hero__dock {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .screen--live-details.screen--details-cinematic-anime .live-details-hero__cover .remote-cover--hero.remote-cover--video,
+  .screen--live-details.screen--details-cinematic-series .live-details-hero__cover .remote-cover--hero.remote-cover--video {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+    flex-basis: auto;
+  }
+
+  .screen--live-details.screen--details-cinematic-anime .live-details-hero--cinematic:not(.live-details-hero--reading) .live-details-hero__head .live-details-hero__title,
+  .screen--live-details.screen--details-cinematic-series .live-details-hero--cinematic:not(.live-details-hero--reading) .live-details-hero__head .live-details-hero__title {
+    font-size: clamp(17px, 4.8vw, 22px);
+  }
+}
+
+/* HentaiGasm / vidéo standalone — hero lecture compact */
+.screen--details-standalone-video .live-details-hero--reading.live-details-hero--cinematic {
+  padding-bottom: 16px;
+}
+
+.screen--details-standalone-video .live-details-hero__content--reading {
+  margin-top: 6px;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.screen--details-standalone-video .live-details-hero--reading .live-details-hero__cover .remote-cover--hero.remote-cover--video {
+  width: 112px;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  flex-basis: 112px;
+  border-radius: 10px;
+  box-shadow: 0 10px 24px rgba(9, 10, 18, 0.28);
+}
+
+.screen--details-standalone-video .live-details-hero--reading .live-details-hero__title {
+  font-size: clamp(15px, 4.1vw, 20px);
+  -webkit-line-clamp: 4;
+}
+
+.screen--details-standalone-video .live-details-hero--reading .live-details-hero__facts {
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.screen--details-standalone-video .live-details-hero__actions {
+  margin-top: 12px;
+}
+
+.screen--details-standalone-video .live-details-hero--reading .details-hub__primary,
+.screen--details-standalone-video .live-details-hero--reading .details-hub__latest:not(.details-hub__latest--secondary) {
+  min-height: 52px;
+}
+
+@media (max-width: 360px) {
+  .screen--details-standalone-video .live-details-hero__content--reading {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .screen--details-standalone-video .live-details-hero--reading .live-details-hero__cover .remote-cover--hero.remote-cover--video {
+    width: 100%;
+    flex-basis: auto;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,7 +1,7 @@
 import { decodeHtml, parseDetailTaxonomies, textOnly } from "../lib/htmlUtils.js";
 import { createCachedHtmlFetcher, fetchProxiedImage } from "../lib/httpUtils.js";
 import { normalizeSearchQuery } from "../lib/queryLimits.js";
-import { responseJson } from "../lib/response.js";
+import { responseJson } from "../lib/responseJson.js";
 import {
   applyRecentChapterFields,
   enrichCatalogItems,

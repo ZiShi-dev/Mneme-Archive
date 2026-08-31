@@ -1,7 +1,7 @@
 import { decodeHtml, parseDetailTaxonomies, textOnly } from "../lib/htmlUtils.js";
 import { createCachedHtmlFetcher, fetchProxiedImage } from "../lib/httpUtils.js";
 import { normalizeSearchQuery } from "../lib/queryLimits.js";
-import { responseJson } from "../lib/response.js";
+import { responseJson } from "../lib/responseJson.js";
 import {
   parseParadiseChapter,
   parseParadiseFilters,
@@ -46,7 +46,7 @@ function createFetcher(baseUrl = DEFAULT_BASE_URL) {
     buildError: (lastStatus) => (lastStatus === 403
       ? "حماية Kol Novel تمنع الاتصال (Cloudflare)"
       : `Kol Novel a répondu ${lastStatus}`),
-    preferFlareSolverr: true,
+    preferFlareSolverr: false,
   });
 }
 

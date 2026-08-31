@@ -2,7 +2,7 @@ import { decodeHtml, textOnly } from "../lib/htmlUtils.js";
 import { createCachedHtmlFetcher, fetchProxiedImage } from "../lib/httpUtils.js";
 import { fetchProxiedMediaBytes, pickHeader } from "../lib/hlsProxy.js";
 import { normalizeSearchQuery } from "../lib/queryLimits.js";
-import { responseJson } from "../lib/response.js";
+import { responseJson } from "../lib/responseJson.js";
 import { applyRecentChapterFields, normalizeRecentChapters } from "../lib/catalogChapters.js";
 import { enrichSourceDetails } from "../lib/detailEnrichment.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
@@ -38,7 +38,7 @@ function createFetcher(baseUrl = DEFAULT_BASE_URL) {
     buildError: (lastStatus) => (lastStatus === 403
       ? "حماية HentaiGasm المؤقتة منعت الاتصال، أعد المحاولة بعد قليل"
       : `HentaiGasm a répondu ${lastStatus || "sans réponse"}`),
-    preferFlareSolverr: true,
+    preferFlareSolverr: false,
   });
 }
 

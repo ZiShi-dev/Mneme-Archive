@@ -1,6 +1,6 @@
 import { decodeHtml, parseDetailTaxonomies, textOnly } from "../lib/htmlUtils.js";
 import { normalizeSearchQuery } from "../lib/queryLimits.js";
-import { responseJson } from "../lib/response.js";
+import { responseJson } from "../lib/responseJson.js";
 import { applyRecentChapterFields, normalizeRecentChapters } from "../lib/catalogChapters.js";
 import {
   extractMadaraMangaId,
@@ -35,7 +35,7 @@ const { configureNativeFetch, resolveHtml, resolveImage } = createWpMangaFetcher
   timeoutMs: 40_000,
   forbiddenMessage: "حماية MangaDistrict منعت الاتصال مؤقتًا",
   catalogHtmlLooksValid: defaultWpMangaPageHtmlLooksValid,
-  preferFlareSolverr: true,
+  preferFlareSolverr: false,
 });
 
 export function configureMangadistrictNativeFetch(options) {

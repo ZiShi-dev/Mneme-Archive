@@ -111,7 +111,7 @@ async function requestJson(path, fallbackMessage, { ttlMs = 0 } = {}) {
   const data = isNative()
     ? await withTimeout((async () => {
       if (pathUsesCloudflareNative(path)) await ensureCloudflareNative();
-      const { handleSourceRequest } = await import("../../../server/mangaSourcesPlugin.js");
+      const { handleSourceRequest } = await import("../../../server/clientSourceRequest.js");
       const result = await handleSourceRequest(path);
       if (!result || result.kind !== "json") throw new Error(fallbackMessage);
       if (result.status !== 200) throw new Error(result.body.error || fallbackMessage);
@@ -156,7 +156,7 @@ async function fetchImagePayload(sourceId, url) {
     };
   }
   if (CLOUDFLARE_NATIVE_SOURCE_IDS.has(sourceId)) await ensureCloudflareNative();
-  const { handleSourceRequest } = await import("../../../server/mangaSourcesPlugin.js");
+  const { handleSourceRequest } = await import("../../../server/clientSourceRequest.js");
   const result = await handleSourceRequest(sourceImageUrl(sourceId, url));
   if (!result || result.kind !== "image") throw new Error(t("errors.loadImage"));
   return {

@@ -102,8 +102,8 @@ test("fetchNativeHtmlWithCache reuses in-flight fetch", async () => {
 
 test("webViewSources marks native catalog sources", async () => {
   const { WEBVIEW_SOURCE_IDS, FLARE_DIRECT_SOURCE_IDS, shouldDeferCatalogFilters } = await import("../lib/platform/webViewSources.js");
-  assert.deepEqual(WEBVIEW_SOURCE_IDS, ["azorafly", "galaxynovels", "mangaforfree", "novelphoenix"]);
-  assert.deepEqual(FLARE_DIRECT_SOURCE_IDS, ["mangalik", "arabshentai", "hentairead", "hentaigasm", "mangadistrict", "manhwaread", "novelsparadise", "kolnovel"]);
+  assert.deepEqual(WEBVIEW_SOURCE_IDS, ["azorafly", "galaxynovels", "manhwaread", "mangaforfree", "novelphoenix"]);
+  assert.deepEqual(FLARE_DIRECT_SOURCE_IDS, ["mangalik", "arabshentai", "hentairead", "novelsparadise"]);
   assert.equal(shouldDeferCatalogFilters("azorafly"), true);
   assert.equal(shouldDeferCatalogFilters("mangalik"), true);
   assert.equal(shouldDeferCatalogFilters("paradise"), false);

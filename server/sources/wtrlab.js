@@ -1,7 +1,7 @@
 import { textOnly } from "../lib/htmlUtils.js";
 import { fetchProxiedImage } from "../lib/httpUtils.js";
 import { normalizeSearchQuery } from "../lib/queryLimits.js";
-import { responseJson } from "../lib/response.js";
+import { responseJson } from "../lib/responseJson.js";
 import { applyRecentChapterFields, recentChaptersFromCount } from "../lib/catalogChapters.js";
 import { filterNovelParagraphs } from "../lib/novelChapterText.js";
 

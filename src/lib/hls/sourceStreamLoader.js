@@ -39,7 +39,7 @@ function resolveFetchUrl(requestUrl = "") {
 }
 
 async function fetchViaBridge(sourcePath, responseType = "text") {
-  const { handleSourceRequest } = await import("../../../server/mangaSourcesPlugin.js");
+  const { handleSourceRequest } = await import("../../../server/clientSourceRequest.js");
   const result = await handleSourceRequest(sourcePath);
   if (!result || result.kind !== "stream") throw new Error(t("errors.loadStream"));
   const raw = result.buffer;

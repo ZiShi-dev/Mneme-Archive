@@ -1,5 +1,5 @@
 import React from "react";
-import { BookOpen, Clapperboard } from "lucide-react";
+import { BookOpen, Clapperboard, Play } from "lucide-react";
 import { t } from "../../i18n/runtime";
 import { RemoteCover } from "./RemoteCover";
 import { usesContainCover, usesWideCover, isStandaloneVideoCatalogItem } from "./coverDisplay";
@@ -58,8 +58,46 @@ export function CatalogCard({ item, profile, onOpenDetails, onOpenChapter }) {
   const standaloneVideo = isStandaloneVideoCatalogItem(item);
   const postedLabel = formatChapterPublishedLabel(item.publishedAt);
 
+  const cardClass = [
+    "live-manga-card",
+    coverContain ? "live-manga-card--cover-contain" : "",
+    coverWide ? "live-manga-card--cover-wide" : "",
+    isVideo ? "live-manga-card--video" : "",
+    standaloneVideo ? "live-manga-card--standalone-video" : "",
+  ].filter(Boolean).join(" ");
+
+  if (standaloneVideo && item.url) {
+    return (
+      <article className={cardClass}>
+        <button
+          type="button"
+          className="live-manga-card__main live-manga-card__main--thumb"
+          onClick={() => onOpenChapter(item, { url: item.url, name: item.title, number: "1" })}
+          aria-label={`${presentation.watchLatest} — ${item.title}`}
+        >
+          <span className={`media-type-badge media-type-badge--${item.mediaType || "anime"}`}>
+            {contentTypes[item.mediaType]?.singular || item.mediaTypeLabel || contentTypes.anime.singular}
+          </span>
+          <CoverAudioBadge label={item.audioLabel} />
+          <span className="live-manga-card__cover">
+            <RemoteCover src={item.cover} title={item.title} sourceId={item.sourceId || profile?.id} video={isVideo} contain={coverContain} />
+            <span className="live-manga-card__play" aria-hidden="true">
+              <Play size={22} fill="currentColor" strokeWidth={0} />
+            </span>
+          </span>
+        </button>
+        <div className="live-manga-card__youtube-meta">
+          <button type="button" className="live-manga-card__title-btn" onClick={() => onOpenDetails(item)}>
+            <strong dir="auto">{item.title}</strong>
+          </button>
+          {postedLabel ? <small className="live-manga-card__posted">{postedLabel}</small> : null}
+        </div>
+      </article>
+    );
+  }
+
   return (
-    <article className={`live-manga-card${coverContain ? " live-manga-card--cover-contain" : ""}${coverWide ? " live-manga-card--cover-wide" : ""}${isVideo ? " live-manga-card--video" : ""}`}>
+    <article className={cardClass}>
       <button className="live-manga-card__main" onClick={() => onOpenDetails(item)} aria-label={t("sources.detailsOf", { title: item.title })}>
         <span className={`media-type-badge media-type-badge--${item.mediaType || "manga"}`}>{contentTypes[item.mediaType]?.singular || item.mediaTypeLabel || contentTypes.manga.singular}</span>
         <CoverAudioBadge label={item.audioLabel} />
@@ -116,17 +154,29 @@ export function CatalogCard({ item, profile, onOpenDetails, onOpenChapter }) {
 
 export function CatalogCardSkeleton({ mediaType = "manga" }) {
   const isVideo = mediaType === "anime" || mediaType === "movie" || mediaType === "series";
+  const standaloneVideo = isVideo;
   return (
-    <article className={`live-manga-card live-manga-card--skeleton live-manga-card--skeleton-${mediaType}${isVideo ? " live-manga-card--cover-wide live-manga-card--video" : ""}`} aria-hidden="true">
-      <div className="live-manga-card__main">
+    <article className={`live-manga-card live-manga-card--skeleton live-manga-card--skeleton-${mediaType}${isVideo ? " live-manga-card--cover-wide live-manga-card--video" : ""}${standaloneVideo ? " live-manga-card--standalone-video" : ""}`} aria-hidden="true">
+      <div className="live-manga-card__main live-manga-card__main--thumb">
         <span className="live-manga-card__cover-skeleton" />
-        <span className="live-manga-card__title-skeleton" />
-        <span className="live-manga-card__title-skeleton live-manga-card__title-skeleton--short" />
       </div>
-      <div className="live-manga-card__chapters">
-        <span className="live-manga-card__chapter-skeleton" />
-        <span className="live-manga-card__chapter-skeleton" />
-      </div>
+      {standaloneVideo ? (
+        <div className="live-manga-card__youtube-meta">
+          <span className="live-manga-card__title-skeleton" />
+          <span className="live-manga-card__title-skeleton live-manga-card__title-skeleton--short" />
+        </div>
+      ) : (
+        <>
+          <div className="live-manga-card__main">
+            <span className="live-manga-card__title-skeleton" />
+            <span className="live-manga-card__title-skeleton live-manga-card__title-skeleton--short" />
+          </div>
+          <div className="live-manga-card__chapters">
+            <span className="live-manga-card__chapter-skeleton" />
+            <span className="live-manga-card__chapter-skeleton" />
+          </div>
+        </>
+      )}
     </article>
   );
 }

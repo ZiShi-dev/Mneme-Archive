@@ -284,7 +284,12 @@ export function LiveMangaDetails({
     audioLanguage,
     audioLabel: item.audioLabel,
   });
-  const heroLayout = getDetailsHeroLayout({ isVideo, mediaType });
+  const heroLayout = getDetailsHeroLayout({
+    isVideo,
+    mediaType,
+    catalogStyle: item.catalogStyle,
+    sourceId,
+  });
   const followPreference = chapterFollow?.getPreference(item);
   const isFollowing = Boolean(followPreference?.enabled);
   const canFollowUpdates = Boolean(chapterFollow) && isNotifiableMediaType(mediaType);
@@ -382,6 +387,7 @@ export function LiveMangaDetails({
     isChromebookApp,
     isMoviePage,
     mediaType,
+    catalogStyle: item.catalogStyle,
   });
 
   const heroClassName = buildDetailsHeroClasses({

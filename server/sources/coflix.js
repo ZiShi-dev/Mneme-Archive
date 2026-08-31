@@ -8,7 +8,7 @@ import {
 } from "../lib/embedResolvers.js";
 import { mergeCatalogByRecency } from "../lib/catalogMerge.js";
 import { normalizeSearchQuery } from "../lib/queryLimits.js";
-import { responseJson } from "../lib/response.js";
+import { responseJson } from "../lib/responseJson.js";
 import { applyRecentChapterFields } from "../lib/catalogChapters.js";
 import { resolveRequestBaseUrl } from "../lib/sourceBaseUrl.js";
 import { videoHostRank } from "../lib/videoHosts.js";

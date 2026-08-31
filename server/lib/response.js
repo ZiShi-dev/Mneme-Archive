@@ -1,9 +1,8 @@
 import { Readable } from "node:stream";
 import { applySecurityHeaders } from "./securityHeaders.js";
+import { responseJson } from "./responseJson.js";
 
-export function responseJson(status, body) {
-  return { kind: "json", status, body };
-}
+export { responseJson } from "./responseJson.js";
 
 function setOptionalHeader(res, name, value) {
   if (value === undefined || value === null || value === "") return;
