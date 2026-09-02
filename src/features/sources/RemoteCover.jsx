@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Clapperboard, Sparkles } from "lucide-react";
+import { isPlaceholderCover, normalizeRemoteImageUrl } from "./coverDisplay";
 import { useResolvedCoverUrl } from "./useResolvedCoverUrl";
 
 export function RemoteCover({
@@ -15,10 +16,14 @@ export function RemoteCover({
   className = "",
 }) {
   const [failed, setFailed] = useState(false);
-  const resolvedSrc = useResolvedCoverUrl(sourceId, src);
-  const loading = Boolean(sourceId && src && !resolvedSrc && !failed);
+  const coverSrc = isPlaceholderCover(src) ? "" : normalizeRemoteImageUrl(src);
+  const resolvedSrc = useResolvedCoverUrl(sourceId, coverSrc);
+  const displaySrc = resolvedSrc || (!sourceId ? coverSrc : "");
+  const loading = Boolean(coverSrc && !displaySrc && !failed);
 
-  useEffect(() => setFailed(false), [resolvedSrc]);
+  useEffect(() => {
+    setFailed(false);
+  }, [coverSrc, sourceId]);
 
   const classes = [
     "remote-cover",
@@ -31,10 +36,11 @@ export function RemoteCover({
     className,
   ].filter(Boolean).join(" ");
 
-  if (!src || failed) {
+  if (!coverSrc || failed) {
+    const FallbackIcon = video ? Clapperboard : novel ? Sparkles : BookOpen;
     return (
       <div className={`${classes} remote-cover--fallback`}>
-        <BookOpen size={hero || large ? 34 : 24} />
+        <FallbackIcon size={hero || large ? 34 : 24} />
         <span>{title?.slice(0, 1) || "漫"}</span>
       </div>
     );
@@ -47,7 +53,7 @@ export function RemoteCover({
   return (
     <img
       className={classes}
-      src={resolvedSrc || src}
+      src={displaySrc}
       alt={title}
       loading={priority ? "eager" : "lazy"}
       fetchpriority={priority ? "high" : "auto"}

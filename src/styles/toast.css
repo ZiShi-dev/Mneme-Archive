@@ -1,11 +1,21 @@
 .app-toast-stack {
   position: fixed;
   inset-inline: 16px;
-  top: max(16px, env(safe-area-inset-top));
-  z-index: 12000;
+  bottom: auto;
+  z-index: 20000;
   display: grid;
   gap: 10px;
   pointer-events: none;
+  max-height: calc(100dvh - var(--toast-stack-top, 72px) - var(--toast-stack-bottom, 80px));
+  overflow: hidden;
+}
+
+.app-toast-stack--reader {
+  inset-inline: max(16px, env(safe-area-inset-left)) max(16px, env(safe-area-inset-right));
+}
+
+.app-toast-stack--nav {
+  inset-inline: max(16px, env(safe-area-inset-left)) max(16px, env(safe-area-inset-right));
 }
 
 .app-toast {

@@ -125,29 +125,102 @@ body[data-theme="paper"] {
   background: linear-gradient(180deg, #F7F3EC 0%, #F3F0EA 50%, #E8E2D6 100%);
 }
 
-/* ── Theme sheet gallery (popup lisible, cartes égales) ── */
+/* ── Theme sheet gallery (cartes ancrées, lisibles) ── */
 
 .notify-sheet.theme-sheet--gallery {
   max-height: min(92dvh, calc(100dvh - var(--safe-top) - 12px));
+  contain: layout style;
+}
+
+.notify-sheet.theme-sheet--gallery.theme-sheet--ink {
+  background:
+    radial-gradient(ellipse at 14% 0%, color-mix(in srgb, var(--brand) 20%, transparent), transparent 52%),
+    linear-gradient(180deg, #121522 0%, var(--paper) 58%, #090a12 100%);
+  border-color: color-mix(in srgb, var(--brand) 26%, var(--line));
+  color: var(--ink);
+}
+
+.notify-sheet.theme-sheet--gallery.theme-sheet--paper {
+  background:
+    radial-gradient(ellipse at 88% 0%, color-mix(in srgb, var(--brand-warm) 14%, transparent), transparent 48%),
+    linear-gradient(180deg, #fffcf7 0%, var(--paper) 55%, #e8e2d6 100%);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+.notify-sheet.theme-sheet--gallery.theme-sheet--sakura {
+  background:
+    radial-gradient(ellipse at 82% 0%, color-mix(in srgb, var(--kobai) 16%, transparent), transparent 46%),
+    linear-gradient(180deg, #fff8f9 0%, var(--paper) 56%, #fdeef2 100%);
+  border-color: color-mix(in srgb, var(--kobai) 24%, var(--line));
+  color: var(--ink);
+}
+
+.notify-sheet.theme-sheet--gallery.theme-sheet--yozakura {
+  background:
+    radial-gradient(ellipse at 12% 0%, color-mix(in srgb, #b34e64 22%, transparent), transparent 48%),
+    linear-gradient(180deg, #211920, #171218 60%, #120e13);
+  border-color: color-mix(in srgb, #e8a8ba 35%, #2d1616);
+  color: #fff4f7;
+}
+
+.notify-sheet.theme-sheet--gallery.theme-sheet--lune-neige {
+  background:
+    radial-gradient(ellipse 90% 60% at 88% 0%, color-mix(in srgb, #8eb4e8 16%, transparent), transparent 58%),
+    linear-gradient(180deg, #141f2e 0%, #101a28 100%);
+  border-color: color-mix(in srgb, #8eb4e8 34%, #2a3d58);
+  color: #eef4ff;
+}
+
+.notify-sheet.theme-sheet--gallery.theme-sheet--galaxie {
+  background:
+    radial-gradient(ellipse at 18% 0%, color-mix(in srgb, #7b5cff 22%, transparent), transparent 48%),
+    linear-gradient(180deg, #12102c, #07061a 60%, #050414);
+  border-color: color-mix(in srgb, #9bb0ff 30%, #12102c);
+  color: #eef1ff;
+}
+
+.notify-sheet.theme-sheet--gallery .theme-selector--gallery > .theme-selector__option {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 134px;
+  contain: layout paint;
 }
 
 .notify-sheet.theme-sheet--gallery header {
-  padding: 14px 16px 12px;
+  padding: 10px 16px 12px;
   flex-shrink: 0;
+  border-bottom-color: color-mix(in srgb, var(--line) 88%, transparent);
 }
 
 .notify-sheet.theme-sheet--gallery header h2 {
   font-size: 16px;
   line-height: 1.25;
+  color: inherit;
 }
 
 .notify-sheet.theme-sheet--gallery header small {
   font-size: 11px;
+  color: color-mix(in srgb, currentColor 72%, transparent);
+}
+
+.notify-sheet.theme-sheet--gallery.theme-sheet--ink header,
+.notify-sheet.theme-sheet--gallery.theme-sheet--paper header,
+.notify-sheet.theme-sheet--gallery.theme-sheet--sakura header {
+  border-bottom-color: color-mix(in srgb, var(--line) 90%, transparent);
+}
+
+.notify-sheet.theme-sheet--gallery.theme-sheet--yozakura header,
+.notify-sheet.theme-sheet--gallery.theme-sheet--yozakura footer,
+.notify-sheet.theme-sheet--gallery.theme-sheet--lune-neige header,
+.notify-sheet.theme-sheet--gallery.theme-sheet--lune-neige footer,
+.notify-sheet.theme-sheet--gallery.theme-sheet--galaxie header,
+.notify-sheet.theme-sheet--gallery.theme-sheet--galaxie footer {
+  border-color: color-mix(in srgb, currentColor 14%, transparent);
 }
 
 .notify-sheet.theme-sheet--gallery .notify-sheet__body {
-  padding: 10px 14px 6px;
-  gap: 10px;
+  padding: 0 14px 8px;
+  gap: 0;
   overflow: auto;
   flex: 1 1 auto;
   min-height: 0;
@@ -157,7 +230,11 @@ body[data-theme="paper"] {
 .notify-sheet.theme-sheet--gallery footer {
   padding: 10px 14px calc(12px + var(--safe-bottom));
   flex-shrink: 0;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
+}
+
+.notify-sheet.theme-sheet--gallery .notify-sheet__handle {
+  background: color-mix(in srgb, currentColor 28%, transparent);
 }
 
 .notify-sheet.theme-sheet--gallery .notify-sheet__done {
@@ -166,6 +243,53 @@ body[data-theme="paper"] {
   padding: 0 18px;
   font-size: 13px;
   border-radius: 12px;
+  background: var(--cta);
+  color: var(--cta-text);
+  border: 1px solid color-mix(in srgb, var(--cta) 72%, transparent);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--cta) 24%, transparent);
+}
+
+.notify-sheet.theme-sheet--gallery.theme-sheet--yozakura .notify-sheet__done {
+  background: linear-gradient(135deg, #c94f6d, #e8a8ba);
+  color: #fff;
+  border-color: color-mix(in srgb, #e8a8ba 40%, transparent);
+}
+
+.notify-sheet.theme-sheet--gallery.theme-sheet--lune-neige .notify-sheet__done {
+  background: linear-gradient(135deg, #8eb4e8, #c8daf5);
+  color: #0d1522;
+  border-color: color-mix(in srgb, #c8daf5 40%, transparent);
+}
+
+.notify-sheet.theme-sheet--gallery.theme-sheet--galaxie .notify-sheet__done {
+  background: linear-gradient(135deg, #7b5cff, #9bb0ff);
+  color: #07061a;
+  border-color: color-mix(in srgb, #9bb0ff 40%, transparent);
+}
+
+.theme-sheet__intro {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, currentColor 5%, var(--white));
+  border: 1px solid color-mix(in srgb, currentColor 12%, var(--line));
+  color: color-mix(in srgb, currentColor 72%, transparent);
+  font: 500 12px/1.45 var(--font-sans);
+}
+
+.notify-sheet.theme-sheet--gallery.theme-sheet--ink .theme-sheet__intro,
+.notify-sheet.theme-sheet--gallery.theme-sheet--yozakura .theme-sheet__intro,
+.notify-sheet.theme-sheet--gallery.theme-sheet--lune-neige .theme-sheet__intro,
+.notify-sheet.theme-sheet--gallery.theme-sheet--galaxie .theme-sheet__intro {
+  background: color-mix(in srgb, currentColor 6%, #0c0e16);
+  border-color: color-mix(in srgb, currentColor 14%, transparent);
+}
+
+.notify-sheet.theme-sheet--gallery.theme-sheet--paper .theme-sheet__intro,
+.notify-sheet.theme-sheet--gallery.theme-sheet--sakura .theme-sheet__intro {
+  background: color-mix(in srgb, var(--white) 88%, var(--paper));
+  border-color: color-mix(in srgb, var(--line) 90%, transparent);
+  color: var(--muted);
 }
 
 .theme-selector--gallery {
@@ -176,36 +300,107 @@ body[data-theme="paper"] {
   border: 0;
 }
 
-.theme-selector--gallery > .theme-selector__option,
-.theme-selector--gallery > .theme-selector__option--ink,
-.theme-selector--gallery > .theme-selector__option--paper,
-.theme-selector--gallery > .theme-selector__option--sakura,
-.theme-selector--gallery > .theme-selector__option--yozakura,
-.theme-selector--gallery > .theme-selector__option--lune-neige {
-  grid-column: 1 / -1;
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  min-height: 104px;
-  height: 104px;
-  padding: 0;
-  border-radius: 16px;
+.theme-selector--gallery-skeleton .theme-selector__option {
+  pointer-events: none;
+}
+
+.theme-selector--gallery-skeleton .theme-selector__meta {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  min-height: 54px;
+  box-sizing: border-box;
+}
+
+.theme-selector__skeleton-line {
   display: block;
-  text-align: start;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--line) 72%, var(--paper));
+}
+
+.notify-sheet.theme-sheet--gallery.theme-sheet--ink .theme-selector__skeleton-line,
+.notify-sheet.theme-sheet--gallery.theme-sheet--yozakura .theme-selector__skeleton-line,
+.notify-sheet.theme-sheet--gallery.theme-sheet--lune-neige .theme-selector__skeleton-line,
+.notify-sheet.theme-sheet--gallery.theme-sheet--galaxie .theme-selector__skeleton-line {
+  background: color-mix(in srgb, currentColor 12%, #0c0e16);
+}
+
+.theme-selector__skeleton-line--title {
+  width: 42%;
+  height: 12px;
+}
+
+.theme-selector__skeleton-line--hint {
+  width: 68%;
+  height: 10px;
+}
+
+.theme-selector--gallery > .theme-selector__option {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+  height: auto;
+  padding: 0;
+  border-radius: 14px;
   border-width: 1.5px;
+  text-align: start;
   transform: none;
+  background: var(--paper);
 }
 
-.theme-selector--gallery > .theme-selector__option:hover {
-  transform: translateY(-1px);
+.theme-selector--gallery > .theme-selector__option:hover,
+.theme-selector--gallery > .theme-selector__option:focus-visible {
+  transform: none;
+  border-color: color-mix(in srgb, var(--brand) 45%, var(--line));
 }
 
-.theme-selector--gallery > .theme-selector__option > .ink-preview,
-.theme-selector--gallery > .theme-selector__option > .paper-preview,
-.theme-selector--gallery > .theme-selector__option > .sakura-day-preview,
-.theme-selector--gallery > .theme-selector__option > .yozakura-preview,
-.theme-selector--gallery > .theme-selector__option > .lune-neige-preview {
-  z-index: 0;
+.theme-selector--gallery .theme-selector__preview {
+  position: relative;
+  flex: 0 0 80px;
+  height: 80px;
+  min-height: 80px;
+  overflow: hidden;
+}
+
+.theme-selector--gallery .theme-selector__preview > * {
+  position: absolute;
+  inset: 0;
+}
+
+.theme-selector--gallery .theme-selector__preview-placeholder {
+  position: absolute;
+  inset: 0;
+  background: var(--paper);
+}
+
+.theme-selector--gallery .theme-selector__preview-placeholder--ink,
+.theme-selector--gallery .theme-selector__preview-placeholder--yozakura,
+.theme-selector--gallery .theme-selector__preview-placeholder--lune-neige,
+.theme-selector--gallery .theme-selector__preview-placeholder--galaxie {
+  background: #0c0e16;
+}
+
+.theme-selector--gallery .theme-selector__preview-placeholder--paper,
+.theme-selector--gallery .theme-selector__preview-placeholder--sakura {
+  background: #fffcf7;
+}
+
+.theme-selector--gallery .theme-selector__preview-placeholder--sakura {
+  background: linear-gradient(155deg, #fff8f9 0%, #fdedeb 100%);
+}
+
+.theme-selector--gallery .theme-selector__preview-placeholder--yozakura {
+  background: linear-gradient(180deg, #211920, #120e13);
+}
+
+.theme-selector--gallery .theme-selector__preview-placeholder--lune-neige {
+  background: linear-gradient(180deg, #141f2e, #101a28);
+}
+
+.theme-selector--gallery .theme-selector__preview-placeholder--galaxie {
+  background: linear-gradient(180deg, #12102c, #07061a);
 }
 
 .theme-selector--gallery .ink-preview__veil,
@@ -216,153 +411,144 @@ body[data-theme="paper"] {
   display: none;
 }
 
-.theme-selector--gallery > .theme-selector__option > svg:nth-of-type(1),
-.theme-selector--gallery > .theme-selector__option > svg:first-of-type {
-  position: absolute;
-  z-index: 2;
-  inset-inline-start: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 22px;
-  height: 22px;
-  padding: 8px;
-  border-radius: 12px;
-  box-sizing: content-box;
-  background: color-mix(in srgb, var(--surface) 78%, transparent) !important;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid color-mix(in srgb, white 22%, transparent);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+.theme-selector--gallery .theme-selector__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  min-height: 54px;
+  background: var(--paper);
+  border-top: 1px solid color-mix(in srgb, var(--line) 85%, transparent);
 }
 
-.theme-selector--gallery > .theme-selector__option > span {
-  position: absolute;
-  z-index: 2;
-  inset-inline-start: 62px;
-  inset-inline-end: 46px;
-  top: 50%;
-  transform: translateY(-50%);
+.theme-selector--gallery .theme-selector__copy {
   display: grid;
-  gap: 3px;
-  padding: 8px 12px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--surface) 82%, transparent);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid color-mix(in srgb, white 16%, transparent);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
-  max-width: calc(100% - 108px);
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
 }
 
-.theme-selector--gallery > .theme-selector__option > span strong {
+.theme-selector--gallery .theme-selector__copy strong {
   font: 700 14px/1.2 var(--font-sans);
-  letter-spacing: 0.01em;
   color: var(--ink);
-  text-shadow: none;
 }
 
-.theme-selector--gallery > .theme-selector__option > span small {
+.theme-selector--gallery .theme-selector__copy small {
   font: 500 11px/1.35 var(--font-sans);
   color: var(--muted);
-  opacity: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
 }
 
-.theme-selector--gallery > .theme-selector__option > svg:last-of-type {
-  position: absolute;
-  z-index: 2;
-  inset-inline-end: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 18px;
-  height: 18px;
+.theme-selector--gallery .theme-selector__check {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
   padding: 6px;
   border-radius: 999px;
-  box-sizing: content-box;
-  background: color-mix(in srgb, var(--brand) 22%, var(--surface));
-  border: 1px solid color-mix(in srgb, var(--brand) 40%, transparent);
+  box-sizing: border-box;
   opacity: 0;
   color: var(--brand);
-  filter: none;
+  background: color-mix(in srgb, var(--brand) 12%, var(--paper));
+  border: 1px solid color-mix(in srgb, var(--brand) 28%, transparent);
 }
 
 .theme-selector--gallery > .theme-selector__option.active {
   border-color: var(--brand);
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--brand) 45%, transparent),
-    0 10px 28px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand) 35%, transparent);
 }
 
-.theme-selector--gallery > .theme-selector__option.active > svg:last-of-type {
+.theme-selector--gallery > .theme-selector__option.active .theme-selector__check {
   opacity: 1;
 }
 
-/* Contraste lisible sur fonds sombres des previews */
-.theme-selector--gallery > .theme-selector__option--ink > span,
-.theme-selector--gallery > .theme-selector__option--yozakura > span,
-.theme-selector--gallery > .theme-selector__option--lune-neige > span {
-  background: color-mix(in srgb, #0c0810 72%, transparent);
-  border-color: color-mix(in srgb, white 14%, transparent);
+.theme-selector--gallery > .theme-selector__option--ink .theme-selector__meta,
+.theme-selector--gallery > .theme-selector__option--yozakura .theme-selector__meta,
+.theme-selector--gallery > .theme-selector__option--lune-neige .theme-selector__meta,
+.theme-selector--gallery > .theme-selector__option--galaxie .theme-selector__meta {
+  background: #0c0e16;
+  border-top-color: color-mix(in srgb, white 10%, transparent);
 }
 
-.theme-selector--gallery > .theme-selector__option--ink > span strong,
-.theme-selector--gallery > .theme-selector__option--yozakura > span strong,
-.theme-selector--gallery > .theme-selector__option--lune-neige > span strong {
+.theme-selector--gallery > .theme-selector__option--ink .theme-selector__copy strong,
+.theme-selector--gallery > .theme-selector__option--yozakura .theme-selector__copy strong,
+.theme-selector--gallery > .theme-selector__option--lune-neige .theme-selector__copy strong,
+.theme-selector--gallery > .theme-selector__option--galaxie .theme-selector__copy strong {
   color: #fff8fb;
 }
 
-.theme-selector--gallery > .theme-selector__option--ink > span small,
-.theme-selector--gallery > .theme-selector__option--yozakura > span small,
-.theme-selector--gallery > .theme-selector__option--lune-neige > span small {
-  color: color-mix(in srgb, #fff4f7 78%, transparent);
+.theme-selector--gallery > .theme-selector__option--ink .theme-selector__copy small,
+.theme-selector--gallery > .theme-selector__option--yozakura .theme-selector__copy small,
+.theme-selector--gallery > .theme-selector__option--lune-neige .theme-selector__copy small,
+.theme-selector--gallery > .theme-selector__option--galaxie .theme-selector__copy small {
+  color: color-mix(in srgb, #fff4f7 76%, transparent);
 }
 
-.theme-selector--gallery > .theme-selector__option--ink > svg:first-of-type,
-.theme-selector--gallery > .theme-selector__option--yozakura > svg:first-of-type,
-.theme-selector--gallery > .theme-selector__option--lune-neige > svg:first-of-type {
-  background: color-mix(in srgb, #120e16 70%, transparent) !important;
-  color: #fff0f5;
-  border-color: color-mix(in srgb, white 18%, transparent);
+.theme-selector--gallery > .theme-selector__option--paper .theme-selector__meta,
+.theme-selector--gallery > .theme-selector__option--sakura .theme-selector__meta {
+  background: #fffcf7;
 }
 
-.theme-selector--gallery > .theme-selector__option--paper > span,
-.theme-selector--gallery > .theme-selector__option--sakura > span {
-  background: color-mix(in srgb, #fffcf7 86%, transparent);
-  border-color: color-mix(in srgb, #171722 8%, transparent);
+/* Annule theme.css / yozakura / galaxie sur les cartes gallery */
+.theme-sheet--gallery .theme-selector.theme-selector--gallery > .theme-selector__option,
+.theme-sheet--gallery .theme-selector.theme-selector--gallery > .theme-selector__option--sakura,
+.theme-sheet--gallery .theme-selector.theme-selector--gallery > .theme-selector__option--yozakura,
+.theme-sheet--gallery .theme-selector.theme-selector--gallery > .theme-selector__option--lune-neige,
+.theme-sheet--gallery .theme-selector.theme-selector--gallery > .theme-selector__option--ink,
+.theme-sheet--gallery .theme-selector.theme-selector--gallery > .theme-selector__option--paper,
+.theme-sheet--gallery .theme-selector.theme-selector--gallery > .theme-selector__option--galaxie {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  grid-template-columns: none;
+  min-height: 0;
+  height: auto;
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: none;
 }
 
-.theme-selector--gallery > .theme-selector__option--paper > span strong,
-.theme-selector--gallery > .theme-selector__option--sakura > span strong {
-  color: #171722;
+.theme-sheet--gallery .theme-selector--gallery > .theme-selector__option::before,
+.theme-sheet--gallery .theme-selector--gallery > .theme-selector__option::after {
+  display: none;
+  content: none;
 }
 
-.theme-selector--gallery > .theme-selector__option--paper > span small,
-.theme-selector--gallery > .theme-selector__option--sakura > span small {
-  color: #5a4a52;
+.theme-sheet--gallery .theme-selector--gallery > .theme-selector__option:hover,
+.theme-sheet--gallery .theme-selector--gallery > .theme-selector__option:focus-visible {
+  transform: none;
+  box-shadow: none;
 }
 
-.theme-selector--gallery > .theme-selector__option--paper > svg:first-of-type,
-.theme-selector--gallery > .theme-selector__option--sakura > svg:first-of-type {
-  background: color-mix(in srgb, #fffcf7 88%, transparent) !important;
-  color: #793b55;
-  border-color: color-mix(in srgb, #171722 10%, transparent);
+.theme-sheet--gallery .theme-selector--gallery > .theme-selector__option.active {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.theme-sheet--gallery .theme-selector--gallery > .theme-selector__option strong,
+.theme-sheet--gallery .theme-selector--gallery > .theme-selector__option small {
+  text-shadow: none;
+}
+
+.theme-sheet--gallery .theme-selector--gallery > .theme-selector__option > svg {
+  display: none;
 }
 
 @media (min-width: 720px) {
   .desktop-app .notify-sheet.theme-sheet--gallery {
-    width: min(100%, 460px);
-    max-height: min(86vh, 720px);
+    width: min(100%, 440px);
+    max-height: min(86vh, 680px);
   }
 
-  .desktop-app .theme-selector--gallery {
-    grid-template-columns: 1fr;
-  }
-
-  .desktop-app .theme-selector--gallery > .theme-selector__option {
-    min-height: 112px;
-    height: 112px;
+  .desktop-app .theme-selector--gallery .theme-selector__preview {
+    flex-basis: 88px;
+    height: 88px;
+    min-height: 88px;
   }
 }
 
@@ -679,9 +865,12 @@ body[data-theme="paper"] {
   }
 }
 
-.theme-selector__option--sakura > *:not(.sakura-day-preview),
-.theme-selector__option--ink > *:not(.ink-preview),
-.theme-selector__option--paper > *:not(.paper-preview) {
+.theme-selector--gallery > .theme-selector__option--sakura > .theme-selector__meta,
+.theme-selector--gallery > .theme-selector__option--ink > .theme-selector__meta,
+.theme-selector--gallery > .theme-selector__option--paper > .theme-selector__meta,
+.theme-selector--gallery > .theme-selector__option--yozakura > .theme-selector__meta,
+.theme-selector--gallery > .theme-selector__option--lune-neige > .theme-selector__meta,
+.theme-selector--gallery > .theme-selector__option--galaxie > .theme-selector__meta {
   position: relative;
   z-index: 1;
 }
@@ -724,11 +913,7 @@ body[data-theme="paper"] {
   box-shadow: 0 0 18px rgba(185, 104, 40, .18), 0 10px 24px rgba(0,0,0,.08);
 }
 
-.theme-selector__option--sakura::before,
-.theme-selector__option--sakura::after {
+.theme-selector--gallery > .theme-selector__option--sakura::before,
+.theme-selector--gallery > .theme-selector__option--sakura::after {
   display: none;
-}
-
-.theme-selector__option--sakura {
-  background: #FFF8F9;
 }

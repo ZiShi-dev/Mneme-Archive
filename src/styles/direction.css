@@ -41,6 +41,8 @@
 }
 
 [dir="ltr"] .catalog-carousel-nav__icon .lucide-chevron-right,
+[dir="ltr"] .details-related--seasons-carousel .details-related__nav-btn .lucide-chevron-right,
+[dir="ltr"] .details-related--seasons-carousel .details-related__nav-btn .lucide-chevron-left,
 [dir="ltr"] .search-results-pagination > button .lucide-chevron-right,
 [dir="ltr"] .chapter-pagination > button .lucide-chevron-right,
 [dir="ltr"] .chapter-pagination > button .lucide-chevron-left,

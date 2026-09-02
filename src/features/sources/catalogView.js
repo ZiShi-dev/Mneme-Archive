@@ -3,13 +3,9 @@ import { getSourceProfile, getDefaultCatalogKind } from "../../config/sources.js
 import { sourceCapability, sourcesWithCapability } from "../../config/sourceCapabilities.js";
 import { localizeCatalogKind } from "./contentTypes.js";
 
+export { MULTI_TAXONOMY_SOURCES, supportsMultiTaxonomy } from "./videoCatalog.js";
+
 const CATALOG_SCOPED_SEARCH_SOURCES = new Set(sourcesWithCapability("catalogScopedSearch"));
-
-export const MULTI_TAXONOMY_SOURCES = new Set(["wiflix", "frenchstream", "coflix"]);
-
-export function supportsMultiTaxonomy(sourceId) {
-  return MULTI_TAXONOMY_SOURCES.has(sourceId);
-}
 
 export function isSearchQueryActive(query) {
   return String(query || "").trim().length >= 2;

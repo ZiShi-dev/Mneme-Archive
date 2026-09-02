@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, Bell, BellRing, Bookmark, ChevronDown, ChevronUp, ExternalLink, RefreshCw, Wifi } from "lucide-react";
+import { ArrowRight, Bell, BellRing, Bookmark, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ExternalLink, Languages, RefreshCw, Wifi } from "lucide-react";
 import { useToast } from "../../components/ui/ToastProvider";
 import { getSourceProfile, resolveSourceId } from "../../config/sources";
-import { ChipFilterBar, ChipFilterButton } from "../../components/ui/ChipFilterBar";
 import { isChromebookApp, isNotifiableMediaType, PREFERRED_AUDIO_LANGUAGE } from "../../config/appFlavor";
-import { fetchSourceDetails, formatSourceError } from "./sourceApi";
+import { runAppPullRefresh } from "../../lib/platform/appRefresh";
+import { fetchSourceDetails, fetchSourceChapter, formatSourceError, peekSourceDetails, peekSourceChapter } from "./sourceApi";
 import { normalizeChapterList, chapterSortKey } from "../../../server/lib/chapterOrdering.js";
 import { DetailsActionHub } from "./DetailsActionHub";
 import { DetailsCinematicHero } from "./details/DetailsCinematicHero";
@@ -19,10 +19,11 @@ import {
 } from "./details/detailsLayout";
 import { MovieWatchActions } from "./details/MovieWatchActions";
 import { RemoteCover } from "./RemoteCover";
-import { usesContainCover } from "./coverDisplay";
+import { pickBestCover, usesContainCover } from "./coverDisplay";
 import { CoverAudioBadge } from "./CatalogCard";
 import { useResolvedCoverUrl } from "./useResolvedCoverUrl";
-import { findChapterByRecord } from "../../lib/readingProgress";
+import { findChapterByRecord, getTitleReadingKey } from "../../lib/readingProgress";
+import { listTitleChapterReads } from "../../lib/reading/chapterReadLog";
 import { DetailsChapterSection } from "./details/DetailsChapterSection";
 import { DetailsContentSkeleton } from "../../components/ui/ContentSkeleton";
 import { FollowAlertSheet } from "../updates/FollowAlertSheet";
@@ -40,6 +41,16 @@ import {
   isChapterWithinNewWindow,
   parseChapterPublishedAt,
 } from "../../lib/media/chapterTiming";
+import { isAzoraChapterBlocked, isAzoraFlySource } from "../../lib/media/chapterLock";
+import { VideoServerSheet } from "./liveVideo/VideoServerSheet";
+import { formatUniqueServerLabels } from "./liveVideo/constants";
+import { playbackSourcesFromChapterData } from "./liveVideo/videoPlaybackCache";
+import { resolveVideoDetailsChapterPageSize } from "./videoCatalog";
+import { detailsHasImmediateChapters } from "./details/detailsSeed";
+import { PullToRefreshIndicator } from "../../components/ui/PullToRefreshIndicator";
+import { usePullToRefresh } from "../../hooks/usePullToRefresh";
+import { isNativeMobileApp } from "../../lib/platform/nativeAppLayout";
+import { liveReaderPrefetchOptions, prefetchReaderChapter } from "../../lib/reading/readerChapterCache.js";
 
 const chapterPageSize = 20;
 const GALAXY_AUTHOR_CHAPTER_FILTER_SLUGS = new Set(["netherils-brilliance"]);
@@ -64,19 +75,29 @@ function AudioLanguagePicker({ languages, value, onChange, className = "" }) {
   if (!languages.length) return null;
 
   return (
-    <div className={`details-audio-language ${className}`.trim()} aria-label={t("details.audioVersionAria")}>
-      <span className="details-audio-language__label">{t("details.audioVersion")}</span>
-      <ChipFilterBar variant="segmented" className="details-audio-language__chips" role="group" ariaLabel={t("details.audioVersion")}>
+    <div className={`details-audio-language ${className}`.trim()}>
+      <div className="details-audio-language__head">
+        <Languages size={16} strokeWidth={2} aria-hidden="true" />
+        <span className="details-audio-language__label">{t("details.audioVersion")}</span>
+      </div>
+      <div
+        className="details-audio-toggle"
+        role="group"
+        aria-label={t("details.audioVersionAria")}
+        style={{ "--audio-toggle-count": languages.length }}
+      >
         {languages.map((language) => (
-          <ChipFilterButton
+          <button
             key={language}
-            active={value === language}
+            type="button"
+            className={`details-audio-toggle__option${value === language ? " is-active" : ""}`}
+            aria-pressed={value === language}
             onClick={() => onChange(language)}
           >
             {AUDIO_LANGUAGE_LABELS[language] || language}
-          </ChipFilterButton>
+          </button>
         ))}
-      </ChipFilterBar>
+      </div>
     </div>
   );
 }
@@ -87,16 +108,75 @@ function normalizeTaxonomy(value) {
 }
 
 function RelatedMoviesRow({ items, onOpen, mediaType, layout = "scroll" }) {
-  const { t } = useI18n();
+  const { t, dir } = useI18n();
+  const scrollerRef = useRef(null);
+  const [canScrollBack, setCanScrollBack] = useState(false);
+  const [canScrollForward, setCanScrollForward] = useState(false);
   if (!items.length) return null;
   const isSeries = mediaType === "series";
+  const isSeasonsCarousel = layout === "seasons-carousel";
+  const rtl = dir === "rtl";
+  const PreviousIcon = rtl ? ChevronRight : ChevronLeft;
+  const NextIcon = rtl ? ChevronLeft : ChevronRight;
+
+  const updateScrollState = useCallback(() => {
+    const node = scrollerRef.current;
+    if (!node) return;
+    const maxScroll = node.scrollWidth - node.clientWidth;
+    setCanScrollBack(node.scrollLeft > 4);
+    setCanScrollForward(maxScroll > 4 && node.scrollLeft < maxScroll - 4);
+  }, []);
+
+  useEffect(() => {
+    updateScrollState();
+    const node = scrollerRef.current;
+    if (!node) return undefined;
+    node.addEventListener("scroll", updateScrollState, { passive: true });
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(updateScrollState) : null;
+    observer?.observe(node);
+    return () => {
+      node.removeEventListener("scroll", updateScrollState);
+      observer?.disconnect();
+    };
+  }, [items, updateScrollState]);
+
+  function scrollSeasons(direction) {
+    const node = scrollerRef.current;
+    if (!node) return;
+    const step = Math.max(200, Math.round(node.clientWidth * 0.82));
+    node.scrollBy({ left: direction * step, behavior: "smooth" });
+  }
 
   return (
     <section className={`details-related details-related--${layout}`} aria-labelledby="details-related-title">
-      <div className="details-section-heading">
-        <h2 id="details-related-title">{isSeries ? t("details.otherSeasons") : t("details.relatedMovies")}</h2>
+      <div className={`details-related__head${isSeasonsCarousel ? " details-related__head--carousel" : ""}`}>
+        <div className="details-section-heading">
+          <h2 id="details-related-title">{isSeries ? t("details.otherSeasons") : t("details.relatedMovies")}</h2>
+        </div>
+        {isSeasonsCarousel ? (
+          <div className="details-related__nav" aria-hidden={!canScrollBack && !canScrollForward}>
+            <button
+              type="button"
+              className="details-related__nav-btn"
+              onClick={() => scrollSeasons(-1)}
+              disabled={!canScrollBack}
+              aria-label={t("common.previous")}
+            >
+              <PreviousIcon size={18} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className="details-related__nav-btn"
+              onClick={() => scrollSeasons(1)}
+              disabled={!canScrollForward}
+              aria-label={t("common.next")}
+            >
+              <NextIcon size={18} aria-hidden="true" />
+            </button>
+          </div>
+        ) : null}
       </div>
-      <div className="details-related__scroller">
+      <div className="details-related__scroller" ref={scrollerRef}>
         {items.map((item) => (
           <button
             key={item.url || item.id}
@@ -132,13 +212,16 @@ export function LiveMangaDetails({
   onOpenRelated,
   readingProgress,
   chapterFollow,
+  chapterReadLog = {},
 }) {
   const { pushToast } = useToast();
   const { t, dir } = useI18n();
   const sourceId = resolveSourceId(seed);
   const profile = getSourceProfile(sourceId);
-  const [item, setItem] = useState(seed);
-  const [status, setStatus] = useState("loading");
+  const [item, setItem] = useState(() => seed);
+  const [status, setStatus] = useState(() => (
+    detailsHasImmediateChapters(seed, peekSourceDetails(sourceId, seed.url)) ? "ready" : "loading"
+  ));
   const [error, setError] = useState("");
   const [summaryExpanded, setSummaryExpanded] = useState(false);
   const [taxonomiesExpanded, setTaxonomiesExpanded] = useState(false);
@@ -147,22 +230,48 @@ export function LiveMangaDetails({
   const [chapterOrder, setChapterOrder] = useState("desc");
   const [chapterPage, setChapterPage] = useState(1);
   const [followSheetOpen, setFollowSheetOpen] = useState(false);
+  const [serverPicker, setServerPicker] = useState(null);
   const [audioLanguage, setAudioLanguage] = useState(PREFERRED_AUDIO_LANGUAGE);
+  const [progressRefresh, setProgressRefresh] = useState(0);
   const loadGeneration = useRef(0);
+  const serverPickerRequest = useRef(0);
+  const screenRef = useRef(null);
+
+  useEffect(() => {
+    const bump = () => setProgressRefresh((tick) => tick + 1);
+    window.addEventListener("focus", bump);
+    document.addEventListener("visibilitychange", bump);
+    return () => {
+      window.removeEventListener("focus", bump);
+      document.removeEventListener("visibilitychange", bump);
+    };
+  }, []);
 
   const loadDetails = useCallback(async () => {
     const generation = ++loadGeneration.current;
-    setStatus("loading");
+    const cached = peekSourceDetails(sourceId, seed.url);
+    if (cached) {
+      setItem({
+        ...seed,
+        ...cached,
+        cover: pickBestCover(cached.cover, seed.cover),
+        catalogStyle: cached.catalogStyle || seed.catalogStyle,
+        chapters: cached.chapters?.length ? normalizeChapterList(cached.chapters) : cached.chapters,
+      });
+      setStatus("ready");
+    } else {
+      setItem(seed);
+      setStatus("loading");
+    }
     setError("");
     try {
       const data = await fetchSourceDetails(sourceId, seed.url);
       if (generation !== loadGeneration.current) return;
-      const badCover = !data.cover || /\/images\.png$|Anime4up-Icon/i.test(data.cover);
-      const seedCover = seed.cover && !/\/images\.png$|Anime4up-Icon/i.test(seed.cover) ? seed.cover : "";
       setItem({
         ...seed,
         ...data,
-        cover: badCover ? (seedCover || data.cover) : data.cover,
+        cover: pickBestCover(data.cover, seed.cover),
+        catalogStyle: data.catalogStyle || seed.catalogStyle,
         chapters: data.chapters?.length ? normalizeChapterList(data.chapters) : data.chapters,
       });
       setStatus("ready");
@@ -174,6 +283,21 @@ export function LiveMangaDetails({
       pushToast({ type: "error", message });
     }
   }, [pushToast, seed, sourceId, t]);
+
+  const handlePullRefresh = useCallback(async () => {
+    await runAppPullRefresh();
+    await loadDetails();
+  }, [loadDetails]);
+
+  const {
+    pullDistance: detailsPullDistance,
+    refreshing: detailsRefreshing,
+    threshold: detailsPullThreshold,
+  } = usePullToRefresh({
+    scrollerRef: screenRef,
+    onRefresh: handlePullRefresh,
+    enabled: isNativeMobileApp(),
+  });
 
   useEffect(() => {
     setItem(seed);
@@ -190,6 +314,10 @@ export function LiveMangaDetails({
   }, [seed.url, sourceId, loadDetails]);
 
   const chapters = item.chapters || [];
+  const chapterReadEntries = useMemo(() => {
+    void progressRefresh;
+    return listTitleChapterReads(chapterReadLog, getTitleReadingKey(item), readingProgress);
+  }, [chapterReadLog, item, readingProgress, progressRefresh]);
   const categories = normalizeTaxonomy(item.categories || item.genres).filter((entry) => !isNoiseTag(entry));
   const tags = normalizeTaxonomy(item.tags).filter((entry) => !isNoiseTag(entry));
   const chapterAuthors = useMemo(() => {
@@ -213,8 +341,6 @@ export function LiveMangaDetails({
     });
     return chapterOrder === "desc" ? sorted : sorted.slice().reverse();
   }, [chapterAuthor, chapterOrder, chapterQuery, chapters, item.author]);
-  const totalChapterPages = Math.max(1, Math.ceil(filteredChapters.length / chapterPageSize));
-  const pagedChapters = filteredChapters.slice((chapterPage - 1) * chapterPageSize, chapterPage * chapterPageSize);
 
   useEffect(() => setChapterPage(1), [chapterAuthor, chapterOrder, chapterQuery]);
   useEffect(() => {
@@ -224,12 +350,32 @@ export function LiveMangaDetails({
     }
     setChapterAuthor((current) => (current && chapterAuthors.includes(current) ? current : chapterAuthors[0]));
   }, [chapterAuthors, seed.url]);
+
+  const mediaType = resolveBookmarkType(item);
+  const isMoviePage = isMovieMediaType(mediaType);
+  const presentation = getMediaPresentation(mediaType);
+  const isNovel = presentation.isNovel;
+  const isVideo = presentation.isVideo;
+  const resolvedChapterPageSize = resolveVideoDetailsChapterPageSize(sourceId, mediaType, chapterPageSize);
+  const totalChapterPages = Math.max(1, Math.ceil(filteredChapters.length / resolvedChapterPageSize));
+  const pagedChapters = filteredChapters.slice((chapterPage - 1) * resolvedChapterPageSize, chapterPage * resolvedChapterPageSize);
+
   useEffect(() => { if (chapterPage > totalChapterPages) setChapterPage(totalChapterPages); }, [chapterPage, totalChapterPages]);
 
   const continueChapter = useMemo(() => {
     const raw = findChapterByRecord(chapters, readingProgress);
     return raw ? applyAudioLanguageToChapter(raw, audioLanguage, sourceId) : null;
   }, [audioLanguage, chapters, readingProgress, sourceId]);
+  const firstChapter = useMemo(() => {
+    const unlocked = chapters.filter((chapter) => !chapter.locked);
+    const pool = unlocked.length ? unlocked : chapters;
+    if (!pool.length) return null;
+    return [...pool].sort((a, b) => {
+      const diff = chapterSortKey(a) - chapterSortKey(b);
+      if (diff !== 0) return diff;
+      return String(a.url || "").localeCompare(String(b.url || ""), undefined, { numeric: true });
+    })[0];
+  }, [chapters]);
   const latestChapter = useMemo(() => {
     const unlocked = chapters.filter((chapter) => !chapter.locked);
     if (!unlocked.length) return null;
@@ -249,11 +395,6 @@ export function LiveMangaDetails({
   const publicationStatusLabel = publicationStatusKey
     ? t(`details.status.${publicationStatusKey}`)
     : (item.publicationStatusLabel || "");
-  const mediaType = resolveBookmarkType(item);
-  const isMoviePage = isMovieMediaType(mediaType);
-  const presentation = getMediaPresentation(mediaType);
-  const isNovel = presentation.isNovel;
-  const isVideo = presentation.isVideo;
   const availableAudioLanguages = useMemo(
     () => (isVideo ? resolveAvailableAudioLanguages(item, chapters, sourceId) : []),
     [chapters, isVideo, item, sourceId],
@@ -267,7 +408,9 @@ export function LiveMangaDetails({
   const typeLabel = contentTypes[mediaType]?.singular || presentation.badgeLabel;
   const altTitle = String(item.altTitle || "").trim();
   const altIsMeta = isMetadataAltTitle(altTitle);
-  const chaptersCount = Math.max(chapters.length, Number(item.totalEpisodes) || 0);
+  const chaptersCount = status === "ready"
+    ? Math.max(chapters.length, Number(item.totalEpisodes) || 0)
+    : 0;
   const coverBackdropUrl = useResolvedCoverUrl(sourceId, item.cover);
   const countLabel = chaptersCount
     ? `${chaptersCount} ${chaptersCount === 1 ? presentation.unit : presentation.units}`
@@ -284,6 +427,7 @@ export function LiveMangaDetails({
     audioLanguage,
     audioLabel: item.audioLabel,
   });
+  const isStandaloneVideo = item.catalogStyle === "standalone";
   const heroLayout = getDetailsHeroLayout({
     isVideo,
     mediaType,
@@ -299,21 +443,131 @@ export function LiveMangaDetails({
   const showActionHubInDock = status === "ready" && !isMoviePage;
   const showMovieActionsInDock = status === "ready" && isMoviePage;
   const relatedItems = item.relatedItems || [];
+  const isSeriesPage = mediaType === "series";
+  const showRelatedMoviesInSidebar = isVideo && onOpenRelated && isMoviePage && relatedItems.length > 0;
+  const showRelatedSeasonsRow = isVideo && onOpenRelated && isSeriesPage && relatedItems.length > 0;
 
   function resolveChapter(chapter) {
     return applyAudioLanguageToChapter(chapter, audioLanguage, sourceId);
   }
 
+  function chapterFetchOptions(chapter) {
+    return {
+      contentApi: chapter?.contentApi,
+      language: chapter?.preferredAudioLanguage || audioLanguage || "",
+    };
+  }
+
+  useEffect(() => {
+    if (!isVideo) return undefined;
+    import("./LiveVideoPlayer");
+    return undefined;
+  }, [isVideo]);
+
+  useEffect(() => {
+    const target = continueChapter || firstChapter;
+    if (!target?.url) return undefined;
+    const resolved = resolveChapter(target);
+    const opts = chapterFetchOptions(resolved);
+    if (peekSourceChapter(sourceId, resolved.url, opts)) return undefined;
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      if (!cancelled) fetchSourceChapter(sourceId, resolved.url, opts).catch(() => {});
+    }, 280);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [audioLanguage, continueChapter?.url, firstChapter?.url, sourceId]);
+
+  function prefetchChapter(chapter) {
+    const resolved = resolveChapter(chapter);
+    if (isAzoraChapterBlocked(sourceId, resolved) || resolved.locked) return;
+    prefetchReaderChapter(sourceId, resolved, { ...item, preferredAudioLanguage: audioLanguage }, chapterFetchOptions(resolved));
+  }
+
   function openChapter(chapter) {
     const resolved = resolveChapter(chapter);
-    if (resolved.locked) window.open(resolved.url, "_blank", "noopener,noreferrer");
-    else openLiveReader({ ...item, preferredAudioLanguage: audioLanguage }, resolved);
+    if (isAzoraChapterBlocked(sourceId, resolved)) return;
+    if (resolved.locked && !isAzoraFlySource(sourceId) && sourceId !== "realmnovel") {
+      window.open(resolved.url, "_blank", "noopener,noreferrer");
+      return;
+    }
+    if (!isVideo) {
+      openLiveReader(
+        { ...item, preferredAudioLanguage: audioLanguage },
+        resolved,
+        liveReaderPrefetchOptions({ ...item, sourceId }, resolved),
+      );
+      return;
+    }
+
+    const requestId = serverPickerRequest.current + 1;
+    serverPickerRequest.current = requestId;
+    const opts = chapterFetchOptions(resolved);
+    const cached = peekSourceChapter(sourceId, resolved.url, opts);
+    const cachedSources = playbackSourcesFromChapterData(cached);
+    if (cachedSources.length) {
+      setServerPicker({
+        chapter: resolved,
+        loading: false,
+        sources: cachedSources,
+        data: cached,
+      });
+      return;
+    }
+
+    setServerPicker({ chapter: resolved, loading: true, sources: [], data: null });
+
+    fetchSourceChapter(sourceId, resolved.url, opts)
+      .then((result) => {
+        if (serverPickerRequest.current !== requestId) return;
+        const sources = playbackSourcesFromChapterData(result);
+        if (!sources.length) {
+          setServerPicker(null);
+          openLiveReader({ ...item, preferredAudioLanguage: audioLanguage }, resolved, {
+            prefetchData: { ...result, url: resolved.url },
+          });
+          return;
+        }
+        setServerPicker({
+          chapter: resolved,
+          loading: false,
+          sources,
+          data: result,
+        });
+      })
+      .catch((reason) => {
+        if (serverPickerRequest.current !== requestId) return;
+        setServerPicker(null);
+        const message = formatSourceError(reason, presentation.loadError);
+        pushToast({ type: "error", message });
+      });
+  }
+
+  function closeServerPicker() {
+    serverPickerRequest.current += 1;
+    setServerPicker(null);
+  }
+
+  function enterVideoWithServer(index) {
+    if (!serverPicker?.chapter) return;
+    const chapter = serverPicker.chapter;
+    const prefetchData = serverPicker.data
+      ? { ...serverPicker.data, url: chapter.url }
+      : null;
+    closeServerPicker();
+    openLiveReader({ ...item, preferredAudioLanguage: audioLanguage }, chapter, {
+      preferredSourceIndex: index,
+      prefetchData,
+    });
   }
 
   const detailsActionHub = (
     <DetailsActionHub
+      sourceId={sourceId}
       mediaType={mediaType}
-      latestChapter={latestChapter ? resolveChapter(latestChapter) : null}
+      firstChapter={firstChapter ? resolveChapter(firstChapter) : null}
       readingProgress={readingProgress}
       continueChapter={continueChapter}
       onOpenChapter={openChapter}
@@ -388,17 +642,25 @@ export function LiveMangaDetails({
     isMoviePage,
     mediaType,
     catalogStyle: item.catalogStyle,
+    sourceId,
   });
 
   const heroClassName = buildDetailsHeroClasses({
     presentation,
     heroLayout,
     isLoading: status === "loading",
+    standaloneVideo: isStandaloneVideo,
   });
 
   return (
     <>
+    <PullToRefreshIndicator
+      pullDistance={detailsPullDistance}
+      refreshing={detailsRefreshing}
+      threshold={detailsPullThreshold}
+    />
     <div
+      ref={screenRef}
       dir={dir}
       className={screenClassName}
     >
@@ -433,6 +695,7 @@ export function LiveMangaDetails({
           heroCover={heroCover}
           heroMeta={heroMeta}
           heroActions={heroActions}
+          standaloneVideo={isStandaloneVideo}
         />
       </div>
       <main className={`content details-content${isMoviePage ? " details-content--movie" : ""}`}>
@@ -444,7 +707,7 @@ export function LiveMangaDetails({
             chapterCount={showChapterListSection ? 0 : (showChapterList ? 8 : 0)}
           />
         ) : status === "error" ? <div className="live-error"><Wifi size={30} /><h2>{t("details.loadDetailsFailed")}</h2><p>{error}</p><button className="button button--primary" onClick={loadDetails}><RefreshCw size={17} /> {t("common.retry")}</button></div> : <>
-          {(showAbout || (isVideo && onOpenRelated)) && (
+          {(showAbout || showRelatedMoviesInSidebar) && (
             <div className="details-sidebar">
           {showAbout && (
             <section className={`about details-about${summaryExpanded ? " expanded" : ""}`}>
@@ -486,15 +749,23 @@ export function LiveMangaDetails({
               )}
             </section>
           )}
-          {isVideo && onOpenRelated && (
+          {showRelatedMoviesInSidebar && (
             <RelatedMoviesRow
               items={relatedItems}
               onOpen={onOpenRelated}
               mediaType={mediaType}
-              layout={isMoviePage ? "movie-strip" : "scroll"}
+              layout="movie-strip"
             />
           )}
             </div>
+          )}
+          {showRelatedSeasonsRow && (
+            <RelatedMoviesRow
+              items={relatedItems}
+              onOpen={onOpenRelated}
+              mediaType={mediaType}
+              layout="seasons-carousel"
+            />
           )}
         </>}
         {showChapterListSection && status !== "error" && (
@@ -515,16 +786,29 @@ export function LiveMangaDetails({
             chapterPage={chapterPage}
             onChapterPageChange={setChapterPage}
             totalChapterPages={totalChapterPages}
-            chapterPageSize={chapterPageSize}
+            chapterPageSize={resolvedChapterPageSize}
             latestChapter={latestChapter}
             isLatestChapterNew={isLatestChapterNew}
+            sourceId={sourceId}
             sourceName={profile.name}
             audioLanguage={audioLanguage}
             onOpenChapter={openChapter}
+            onPrefetchChapter={prefetchChapter}
+            chapterReadEntries={chapterReadEntries}
           />
         )}
       </main>
     </div>
+      {serverPicker ? (
+        <VideoServerSheet
+          open
+          loading={serverPicker.loading}
+          serverLabels={formatUniqueServerLabels(serverPicker.sources, t)}
+          activeIndex={-1}
+          onClose={closeServerPicker}
+          onSelect={enterVideoWithServer}
+        />
+      ) : null}
       {followSheetOpen && chapterFollow && (
         <FollowAlertSheet
           item={item}

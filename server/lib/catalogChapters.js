@@ -1,6 +1,21 @@
+import { sortChaptersDesc } from "./chapterOrdering.js";
+
 export const CATALOG_RECENT_LIMIT = 2;
 
-export function normalizeRecentChapters(chapters = [], limit = CATALOG_RECENT_LIMIT) {
+/** Évite un fetch série/manifest quand la carte catalogue a déjà des chapitres cliquables. */
+export function catalogNeedsRecentEnrich(item, minChapters = CATALOG_RECENT_LIMIT) {
+  const count = item?.recentChapters?.length || 0;
+  if (count >= minChapters) return false;
+  if (item?.latestChapterUrl) return false;
+  return count < minChapters;
+}
+
+function isRealmNovelCatalogSource(sourceId) {
+  return String(sourceId || "").toLowerCase() === "realmnovel";
+}
+
+export function normalizeRecentChapters(chapters = [], limit = CATALOG_RECENT_LIMIT, { sourceId } = {}) {
+  const realmOpen = isRealmNovelCatalogSource(sourceId);
   const seen = new Set();
   const results = [];
   for (const chapter of chapters) {
@@ -8,20 +23,32 @@ export function normalizeRecentChapters(chapters = [], limit = CATALOG_RECENT_LI
     const key = chapter.url;
     if (seen.has(key)) continue;
     seen.add(key);
-    results.push({
+    const entry = {
       number: String(chapter.number ?? chapter.name ?? ""),
       name: String(chapter.name ?? chapter.number ?? ""),
       url: chapter.url,
       date: chapter.date || "",
-      locked: Boolean(chapter.locked),
+      locked: realmOpen ? false : Boolean(chapter.locked),
       ...(chapter.contentApi ? { contentApi: chapter.contentApi } : {}),
-    });
+    };
+    if (!realmOpen) {
+      if (chapter.unlockAt) entry.unlockAt = chapter.unlockAt;
+      if (chapter.price != null && chapter.price !== "") entry.price = chapter.price;
+      if (chapter.permanentlyLocked) entry.permanentlyLocked = true;
+    }
+    results.push(entry);
     if (results.length >= limit) break;
   }
   return results;
 }
 
-export function recentChaptersFromCount(total, buildUrl, limit = CATALOG_RECENT_LIMIT) {
+/** Derniers chapitres d’une liste complète (souvent triée asc. côté serveur). */
+export function recentChaptersFromList(chapters = [], limit = CATALOG_RECENT_LIMIT, options = {}) {
+  if (!Array.isArray(chapters) || !chapters.length) return [];
+  return normalizeRecentChapters(sortChaptersDesc(chapters), limit, options);
+}
+
+export function recentChaptersFromCount(total, buildUrl, limit = CATALOG_RECENT_LIMIT, options = {}) {
   const max = Math.floor(Number(total));
   if (!max || max < 1 || typeof buildUrl !== "function") return [];
   const chapters = [];
@@ -30,11 +57,11 @@ export function recentChaptersFromCount(total, buildUrl, limit = CATALOG_RECENT_
     if (!url) continue;
     chapters.push({ number: String(number), name: String(number), url });
   }
-  return normalizeRecentChapters(chapters, limit);
+  return normalizeRecentChapters(chapters, limit, options);
 }
 
 export function applyRecentChapterFields(item, chapters = []) {
-  const recentChapters = normalizeRecentChapters(chapters);
+  const recentChapters = normalizeRecentChapters(chapters, CATALOG_RECENT_LIMIT, { sourceId: item?.sourceId });
   const latest = recentChapters[0];
   return {
     ...item,

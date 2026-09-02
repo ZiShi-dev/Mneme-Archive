@@ -1,5 +1,10 @@
 import { isNativeStorage, dbQuery, dbRun } from "./database";
-import { MAX_KV_VALUE_BYTES } from "./constants";
+import {
+  MAX_KV_VALUE_BYTES,
+  CHAPTER_PROGRESS_PREFIX,
+  STORAGE_META_MIGRATED,
+  STORAGE_META_CHAPTER_LOG_BACKFILL,
+} from "./constants";
 import {
   assertAllowedKey,
   isAllowedStorageKey,
@@ -8,6 +13,11 @@ import {
 
 const memoryCache = new Map();
 let ready = false;
+
+export function resetKvStore() {
+  memoryCache.clear();
+  ready = false;
+}
 
 function readWebRaw(key) {
   try {
@@ -50,11 +60,91 @@ async function removeNativeRaw(key) {
   await dbRun("DELETE FROM kv_store WHERE key = ?", [key]);
 }
 
-async function loadAllNativeIntoMemory() {
-  const result = await dbQuery("SELECT key, value FROM kv_store");
-  (result?.values || []).forEach((row) => {
+async function yieldToMain() {
+  await new Promise((resolve) => {
+    setTimeout(resolve, 0);
+  });
+}
+
+const NATIVE_KV_BATCH_SIZE = 40;
+const HYDRATE_DELAY_MS = 120;
+
+const BOOT_PRIORITY_KEYS = [
+  STORAGE_META_MIGRATED,
+  STORAGE_META_CHAPTER_LOG_BACKFILL,
+  "living-archive:locale",
+  "living-archive:appearance",
+  "living-archive:typeface",
+  "living-archive:onboarding-complete",
+  "living-archive:active-source",
+  "living-archive:v5:source-preferences",
+  "living-archive:ink-mode",
+  "living-archive:reader-preferences",
+  "living-archive:follow-preferences",
+];
+
+async function loadNativeCriticalKeys() {
+  if (!BOOT_PRIORITY_KEYS.length) return;
+  const placeholders = BOOT_PRIORITY_KEYS.map(() => "?").join(", ");
+  const result = await dbQuery(
+    `SELECT key, value FROM kv_store WHERE key IN (${placeholders})`,
+    BOOT_PRIORITY_KEYS,
+  );
+  cacheNativeRows(result?.values || []);
+}
+
+async function loadNativeRowsBatched(whereClause, params, onBatch) {
+  let offset = 0;
+  while (true) {
+    const result = await dbQuery(
+      `SELECT key, value FROM kv_store ${whereClause} ORDER BY key LIMIT ? OFFSET ?`,
+      [...params, NATIVE_KV_BATCH_SIZE, offset],
+    );
+    const rows = result?.values || [];
+    if (!rows.length) break;
+    onBatch(rows);
+    offset += rows.length;
+    await yieldToMain();
+  }
+}
+
+function cacheNativeRows(rows) {
+  rows.forEach((row) => {
     if (row?.key) memoryCache.set(row.key, row.value);
   });
+}
+
+async function loadNativeBootCache() {
+  await loadNativeCriticalKeys();
+}
+
+function scheduleNativeHydration() {
+  setTimeout(() => {
+    void hydrateNativeKvStore();
+  }, HYDRATE_DELAY_MS);
+}
+
+async function loadNativeChapterProgressCache() {
+  await loadNativeRowsBatched(
+    "WHERE key LIKE ?",
+    [`${CHAPTER_PROGRESS_PREFIX}%`],
+    cacheNativeRows,
+  );
+}
+
+async function hydrateNativeKvStore() {
+  try {
+    await loadNativeRowsBatched(
+      "WHERE key NOT LIKE ?",
+      [`${CHAPTER_PROGRESS_PREFIX}%`],
+      cacheNativeRows,
+    );
+    await loadNativeChapterProgressCache();
+    const { migrateChapterReadLogBackfill } = await import("./migrateChapterReadLog.js");
+    await migrateChapterReadLogBackfill();
+  } catch {
+    // L'hydratation complète peut attendre le prochain démarrage.
+  }
 }
 
 function loadAllWebIntoMemory() {
@@ -159,10 +249,12 @@ export async function initKvStore() {
   if (ready) return;
   memoryCache.clear();
   if (isNativeStorage()) {
-    await loadAllNativeIntoMemory();
-  } else {
-    loadAllWebIntoMemory();
+    await loadNativeBootCache();
+    ready = true;
+    scheduleNativeHydration();
+    return;
   }
+  loadAllWebIntoMemory();
   ready = true;
 }
 

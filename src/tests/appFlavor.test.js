@@ -16,15 +16,14 @@ test("archive flavor exposes all sources and media types", () => {
   assert.deepEqual(VISIBLE_MEDIA_TYPES, ["manga", "novel", "anime", "movie", "series"]);
   assert.equal(DEFAULT_SOURCE_ID, "mangalik");
   assert.equal(PREFERRED_AUDIO_LANGUAGE, "VF");
-  assert.equal(initialSources.length, 22);
+  assert.equal(initialSources.length, 14);
   assert.ok(initialSources.some((entry) => entry.id === "realmnovel"));
-  assert.ok(initialSources.some((entry) => entry.id === "hentaigasm"));
-  assert.ok(initialSources.some((entry) => entry.id === "mangadistrict"));
-  assert.ok(initialSources.some((entry) => entry.id === "manhwaread"));
   assert.ok(initialSources.some((entry) => entry.id === "mangalik"));
+  assert.ok(!initialSources.some((entry) => entry.id === "arabshentai"));
   assert.ok(initialSources.some((entry) => entry.id === "frenchstream"));
   assert.ok(initialSources.some((entry) => entry.id === "anime4up"));
   assert.ok(initialSources.some((entry) => entry.id === "animedar"));
+  assert.ok(!initialSources.some((entry) => entry.id === "animesama"));
 });
 
 test("itemOffersPreferredAudio uses preferred audio language and unknown labels", () => {

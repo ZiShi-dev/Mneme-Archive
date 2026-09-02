@@ -1,7 +1,8 @@
-import React, { Suspense, lazy, useCallback, useEffect, useRef } from "react";
+import React, { lazy, Suspense, useCallback, useEffect, useRef } from "react";
 import { BottomNav, DesktopMenu } from "./components/layout/BottomNav";
 import { AppRoutes } from "./components/layout/AppRoutes";
 import { ThemedScrollbar } from "./components/layout/ThemedScrollbar";
+import { PullToRefreshIndicator } from "./components/ui/PullToRefreshIndicator";
 import { useToast } from "./components/ui/ToastProvider";
 import { useAppNavigation } from "./hooks/useAppNavigation";
 import { useAppActionHandlers } from "./hooks/useAppActionHandlers";
@@ -9,6 +10,7 @@ import { useAppPreferences } from "./hooks/useAppPreferences";
 import { useChapterFollow } from "./hooks/useChapterFollow";
 import { useRealtimeFollowSync } from "./hooks/useRealtimeFollowSync";
 import { useBackgroundFollowTask } from "./hooks/useBackgroundFollowTask";
+import { usePullToRefresh } from "./hooks/usePullToRefresh";
 import { DEFAULT_APP_SETTINGS } from "./lib/settings/defaults";
 import { normalizeSettings } from "./lib/settings/normalizeSettings";
 import { setRuntimeSettings } from "./lib/settings/runtimeSettings";
@@ -16,25 +18,14 @@ import { usePersistedState } from "./hooks/usePersistedState";
 import { Reader } from "./screens/DemoMangaScreens";
 import { getItemType } from "./features/sources/contentTypes";
 import { isVideoMediaType } from "./features/sources/mediaPresentation";
-import { MoonSeaWater } from "./components/atmosphere/MoonSeaWater";
-import { MoonSnowfall } from "./components/atmosphere/MoonSnowfall";
-import { YozakuraNight } from "./components/atmosphere/YozakuraNight";
-import { SakuraDay } from "./components/atmosphere/SakuraDay";
-import { InkAtmosphere } from "./components/atmosphere/InkAtmosphere";
-import { PaperAtmosphere } from "./components/atmosphere/PaperAtmosphere";
-import { GalaxyAtmosphere } from "./components/atmosphere/GalaxyAtmosphere";
+import { FrameAtmosphere, ShellStageAtmosphere } from "./components/atmosphere/AppAtmosphere";
 import { SakuraIcon } from "./components/atmosphere/SakuraIcon";
 import { MnemeMark } from "./components/brand/MnemeMark";
 import { AppBrandName } from "./components/brand/AppBrandName";
 import {
   isSakuraTheme,
-  isSnowTheme,
-  isGalaxyTheme,
   hasAtmosphereEffect,
-  THEME_YOZAKURA,
   THEME_SAKURA,
-  THEME_INK,
-  THEME_PAPER,
 } from "./lib/theme/appearance";
 import { isChromebookApp } from "./config/appFlavor";
 import { isDesktopAppLayout } from "./lib/platform/desktopAppLayout";
@@ -43,6 +34,8 @@ import { useI18n } from "./i18n/I18nProvider";
 import { PwaInstallBanner } from "./components/pwa/PwaInstallBanner";
 import { useHideBottomNavOnScroll } from "./hooks/useHideBottomNavOnScroll";
 import { usePwaInstall } from "./hooks/usePwaInstall";
+import { useAppPullRefreshHandler } from "./hooks/useAppPullRefreshHandler";
+import { runAppPullRefresh } from "./lib/platform/appRefresh";
 import { getAppBrandText } from "./lib/brand/appBrand";
 import { LiveReader } from "./features/sources/LiveReader";
 import { NovelReaderSkeleton, ReaderPagesSkeleton, VideoStageSkeleton } from "./components/ui/ContentSkeleton";
@@ -61,13 +54,13 @@ function ReaderSuspenseFallback({ manga }) {
   }
   if (mediaType === "novel") {
     return (
-      <div className="reader live-reader live-reader--novel reader--theme-night reader--loading">
+      <div className="reader live-reader live-reader--novel live-reader--immersive has-episode-header has-episode-toolbar reader--theme-night reader--loading">
         <NovelReaderSkeleton label={t("reader.loadingChapter")} />
       </div>
     );
   }
   return (
-    <div className="reader live-reader reader--loading">
+    <div className="reader live-reader live-reader--immersive has-episode-header has-episode-toolbar reader--loading">
       <ReaderPagesSkeleton label={t("reader.loadingChapter")} />
     </div>
   );
@@ -100,6 +93,7 @@ export function App() {
   const { t, dir } = useI18n();
   const brand = getAppBrandText(t);
   const desktopScrollerRef = useRef(null);
+  const nativeScrollerRef = useRef(null);
   const pwaInstall = usePwaInstall();
   const desktopLayout = isDesktopAppLayout();
   const nativeLayout = isNativeMobileApp();
@@ -163,12 +157,37 @@ export function App() {
 
   const showMainBottomNav = !isOverlayOpen
     && screen !== "source-management"
-    && screen !== "reading-history"
-    && screen !== "notification-center"
     && !liveReader
     && !reader;
 
   useHideBottomNavOnScroll(showMainBottomNav);
+
+  const nativePullRefreshEnabled = nativeLayout
+    && !liveReader
+    && !reader
+    && screen !== "source-management"
+    && !selectedLive
+    && !selected;
+
+  const handleGlobalPullRefresh = useCallback(
+    () => chapterFollow.syncFollowed({ silent: false }),
+    [chapterFollow],
+  );
+
+  useAppPullRefreshHandler(handleGlobalPullRefresh, true);
+
+  const handleNativePullRefresh = useCallback(async () => {
+    await runAppPullRefresh({ reloadIfUnhandled: true });
+  }, []);
+  const {
+    pullDistance: nativePullDistance,
+    refreshing: nativeRefreshing,
+    threshold: nativePullThreshold,
+  } = usePullToRefresh({
+    scrollerRef: nativeScrollerRef,
+    onRefresh: handleNativePullRefresh,
+    enabled: nativePullRefreshEnabled,
+  });
 
   const liveReaderContent = liveReader ? (() => {
     const isVideo = isVideoMediaType(getItemType(liveReader.manga));
@@ -232,23 +251,9 @@ export function App() {
     chapterReadLog,
   };
 
-  const isYozakura = appearance === THEME_YOZAKURA;
-  const isDaySakura = appearance === THEME_SAKURA;
-  const isInk = appearance === THEME_INK;
-  const isPaper = appearance === THEME_PAPER;
-  const isGalaxy = isGalaxyTheme(appearance);
-
-  const frameAtmosphere = (
-    <>
-      {isYozakura ? <YozakuraNight variant="frame" /> : null}
-      {isDaySakura ? <SakuraDay variant="frame" /> : null}
-      {isInk ? <InkAtmosphere variant="frame" /> : null}
-      {isPaper ? <PaperAtmosphere variant="frame" /> : null}
-      {isGalaxy ? <GalaxyAtmosphere variant="frame" /> : null}
-      {isSnowTheme(appearance) ? <MoonSeaWater variant="frame" /> : null}
-      {isSnowTheme(appearance) ? <MoonSnowfall variant="frame" /> : null}
-    </>
-  );
+  // Navigateur : stage plein écran. Mobile natif + Chromebook : frame dans le conteneur.
+  const useShellStageAtmosphere = !desktopLayout && !nativeLayout;
+  const useFrameAtmosphere = desktopLayout || nativeLayout;
 
   const screenContent = (
     <FeatureSuspense>
@@ -258,13 +263,7 @@ export function App() {
 
   return (
     <div className={`app-shell ${darkMode ? "app-shell--dark" : ""} ${hasAtmosphereEffect(appearance) ? `app-shell--${appearance}` : ""} ${desktopLayout ? "app-shell--desktop" : ""}`} dir={dir}>
-      {isYozakura ? <YozakuraNight variant="stage" /> : null}
-      {isDaySakura ? <SakuraDay variant="stage" /> : null}
-      {isInk ? <InkAtmosphere variant="stage" /> : null}
-      {isPaper ? <PaperAtmosphere variant="stage" /> : null}
-      {isGalaxy ? <GalaxyAtmosphere variant="stage" /> : null}
-      {isSnowTheme(appearance) ? <MoonSeaWater variant="stage" /> : null}
-      {isSnowTheme(appearance) ? <MoonSnowfall variant="stage" /> : null}
+      <ShellStageAtmosphere appearance={appearance} enabled={useShellStageAtmosphere} />
       {desktopLayout ? (
         <div className="desktop-shell">
           <DesktopMenu current={screen} navigate={navigate} appearance={appearance} />
@@ -280,7 +279,7 @@ export function App() {
             ) : null}
             <div className="phone-frame-wrap">
               <div className="phone-frame" ref={desktopScrollerRef}>
-                {frameAtmosphere}
+                <FrameAtmosphere appearance={appearance} enabled={useFrameAtmosphere} />
                 {screenContent}
               </div>
               <ThemedScrollbar scrollerRef={desktopScrollerRef} />
@@ -292,8 +291,13 @@ export function App() {
         </div>
       ) : nativeLayout ? (
         <>
-          <div className="phone-frame app-shell__view">
-            {frameAtmosphere}
+          <PullToRefreshIndicator
+            pullDistance={nativePullDistance}
+            refreshing={nativeRefreshing}
+            threshold={nativePullThreshold}
+          />
+          <div className="phone-frame app-shell__view" ref={nativeScrollerRef}>
+            <FrameAtmosphere appearance={appearance} enabled={useFrameAtmosphere} />
             {screenContent}
           </div>
           {showMainBottomNav ? (
@@ -320,7 +324,7 @@ export function App() {
             <p>{t("app.tagline")}</p>
           </div>
           <div className="phone-frame">
-            {frameAtmosphere}
+            <FrameAtmosphere appearance={appearance} enabled={useFrameAtmosphere} />
             {screenContent}
             {showMainBottomNav ? (
               <BottomNav current={screen} navigate={navigate} />

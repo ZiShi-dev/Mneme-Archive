@@ -2,7 +2,7 @@ import { catalogViewKey, sanitizeCatalogKind } from "./catalogView";
 import { kvGetSync, kvSet } from "../../lib/storage/initStorage";
 
 export const CATALOG_STATE_KEY = "living-archive:catalog-state";
-export const EMPTY_CATALOG_STATE = { pages: {}, filters: {}, kinds: {}, queries: {}, hasMore: {}, audioFilters: {} };
+export const EMPTY_CATALOG_STATE = { pages: {}, filters: {}, kinds: {}, queries: {}, hasMore: {}, audioFilters: {}, sourceFilters: {} };
 export const CATALOG_SNAPSHOT_MAX_AGE_MS = 2 * 60 * 1000;
 
 const catalogSnapshotCache = new Map();
@@ -15,6 +15,24 @@ export function readCatalogState() {
 
 export function writeCatalogStateSync(nextState) {
   void kvSet(CATALOG_STATE_KEY, nextState);
+}
+
+/** Persiste la requête catalogue sans attendre un refresh réseau. */
+export function persistCatalogQuery(sourceId, catalogQuery = "") {
+  const normalizedQuery = catalogQuery || "";
+  const stored = readCatalogState();
+  const prevLive = catalogLiveViewCache.get(sourceId) || {};
+  catalogLiveViewCache.set(sourceId, {
+    ...prevLive,
+    query: normalizedQuery,
+    ...(normalizedQuery ? {} : { page: 1 }),
+  });
+  const nextState = {
+    ...stored,
+    queries: { ...(stored.queries || {}), [sourceId]: normalizedQuery },
+  };
+  writeCatalogStateSync(nextState);
+  return nextState;
 }
 
 function catalogSnapshotKey(sourceId, filter, page, query = "", kind = null) {
@@ -39,6 +57,41 @@ export function invalidateCatalogSnapshots(sourceId) {
   for (const key of catalogSnapshotCache.keys()) {
     if (key.startsWith(prefix)) catalogSnapshotCache.delete(key);
   }
+}
+
+export function readPersistedSourceFilters(sourceId) {
+  const stored = readCatalogState();
+  return stored.sourceFilters?.[sourceId] ?? null;
+}
+
+export function persistSourceFilters(sourceId, nextFilters) {
+  if (!sourceId || !nextFilters) return readCatalogState();
+  catalogFiltersCache.set(sourceId, nextFilters);
+  const stored = readCatalogState();
+  const nextState = {
+    ...stored,
+    sourceFilters: { ...(stored.sourceFilters || {}), [sourceId]: nextFilters },
+  };
+  writeCatalogStateSync(nextState);
+  return nextState;
+}
+
+export function hydrateSourceFilters(sourceId, peekFilters) {
+  const memory = catalogFiltersCache.get(sourceId);
+  if (memory?.categories?.length || memory?.tags?.length || memory?.kinds?.length) return memory;
+
+  const persisted = readPersistedSourceFilters(sourceId);
+  if (persisted?.categories?.length || persisted?.tags?.length || persisted?.kinds?.length) {
+    catalogFiltersCache.set(sourceId, persisted);
+    return persisted;
+  }
+
+  if (peekFilters?.categories?.length || peekFilters?.tags?.length || peekFilters?.kinds?.length) {
+    catalogFiltersCache.set(sourceId, peekFilters);
+    return peekFilters;
+  }
+
+  return memory || persisted || peekFilters || null;
 }
 
 export function resolveCatalogBoot(sourceId, enabled, mode) {

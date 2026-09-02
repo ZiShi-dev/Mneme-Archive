@@ -1,8 +1,6 @@
 /** Sources avec challenge Cloudflare : HTML via FlareSolverr d’abord. */
 export const FLARE_DIRECT_SOURCE_IDS = Object.freeze([
   "mangalik",
-  "arabshentai",
-  "hentairead",
   "novelsparadise",
 ]);
 
@@ -12,8 +10,6 @@ export const FLARE_DIRECT_SOURCE_ID_SET = new Set(FLARE_DIRECT_SOURCE_IDS);
 export const WEBVIEW_SOURCE_IDS = Object.freeze([
   "azorafly",
   "galaxynovels",
-  "manhwaread",
-  "mangaforfree",
   "novelphoenix",
 ]);
 

@@ -46,13 +46,18 @@ export function useAppNavigation() {
     scrollAppToTop({ behavior: "smooth" });
   };
 
-  const openLiveReader = (item, chapter) => {
+  const openLiveReader = (item, chapter, options = {}) => {
     const manga = {
       ...item,
       mediaType: resolveBookmarkType(item),
       mediaTypeLabel: item.mediaTypeLabel || undefined,
     };
-    setLiveReader({ manga, chapter });
+    setLiveReader({
+      manga,
+      chapter,
+      preferredSourceIndex: options.preferredSourceIndex,
+      prefetchData: options.prefetchData,
+    });
     scrollAppToTop();
   };
 

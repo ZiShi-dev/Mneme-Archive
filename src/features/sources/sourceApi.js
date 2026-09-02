@@ -1,5 +1,6 @@
 import { resolveCachedImage } from "../../lib/storage/imageCache";
 import { isAllowedImageUrl } from "../../lib/storage/security";
+import { normalizeRemoteImageUrl } from "./coverDisplay";
 import { assertLiveSourcesAvailable } from "../../lib/platform/liveSources";
 import { toUserFacingError } from "../../lib/errors/userFacingError";
 import { t } from "../../i18n/runtime.js";
@@ -9,6 +10,7 @@ import { getRuntimeSettings } from "../../lib/settings/runtimeSettings.js";
 import { getDefaultSourceBaseUrl, getEffectiveSourceBaseUrl } from "../../lib/settings/sourceBaseUrls.js";
 import { FLARE_DIRECT_SOURCE_ID_SET, WEBVIEW_SOURCE_ID_SET } from "../../lib/platform/webViewSources.js";
 import { getKindQueryParam, sourcesWithCapability } from "../../config/sourceCapabilities.js";
+import { buildSourceEmbedUrl } from "../../lib/video/sourceEmbedProxy.js";
 
 const FILTER_PATH_SOURCES = new Set(sourcesWithCapability("filterPath"));
 const GENRE_FILTER_SOURCES = sourcesWithCapability("genreFilter");
@@ -101,29 +103,55 @@ async function readJson(response, fallbackMessage) {
   return data;
 }
 
-async function requestJson(path, fallbackMessage, { ttlMs = 0 } = {}) {
+function throwIfAborted(signal) {
+  if (signal?.aborted) {
+    throw new DOMException("Aborted", "AbortError");
+  }
+}
+
+async function requestJson(path, fallbackMessage, { ttlMs = 0, signal } = {}) {
   assertLiveSourcesAvailable();
+  throwIfAborted(signal);
   if (ttlMs > 0) {
     const cached = readJsonCache(path, ttlMs);
     if (cached) return cached;
+    const inflight = jsonInFlight.get(path);
+    if (inflight) return inflight;
   }
 
-  const data = isNative()
-    ? await withTimeout((async () => {
-      if (pathUsesCloudflareNative(path)) await ensureCloudflareNative();
-      const { handleSourceRequest } = await import("../../../server/clientSourceRequest.js");
-      const result = await handleSourceRequest(path);
-      if (!result || result.kind !== "json") throw new Error(fallbackMessage);
-      if (result.status !== 200) throw new Error(result.body.error || fallbackMessage);
-      return result.body;
-    })(), fallbackMessage)
-    : await fetch(path).then((response) => readJson(response, fallbackMessage));
+  const pending = (async () => {
+    throwIfAborted(signal);
+    const data = isNative()
+      ? await withTimeout((async () => {
+        throwIfAborted(signal);
+        if (pathUsesCloudflareNative(path)) await ensureCloudflareNative();
+        const { handleSourceRequest } = await import("../../../server/clientSourceRequest.js");
+        const result = await handleSourceRequest(path);
+        if (!result || result.kind !== "json") throw new Error(fallbackMessage);
+        if (result.status !== 200) throw new Error(result.body.error || fallbackMessage);
+        return result.body;
+      })(), fallbackMessage)
+      : await fetch(path, { signal }).then((response) => readJson(response, fallbackMessage));
 
-  if (ttlMs > 0) writeJsonCache(path, data);
-  return data;
+    if (ttlMs > 0) writeJsonCache(path, data);
+    return data;
+  })();
+
+  if (ttlMs > 0) jsonInFlight.set(path, pending);
+  try {
+    return await pending;
+  } finally {
+    if (ttlMs > 0) jsonInFlight.delete(path);
+  }
 }
 
 const jsonResponseCache = new Map();
+const jsonInFlight = new Map();
+
+const SEARCH_CACHE_TTL_MS = 120_000;
+const CATALOG_CACHE_TTL_MS = 90_000;
+const DETAILS_CACHE_TTL_MS = 180_000;
+const CHAPTER_CACHE_TTL_MS = 300_000;
 
 function readJsonCache(path, ttlMs) {
   const entry = jsonResponseCache.get(path);
@@ -139,8 +167,44 @@ function writeJsonCache(path, data) {
   jsonResponseCache.set(path, { at: Date.now(), data });
 }
 
-export function clearSourceApiCache() {
-  jsonResponseCache.clear();
+export function peekSourceRequest(path, ttlMs) {
+  if (!ttlMs) return null;
+  return readJsonCache(path, ttlMs);
+}
+
+export function clearSourceApiCache(sourceId = "") {
+  if (!sourceId) {
+    jsonResponseCache.clear();
+    return;
+  }
+  const marker = `/api/sources/${sourceId}/`;
+  for (const key of jsonResponseCache.keys()) {
+    if (key.includes(marker)) jsonResponseCache.delete(key);
+  }
+}
+
+function buildCatalogPath(sourceId, { page = 1, genre = "", tag = "", tagPath = "", filterPath = "", queryParam = "", queryValue = "" } = {}) {
+  const query = new URLSearchParams({ page: String(page) });
+  appendCatalogQueryFilters(query, sourceId, { genre, tag, tagPath, filterPath, queryParam, queryValue });
+  appendSourceQueryParams(query, sourceId);
+  return `${sourcePath(sourceId, "catalog")}?${query}`;
+}
+
+export function buildSearchPath(sourceId, query, {
+  page = 1,
+  genre = "",
+  tag = "",
+  tagPath = "",
+  filterPath = "",
+  queryParam = "",
+  queryValue = "",
+} = {}) {
+  const normalized = String(query ?? "").trim().slice(0, MAX_SEARCH_QUERY_LENGTH);
+  const params = new URLSearchParams({ q: normalized });
+  if (page > 1) params.set("page", String(page));
+  appendCatalogQueryFilters(params, sourceId, { genre, tag, tagPath, filterPath, queryParam, queryValue });
+  appendSourceQueryParams(params, sourceId);
+  return `${sourcePath(sourceId, "search")}?${params}`;
 }
 
 const imageUrlCache = new Map();
@@ -165,37 +229,71 @@ async function fetchImagePayload(sourceId, url) {
   };
 }
 
+export function peekResolvedImageUrl(sourceId, url) {
+  const normalized = normalizeRemoteImageUrl(url);
+  if (!normalized) return null;
+  if (normalized.startsWith("data:image/")) return normalized;
+  if (!sourceId) return normalized;
+  if (!isNative()) {
+    try {
+      if (!isAllowedImageUrl(normalized)) return null;
+      assertLiveSourcesAvailable();
+      return sourceImageUrl(sourceId, normalized);
+    } catch {
+      return isAllowedImageUrl(normalized) ? normalized : null;
+    }
+  }
+  return imageUrlCache.get(`${sourceId}:${normalized}`)
+    || imageUrlCache.get(`${sourceId}:${url}`)
+    || null;
+}
+
 export async function resolveSourceImageUrl(sourceId, url) {
-  if (String(url || "").startsWith("data:image/")) return url;
-  if (!isAllowedImageUrl(url)) {
+  const normalized = normalizeRemoteImageUrl(url);
+  if (normalized.startsWith("data:image/")) return normalized;
+  if (!isAllowedImageUrl(normalized)) {
     throw new Error(t("errors.imageUrlNotAllowed"));
   }
 
   if (!isNative()) {
     assertLiveSourcesAvailable();
-    return sourceImageUrl(sourceId, url);
+    return sourceImageUrl(sourceId, normalized);
   }
 
-  const cacheKey = `${sourceId}:${url}`;
+  const cacheKey = `${sourceId}:${normalized}`;
   if (imageUrlCache.has(cacheKey)) return imageUrlCache.get(cacheKey);
 
-  const displayUrl = await resolveCachedImage(sourceId, url, () => fetchImagePayload(sourceId, url));
+  const displayUrl = await resolveCachedImage(sourceId, normalized, () => fetchImagePayload(sourceId, normalized));
   imageUrlCache.set(cacheKey, displayUrl);
   return displayUrl;
 }
 
-export function fetchCatalog(sourceId, { page = 1, genre = "", tag = "", tagPath = "", filterPath = "", queryParam = "", queryValue = "" } = {}) {
-  const query = new URLSearchParams({ page: String(page) });
-  appendCatalogQueryFilters(query, sourceId, { genre, tag, tagPath, filterPath, queryParam, queryValue });
-  appendSourceQueryParams(query, sourceId);
-  return requestJson(`${sourcePath(sourceId, "catalog")}?${query}`, t("errors.loadCatalog"), { ttlMs: 90_000 });
+export function fetchCatalog(sourceId, { page = 1, genre = "", tag = "", tagPath = "", filterPath = "", queryParam = "", queryValue = "", signal } = {}) {
+  const path = buildCatalogPath(sourceId, { page, genre, tag, tagPath, filterPath, queryParam, queryValue });
+  return requestJson(path, t("errors.loadCatalog"), { ttlMs: CATALOG_CACHE_TTL_MS, signal });
 }
 
-export function fetchSourceFilters(sourceId) {
+const FILTERS_CACHE_TTL_MS = 300_000;
+
+function buildFiltersPath(sourceId) {
   const query = new URLSearchParams();
   appendSourceQueryParams(query, sourceId);
   const suffix = query.toString() ? `?${query}` : "";
-  return requestJson(`${sourcePath(sourceId, "filters")}${suffix}`, t("errors.loadFilters"), { ttlMs: 300_000 });
+  return `${sourcePath(sourceId, "filters")}${suffix}`;
+}
+
+export function peekSourceFilters(sourceId) {
+  const data = peekSourceRequest(buildFiltersPath(sourceId), FILTERS_CACHE_TTL_MS);
+  if (!data) return null;
+  return {
+    categories: data.categories || data.genres || [],
+    tags: data.tags || [],
+    kinds: data.kinds || [],
+  };
+}
+
+export function fetchSourceFilters(sourceId) {
+  return requestJson(buildFiltersPath(sourceId), t("errors.loadFilters"), { ttlMs: FILTERS_CACHE_TTL_MS });
 }
 
 export function searchSource(sourceId, query, {
@@ -206,20 +304,56 @@ export function searchSource(sourceId, query, {
   filterPath = "",
   queryParam = "",
   queryValue = "",
+  signal,
 } = {}) {
-  const normalized = String(query ?? "").trim().slice(0, MAX_SEARCH_QUERY_LENGTH);
-  const params = new URLSearchParams({ q: normalized });
-  if (page > 1) params.set("page", String(page));
-  appendCatalogQueryFilters(params, sourceId, { genre, tag, tagPath, filterPath, queryParam, queryValue });
-  appendSourceQueryParams(params, sourceId);
-  return requestJson(`${sourcePath(sourceId, "search")}?${params}`, t("errors.searchFailed"), { ttlMs: 120_000 });
+  const path = buildSearchPath(sourceId, query, { page, genre, tag, tagPath, filterPath, queryParam, queryValue });
+  return requestSourceSearch(path, { signal });
+}
+
+export function requestSourceSearch(path, { signal } = {}) {
+  return requestJson(path, t("errors.searchFailed"), { ttlMs: SEARCH_CACHE_TTL_MS, signal });
+}
+
+export function peekSourceSearch(path) {
+  return peekSourceRequest(path, SEARCH_CACHE_TTL_MS);
+}
+
+export function buildDetailsPath(sourceId, url) {
+  const query = new URLSearchParams({ url });
+  appendSourceQueryParams(query, sourceId);
+  return `${sourcePath(sourceId, "manga")}?${query}`;
+}
+
+export function buildFollowLatestPath(sourceId, url) {
+  const query = new URLSearchParams({ url });
+  appendSourceQueryParams(query, sourceId);
+  return `${sourcePath(sourceId, "follow-latest")}?${query}`;
+}
+
+export function peekSourceDetails(sourceId, url) {
+  return peekSourceRequest(buildDetailsPath(sourceId, url), DETAILS_CACHE_TTL_MS);
 }
 
 export function fetchSourceDetails(sourceId, url) {
+  return requestJson(buildDetailsPath(sourceId, url), t("errors.loadDetails"), { ttlMs: DETAILS_CACHE_TTL_MS });
+}
+
+export function fetchFollowLatest(sourceId, url) {
+  return requestJson(buildFollowLatestPath(sourceId, url), t("errors.loadDetails"));
+}
+
+function buildChapterPath(sourceId, url, opts = {}) {
   const query = new URLSearchParams({ url });
+  if (opts.contentApi) query.set("api", opts.contentApi);
+  if (opts.language) query.set("language", opts.language);
+  if (opts.seriesUrl && sourceId === "novelsparadise") query.set("series", opts.seriesUrl);
   appendSourceQueryParams(query, sourceId);
-  const path = `${sourcePath(sourceId, "manga")}?${query}`;
-  return requestJson(path, t("errors.loadDetails"), { ttlMs: 180_000 });
+  return `${sourcePath(sourceId, "chapter")}?${query}`;
+}
+
+export function peekSourceChapter(sourceId, url, options = "") {
+  const opts = typeof options === "string" ? { contentApi: options } : (options || {});
+  return peekSourceRequest(buildChapterPath(sourceId, url, opts), CHAPTER_CACHE_TTL_MS);
 }
 
 export async function fetchSourceChapter(sourceId, url, options = "") {
@@ -227,18 +361,19 @@ export async function fetchSourceChapter(sourceId, url, options = "") {
   if (isNative() && CLOUDFLARE_NATIVE_SOURCE_IDS.has(sourceId)) {
     await ensureCloudflareNative();
   }
-  const query = new URLSearchParams({ url });
-  if (opts.contentApi) query.set("api", opts.contentApi);
-  if (opts.language) query.set("language", opts.language);
-  if (opts.seriesUrl && sourceId === "novelsparadise") query.set("series", opts.seriesUrl);
-  appendSourceQueryParams(query, sourceId);
-  return requestJson(`${sourcePath(sourceId, "chapter")}?${query}`, t("errors.loadChapter"));
+  return requestJson(buildChapterPath(sourceId, url, opts), t("errors.loadChapter"), { ttlMs: CHAPTER_CACHE_TTL_MS });
 }
 
 export function sourceImageUrl(sourceId, url) {
   const query = new URLSearchParams({ url });
   appendSourceQueryParams(query, sourceId);
   return `${sourcePath(sourceId, "image")}?${query}`;
+}
+
+export function sourceEmbedUrl(sourceId, embedUrl, referer = "") {
+  return buildSourceEmbedUrl(sourceId, embedUrl, referer, (query) => {
+    appendSourceQueryParams(query, sourceId);
+  });
 }
 
 export function sourceStreamUrl(sourceId, streamUrl, referer = "") {

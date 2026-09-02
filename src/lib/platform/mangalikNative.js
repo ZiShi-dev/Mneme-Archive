@@ -10,7 +10,7 @@ export { WEBVIEW_SOURCE_IDS, usesWebViewSource, usesFlareDirectSource, shouldDef
 export { clearNativeHtmlCache, invalidateNativeHtmlCache, normalizeNativeHtmlUrl } from "./nativeHtmlCache.js";
 
 /** Hôtes avec challenge CF réel → Flare d’abord. Les autres (WebView) passent par le natif. */
-const FLARE_FIRST_HOST_RE = /(?:^|\.)(?:mangalik\.net|arabshentai\.com|hentairead\.com|novelsparadise\.site)$/i;
+const FLARE_FIRST_HOST_RE = /(?:^|\.)(?:mangalik\.net|novelsparadise\.site)$/i;
 
 function prefersFlareFirst(url = "") {
   try {
@@ -29,16 +29,37 @@ function decodeBase64(base64) {
   return bytes;
 }
 
-let htmlFetchChain = Promise.resolve();
-let imageFetchChain = Promise.resolve();
+const MAX_HTML_FETCH_CONCURRENCY = 4;
 const MAX_IMAGE_FETCH_CONCURRENCY = 5;
+let activeHtmlFetches = 0;
 let activeImageFetches = 0;
+const pendingHtmlResolvers = [];
 const pendingImageResolvers = [];
 
+function pumpHtmlQueue() {
+  while (activeHtmlFetches < MAX_HTML_FETCH_CONCURRENCY && pendingHtmlResolvers.length) {
+    const next = pendingHtmlResolvers.shift();
+    if (next) next();
+  }
+}
+
 function queueHtmlFetch(run) {
-  const next = htmlFetchChain.then(run);
-  htmlFetchChain = next.catch(() => {});
-  return next;
+  return new Promise((resolve, reject) => {
+    const start = () => {
+      activeHtmlFetches += 1;
+      run()
+        .then(resolve, reject)
+        .finally(() => {
+          activeHtmlFetches -= 1;
+          pumpHtmlQueue();
+        });
+    };
+    if (activeHtmlFetches < MAX_HTML_FETCH_CONCURRENCY) {
+      start();
+      return;
+    }
+    pendingHtmlResolvers.push(start);
+  });
 }
 
 function pumpImageQueue() {
@@ -118,16 +139,16 @@ async function createCloudflareNativeFetchers() {
       const flareFirst = prefersFlareFirst(url);
 
       if (flareFirst) {
-        // Challenge CF connu : Flare d’abord, WebView en secours.
-        try {
-          return await fetchViaFlare(url);
-        } catch (flareFirstError) {
-          lastError = flareFirstError;
-        }
+        // Sur mobile : HTTP direct d’abord (~1–3 s), Flare en secours si Cloudflare bloque.
         try {
           return await fetchViaWebView(url);
-        } catch (error) {
-          throw lastError || error;
+        } catch (webViewError) {
+          lastError = webViewError;
+        }
+        try {
+          return await fetchViaFlare(url);
+        } catch (flareError) {
+          throw lastError || flareError;
         }
       }
 
@@ -145,13 +166,22 @@ async function createCloudflareNativeFetchers() {
       }
     }),
     fetchImage: async (url) => queueImageFetch(async () => {
-      const result = await MangalikHtmlFetcher.fetchImage({ url });
-      if (!result?.base64) throw new Error(t("errors.loadImage"));
-      return {
-        kind: "image",
-        contentType: result.contentType || "image/jpeg",
-        buffer: decodeBase64(result.base64),
+      const toPayload = (result) => {
+        if (!result?.base64) throw new Error(t("errors.loadImage"));
+        return {
+          kind: "image",
+          contentType: result.contentType || "image/jpeg",
+          buffer: decodeBase64(result.base64),
+        };
       };
+      try {
+        const result = await MangalikHtmlFetcher.fetchImage({ url });
+        return toPayload(result);
+      } catch (nativeError) {
+        if (!prefersFlareFirst(url)) throw nativeError;
+        const { fetchImageViaFlareSolverr } = await import("../../../server/lib/flareSolverr.js");
+        return fetchImageViaFlareSolverr(url);
+      }
     }),
   };
 }
@@ -171,7 +201,7 @@ export async function initMangalikNative() {
 
 export async function cancelCloudflarePending() {
   if (!Capacitor.isNativePlatform()) return;
-  htmlFetchChain = Promise.resolve();
+  pendingHtmlResolvers.length = 0;
   clearNativeHtmlCache();
   try {
     const { MangalikHtmlFetcher } = await import("../../plugins/mangalikHtmlFetcher.js");

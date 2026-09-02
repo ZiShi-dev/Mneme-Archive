@@ -105,10 +105,15 @@ export function themeHintKey(themeId) {
   return "settings.themeEncreHint";
 }
 
+export function themeSheetModifier(themeId) {
+  return normalizeThemeId(themeId);
+}
+
 export function applyAppearance(themeId) {
   if (typeof document === "undefined") return;
   const id = normalizeThemeId(themeId);
   document.documentElement.style.colorScheme = isDarkTheme(id) ? "dark" : "light";
+  document.documentElement.dataset.theme = id;
   document.body.dataset.theme = id;
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content", THEME_META_COLOR[id]);
 }

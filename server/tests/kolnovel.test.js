@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   extractKolnovelChapterNumber,
+  fetchKolnovelCatalogPage,
+  KOLNOVEL_CATALOG_PAGE_SIZE,
   normalizeChapterUrl,
   normalizeSeriesUrl,
   parseKolnovelCatalog,
@@ -9,6 +11,7 @@ import {
   seriesSlugFromSlug,
 } from "../sources/kolnovel.js";
 import { parseParadiseChapter, catalogHasMorePages, extractParadiseParagraphs } from "../sources/novelsparadise.js";
+import { dedupeChapters } from "../lib/chapterOrdering.js";
 
 test("seriesSlugFromSlug strips trailing chapter number", () => {
   assert.equal(seriesSlugFromSlug("48hours-a-day-1"), "48hours-a-day");
@@ -44,30 +47,137 @@ test("parseKolnovelCatalog reads series cards", () => {
   assert.equal(items.length, 1);
   assert.equal(items[0].id, "novel-a");
   assert.equal(items[0].latestChapter, "12");
+  assert.equal(items[0].recentChapters.length, 0);
+  assert.equal(items[0].latestChapterUrl, null);
   assert.deepEqual(items[0].genres, ["أكشن"]);
 });
 
+test("KOLNOVEL_CATALOG_PAGE_SIZE matches Realm Novel / Cenele density", () => {
+  assert.equal(KOLNOVEL_CATALOG_PAGE_SIZE, 24);
+});
+
+test("parseKolnovelCatalog ignores kolnovel post ids in chapter urls", () => {
+  const html = `
+    <article class="maindet">
+      <h2 itemprop="headline"><a href="https://kolnovel.com/series/novel-a/" title="Novel A">Novel A</a></h2>
+      <img class="ts-post-image" src="https://kolnovel.com/cover.jpg" />
+      <div class="mdinfodet">
+        <span class="nchapter"><a href="https://kolnovel.com/shaag24novel-az435ggye-290554/"><i></i> الفصل 100</a></span>
+      </div>
+    </article>
+  `;
+  const items = parseKolnovelCatalog(html);
+  assert.equal(items[0].latestChapter, "100");
+  assert.equal(items[0].recentChapters.length, 0);
+});
+
+test("fetchKolnovelCatalogPage enriches catalog cards with real chapter urls", async () => {
+  const catalogHtml = `
+    <article class="maindet">
+      <h2 itemprop="headline"><a href="https://kolnovel.com/series/novel-a/" title="Novel A">Novel A</a></h2>
+      <img class="ts-post-image" src="https://kolnovel.com/cover.jpg" />
+      <div class="mdinfodet">
+        <span class="nchapter"><a href="https://kolnovel.com/shaag24novel-az435ggye-12/"><i></i> الفصل. 12</a></span>
+      </div>
+    </article>
+  `;
+  const seriesHtml = `
+    <div class="eplister"><ul>
+      <li><a href="https://kolnovel.com/shaag24novel-az435ggye-99/"><span class="epl-num">الفصل 99</span><span class="epl-title">الأخير</span></a></li>
+      <li><a href="https://kolnovel.com/shaag24novel-az435ggye-98/"><span class="epl-num">الفصل 98</span></a></li>
+    </ul></div>
+  `;
+  const fetchHtml = async (url) => {
+    if (url.includes("/series/novel-a")) return seriesHtml;
+    return catalogHtml;
+  };
+
+  const ctx = { baseUrl: "https://kolnovel.com" };
+  const payload = await fetchKolnovelCatalogPage(ctx, fetchHtml, { page: 1 });
+  const item = payload.items.find((entry) => entry.id === "novel-a");
+  assert.ok(item, "novel-a should be present");
+  assert.equal(item.latestChapter, "99");
+  assert.match(item.recentChapters[0]?.url, /shaag24novel-az435ggye-99/);
+});
+
+test("dedupeChapters prefers kolnovel chapter labels over z435ggye post ids", () => {
+  const [chapter] = dedupeChapters([{
+    url: "https://kolnovel.com/shaag24novel-az435ggye-290554/",
+    number: "100",
+    name: "الفصل 100",
+  }]);
+  assert.equal(chapter.number, "100");
+});
+
+test("fetchKolnovelCatalogPage returns 24 catalog items like Cenele", async () => {
+  const requested = [];
+  const upstreamCatalogHtml = (count, page, { hasNext = true } = {}) => {
+    const cards = Array.from({ length: count }, (_, index) => {
+      const id = `series-${page}-${String.fromCharCode(97 + index)}`;
+      return `
+        <article class="maindet">
+          <h2 itemprop="headline"><a href="https://kolnovel.com/series/${id}/" title="Novel ${id}">Novel ${id}</a></h2>
+          <img class="ts-post-image" src="https://kolnovel.com/cover.jpg" />
+          <div class="mdinfodet">
+            <span class="nchapter"><a href="https://kolnovel.com/shaag24${id}-az435ggye-12/"><i></i> الفصل. 12</a></span>
+          </div>
+        </article>
+      `;
+    }).join("");
+    const nextLink = hasNext
+      ? `<div class="hpage"><a href="?page=${page + 1}&status=&order=latest" class="r">Next</a></div>`
+      : "";
+    return `${cards}${nextLink}`;
+  };
+
+  const fetchHtml = async (url) => {
+    requested.push(url);
+    if (url.includes("page=1")) return upstreamCatalogHtml(20, 1);
+    if (url.includes("page=2")) return upstreamCatalogHtml(20, 2, { hasNext: true });
+    return upstreamCatalogHtml(20, 3, { hasNext: false });
+  };
+
+  const ctx = { baseUrl: "https://kolnovel.com" };
+  const payload = await fetchKolnovelCatalogPage(ctx, fetchHtml, { page: 1 });
+  assert.equal(payload.items.length, KOLNOVEL_CATALOG_PAGE_SIZE);
+  assert.equal(payload.hasMore, true);
+  assert.ok(requested.some((url) => url.includes("page=2")), "should spill onto upstream page 2");
+});
+
 test("kolnovel catalog accepts latin genre filters", async () => {
-  const { configureFlareSolverr } = await import("../lib/flareSolverrConfig.js");
   const { responseCache } = await import("../lib/httpUtils.js");
   const originalFetch = globalThis.fetch;
   responseCache.clear();
-  configureFlareSolverr(() => ({ baseUrl: "http://127.0.0.1:8191" }));
   const catalogHtml = `
     <article class="maindet">
       <h2 itemprop="headline"><a href="https://kolnovel.com/series/novel-a/" title="Novel A">Novel A</a></h2>
       <span class="mdgenre"><a href="https://kolnovel.com/genre/action/"># أكشن</a></span>
       <div class="contexcerpt"><p>رواية أ مترجمة Novel A</p></div>
       <img class="ts-post-image" src="https://kolnovel.com/cover.jpg" />
+      <div class="mdinfodet">
+        <span class="nchapter"><a href="https://kolnovel.com/shaag24novel-a-az435ggye-12/"><i></i> الفصل 12</a></span>
+      </div>
     </article>
   `;
-  globalThis.fetch = async (_url, options) => {
-    const body = JSON.parse(options.body);
-    assert.match(body.url, /genre(?:%5B%5D|\[\]).*action/);
+  globalThis.fetch = async (url) => {
+    const target = String(url);
+    if (target.includes("/series/")) {
+      assert.match(target, /genre(?:%5B%5D|\[\])=action/);
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: () => "text/html" },
+        async text() {
+          return catalogHtml;
+        },
+      };
+    }
     return {
       ok: true,
-      async json() {
-        return { status: "ok", solution: { response: catalogHtml } };
+      status: 200,
+      headers: { get: () => "text/html" },
+      async text() {
+        return "<html></html>";
       },
     };
   };
@@ -79,7 +189,6 @@ test("kolnovel catalog accepts latin genre filters", async () => {
     assert.ok(result.body.items.length > 0);
   } finally {
     globalThis.fetch = originalFetch;
-    configureFlareSolverr(() => null);
     responseCache.clear();
   }
 });

@@ -1,8 +1,15 @@
 import { useEffect, useState } from "react";
-import { resolveSourceImageUrl } from "./sourceApi";
+import { peekResolvedImageUrl, resolveSourceImageUrl } from "./sourceApi";
+
+function initialCoverUrl(sourceId, src) {
+  if (!src) return null;
+  const peeked = peekResolvedImageUrl(sourceId, src);
+  if (peeked) return peeked;
+  return sourceId ? null : src;
+}
 
 export function useResolvedCoverUrl(sourceId, src) {
-  const [url, setUrl] = useState(() => (sourceId && src ? null : src || null));
+  const [url, setUrl] = useState(() => initialCoverUrl(sourceId, src));
 
   useEffect(() => {
     if (!src) {
@@ -13,14 +20,18 @@ export function useResolvedCoverUrl(sourceId, src) {
       setUrl(src);
       return undefined;
     }
+
+    const peeked = peekResolvedImageUrl(sourceId, src);
+    if (peeked) setUrl(peeked);
+    else setUrl(null);
+
     let active = true;
-    setUrl(null);
     resolveSourceImageUrl(sourceId, src)
       .then((resolved) => {
         if (active) setUrl(resolved);
       })
       .catch(() => {
-        if (active) setUrl(src);
+        if (active) setUrl((current) => current || peeked || src);
       });
     return () => { active = false; };
   }, [sourceId, src]);

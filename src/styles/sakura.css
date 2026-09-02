@@ -646,7 +646,7 @@
 }
 
 [data-theme="yozakura"] .app-toast {
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  background: var(--surface-raised);
   border-color: color-mix(in srgb, var(--sakura) 30%, var(--line));
 }
 

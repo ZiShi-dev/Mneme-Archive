@@ -129,6 +129,27 @@
   visibility: hidden;
 }
 
+.live-details-hero--reading.live-details-hero--loading .live-details-hero__meta > * {
+  visibility: visible;
+}
+
+.live-details-hero--reading.live-details-hero--loading .live-details-hero__meta {
+  min-height: 0;
+}
+
+.live-details-hero--reading.live-details-hero--loading .live-details-hero__meta .details-hero-head-skeleton--facts {
+  position: static;
+  inset: auto;
+  margin-top: 4px;
+}
+
+.live-details-hero__actions--loading .details-dock-skeleton__button {
+  display: block;
+  width: 100%;
+  min-height: 54px;
+  border-radius: 16px;
+}
+
 .live-details-hero--loading .live-details-hero__head .live-details-hero__meta {
   visibility: hidden;
 }

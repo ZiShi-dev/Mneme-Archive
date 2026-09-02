@@ -22,6 +22,12 @@ import {
   pickRelatedFrenchStreamMovies,
   pickRelatedFrenchStreamSeasons,
   relatedSearchQuery,
+  FRENCH_STREAM_CATALOG_PAGE_SIZE,
+  fetchFrenchStreamCatalogPage,
+  enrichFrenchStreamCatalog,
+  frenchStreamSeriesNeedsEnrich,
+  clearFrenchStreamPerformanceCaches,
+  rememberFrenchStreamEpisodeData,
 } from "../sources/frenchstream.js";
 
 const FILM_CARD = `
@@ -333,4 +339,112 @@ test("pickRelatedFrenchStreamSeasons skips the current season", () => {
   assert.deepEqual(related.map((item) => item.id), ["15111412", "15121663"]);
   assert.equal(related[0].mediaType, "series");
   assert.match(related[0].url, /15111412/);
+});
+
+test("FRENCH_STREAM_CATALOG_PAGE_SIZE matches Anime4up density", () => {
+  assert.equal(FRENCH_STREAM_CATALOG_PAGE_SIZE, 20);
+});
+
+function filmCard(newsId, title) {
+  return FILM_CARD
+    .replace(/15125403/g, String(newsId))
+    .replace(/Good Luck, Have Fun, Don't Die/g, title);
+}
+
+test("fetchFrenchStreamCatalogPage slices catalog to 20 items per page", async () => {
+  const page1Cards = Array.from({ length: 22 }, (_, index) => filmCard(15000000 + index, `Film ${index}`));
+  const page2Cards = Array.from({ length: 5 }, (_, index) => filmCard(15010000 + index, `Film B ${index}`));
+  const fetchHtml = async (url) => {
+    if (url.includes("cstart=2")) {
+      return `<div class="navigation">${page2Cards.join("")}<a href="?cstart=3">Suite</a></div>`;
+    }
+    return `<div class="navigation">${page1Cards.join("")}<a href="?cstart=2">Suite</a></div>`;
+  };
+  const ctx = { baseUrl: "https://french-stream.one" };
+  const page1 = await fetchFrenchStreamCatalogPage(ctx, fetchHtml, { page: 1, filterPath: "/films/" });
+  assert.equal(page1.items.length, 20);
+  assert.equal(page1.filterPath, "/films/");
+  assert.equal(page1.hasMore, true);
+
+  const page2 = await fetchFrenchStreamCatalogPage(ctx, fetchHtml, { page: 2, filterPath: "/films/" });
+  assert.equal(page2.items.length, 7);
+  assert.equal(page2.items[0].title, "Film 20");
+});
+
+test("fetchFrenchStreamCatalogPage enriches series cards with episode API data", async () => {
+  const seriesWithoutProgress = SERIES_CARD.replace(/<span class="mli-eps">[\s\S]*?<\/span>/, "");
+  const fetchHtml = async () => seriesWithoutProgress;
+  const episodeData = {
+    vf: {
+      7: { vidzy: "https://vidzy.example/7" },
+      6: { vidzy: "https://vidzy.example/6" },
+    },
+    info: {
+      7: { title: "Episode 7" },
+      6: { title: "Episode 6" },
+    },
+  };
+  const ctx = { baseUrl: "https://french-stream.one" };
+  const payload = await fetchFrenchStreamCatalogPage(ctx, fetchHtml, {
+    page: 1,
+    filterPath: "/s-tv/",
+    fetchEpisodes: async () => episodeData,
+  });
+  const item = payload.items.find((entry) => entry.id === "15133013");
+  assert.ok(item, "series card should be present");
+  assert.equal(item.latestChapter, "7");
+  assert.match(item.recentChapters[0]?.url, /ep=7/);
+  assert.match(item.recentChapters[1]?.url, /ep=6/);
+});
+
+test("frenchStreamSeriesNeedsEnrich skips series with card episode progress", () => {
+  const items = parseFrenchStreamCatalog(SERIES_CARD);
+  assert.equal(frenchStreamSeriesNeedsEnrich(items[0]), false);
+});
+
+test("enrichFrenchStreamCatalog skips API when card already has recent episodes", async () => {
+  let apiCalls = 0;
+  const items = parseFrenchStreamCatalog(SERIES_CARD);
+  await enrichFrenchStreamCatalog(items, {
+    fetchEpisodes: async () => {
+      apiCalls += 1;
+      return null;
+    },
+  });
+  assert.equal(apiCalls, 0);
+  assert.equal(items[0].latestChapter, "7");
+});
+
+test("fetchFrenchStreamCatalogPage merges films and series on mixed path", async () => {
+  const fetchHtml = async (url) => {
+    if (url.includes("/s-tv/")) return SERIES_CARD;
+    if (url.includes("/films/")) return FILM_CARD;
+    return "";
+  };
+  const ctx = { baseUrl: "https://french-stream.one" };
+  const payload = await fetchFrenchStreamCatalogPage(ctx, fetchHtml, { page: 1, filterPath: "/all/" });
+  assert.equal(payload.items.length, 2);
+  assert.ok(payload.items.some((entry) => entry.mediaType === "movie"));
+  assert.ok(payload.items.some((entry) => entry.mediaType === "series"));
+  assert.equal(payload.filterPath, "/all/");
+});
+
+test("enrichFrenchStreamCatalog reuses cached episode data", async () => {
+  clearFrenchStreamPerformanceCaches();
+  let calls = 0;
+  const seriesWithoutProgress = SERIES_CARD.replace(/<span class="mli-eps">[\s\S]*?<\/span>/, "");
+  const episodeData = {
+    vf: { 3: { vidzy: "https://vidzy.example/3" } },
+    info: { 3: { title: "Episode 3" } },
+  };
+  rememberFrenchStreamEpisodeData("15133013", episodeData, 0);
+  const items = parseFrenchStreamCatalog(seriesWithoutProgress);
+  await enrichFrenchStreamCatalog(items, {
+    fetchEpisodes: async () => {
+      calls += 1;
+      return episodeData;
+    },
+  });
+  assert.equal(calls, 0);
+  assert.equal(items[0].latestChapter, "3");
 });

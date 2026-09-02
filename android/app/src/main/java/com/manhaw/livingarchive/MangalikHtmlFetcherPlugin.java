@@ -80,13 +80,6 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
         new SourceHost("azorafly.com", "https://azorafly.com/", "https://azorafly.com/"),
         new SourceHost("galaxynovels.com", "https://galaxynovels.com/library/", "https://galaxynovels.com/"),
         new SourceHost("wtr-lab.com", "https://wtr-lab.com/en/novel-list", "https://wtr-lab.com/"),
-        new SourceHost("arabshentai.com", "https://arabshentai.com/manga/", "https://arabshentai.com/"),
-        new SourceHost("hentairead.com", "https://hentairead.com/hentai/", "https://hentairead.com/"),
-        new SourceHost("hentaigasm.com", "https://hentaigasm.com/", "https://hentaigasm.com/"),
-        new SourceHost("mangadistrict.com", "https://mangadistrict.com/manga/", "https://mangadistrict.com/"),
-        new SourceHost("manhwaread.com", "https://manhwaread.com/manhwa/", "https://manhwaread.com/"),
-        new SourceHost("manhwaread.org", "https://manhwaread.org/manhwa/", "https://manhwaread.org/"),
-        new SourceHost("mangaforfree.com", "https://mangaforfree.com/manga/", "https://mangaforfree.com/"),
         new SourceHost("novelsparadise.site", "https://novelsparadise.site/series/", "https://novelsparadise.site/"),
         new SourceHost("kolnovel.com", "https://kolnovel.com/series/", "https://kolnovel.com/"),
         new SourceHost("novelphoenix.com", "https://novelphoenix.com/", "https://novelphoenix.com/"),
@@ -94,9 +87,6 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
 
     private static final String AZORA_STORAGE_HOST = "storage.azorafly.com";
     private static final String MANGALIK_APEX = "mangalik.net";
-    private static final String MANGADISTRICT_CDN = "cdn.mangadistrict.com";
-    private static final String MANCOVER_HOST = "mancover.xyz";
-    private static final String MANREAD_HOST = "manread.xyz";
 
     private enum Stage {
         WARMUP,
@@ -169,13 +159,14 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
             return;
         }
 
-        if (activeCall != null) {
+        // HTTP direct : requêtes parallèles (préchargement chapitres / catalogue).
+        if (activeCall != null && fetchMode == FetchMode.WTR_READER) {
             call.setKeepAlive(true);
             pendingHtmlRequests.addLast(new PendingHtmlRequest(call, url));
             return;
         }
 
-        beginHtmlFetch(call, url);
+        fetchHtmlDirectAsync(call, url);
     }
 
     @PluginMethod
@@ -267,47 +258,31 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
             .start();
     }
 
-    private void beginHtmlFetch(PluginCall call, String url) {
-        activeCall = call;
-        pollCount = 0;
-        blockedPollCount = 0;
-        fetchMode = FetchMode.HTML;
-        pendingTargetUrl = url;
-        handler.postDelayed(timeoutRunnable, OVERALL_TIMEOUT_MS);
-        fetchHtmlDirectOnly();
-    }
-
-    private void fetchHtmlDirectOnly() {
-        final String targetUrl = pendingTargetUrl;
-        if (targetUrl == null || targetUrl.isEmpty() || activeCall == null) {
-            return;
-        }
-
+    private void fetchHtmlDirectAsync(PluginCall call, String url) {
         new Thread(
                 () -> {
-                    String html = fetchHtmlDirect(targetUrl);
+                    String html = fetchHtmlDirect(url);
                     boolean valid = looksLikeSourceHtml(html);
                     boolean blocked = !valid && isCloudflareChallengeHtml(html);
                     getActivity()
                         .runOnUiThread(
                             () -> {
-                                if (activeCall == null || fetchMode != FetchMode.HTML || !targetUrl.equals(pendingTargetUrl)) {
+                                if (valid || (!blocked && html != null && !html.isEmpty())) {
+                                    resolveHtmlCall(call, html);
                                     return;
                                 }
-                                if (valid) {
-                                    resolveActiveCall(html);
-                                    return;
-                                }
-                                if (!blocked && html != null && !html.isEmpty()) {
-                                    resolveActiveCall(html);
-                                    return;
-                                }
-                                failActiveCall("حماية الموقع تمنع الاتصال (Cloudflare)");
+                                call.reject("حماية الموقع تمنع الاتصال (Cloudflare)");
                             }
                         );
                 }
             )
             .start();
+    }
+
+    private void resolveHtmlCall(PluginCall call, String html) {
+        JSObject result = new JSObject();
+        result.put("html", html);
+        call.resolve(result);
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -540,7 +515,7 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
         if (next == null) {
             return;
         }
-        beginHtmlFetch(next.call, next.url);
+        fetchHtmlDirectAsync(next.call, next.url);
     }
 
     private void cleanupActiveRequest() {
@@ -667,16 +642,6 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
             if (AZORA_STORAGE_HOST.equals(host)) {
                 return "https://azorafly.com/";
             }
-            if (MANGADISTRICT_CDN.equals(host)) {
-                return "https://mangadistrict.com/";
-            }
-            if (MANCOVER_HOST.equals(host) || MANREAD_HOST.equals(host)
-                    || host.endsWith("." + MANCOVER_HOST) || host.endsWith("." + MANREAD_HOST)) {
-                return "https://manhwaread.com/";
-            }
-            if (host.equals("hgasm1.com") || host.equals("hgasm2.com") || host.equals("hgasm3.com")) {
-                return "https://hentaigasm.com/";
-            }
             return sourceHostFor(url).referer;
         } catch (Exception ignored) {
             return SOURCE_HOSTS[0].referer;
@@ -712,23 +677,6 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
             if (AZORA_STORAGE_HOST.equals(host)) {
                 return true;
             }
-            if (MANGADISTRICT_CDN.equals(host)) {
-                return path.startsWith("/thumbnail/")
-                    || path.startsWith("/publication/")
-                    || path.matches("(?i).+\\.(webp|jpe?g|png|avif|gif)$");
-            }
-            if (MANCOVER_HOST.equals(host) || host.endsWith("." + MANCOVER_HOST)) {
-                return path.startsWith("/cover/")
-                    || path.matches("(?i).+\\.(webp|jpe?g|png|avif|gif)$");
-            }
-            if (MANREAD_HOST.equals(host) || host.endsWith("." + MANREAD_HOST)) {
-                return path.matches("(?i).+\\.(webp|jpe?g|png|avif|gif)$")
-                    || path.matches("^/\\d+/.*");
-            }
-            if (host.equals("hgasm1.com") || host.equals("hgasm2.com") || host.equals("hgasm3.com")) {
-                return path.matches("(?i).+\\.(webp|jpe?g|png|avif|gif)$")
-                    || path.startsWith("/preview/");
-            }
             if (isMangalikHost(host)) {
                 return path.startsWith("/manga/") || path.startsWith("/wp-content/uploads/");
             }
@@ -747,29 +695,8 @@ public class MangalikHtmlFetcherPlugin extends Plugin {
             if ("novelphoenix.com".equals(host)) {
                 return path.startsWith("/server-") || path.startsWith("/logo");
             }
-            if (host.endsWith("hencover.xyz")) {
-                return path.matches("(?i).+\\.(webp|jpe?g|png|avif|gif)$");
-            }
             if ("novelsparadise.site".equals(host) || "kolnovel.com".equals(host)) {
                 return path.startsWith("/wp-content/uploads/") || path.startsWith("/series/");
-            }
-            if ("hentairead.com".equals(host)) {
-                return path.startsWith("/wp-content/uploads/") || path.startsWith("/hentai/");
-            }
-            if ("hentaigasm.com".equals(host)) {
-                return path.matches("(?i).+\\.(webp|jpe?g|png|avif|gif)$")
-                    || path.startsWith("/wp-content/");
-            }
-            if ("mangadistrict.com".equals(host)) {
-                return path.startsWith("/wp-content/uploads/")
-                    || path.startsWith("/thumbnail/")
-                    || path.startsWith("/publication/")
-                    || path.matches("(?i).+\\.(webp|jpe?g|png|avif|gif)$");
-            }
-            if ("manhwaread.com".equals(host) || "manhwaread.org".equals(host)) {
-                return path.startsWith("/wp-content/")
-                    || path.startsWith("/manhwa/")
-                    || path.matches("(?i).+\\.(webp|jpe?g|png|avif|gif)$");
             }
             return path.startsWith("/manga/") || path.startsWith("/wp-content/uploads/");
         } catch (Exception error) {

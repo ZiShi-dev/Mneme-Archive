@@ -3,7 +3,13 @@ import { createCachedHtmlFetcher, fetchProxiedImage } from "../lib/httpUtils.js"
 import { fetchProxiedHlsResource, isAdSegmentUrl } from "../lib/hlsProxy.js";
 import { normalizeSearchQuery } from "../lib/queryLimits.js";
 import { responseJson } from "../lib/responseJson.js";
-import { applyRecentChapterFields, normalizeRecentChapters } from "../lib/catalogChapters.js";
+import {
+  applyRecentChapterFields,
+  catalogNeedsRecentEnrich,
+  enrichCatalogItems,
+  normalizeRecentChapters,
+  recentChaptersFromList,
+} from "../lib/catalogChapters.js";
 import { enrichSourceDetails } from "../lib/detailEnrichment.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
 
@@ -13,6 +19,12 @@ const SOURCE_NAME = "Anime4up";
 const SOURCE_ID = "anime4up";
 const CATALOG_PATH = "/قائمة-الانمي/";
 const HOME_PATH = "/home8/";
+/** Même densité que AnimeDar. */
+export const ANIME4UP_CATALOG_PAGE_SIZE = 20;
+const ANIME4UP_FILTERS_CACHE_TTL_MS = 30 * 60_000;
+const ANIME4UP_SERIES_EPISODES_CACHE_TTL_MS = 5 * 60_000;
+const anime4upFiltersCache = new Map();
+const anime4upSeriesEpisodesCache = new Map();
 
 const ANIME4UP_HOST_PATTERN = /(?:^|\.)anime4up\.rest$/i;
 const ANIME4UP_SITE_MIRROR_PATTERN = /^\d[a-z0-9]\.[a-z0-9]+\.shop$/i;
@@ -148,12 +160,12 @@ function assertAnime4upImageUrl(rawUrl) {
 
 async function fetchAnime4upProxiedImage(rawUrl) {
   const target = assertAnime4upImageUrl(rawUrl);
-  const referers = [
-    "https://w1.anime4up.rest/",
-    "https://anime4up.rest/",
+  const origin = `${new URL(target).origin}/`;
+  const referers = [...new Set([
+    origin,
     `${DEFAULT_BASE_URL}/`,
-    `${new URL(target).origin}/`,
-  ];
+    "https://w1.anime4up.rest/",
+  ])];
   let lastError;
   for (const referer of referers) {
     try {
@@ -165,15 +177,15 @@ async function fetchAnime4upProxiedImage(rawUrl) {
   throw lastError ?? new Error("Image Anime4up indisponible");
 }
 
-function assertAnimeUrl(rawUrl) {
-  const url = assertAnime4upHost(rawUrl);
+function assertAnimeUrl(rawUrl, ctx = DEFAULT_CTX) {
+  const url = assertAnime4upHost(rawUrl, ctx);
   const parts = url.pathname.split("/").filter(Boolean);
   if (parts[0] !== "anime" || !parts[1] || parts[1] === "page") throw new Error("رابط أنمي Anime4up غير صالح");
-  return `${DEFAULT_BASE_URL}/anime/${parts[1]}/`;
+  return `${String(ctx.baseUrl || DEFAULT_BASE_URL).replace(/\/$/, "")}/anime/${parts[1]}/`;
 }
 
-function assertEpisodeUrl(rawUrl) {
-  const url = assertAnime4upHost(rawUrl);
+function assertEpisodeUrl(rawUrl, ctx = DEFAULT_CTX) {
+  const url = assertAnime4upHost(rawUrl, ctx);
   const parts = url.pathname.split("/").filter(Boolean);
   if (parts[0] !== "episode" || !parts[1]) throw new Error("رابط حلقة Anime4up غير صالح");
   return url.toString();
@@ -418,6 +430,7 @@ export function parseAnime4upCatalog(html) {
       summary,
       source: SOURCE_NAME,
       sourceId: SOURCE_ID,
+      audioLabel: "مترجم",
       ...media,
     }, recentChapters));
   });
@@ -588,13 +601,13 @@ export function extractVnxSubtitleTracks(html = "") {
   }
 }
 
-async function enrichSourcesWithStreams(sources = []) {
+async function enrichSourcesWithStreams(sources = [], fetchHtml) {
   return Promise.all(sources.map(async (source) => {
     if (!isAnime4upNativePlayerUrl(source.url)) {
       return source;
     }
     try {
-      const playerHtml = await fetchAnime4upHtml(source.url);
+      const playerHtml = await fetchHtml(source.url);
       const streamUrl = extractVnxStreamUrl(playerHtml);
       const subtitleTracks = extractVnxSubtitleTracks(playerHtml);
       return {
@@ -609,15 +622,15 @@ async function enrichSourcesWithStreams(sources = []) {
   }));
 }
 
-export async function enrichAnime4upEpisodePlayback(html, episodeUrl) {
+export async function enrichAnime4upEpisodePlayback(html, episodeUrl, fetchHtml) {
   const episode = parseAnime4upEpisode(html, episodeUrl);
-  const sources = await enrichSourcesWithStreams(episode.sources);
+  const sources = await enrichSourcesWithStreams(episode.sources, fetchHtml);
   const hlsSources = sources.filter((entry) => entry.streamUrl);
   const playable = hlsSources[0];
   if (playable) {
     return {
       ...episode,
-      sources: hlsSources,
+      sources,
       videoUrl: playable.streamUrl,
       streamUrl: playable.streamUrl,
       streamReferer: playable.streamReferer || episodeUrl,
@@ -708,12 +721,18 @@ function catalogHasMore(html, page, filterPath = CATALOG_PATH) {
   return new RegExp(`${normalized.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/page/${page + 1}`, "i").test(html);
 }
 
-async function fetchLatestEpisodesPage(page) {
-  if (page <= 1) return { html: await fetchAnime4upHtml(`${DEFAULT_BASE_URL}${HOME_PATH}`), hasMore: false };
-  const response = await fetch(`${DEFAULT_BASE_URL}${HOME_PATH}?wa_latest_episodes_ajax=1&wa_latest_page=${page}`, {
+async function fetchLatestEpisodesPage(page, baseUrl = DEFAULT_BASE_URL, fetchHtml) {
+  if (page <= 1) {
+    const html = await fetchHtml(`${baseUrl}${HOME_PATH}`);
+    return {
+      html: catalogHtmlForHome(html, page),
+      hasMore: catalogHasMore(html, page, HOME_PATH),
+    };
+  }
+  const response = await fetch(`${baseUrl}${HOME_PATH}?wa_latest_episodes_ajax=1&wa_latest_page=${page}`, {
     headers: {
       accept: "application/json, text/javascript, */*; q=0.01",
-      referer: `${DEFAULT_BASE_URL}${HOME_PATH}`,
+      referer: `${baseUrl}${HOME_PATH}`,
       "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
       "x-requested-with": "XMLHttpRequest",
     },
@@ -734,19 +753,179 @@ function catalogHtmlForHome(html, page) {
   return normalized;
 }
 
-async function fetchAnimeEpisodes(animeUrl, html) {
+async function mapWithConcurrency(items, concurrency, mapper) {
+  const results = new Array(items.length);
+  let cursor = 0;
+  const worker = async () => {
+    while (cursor < items.length) {
+      const index = cursor++;
+      results[index] = await mapper(items[index], index);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => worker()));
+  return results;
+}
+
+export async function fetchAnime4upEpisodes(animeUrl, html, fetchHtml, ctx = DEFAULT_CTX) {
+  const cacheKey = assertAnimeUrl(animeUrl, ctx);
+  const cached = anime4upSeriesEpisodesCache.get(cacheKey);
+  if (cached?.complete && Date.now() - cached.at < ANIME4UP_SERIES_EPISODES_CACHE_TTL_MS) {
+    return cached.chapters;
+  }
+
   let chapters = parseAnime4upEpisodes(html);
-  const maxPages = Number(html.match(/data-max-pages="(\d+)"/i)?.[1] ?? 0);
+  const maxPages = Math.min(Number(html.match(/data-max-pages="(\d+)"/i)?.[1] ?? 0), 40);
   if (maxPages > 1) {
-    const base = assertAnimeUrl(animeUrl).replace(/\/$/, "");
-    for (let page = 2; page <= maxPages; page += 1) {
-      const pageHtml = await fetchAnime4upHtml(`${base}/page/${page}/`);
-      for (const episode of parseAnime4upEpisodes(pageHtml)) {
-        if (!chapters.some((entry) => entry.url === episode.url)) chapters.push(episode);
+    const base = cacheKey.replace(/\/$/, "");
+    const pageUrls = Array.from({ length: maxPages - 1 }, (_, index) => `${base}/page/${index + 2}/`);
+    const pages = await mapWithConcurrency(pageUrls, 4, async (url) => {
+      try {
+        return await fetchHtml(url);
+      } catch {
+        return "";
+      }
+    });
+    const seen = new Set(chapters.map((entry) => entry.url));
+    for (const pageHtml of pages) {
+      for (const episode of parseAnime4upEpisodes(pageHtml || "")) {
+        if (seen.has(episode.url)) continue;
+        seen.add(episode.url);
+        chapters.push(episode);
       }
     }
   }
-  return chapters.sort((a, b) => episodeSortKey(b.number) - episodeSortKey(a.number));
+  chapters = chapters.sort((a, b) => episodeSortKey(b.number) - episodeSortKey(a.number));
+  anime4upSeriesEpisodesCache.set(cacheKey, { at: Date.now(), chapters, complete: true });
+  return chapters;
+}
+
+function appendUniqueCatalogItems(pool, seen, items = []) {
+  for (const item of items) {
+    if (!item?.id || seen.has(item.id)) continue;
+    seen.add(item.id);
+    pool.push(item);
+  }
+}
+
+function isHomeCatalogPath(filterPath = "") {
+  return filterPath.replace(/\/$/, "") === HOME_PATH.replace(/\/$/, "");
+}
+
+async function fetchHomeCatalogUpstream(upstreamPage, fetchHtml, ctx) {
+  if (upstreamPage <= 1) {
+    const homeHtml = canonicalAnime4upHtml(await fetchHtml(`${ctx.baseUrl}${HOME_PATH}`), ctx.baseUrl);
+    const gridHtml = catalogHtmlForHome(homeHtml, 1);
+    return {
+      html: gridHtml,
+      items: parseAnime4upCatalog(gridHtml),
+      hasMore: catalogHasMore(homeHtml, 1, HOME_PATH),
+    };
+  }
+  const result = await fetchLatestEpisodesPage(upstreamPage, ctx.baseUrl, fetchHtml);
+  const html = canonicalAnime4upHtml(result.html, ctx.baseUrl);
+  return {
+    html,
+    items: parseAnime4upCatalog(html),
+    hasMore: result.hasMore,
+  };
+}
+
+async function fetchListCatalogUpstream(upstreamPage, filterPath, fetchHtml, ctx) {
+  const html = canonicalAnime4upHtml(
+    await fetchHtml(buildCatalogUrl(upstreamPage, filterPath)),
+    ctx.baseUrl,
+  );
+  return {
+    html,
+    items: parseAnime4upCatalog(html),
+    hasMore: catalogHasMore(html, upstreamPage, filterPath),
+  };
+}
+
+async function enrichAnime4upCatalog(items, fetchHtml) {
+  return enrichCatalogItems(items, {
+    concurrency: 6,
+    needsEnrich: (item) => item.mediaType !== "movie" && catalogNeedsRecentEnrich(item, 1),
+    enrichItem: async (item) => {
+      const cached = anime4upSeriesEpisodesCache.get(item.url);
+      if (cached && Date.now() - cached.at < ANIME4UP_SERIES_EPISODES_CACHE_TTL_MS) {
+        return cached.chapters;
+      }
+      const html = await fetchHtml(item.url);
+      const chapters = recentChaptersFromList(parseAnime4upEpisodes(html));
+      anime4upSeriesEpisodesCache.set(item.url, { at: Date.now(), chapters, complete: false });
+      return chapters;
+    },
+  });
+}
+
+async function collectCatalogPool(fetchUpstream, { offset, pageSize, maxUpstreamPages }) {
+  const seen = new Set();
+  const pool = [];
+  const needed = offset + pageSize;
+  const first = await fetchUpstream(1).catch(() => ({ items: [], hasMore: false }));
+  appendUniqueCatalogItems(pool, seen, first.items);
+  if (!first.items?.length) {
+    return { pool, hasMoreUpstream: false };
+  }
+  let hasMoreUpstream = Boolean(first.hasMore);
+  let upstreamPage = 2;
+
+  while (pool.length < needed && hasMoreUpstream && upstreamPage <= maxUpstreamPages) {
+    const batchSize = Math.min(2, maxUpstreamPages - upstreamPage + 1);
+    const pages = await Promise.all(
+      Array.from({ length: batchSize }, (_, index) => (
+        fetchUpstream(upstreamPage + index).catch(() => ({ items: [], hasMore: false }))
+      )),
+    );
+    let grew = false;
+    for (const upstream of pages) {
+      const before = pool.length;
+      appendUniqueCatalogItems(pool, seen, upstream.items);
+      if (pool.length > before) grew = true;
+      hasMoreUpstream = Boolean(upstream.hasMore);
+    }
+    upstreamPage += batchSize;
+    if (!grew) break;
+  }
+
+  return { pool, hasMoreUpstream };
+}
+
+export async function fetchAnime4upCatalogPage(ctx, fetchHtml, { page = 1, filterPath = HOME_PATH } = {}) {
+  const normalized = filterPath?.trim() || HOME_PATH;
+  const isHome = isHomeCatalogPath(normalized);
+  const offset = (page - 1) * ANIME4UP_CATALOG_PAGE_SIZE;
+  const fetchUpstream = isHome
+    ? (upstream) => fetchHomeCatalogUpstream(upstream, fetchHtml, ctx)
+    : (upstream) => fetchListCatalogUpstream(upstream, normalized, fetchHtml, ctx);
+
+  const { pool, hasMoreUpstream } = await collectCatalogPool(fetchUpstream, {
+    offset,
+    pageSize: ANIME4UP_CATALOG_PAGE_SIZE,
+    maxUpstreamPages: page + 6,
+  });
+
+  const items = pool.slice(offset, offset + ANIME4UP_CATALOG_PAGE_SIZE);
+  await enrichAnime4upCatalog(items, fetchHtml);
+
+  return {
+    items,
+    page,
+    filterPath: normalized,
+    hasMore: items.length === ANIME4UP_CATALOG_PAGE_SIZE && (pool.length > offset + items.length || hasMoreUpstream),
+    fetchedAt: new Date().toISOString(),
+  };
+}
+
+async function fetchAnime4upFilters(fetchHtml, baseUrl) {
+  const cacheKey = baseUrl;
+  const cached = anime4upFiltersCache.get(cacheKey);
+  if (cached && Date.now() - cached.at < ANIME4UP_FILTERS_CACHE_TTL_MS) return cached.data;
+  const html = await fetchHtml(`${baseUrl}${CATALOG_PATH}`);
+  const data = mergeFilterGroups([parseAnime4upFilterLinks(html)]);
+  anime4upFiltersCache.set(cacheKey, { at: Date.now(), data });
+  return data;
 }
 
 export async function handleAnime4upRequest(requestUrl) {
@@ -775,8 +954,8 @@ export async function handleAnime4upRequest(requestUrl) {
   }
 
   if (requestUrl.pathname.endsWith("/filters")) {
-    const html = await fetchAnime4upHtml(`${ctx.baseUrl}${CATALOG_PATH}`);
-    return responseJson(200, { ...mergeFilterGroups([parseAnime4upFilterLinks(html)]), fetchedAt: new Date().toISOString() });
+    const filters = await fetchAnime4upFilters(fetchAnime4upHtml, ctx.baseUrl);
+    return responseJson(200, { ...filters, fetchedAt: new Date().toISOString() });
   }
 
   if (requestUrl.pathname.endsWith("/catalog")) {
@@ -785,30 +964,8 @@ export async function handleAnime4upRequest(requestUrl) {
     if (!/^\/[\p{L}\p{N}/+_.%-]+\/?$/u.test(filterPath) || filterPath.includes("..")) {
       throw new Error("مسار فلتر Anime4up غير صالح");
     }
-    const isHome = filterPath.replace(/\/$/, "") === HOME_PATH.replace(/\/$/, "");
-    let html;
-    let hasMore;
-    if (isHome) {
-      if (page <= 1) {
-        const homeHtml = await fetchAnime4upHtml(`${ctx.baseUrl}${HOME_PATH}`);
-        html = catalogHtmlForHome(homeHtml, page);
-        hasMore = catalogHasMore(homeHtml, page, filterPath);
-      } else {
-        const result = await fetchLatestEpisodesPage(page);
-        html = result.html;
-        hasMore = result.hasMore;
-      }
-    } else {
-      html = await fetchAnime4upHtml(buildCatalogUrl(page, filterPath));
-      hasMore = catalogHasMore(html, page, filterPath);
-    }
-    const items = parseAnime4upCatalog(html);
-    return responseJson(200, {
-      items,
-      page,
-      hasMore,
-      fetchedAt: new Date().toISOString(),
-    });
+    const payload = await fetchAnime4upCatalogPage(ctx, fetchAnime4upHtml, { page, filterPath });
+    return responseJson(200, payload);
   }
 
   if (requestUrl.pathname.endsWith("/search")) {
@@ -817,31 +974,35 @@ export async function handleAnime4upRequest(requestUrl) {
     const page = Math.min(Math.max(Number(requestUrl.searchParams.get("page")) || 1, 1), 1000);
     const filterPath = requestUrl.searchParams.get("filterPath")?.trim() || "";
     if (isAnime4upCatalogScopedSearchPath(filterPath)) {
-      const html = await fetchAnime4upHtml(buildCatalogUrl(page, filterPath));
-      const items = parseAnime4upCatalog(html).filter((item) => (
+      const payload = await fetchAnime4upCatalogPage(ctx, fetchAnime4upHtml, { page, filterPath });
+      const items = payload.items.filter((item) => (
         `${item.title} ${item.altTitle || ""}`.toLocaleLowerCase("ar").includes(query.toLocaleLowerCase("ar"))
       ));
       return responseJson(200, {
         items,
         page,
-        hasMore: catalogHasMore(html, page, filterPath),
+        hasMore: payload.hasMore,
+        fetchedAt: payload.fetchedAt,
       });
     }
     const html = await fetchAnime4upHtml(`${ctx.baseUrl}/?s=${encodeURIComponent(query)}`);
-    return responseJson(200, { items: parseAnime4upCatalog(html), page: 1, hasMore: false });
+    let items = parseAnime4upCatalog(canonicalAnime4upHtml(html, ctx.baseUrl));
+    items = items.slice(0, ANIME4UP_CATALOG_PAGE_SIZE);
+    await enrichAnime4upCatalog(items, fetchAnime4upHtml);
+    return responseJson(200, { items, page: 1, hasMore: false });
   }
 
   if (requestUrl.pathname.endsWith("/manga")) {
-    const target = assertAnimeUrl(requestUrl.searchParams.get("url") ?? "");
+    const target = assertAnimeUrl(requestUrl.searchParams.get("url") ?? "", ctx);
     const html = await fetchAnime4upHtml(target);
-    const chapters = await fetchAnimeEpisodes(target, html);
+    const chapters = await fetchAnime4upEpisodes(target, html, fetchAnime4upHtml, ctx);
     return responseJson(200, parseAnime4upDetails(html, target, chapters));
   }
 
   if (requestUrl.pathname.endsWith("/chapter")) {
-    const target = assertEpisodeUrl(requestUrl.searchParams.get("url") ?? "");
+    const target = assertEpisodeUrl(requestUrl.searchParams.get("url") ?? "", ctx);
     const html = await fetchAnime4upHtml(target);
-    return responseJson(200, await enrichAnime4upEpisodePlayback(html, target));
+    return responseJson(200, await enrichAnime4upEpisodePlayback(html, target, fetchAnime4upHtml));
   }
 
   return responseJson(404, { error: "Route Anime4up inconnue" });

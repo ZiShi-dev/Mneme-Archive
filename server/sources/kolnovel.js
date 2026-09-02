@@ -3,12 +3,19 @@ import { createCachedHtmlFetcher, fetchProxiedImage } from "../lib/httpUtils.js"
 import { normalizeSearchQuery } from "../lib/queryLimits.js";
 import { responseJson } from "../lib/responseJson.js";
 import {
+  applyRecentChapterFields,
+  catalogNeedsRecentEnrich,
+  enrichCatalogItems,
+  recentChaptersFromList,
+} from "../lib/catalogChapters.js";
+import { normalizeChapterList } from "../lib/chapterOrdering.js";
+import { enrichSourceDetails } from "../lib/detailEnrichment.js";
+import {
   parseParadiseChapter,
   parseParadiseFilters,
   paradiseCatalogHtmlLooksValid,
   resolveParadiseTitles,
   catalogHasMorePages,
-  parseCatalogChaptersFromArticle,
   extractEplisterListBlocks,
 } from "./novelsparadise.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
@@ -20,6 +27,13 @@ const SOURCE_NAME = "Kol Novel";
 const SOURCE_ID = "kolnovel";
 const CHAPTER_SLUG_PREFIX = "shaag24";
 const CHAPTER_SLUG_MARKER = "z435ggye-";
+/** Même densité que Realm Novel / Cenele. */
+export const KOLNOVEL_CATALOG_PAGE_SIZE = 24;
+const UPSTREAM_CATALOG_PAGE_SIZE = 20;
+const KOLNOVEL_FILTERS_CACHE_TTL_MS = 30 * 60_000;
+const KOLNOVEL_SERIES_CHAPTERS_CACHE_TTL_MS = 5 * 60_000;
+const kolnovelFiltersCache = new Map();
+const kolnovelSeriesChaptersCache = new Map();
 
 export function configureKolnovelNativeFetch(options) {
   configureSourceNativeFetch(options);
@@ -130,8 +144,13 @@ function parseArticleTitleAndHref(article) {
   return null;
 }
 
-function parseCatalogChapterFromArticle(article) {
-  return parseCatalogChaptersFromArticle(article, DEFAULT_BASE_URL, extractKolnovelChapterNumber);
+function parseCatalogLatestChapterNumber(article = "") {
+  for (const match of article.matchAll(/class="[^"]*nchapter[^"]*"[^>]*>[\s\S]*?<a[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
+    const label = textOnly(match[2]);
+    const number = extractKolnovelChapterNumber(label, match[1]);
+    if (number) return number;
+  }
+  return "";
 }
 
 function parseCatalogGenres(article = "") {
@@ -196,6 +215,7 @@ function mapCatalogItem(rawTitle, href, cover, article = "") {
   const excerptTitle = parseCatalogArabicTitleFromExcerpt(article);
   const { title, altTitle } = resolveParadiseTitles(rawTitle, alter || excerptTitle);
   const genres = parseCatalogGenres(article);
+  const latestChapterNumber = parseCatalogLatestChapterNumber(article);
   return {
     id: slug,
     title,
@@ -208,7 +228,9 @@ function mapCatalogItem(rawTitle, href, cover, article = "") {
     mediaTypeLabel: "رواية",
     categories: genres,
     genres,
-    ...parseCatalogChapterFromArticle(article),
+    latestChapter: latestChapterNumber || "—",
+    latestChapterUrl: null,
+    recentChapters: [],
   };
 }
 
@@ -254,7 +276,8 @@ export function parseKolnovelChapters(html, seriesUrl) {
     const eplTitle = block.match(/class="[^"]*epl-title[^"]*"[^>]*>([\s\S]*?)<\//i)?.[1] ?? "";
     const date = textOnly(block.match(/class="[^"]*epl-date[^"]*"[^>]*>([\s\S]*?)<\//i)?.[1] ?? "");
     const locked = /fa-lock|🔒|مدفوع/i.test(block);
-    const number = extractKolnovelChapterNumber(eplNum, eplTitle, String(chapters.length + 1));
+    const number = extractKolnovelChapterNumber(eplNum, eplTitle, "");
+    if (!number) continue;
     const name = textOnly(eplTitle) || textOnly(eplNum) || number;
     chapters.push({
       url: normalizedUrl,
@@ -286,11 +309,11 @@ function parseKolnovelDetails(html, url) {
     ?? html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i)?.[1]
     ?? "",
   );
-  const chapters = parseKolnovelChapters(html, url);
+  const chapters = normalizeChapterList(parseKolnovelChapters(html, url));
   const taxonomies = parseDetailTaxonomies(html, DEFAULT_BASE_URL);
   const seriesSlug = seriesSlugFromSlug(slugFromPath(new URL(url).pathname));
   const latest = chapters[0];
-  return {
+  return enrichSourceDetails({
     id: seriesSlug,
     title,
     altTitle,
@@ -306,7 +329,102 @@ function parseKolnovelDetails(html, url) {
     latestChapter: latest?.number ?? "—",
     latestChapterUrl: latest?.url ?? null,
     recentChapters: chapters.slice(0, 2),
+  });
+}
+
+function appendUniqueCatalogItems(pool, seen, items = []) {
+  for (const item of items) {
+    if (!item?.id || seen.has(item.id)) continue;
+    seen.add(item.id);
+    pool.push(item);
+  }
+}
+
+async function enrichKolnovelCatalog(items, fetchHtml) {
+  return enrichCatalogItems(items, {
+    concurrency: 4,
+    needsEnrich: (item) => catalogNeedsRecentEnrich(item, 1),
+    enrichItem: async (item) => {
+      const cached = kolnovelSeriesChaptersCache.get(item.url);
+      if (cached && Date.now() - cached.at < KOLNOVEL_SERIES_CHAPTERS_CACHE_TTL_MS) {
+        return cached.chapters;
+      }
+      const html = await fetchHtml(item.url);
+      const chapters = recentChaptersFromList(normalizeChapterList(parseKolnovelChapters(html, item.url)));
+      kolnovelSeriesChaptersCache.set(item.url, { at: Date.now(), chapters });
+      return chapters;
+    },
+  });
+}
+
+export async function fetchKolnovelCatalogPage(ctx, fetchHtml, {
+  page = 1,
+  order = "latest",
+  genre = "",
+  tag = "",
+  status = "",
+} = {}) {
+  const offset = (page - 1) * KOLNOVEL_CATALOG_PAGE_SIZE;
+  const upstreamPage = Math.floor(offset / UPSTREAM_CATALOG_PAGE_SIZE) + 1;
+  const start = offset % UPSTREAM_CATALOG_PAGE_SIZE;
+  const needsSpill = start + KOLNOVEL_CATALOG_PAGE_SIZE > UPSTREAM_CATALOG_PAGE_SIZE;
+
+  const fetchUpstream = async (upstream) => {
+    const target = buildKolnovelCatalogUrl(upstream, { status, order, genre, tag }, ctx.baseUrl);
+    const html = await fetchHtml(target);
+    assertKolnovelCatalogHtml(target, html, parseKolnovelCatalog(html));
+    return { html, items: parseKolnovelCatalog(html) };
   };
+
+  const [first, second] = await Promise.all([
+    fetchUpstream(upstreamPage),
+    needsSpill
+      ? fetchUpstream(upstreamPage + 1).catch(() => ({ html: "", items: [] }))
+      : Promise.resolve({ html: "", items: [] }),
+  ]);
+
+  const seen = new Set();
+  const pool = [];
+  appendUniqueCatalogItems(pool, seen, first.items);
+  if (needsSpill) appendUniqueCatalogItems(pool, seen, second.items);
+
+  let items = pool.slice(start, start + KOLNOVEL_CATALOG_PAGE_SIZE);
+  let nextUpstream = upstreamPage + (needsSpill ? 2 : 1);
+  let lastHtml = needsSpill ? second.html : first.html;
+  let hasMoreUpstream = catalogHasMorePages(lastHtml || first.html, needsSpill ? upstreamPage + 1 : upstreamPage);
+
+  while (items.length < KOLNOVEL_CATALOG_PAGE_SIZE && hasMoreUpstream && nextUpstream <= upstreamPage + 4) {
+    const extra = await fetchUpstream(nextUpstream).catch(() => ({ html: "", items: [] }));
+    if (!extra.items.length) break;
+    const before = pool.length;
+    appendUniqueCatalogItems(pool, seen, extra.items);
+    if (pool.length === before) break;
+    items = pool.slice(start, start + KOLNOVEL_CATALOG_PAGE_SIZE);
+    lastHtml = extra.html;
+    hasMoreUpstream = catalogHasMorePages(extra.html, nextUpstream);
+    nextUpstream += 1;
+  }
+
+  await enrichKolnovelCatalog(items, fetchHtml);
+
+  return {
+    items,
+    page,
+    genre,
+    tag,
+    hasMore: items.length === KOLNOVEL_CATALOG_PAGE_SIZE && hasMoreUpstream,
+    fetchedAt: new Date().toISOString(),
+  };
+}
+
+async function fetchKolnovelFilters(fetchHtml, baseUrl) {
+  const cacheKey = baseUrl;
+  const cached = kolnovelFiltersCache.get(cacheKey);
+  if (cached && Date.now() - cached.at < KOLNOVEL_FILTERS_CACHE_TTL_MS) return cached.data;
+  const html = await fetchHtml(buildKolnovelCatalogUrl(1, {}, baseUrl));
+  const data = parseParadiseFilters(html);
+  kolnovelFiltersCache.set(cacheKey, { at: Date.now(), data });
+  return data;
 }
 
 function isKolnovelCatalogUrl(url = "") {
@@ -333,8 +451,8 @@ export async function handleKolnovelRequest(requestUrl) {
   }
 
   if (requestUrl.pathname.endsWith("/filters")) {
-    const html = await fetchKolnovelHtmlBound(buildKolnovelCatalogUrl(1, {}, ctx.baseUrl));
-    return responseJson(200, { ...parseParadiseFilters(html), fetchedAt: new Date().toISOString() });
+    const filters = await fetchKolnovelFilters(fetchKolnovelHtmlBound, ctx.baseUrl);
+    return responseJson(200, { ...filters, fetchedAt: new Date().toISOString() });
   }
 
   if (requestUrl.pathname.endsWith("/catalog")) {
@@ -342,23 +460,14 @@ export async function handleKolnovelRequest(requestUrl) {
     const order = requestUrl.searchParams.get("order")?.trim() || "latest";
     const genre = assertKolnovelFilterSlug(requestUrl.searchParams.get("genre"), "تصنيف");
     const tag = assertKolnovelFilterSlug(requestUrl.searchParams.get("tag"), "وسم");
-    const target = buildKolnovelCatalogUrl(page, {
-      status: requestUrl.searchParams.get("status") ?? "",
+    const payload = await fetchKolnovelCatalogPage(ctx, fetchKolnovelHtmlBound, {
+      page,
       order,
       genre,
       tag,
-    }, ctx.baseUrl);
-    const html = await fetchKolnovelHtmlBound(target);
-    const items = parseKolnovelCatalog(html);
-    assertKolnovelCatalogHtml(target, html, items);
-    return responseJson(200, {
-      items,
-      page,
-      genre,
-      tag,
-      hasMore: catalogHasMorePages(html, page),
-      fetchedAt: new Date().toISOString(),
+      status: requestUrl.searchParams.get("status") ?? "",
     });
+    return responseJson(200, payload);
   }
 
   if (requestUrl.pathname.endsWith("/search")) {
@@ -373,9 +482,15 @@ export async function handleKolnovelRequest(requestUrl) {
     if (genre) target.searchParams.append("genre[]", genre);
     if (tag) target.searchParams.append("type[]", tag);
     const html = await fetchKolnovelHtmlBound(target.toString());
-    const items = parseKolnovelCatalog(html);
+    let items = parseKolnovelCatalog(html);
     assertKolnovelCatalogHtml(target.toString(), html, items);
-    return responseJson(200, { items, page, hasMore: catalogHasMorePages(html, page) });
+    items = items.slice(0, KOLNOVEL_CATALOG_PAGE_SIZE);
+    await enrichKolnovelCatalog(items, fetchKolnovelHtmlBound);
+    return responseJson(200, {
+      items,
+      page,
+      hasMore: catalogHasMorePages(html, page) && items.length === KOLNOVEL_CATALOG_PAGE_SIZE,
+    });
   }
 
   if (requestUrl.pathname.endsWith("/manga")) {

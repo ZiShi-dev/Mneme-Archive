@@ -4,9 +4,10 @@ import { AccessibleSearchField } from "../../components/ui/AccessibleSearchField
 import { SheetCloseButton } from "../../components/ui/SheetCloseButton";
 import { SheetPortal } from "../../components/ui/SheetPortal";
 import { useI18n } from "../../i18n/I18nProvider";
-import { getChapterProgress } from "../../lib/storage/chapterProgress";
+import { getChapterProgress, isChapterInProgress, isChapterRead } from "../../lib/storage/chapterProgress";
 import { chapterSortKey } from "../../../server/lib/chapterOrdering.js";
 import { getMediaPresentation } from "./mediaPresentation";
+import { UnlockCountdown } from "../../components/media/UnlockCountdown";
 import { resolveBookmarkType } from "./contentTypes";
 
 const PAGE_SIZE = 40;
@@ -49,6 +50,8 @@ const ChapterListItem = memo(function ChapterListItem({
 }) {
   const locked = Boolean(chapter.locked);
   const progress = getChapterProgress(sourceId, chapter.url);
+  const read = !locked && isChapterRead(sourceId, chapter.url, progress);
+  const inProgress = !locked && isChapterInProgress(sourceId, chapter.url, progress);
   const label = chapter.name || chapter.number || presentation.unit;
 
   return (
@@ -62,7 +65,7 @@ const ChapterListItem = memo(function ChapterListItem({
         "reader-chapter-list__item",
         isActive ? "is-active" : "",
         locked ? "is-locked" : "",
-        progress >= 100 ? "is-complete" : "",
+        read ? "is-complete" : "",
       ].filter(Boolean).join(" ")}
       disabled={locked}
       onClick={() => {
@@ -74,10 +77,15 @@ const ChapterListItem = memo(function ChapterListItem({
       <span className="reader-chapter-list__number">{chapter.number || "—"}</span>
       <span className="reader-chapter-list__copy">
         <strong dir="auto">{label}</strong>
-        {progress > 0 && progress < 100 ? <small>{progress}%</small> : null}
+        {inProgress ? <small>{progress}%</small> : null}
       </span>
-      {locked ? <Lock size={14} aria-hidden="true" /> : null}
-      {!locked && progress >= 100 ? <Check size={14} aria-hidden="true" /> : null}
+      {locked ? (
+        <>
+          <UnlockCountdown unlockAt={chapter.unlockAt} className="unlock-countdown--compact" />
+          <Lock size={14} aria-hidden="true" />
+        </>
+      ) : null}
+      {read ? <Check size={14} aria-hidden="true" /> : null}
     </button>
   );
 });

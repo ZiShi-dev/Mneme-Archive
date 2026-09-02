@@ -26,7 +26,10 @@
 .native-app .live-reader {
   max-width: 100%;
   overflow-x: hidden;
-  --reader-safe-top: var(--app-safe-area-top, 0px);
+  --reader-safe-top: var(--safe-top, env(safe-area-inset-top, 0px));
+  --reader-safe-bottom: var(--safe-bottom, env(safe-area-inset-bottom, 0px));
+  --reader-safe-left: var(--safe-left, env(safe-area-inset-left, 0px));
+  --reader-safe-right: var(--safe-right, env(safe-area-inset-right, 0px));
 }
 
 .desktop-app .reader.live-reader--watch,
@@ -69,24 +72,37 @@
   padding-top: 0;
 }
 
-/* Plein écran immersif : ignore les safe-areas (barre info / gesture) */
+/* Plein écran immersif : insets dynamiques quand les barres système apparaissent */
 html.app-immersive-fullscreen,
 html.app-immersive-fullscreen body {
+  --safe-top: var(--app-safe-area-top, 0px);
+  --safe-bottom: var(--app-safe-area-bottom, 0px);
+  --safe-left: var(--app-safe-area-left, 0px);
+  --safe-right: var(--app-safe-area-right, 0px);
+  overflow: hidden;
+  height: 100%;
+}
+
+/* Lecture bord à bord : safe-area gérée dans le header / la barre du bas */
+html.app-immersive-fullscreen .live-reader.live-reader--immersive:not(.live-reader--video),
+html.app-immersive-fullscreen .live-reader.live-reader--video.live-reader--video-fill,
+html.app-immersive-fullscreen .live-reader.live-reader--video.live-reader--immersive-lock,
+html.app-immersive-fullscreen .live-video-immersive-root.is-theater-fullscreen,
+html.app-immersive-fullscreen .live-video-immersive-root.plyr--fullscreen-fallback {
   --safe-top: 0px;
   --safe-bottom: 0px;
   --safe-left: 0px;
   --safe-right: 0px;
-  --app-safe-area-top: 0px;
-  --app-safe-area-bottom: 0px;
-  --app-safe-area-left: 0px;
-  --app-safe-area-right: 0px;
 }
 
 .native-app .live-reader--cinema,
 .native-app .live-reader--immersive-lock,
+.native-app .live-reader--video-fill,
 .native-app .live-video-immersive-root.is-cinema,
+.native-app .live-video-immersive-root.is-video-fill,
 .native-app .live-video-immersive-root.plyr--fullscreen-fallback,
-html.app-immersive-fullscreen .live-reader {
+html.app-immersive-fullscreen .live-reader.live-reader--video,
+html.app-immersive-fullscreen .live-reader--cinema {
   --reader-safe-top: 0px;
   --reader-safe-bottom: 0px;
   --reader-safe-left: 0px;
@@ -95,25 +111,92 @@ html.app-immersive-fullscreen .live-reader {
 
 .native-app .live-reader--cinema,
 .native-app .live-reader--immersive-lock,
+.native-app .live-reader--video-fill,
+.native-app .live-reader.live-reader--immersive:not(.live-reader--video),
+.native-app .live-video-immersive-root.is-cinema,
+.native-app .live-video-immersive-root.is-video-fill,
+.native-app .live-video-immersive-root.plyr--fullscreen-fallback,
+html.app-immersive-fullscreen .live-reader.live-reader--video,
+html.app-immersive-fullscreen .live-reader--cinema,
+html.app-immersive-fullscreen .live-reader.live-reader--immersive:not(.live-reader--video) {
+  --reader-safe-top: 0px;
+  --reader-safe-bottom: 0px;
+  --reader-safe-left: 0px;
+  --reader-safe-right: 0px;
+}
+
+.native-app .live-reader--cinema,
+.native-app .live-reader--immersive-lock,
+.native-app .live-reader.live-reader--immersive:not(.live-reader--video),
 .native-app .live-video-immersive-root.plyr--fullscreen-fallback {
   width: 100vw;
   max-width: none;
   height: 100dvh;
   min-height: 100dvh;
+  margin-inline: 0;
 }
 
-/* Lecteur manga/roman immersif : occupe tout l'écran y compris sous la barre info */
-html.app-immersive-fullscreen .live-reader:not(.live-reader--video) {
+/* Lecteur manga/roman : plein écran bord à bord */
+html.app-immersive-fullscreen .live-reader.live-reader--immersive:not(.live-reader--video) {
   position: fixed;
   inset: 0;
   z-index: 180;
-  width: 100vw;
+  width: 100%;
   max-width: none;
   height: 100dvh;
   min-height: 100dvh;
+  margin: 0;
+  transition:
+    top 0.22s ease,
+    right 0.22s ease,
+    bottom 0.22s ease,
+    left 0.22s ease;
+}
+
+html.app-immersive-fullscreen[data-system-bars-visible="true"] .live-reader.live-reader--immersive:not(.live-reader--video) {
+  top: var(--app-safe-area-top, env(safe-area-inset-top, 0px));
+  right: var(--app-safe-area-right, env(safe-area-inset-right, 0px));
+  bottom: var(--app-safe-area-bottom, env(safe-area-inset-bottom, 0px));
+  left: var(--app-safe-area-left, env(safe-area-inset-left, 0px));
+  width: auto;
+  height: auto;
+  min-height: 0;
+}
+
+/* Fallback lecteur sans chrome épisode (démo) */
+html.app-immersive-fullscreen .live-reader:not(.live-reader--video):not(.live-reader--immersive) {
+  --reader-safe-top: var(--safe-top, 0px);
+  --reader-safe-bottom: var(--safe-bottom, 0px);
+  --reader-safe-left: var(--safe-left, 0px);
+  --reader-safe-right: var(--safe-right, 0px);
+  position: fixed;
+  top: var(--safe-top, 0px);
+  right: var(--safe-right, 0px);
+  bottom: var(--safe-bottom, 0px);
+  left: var(--safe-left, 0px);
+  z-index: 180;
+  width: auto;
+  max-width: none;
+  height: auto;
+  min-height: 0;
+  margin: 0;
+  transition:
+    top 0.22s ease,
+    right 0.22s ease,
+    bottom 0.22s ease,
+    left 0.22s ease;
 }
 
 html.app-immersive-fullscreen .live-reader:not(.live-reader--video) .reader-header {
+  padding-top: max(8px, var(--reader-safe-top, 0px));
+}
+
+html.app-immersive-fullscreen[data-system-bars-visible="true"] .live-reader:not(.live-reader--video) .live-reader__dock .reader-playback {
+  padding-bottom: max(12px, var(--reader-safe-bottom, 0px));
+}
+
+html.app-immersive-fullscreen .live-reader.live-reader--video .reader-header,
+html.app-immersive-fullscreen .live-reader--cinema .reader-header {
   padding-top: max(8px, env(safe-area-inset-top, 0px));
 }
 
@@ -186,28 +269,76 @@ html.native-app[data-nav-mode="buttons"] .live-reader:not(.live-reader--video) .
   min-height: 0;
 }
 
-.live-reader:not(.live-reader--video) .live-reader__dock .reader-playback-reopen {
-  position: relative;
-  inset-inline-end: auto;
-  bottom: auto;
-  margin-inline-start: auto;
+.live-reader:not(.live-reader--video) {
+  --reader-dock-edge: 16px;
 }
 
-.live-reader:not(.live-reader--video).live-reader--auto-scroll .live-reader__dock {
+.live-reader:not(.live-reader--video) .live-reader__dock--launcher {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding-inline-start: max(
+    var(--reader-dock-edge),
+    calc(var(--reader-safe-left, 0px) + 12px)
+  );
+  padding-inline-end: max(
+    var(--reader-dock-edge),
+    calc(var(--reader-safe-right, 0px) + 12px)
+  );
+  padding-block: 8px max(12px, calc(var(--reader-safe-bottom, 0px) + 10px));
   background: transparent;
   border-top: 0;
+}
+
+html.native-app[data-nav-mode="gesture"] .live-reader:not(.live-reader--video) .live-reader__dock--launcher,
+html.native-app[data-nav-mode="buttons"] .live-reader:not(.live-reader--video) .live-reader__dock--launcher {
+  padding-block-end: max(14px, calc(var(--reader-safe-bottom, 0px) + 12px));
+}
+
+.live-reader:not(.live-reader--video) .live-reader__dock--launcher .reader-playback-reopen {
+  position: relative;
+  inset: auto;
+  margin: 0;
+}
+
+.live-reader:not(.live-reader--video).live-reader--auto-scroll .live-reader__dock--launcher {
+  padding: 0;
   pointer-events: none;
 }
 
-.live-reader:not(.live-reader--video).live-reader--auto-scroll .live-reader__dock .reader-playback-reopen {
+.live-reader:not(.live-reader--video).live-reader--auto-scroll .live-reader__dock--launcher .reader-playback-reopen {
   pointer-events: auto;
   position: fixed;
   z-index: 40;
-  inset-inline-end: max(12px, var(--reader-safe-right, 0px));
-  bottom: max(20px, calc(var(--reader-safe-bottom, env(safe-area-inset-bottom, 0px)) + 14px));
+  inset-inline-end: max(
+    var(--reader-dock-edge),
+    calc(var(--reader-safe-right, 0px) + var(--reader-dock-edge))
+  );
+  bottom: max(18px, calc(var(--reader-safe-bottom, env(safe-area-inset-bottom, 0px)) + 16px));
   margin: 0;
   border-color: color-mix(in srgb, var(--brand) 55%, #303342);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45), 0 0 0 3px color-mix(in srgb, var(--brand) 18%, transparent);
+}
+
+@media (max-width: 520px) {
+  .live-reader:not(.live-reader--video) {
+    --reader-dock-edge: 20px;
+  }
+
+  .live-reader:not(.live-reader--video) .live-reader__dock--launcher {
+    padding-block-end: max(16px, calc(var(--reader-safe-bottom, 0px) + 14px));
+  }
+
+  .live-reader:not(.live-reader--video).live-reader--auto-scroll .live-reader__dock--launcher .reader-playback-reopen {
+    bottom: max(20px, calc(var(--reader-safe-bottom, env(safe-area-inset-bottom, 0px)) + 18px));
+  }
+}
+
+@media (min-width: 521px) {
+  .live-reader:not(.live-reader--video) .live-reader__dock--launcher {
+    justify-content: center;
+    padding-inline: 20px;
+  }
 }
 
 .live-reader:not(.live-reader--video).live-reader--auto-scroll .reader-playback-reopen--auto {
@@ -724,7 +855,12 @@ html.native-app[data-nav-mode="buttons"] .live-reader:not(.live-reader--video) .
   object-position: center top;
 }
 .remote-cover--loading {
-  background: linear-gradient(105deg, rgba(255, 255, 255, 0.06) 35%, rgba(255, 255, 255, 0.18) 48%, rgba(255, 255, 255, 0.06) 61%);
+  background: linear-gradient(
+    105deg,
+    color-mix(in srgb, var(--outside) 92%, var(--ink)) 35%,
+    color-mix(in srgb, var(--white) 82%, var(--outside)) 48%,
+    color-mix(in srgb, var(--outside) 92%, var(--ink)) 61%
+  );
   background-size: 240% 100%;
   animation: coverShimmer 1.4s linear infinite;
 }
@@ -827,6 +963,123 @@ html.native-app[data-nav-mode="buttons"] .live-reader:not(.live-reader--video) .
 
 .live-reader--video:not(.live-reader--watch) .live-video-immersive-root.is-embed .live-video-servers--dock {
   inset-block-end: auto;
+}
+
+/* ── Companion layout (embed / HLS) : lecteur + barre fixe en dessous ── */
+.live-video-immersive-root.is-companion:not(.is-cinema) {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: #07080d;
+}
+
+.live-video-immersive-root.is-companion:not(.is-cinema) .live-video-stage {
+  flex: 0 0 auto;
+  height: auto;
+  min-height: 0;
+  width: 100%;
+  margin-bottom: 6px;
+}
+
+.live-reader--video:not(.live-reader--watch) .live-video-immersive-root.is-companion:not(.is-cinema) .live-video-stage--embed,
+.live-reader--video:not(.live-reader--watch) .live-video-immersive-root.is-companion:not(.is-cinema) .live-video-stage--embed .live-video-embed {
+  flex: 0 0 auto;
+  height: auto;
+  min-height: 0;
+}
+
+.live-video-immersive-root.is-companion:not(.is-cinema) .live-video-player-wrap,
+.live-video-immersive-root.is-companion:not(.is-cinema) .live-video-stage--embed .live-video-embed {
+  flex: 0 0 auto;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.live-video-immersive-root.is-companion:not(.is-cinema) .live-video-embed__frame,
+.live-video-immersive-root.is-companion:not(.is-cinema) .plyr-hls-player,
+.live-video-immersive-root.is-companion:not(.is-cinema) .plyr-hls-player .plyr {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.live-video-footer {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 14px;
+  padding-bottom: max(12px, var(--reader-safe-bottom));
+  background: #090a10;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.live-video-immersive-root.is-companion:not(.is-cinema) .live-video-chrome--controls {
+  position: static;
+  z-index: auto;
+}
+
+.live-video-immersive-root.is-companion:not(.is-cinema) .live-video-chrome--stacked {
+  position: static;
+  padding: 0 12px;
+  z-index: auto;
+}
+
+.live-video-immersive-root.is-companion:not(.is-cinema) .live-video-chrome--stacked .reader-playback {
+  margin: 0;
+  width: 100%;
+  max-width: 100%;
+  box-shadow: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.live-video-immersive-root.is-companion:not(.is-cinema) .live-video-footer .live-video-servers--dock {
+  padding: 0 12px;
+  margin-top: 0;
+  order: 1;
+}
+
+.live-video-immersive-root.is-companion:not(.is-cinema) .live-video-footer .live-video-chrome--stacked {
+  order: 2;
+  margin-top: 4px;
+}
+
+.live-video-immersive-root.is-companion:not(.is-cinema) .reader-playback--nav-only {
+  padding: 0;
+}
+
+.live-video-immersive-root.is-companion:not(.is-cinema) .reader-playback--nav-only .reader-playback__chapter--dock {
+  min-height: 44px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.live-video-immersive-root.is-companion:not(.is-cinema) .reader-playback--nav-only .reader-playback__chapter--dock b {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.live-video-immersive-root.is-companion:not(.is-cinema) .reader-playback--nav-only .reader-playback__chapter--dock:disabled {
+  opacity: 0.35;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.live-video-immersive-root.is-companion:not(.is-cinema) .reader-playback__menu-toggle--center {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.live-video-immersive-root.is-companion:not(.is-cinema) .live-video-servers__chip {
+  touch-action: manipulation;
 }
 
 .live-reader--video:not(.live-reader--watch) .live-video-immersive-root.is-cinema .live-video-servers--dock {
@@ -956,6 +1209,10 @@ html.native-app[data-nav-mode="buttons"] .live-reader:not(.live-reader--video) .
 }
 
 .live-video-immersive-root.is-embed::before {
+  display: none;
+}
+
+.live-video-immersive-root.is-companion-cinema::before {
   display: none;
 }
 
@@ -1107,6 +1364,113 @@ html.app-immersive-fullscreen .live-video-immersive-root.is-cinema .live-video-c
   height: 100dvh;
 }
 
+.live-reader--video.live-reader--cinema,
+.live-reader--video.live-reader--immersive-lock,
+html.app-immersive-fullscreen .live-reader.live-reader--video.live-reader--cinema {
+  position: fixed;
+  inset: 0;
+  z-index: 180;
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  min-height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  --reader-safe-top: 0px;
+  --reader-safe-bottom: 0px;
+  --reader-safe-left: 0px;
+  --reader-safe-right: 0px;
+}
+
+/* Mobile vidéo : couvre toute la zone y compris la barre système */
+.live-reader--video.live-reader--video-fill,
+html.app-immersive-fullscreen .live-reader.live-reader--video.live-reader--video-fill,
+html.app-immersive-fullscreen[data-system-bars-visible="true"] .live-reader.live-reader--video.live-reader--video-fill {
+  position: fixed;
+  inset: 0;
+  z-index: 180;
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  min-height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  --reader-safe-top: 0px;
+  --reader-safe-bottom: 0px;
+  --reader-safe-left: 0px;
+  --reader-safe-right: 0px;
+}
+
+html.app-immersive-fullscreen[data-system-bars-visible="true"] .live-reader.live-reader--video.live-reader--cinema:not(.live-reader--video-fill),
+html.app-immersive-fullscreen[data-system-bars-visible="true"] .live-reader--video.live-reader--immersive-lock:not(.live-reader--video-fill) {
+  top: var(--safe-top, env(safe-area-inset-top, 0px));
+  right: var(--safe-right, env(safe-area-inset-right, 0px));
+  bottom: var(--safe-bottom, env(safe-area-inset-bottom, 0px));
+  left: var(--safe-left, env(safe-area-inset-left, 0px));
+  width: auto;
+  height: auto;
+  min-height: 0;
+  --reader-safe-top: var(--safe-top, env(safe-area-inset-top, 0px));
+  --reader-safe-bottom: var(--safe-bottom, env(safe-area-inset-bottom, 0px));
+  --reader-safe-left: var(--safe-left, env(safe-area-inset-left, 0px));
+  --reader-safe-right: var(--safe-right, env(safe-area-inset-right, 0px));
+}
+
+.live-reader--video.live-reader--cinema .live-video-immersive-root,
+.live-reader--video.live-reader--video-fill .live-video-immersive-root {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+}
+
+.live-video-immersive-root.is-video-fill {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+}
+
+.live-video-immersive-root.is-video-fill .live-video-stage,
+.live-video-immersive-root.is-video-fill .live-video-stage-shell,
+.live-video-immersive-root.is-video-fill .live-video-player-wrap,
+.live-video-immersive-root.is-video-fill .live-video-player-frame,
+.live-video-immersive-root.is-video-fill .live-video-stage--embed .live-video-embed,
+.live-video-immersive-root.is-video-fill .live-video-embed__frame,
+.live-video-immersive-root.is-video-fill .plyr-hls-player,
+.live-video-immersive-root.is-video-fill .plyr-hls-player .plyr {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+}
+
+.live-reader--video-fill .live-video-chrome--top {
+  padding-top: max(10px, env(safe-area-inset-top, 0px));
+}
+
+.live-reader--video-fill .live-video-chrome--dock {
+  padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
+}
+
+.live-reader--video.live-reader--cinema .live-video-immersive-root {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+}
+
+.live-reader--video.live-reader--cinema .live-video-immersive-root.plyr--fullscreen-fallback {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+}
+
 .live-reader--immersive-lock {
   position: fixed;
   inset: 0;
@@ -1172,6 +1536,377 @@ html.app-immersive-fullscreen .live-video-immersive-root.is-cinema .live-video-c
   width: 100%;
   max-width: 100%;
   margin: 0;
+}
+
+/* Mode Netflix mobile : overlay plein écran, tap pour afficher/masquer */
+.live-video-immersive-root.is-netflix {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+}
+
+.live-video-immersive-root.is-netflix::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: min(32%, 160px);
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.78), transparent);
+  pointer-events: none;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.28s ease;
+}
+
+.live-video-immersive-root.is-netflix.is-chrome-visible::after {
+  opacity: 1;
+}
+
+.live-video-immersive-root.is-netflix.is-embed::before {
+  display: block;
+}
+
+.live-video-immersive-root.is-netflix .live-video-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.live-video-immersive-root.is-netflix .live-video-player-wrap,
+.live-video-immersive-root.is-netflix .live-video-player-frame,
+.live-video-immersive-root.is-netflix .live-video-stage--embed .live-video-embed {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  aspect-ratio: auto;
+}
+
+.live-video-immersive-root.is-netflix .live-video-embed__frame,
+.live-video-immersive-root.is-netflix .plyr-hls-player,
+.live-video-immersive-root.is-netflix .plyr-hls-player .plyr,
+.live-video-immersive-root.is-netflix .live-video-player {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: contain;
+}
+
+.live-video-immersive-root.is-netflix .plyr-hls-player .plyr__controls,
+.live-video-immersive-root.is-netflix .plyr-hls-player .plyr__control--overlaid,
+.live-video-immersive-root.is-netflix .plyr-hls-player .plyr__menu {
+  display: none !important;
+}
+
+.live-video-immersive-root.is-netflix .live-video-chrome--controls .reader-playback {
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+  backdrop-filter: none;
+}
+
+.live-video-immersive-root.is-netflix .reader-playback--netflix .reader-playback__timeline {
+  padding-inline: 4px;
+}
+
+.live-video-immersive-root.is-netflix .reader-playback--netflix .reader-playback__actions--primary {
+  gap: 6px;
+}
+
+.live-video-immersive-root.is-netflix.has-episode-toolbar .reader-playback--overlay.reader-playback--netflix {
+  padding: 8px 10px 10px;
+  gap: 8px;
+}
+
+.live-video-immersive-root.is-netflix.has-episode-toolbar .reader-playback--overlay .reader-playback__timeline {
+  margin-bottom: 4px;
+}
+
+.live-video-immersive-root.is-netflix.has-episode-toolbar .reader-playback--overlay .reader-playback__actions--primary {
+  justify-content: center;
+}
+
+.live-video-immersive-root.is-netflix.has-episode-toolbar .reader-playback--overlay .reader-playback__chapter,
+.live-video-immersive-root.is-netflix.has-episode-toolbar .reader-playback--overlay .reader-playback__server-picker {
+  display: none !important;
+}
+
+.live-video-immersive-root.is-netflix .reader-playback--minimal {
+  gap: 10px;
+  padding: 10px 12px 12px;
+}
+
+.live-video-immersive-root.is-netflix .reader-playback--minimal .reader-playback__timeline {
+  gap: 10px;
+  margin-bottom: 2px;
+}
+
+.live-video-immersive-root.is-netflix .reader-playback--minimal .reader-playback__time {
+  min-width: 52px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.live-video-immersive-root.is-netflix .reader-playback--minimal .reader-playback__time--remaining {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.live-video-immersive-root.is-netflix .reader-playback--minimal .reader-playback__track {
+  height: 4px;
+}
+
+.live-video-immersive-root.is-netflix .reader-playback--minimal .reader-playback__thumb {
+  width: 12px;
+  height: 12px;
+  border-width: 2px;
+}
+
+.live-video-immersive-root.is-netflix .reader-playback--minimal .reader-playback__actions--primary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.live-video-immersive-root.is-netflix .reader-playback--minimal .reader-playback__transport {
+  grid-column: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.live-video-immersive-root.is-netflix .reader-playback--minimal .reader-playback__icon-btn--pip,
+.live-video-immersive-root.is-netflix .reader-playback--minimal .reader-playback__icon-btn--fullscreen {
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.live-video-immersive-root.is-netflix .reader-playback--minimal .reader-playback__icon-btn--pip {
+  grid-column: 1;
+  justify-self: left;
+}
+
+.live-video-immersive-root.is-netflix .reader-playback--minimal .reader-playback__icon-btn--fullscreen {
+  grid-column: 3;
+  justify-self: right;
+}
+
+.live-video-immersive-root.is-netflix .reader-playback--minimal .reader-playback__icon-btn--skip {
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+}
+
+.live-video-immersive-root.is-netflix .reader-playback--minimal .reader-playback__play {
+  width: 54px;
+  height: 54px;
+  border-radius: 999px;
+  border: 0;
+  background: var(--brand);
+  color: #090a12;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.live-video-immersive-root.is-netflix .reader-playback--minimal .reader-playback__play.is-playing {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 22%, transparent);
+}
+
+.live-video-immersive-root.is-netflix .reader-playback--minimal .reader-playback__play svg {
+  margin-inline-start: 2px;
+}
+
+.live-video-immersive-root.is-netflix .reader-playback--minimal .reader-playback__play.is-playing svg {
+  margin-inline-start: 0;
+}
+
+.live-video-immersive-root.is-netflix .reader-playback--nav-only .reader-playback__chapter--dock {
+  min-height: 44px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 0;
+}
+
+.live-video-immersive-root.is-netflix .reader-playback--nav-only .reader-playback__chapter--dock b {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.live-video-immersive-root.is-netflix.has-episode-header {
+  display: flex;
+  flex-direction: column;
+}
+
+.live-video-immersive-root.is-netflix.has-episode-header::after {
+  display: none;
+}
+
+.live-video-immersive-root.is-netflix.has-episode-header .live-video-stage-shell {
+  position: relative;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+}
+
+.live-video-immersive-root.is-netflix.has-episode-header .live-video-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+}
+
+@media (max-width: 520px) {
+  .live-video-immersive-root.is-netflix.has-episode-header .live-video-embed__frame,
+  .live-video-immersive-root.is-netflix.has-episode-header .plyr-hls-player,
+  .live-video-immersive-root.is-netflix.has-episode-header .live-video-player {
+    max-height: 100%;
+  }
+}
+
+.live-video-immersive-root.is-netflix.has-nav-dock {
+  display: flex;
+  flex-direction: column;
+}
+
+.live-video-immersive-root.is-netflix.has-nav-dock .live-video-stage-shell {
+  position: relative;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.live-video-immersive-root.is-netflix.has-nav-dock .live-video-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.live-video-chrome--dock {
+  position: relative;
+  flex: 0 0 auto;
+  z-index: 14;
+  opacity: 1 !important;
+  transform: none !important;
+  pointer-events: auto !important;
+  padding: 8px max(10px, var(--reader-safe-right, env(safe-area-inset-right, 0px))) max(10px, var(--reader-safe-bottom, env(safe-area-inset-bottom, 0px))) max(10px, var(--reader-safe-left, env(safe-area-inset-left, 0px)));
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.96), rgba(0, 0, 0, 0.88));
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.live-video-chrome--dock .reader-playback--dock {
+  width: min(100%, 700px);
+  margin: 0 auto;
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+  padding: 0;
+}
+
+.live-video-chrome--dock .reader-playback--dock .reader-playback__chapter--dock {
+  min-height: 44px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 0;
+}
+
+.live-video-chrome--dock .reader-playback--dock .reader-playback__chapter--dock b {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.live-video-chrome--dock .reader-playback__menu-panel {
+  bottom: calc(100% + 8px);
+  top: auto;
+}
+
+.live-reader--video:not(.live-reader--watch).live-reader--cinema {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
+.live-reader--video:not(.live-reader--watch).live-reader--cinema .live-video-immersive-root.is-netflix {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Plein écran embed/HLS : contrôles sous la vidéo, pas en overlay */
+.live-video-immersive-root.is-companion-cinema {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+.live-video-immersive-root.is-companion-cinema .live-video-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+}
+
+.live-video-immersive-root.is-companion-cinema .live-video-player-wrap,
+.live-video-immersive-root.is-companion-cinema .live-video-stage--embed .live-video-embed {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  aspect-ratio: auto;
+  overflow: hidden;
+}
+
+.live-video-immersive-root.is-companion-cinema .live-video-embed__frame,
+.live-video-immersive-root.is-companion-cinema .plyr-hls-player,
+.live-video-immersive-root.is-companion-cinema .plyr-hls-player .plyr {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.live-video-immersive-root.is-companion-cinema .live-video-footer {
+  flex: 0 0 auto;
+  background: #000;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: max(10px, var(--reader-safe-bottom, env(safe-area-inset-bottom, 0px)));
+}
+
+.live-video-immersive-root.is-companion-cinema .live-video-chrome--stacked {
+  position: static;
+  padding: 8px 12px 0;
+}
+
+.live-video-immersive-root.is-companion-cinema .live-video-chrome--top {
+  padding-top: max(10px, var(--reader-safe-top, env(safe-area-inset-top, 0px)));
+}
+
+.live-reader--video.live-reader--cinema .live-video-chrome--controls,
+.live-video-immersive-root.is-cinema .live-video-chrome--controls,
+.live-video-immersive-root.plyr--fullscreen-fallback .live-video-chrome--controls {
+  padding-bottom: max(12px, var(--reader-safe-bottom, env(safe-area-inset-bottom, 0px)));
+  padding-left: max(8px, var(--reader-safe-left, env(safe-area-inset-left, 0px)));
+  padding-right: max(8px, var(--reader-safe-right, env(safe-area-inset-right, 0px)));
+}
+
+.live-video-immersive-root.is-companion-cinema .live-video-chrome--controls {
+  position: static;
+  padding: 0;
 }
 
 .live-video-player::-webkit-media-controls,
@@ -1945,6 +2680,10 @@ html.native-app #root > .reader .live-reader__body::-webkit-scrollbar,
   background: transparent;
 }
 
+.live-video-immersive-root.is-companion .live-video-servers--dock {
+  margin-top: 0;
+}
+
 .live-video-servers__chip {
   display: inline-flex;
   align-items: center;
@@ -2046,6 +2785,11 @@ html.native-app #root > .reader .live-reader__body::-webkit-scrollbar,
   min-height: min(58vw, 72vh);
 }
 
+.live-video-immersive-root.is-companion:not(.is-cinema) .live-video-stage--embed .live-video-embed {
+  min-height: 0;
+  max-height: none;
+}
+
 .live-video-embed {
   position: relative;
   flex: 1 1 auto;
@@ -2098,32 +2842,6 @@ html.native-app #root > .reader .live-reader__body::-webkit-scrollbar,
 .live-video-mark-complete--meta:focus-visible {
   border-color: color-mix(in srgb, var(--brand) 35%, var(--line));
   background: color-mix(in srgb, var(--brand) 8%, var(--paper));
-}
-
-.live-video-embed-fullscreen {
-  position: absolute;
-  z-index: 4;
-  inset-block-start: 10px;
-  inset-inline-end: 10px;
-  left: auto;
-  right: auto;
-  width: 38px;
-  height: 38px;
-  display: grid;
-  place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 10px;
-  background: rgba(12, 14, 22, 0.88);
-  color: #f4f1ea;
-  cursor: pointer;
-  backdrop-filter: blur(8px);
-  touch-action: manipulation;
-}
-
-.live-video-embed-fullscreen:hover,
-.live-video-embed-fullscreen:focus-visible {
-  border-color: rgba(255, 255, 255, 0.34);
-  background: rgba(18, 20, 30, 0.94);
 }
 
 .live-video-embed iframe,
@@ -2248,6 +2966,18 @@ html.native-app #root > .reader .live-reader__body::-webkit-scrollbar,
   min-width: 0;
 }
 
+.reader-playback--video .reader-playback__chapter b {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  color: #f4f1ea;
+}
+
+.reader-playback--video .reader-playback__chapter small {
+  font-size: 8px;
+  opacity: 0.8;
+}
+
 .reader-playback--video .reader-playback__actions--tools {
   display: flex;
   align-items: center;
@@ -2323,13 +3053,13 @@ html.native-app #root > .reader .live-reader__body::-webkit-scrollbar,
 }
 
 .reader-playback--nav-only {
-  padding: 8px 10px 10px;
+  padding: 10px 12px 12px;
 }
 
 .reader-playback--nav-only .reader-playback__actions--nav-only {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: stretch;
   gap: 8px;
 }
 
@@ -2338,22 +3068,161 @@ html.native-app #root > .reader .live-reader__body::-webkit-scrollbar,
   justify-items: center;
 }
 
-.reader-playback--nav-only .reader-playback__chapter--icon-only {
+.reader-playback--nav-only .reader-playback__chapter--dock {
+  min-height: 48px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.reader-playback--nav-only .reader-playback__chapter--dock small {
+  display: block;
+  font-size: 8px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  opacity: 0.78;
+}
+
+.reader-playback--nav-only .reader-playback__chapter--dock b {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #f4f1ea;
+}
+
+.reader-playback--nav-only .reader-playback__chapter--dock:disabled {
+  opacity: 0.38;
+}
+
+.reader-playback__menu {
+  position: relative;
+  display: flex;
+  align-items: center;
   justify-content: center;
+}
+
+.reader-playback__menu--center {
+  justify-self: center;
+}
+
+.reader-playback__menu-toggle {
   min-width: 44px;
   min-height: 44px;
-  padding: 8px;
   border-radius: 12px;
 }
 
-.reader-playback--nav-only .reader-playback__tool-btn--center {
-  min-width: 44px;
-  min-height: 44px;
-  border-radius: 12px;
+.reader-playback__menu-toggle--center {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.reader-playback__menu-panel {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  inset-inline: auto 0;
+  left: auto;
+  right: auto;
+  z-index: 20;
+  display: grid;
+  gap: 4px;
+  min-width: 196px;
+  max-width: min(240px, calc(100vw - 24px));
+  padding: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  background: rgba(10, 12, 18, 0.96);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(12px);
+}
+
+.reader-playback--nav-only .reader-playback__menu-panel {
+  inset-inline: 50% auto;
+  transform: translateX(-50%);
+}
+
+html[dir="rtl"] .reader-playback--nav-only .reader-playback__menu-panel,
+[dir="rtl"] .reader-playback--nav-only .reader-playback__menu-panel {
+  transform: translateX(50%);
+}
+
+.reader-playback__menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #f4f1ea;
+  font: 500 12px/1.2 "Instrument Sans", sans-serif;
+  text-align: start;
+  cursor: pointer;
+}
+
+.reader-playback__menu-item:hover,
+.reader-playback__menu-item:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.reader-playback__menu-item--volume {
+  display: grid;
+  gap: 8px;
+}
+
+.reader-playback__menu-volume .reader-playback__volume-slider {
+  width: 100%;
+  margin: 0;
+  opacity: 1;
+}
+
+.reader-playback__actions--menu-only {
+  justify-content: center;
+  margin-top: 6px;
+  padding-top: 0;
+  border-top: none;
+}
+
+.reader-playback--tools-menu:not(.reader-playback--nav-only) .reader-playback__actions--tools:not(.reader-playback__actions--menu-only) {
+  display: none;
+}
+
+.reader-playback--nav-only .reader-playback__actions--tools {
+  display: none;
+}
+
+.reader-playback__actions--menu-only .reader-playback__menu-panel {
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+}
+
+html[dir="rtl"] .reader-playback__actions--menu-only .reader-playback__menu-panel,
+[dir="rtl"] .reader-playback__actions--menu-only .reader-playback__menu-panel {
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
 }
 
 .reader-playback__actions--hidden {
   display: none;
+}
+
+.live-video-chrome--always-visible {
+  opacity: 1 !important;
+  transform: none !important;
+  pointer-events: auto !important;
+}
+
+/* Ancien bouton plein écran embed — remplacé par le menu ⋮ en bas */
+.live-video-embed-fullscreen {
+  display: none !important;
+}
+
+.live-video-immersive-root .plyr-hls-player [data-plyr="fullscreen"] {
+  display: none !important;
 }
 
 .live-video-chrome--docked-nav {
@@ -2370,7 +3239,7 @@ html.native-app #root > .reader .live-reader__body::-webkit-scrollbar,
 }
 
 .reader-playback--embed .reader-playback__actions--primary {
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
 }
 
 .reader-playback--embed .reader-playback__actions--tools {
@@ -2400,8 +3269,51 @@ html.native-app #root > .reader .live-reader__body::-webkit-scrollbar,
     gap: 4px;
   }
 
+  .reader-playback--video.reader-playback--nav-only .reader-playback__actions--primary {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .reader-playback--video.reader-playback--nav-only.reader-playback--has-server .reader-playback__actions--primary {
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr) auto minmax(0, 0.8fr);
+    gap: 4px;
+  }
+
+  .reader-playback__server-picker {
+    max-width: 118px;
+  }
+
+  .reader-playback__server-picker .video-server-picker__label {
+    max-width: 72px;
+    font-size: 9px;
+  }
+
+  .live-video-footer {
+    gap: 10px;
+    padding-top: 10px;
+  }
+
+  .live-video-immersive-root.is-companion:not(.is-cinema) .live-video-chrome--stacked {
+    padding-inline: 10px;
+  }
+
+  .video-server-sheet {
+    width: 100%;
+    max-height: min(84dvh, 640px);
+  }
+
+  .reader-playback--video .reader-playback__chapter b {
+    display: block;
+    font-size: 9px;
+  }
+
   .reader-playback--video .reader-playback__chapter small {
-    display: none;
+    display: block;
+    font-size: 7px;
+  }
+
+  .reader-playback--video.reader-playback--nav-only .reader-playback__chapter--dock small {
+    font-size: 8px;
   }
 
   .reader-playback--video .reader-playback__chapter {
@@ -2617,6 +3529,14 @@ html.native-app #root > .reader .live-reader__body::-webkit-scrollbar,
   color: var(--reader-muted);
 }
 
+.reader-chapter-list__item.is-complete .reader-chapter-list__number {
+  color: color-mix(in srgb, var(--brand) 72%, var(--reader-muted));
+}
+
+.reader-chapter-list__item.is-complete > svg {
+  color: var(--success, #5ecf8f);
+}
+
 .reader-chapter-list__number {
   color: var(--brand);
   font: 700 12px/1 "Fragment Mono";
@@ -2720,5 +3640,257 @@ html.native-app #root > .reader .live-reader__body::-webkit-scrollbar,
 
   .reader-chapter-list__order {
     width: 100%;
+  }
+}
+
+/* ── Video server picker + sheet ── */
+.video-server-picker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  max-width: 100%;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #f4f1ea;
+  font: 600 11px/1.2 "Instrument Sans", sans-serif;
+  cursor: pointer;
+}
+
+.video-server-picker--compact {
+  min-height: 44px;
+  padding: 6px 8px;
+  font-size: 10px;
+}
+
+.video-server-picker__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 92px;
+}
+
+.video-server-picker__chevron {
+  flex: 0 0 auto;
+  opacity: 0.72;
+}
+
+.reader-playback--has-server .reader-playback__actions--nav-only {
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr) auto minmax(0, 0.9fr);
+  gap: 6px;
+}
+
+.reader-playback__server-picker {
+  justify-self: center;
+  width: 100%;
+  max-width: 148px;
+}
+
+.video-server-sheet-backdrop {
+  z-index: 320;
+}
+
+.video-server-sheet {
+  width: min(100%, 420px);
+  max-height: min(78dvh, 560px);
+}
+
+.video-server-sheet__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: max(12px, var(--reader-safe-bottom));
+}
+
+.video-server-sheet__chips {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.video-server-sheet__chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #f4f1ea;
+  font: 600 13px/1.2 "Instrument Sans", sans-serif;
+  text-align: start;
+  cursor: pointer;
+}
+
+.video-server-sheet__chip.active {
+  border-color: color-mix(in srgb, var(--brand) 55%, rgba(255, 255, 255, 0.2));
+  background: color-mix(in srgb, var(--brand) 14%, rgba(255, 255, 255, 0.06));
+  color: #fff;
+}
+
+.video-server-sheet__chip span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.video-server-sheet__hint {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.68);
+  font: 500 11px/1.45 var(--font-sans);
+}
+
+.video-server-sheet__loading {
+  margin: 4px 0 8px;
+  padding: 22px 12px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.7);
+  font: 500 13px/1.5 "Alexandria", sans-serif;
+}
+
+.video-watch-servers {
+  padding: 10px 16px 0;
+}
+
+.video-watch-servers .video-server-picker {
+  width: 100%;
+  max-width: 280px;
+}
+
+.video-watch-servers .video-server-picker__label {
+  max-width: none;
+  flex: 1;
+}
+
+@media (min-width: 520px) {
+  .video-server-sheet__chips {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .reader-playback__server-picker {
+    max-width: 168px;
+  }
+
+  .reader-playback__server-picker .video-server-picker__label {
+    max-width: 110px;
+  }
+}
+
+@media (min-width: 768px) {
+  .video-server-sheet {
+    width: min(100%, 480px);
+    max-height: min(72dvh, 560px);
+  }
+
+  .video-server-sheet__chips {
+    gap: 10px;
+  }
+
+  .video-server-sheet__chip {
+    min-height: 48px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 380px) {
+  .reader-playback--has-server .reader-playback__actions--nav-only {
+    grid-template-columns: minmax(0, 0.72fr) 40px auto minmax(0, 0.72fr);
+    gap: 4px;
+  }
+
+  .reader-playback__server-picker.video-server-picker--compact .video-server-picker__label,
+  .reader-playback__server-picker .video-server-picker__label {
+    display: none;
+  }
+
+  .reader-playback__server-picker {
+    max-width: 40px;
+    min-width: 40px;
+    padding-inline: 0;
+    justify-content: center;
+  }
+
+  .reader-playback__server-picker .video-server-picker__chevron {
+    display: none;
+  }
+
+  .live-video-immersive-root.is-companion:not(.is-cinema) .reader-playback--nav-only .reader-playback__chapter--dock {
+    min-height: 40px;
+    padding-inline: 6px;
+  }
+
+  .live-video-immersive-root.is-companion:not(.is-cinema) .reader-playback--nav-only .reader-playback__chapter--dock b {
+    font-size: 11px;
+  }
+
+  .live-video-footer {
+    gap: 8px;
+    padding-top: 8px;
+    padding-inline: max(8px, var(--reader-safe-left)) max(8px, var(--reader-safe-right));
+  }
+}
+
+@media (max-width: 360px) {
+  .reader-playback--video.reader-playback--nav-only.reader-playback--has-server .reader-playback__actions--primary {
+    grid-template-columns: minmax(0, 1fr) 40px auto minmax(0, 1fr);
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .live-video-immersive-root.is-companion:not(.is-cinema) .live-video-player-wrap,
+  .live-video-immersive-root.is-companion:not(.is-cinema) .live-video-stage--embed .live-video-embed {
+    aspect-ratio: auto;
+    width: 100%;
+    max-height: min(58vh, 62dvh);
+    height: min(58vh, 62dvh);
+  }
+
+  .live-video-immersive-root.is-companion:not(.is-cinema) .live-video-footer {
+    padding-top: 8px;
+    padding-bottom: max(8px, var(--reader-safe-bottom));
+    gap: 8px;
+  }
+
+  .live-video-immersive-root.is-companion:not(.is-cinema) .live-video-chrome--stacked {
+    padding-inline: max(8px, var(--reader-safe-left)) max(8px, var(--reader-safe-right));
+  }
+
+  .video-server-sheet {
+    max-height: min(88dvh, 520px);
+  }
+
+  .video-server-sheet__chips {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+html[dir="rtl"] .video-server-picker,
+[dir="rtl"] .video-server-picker {
+  flex-direction: row-reverse;
+}
+
+html[dir="rtl"] .video-server-sheet__chip,
+[dir="rtl"] .video-server-sheet__chip {
+  flex-direction: row-reverse;
+  text-align: end;
+}
+
+@media (pointer: coarse) {
+  .video-server-picker,
+  .video-server-sheet__chip,
+  .reader-playback--nav-only .reader-playback__chapter--dock,
+  .reader-playback__menu-toggle--center {
+    min-height: 44px;
   }
 }

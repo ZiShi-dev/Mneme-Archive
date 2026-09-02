@@ -25,12 +25,33 @@ async function isEncryptionSecretStored() {
   return Boolean(response?.result);
 }
 
+function withNativeTimeout(promise, ms, label) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`Encryption timeout: ${label}`));
+    }, ms);
+    Promise.resolve(promise)
+      .then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+  });
+}
+
 export async function ensureEncryptionSecret() {
-  if (await isEncryptionSecretStored()) return;
+  if (await withNativeTimeout(isEncryptionSecretStored(), 5000, "isSecretStored")) return;
 
   const passphrase = createPassphrase();
   try {
-    await CapacitorSQLite.setEncryptionSecret({ passphrase });
+    await withNativeTimeout(
+      CapacitorSQLite.setEncryptionSecret({ passphrase }),
+      5000,
+      "setEncryptionSecret",
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (message.includes("already been set") || message.includes("already set")) return;

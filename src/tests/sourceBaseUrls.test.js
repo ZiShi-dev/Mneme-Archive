@@ -25,15 +25,6 @@ test("normalizeSourceBaseUrlOverrides stores only custom domains", () => {
   assert.equal(overrides.wiflix, undefined);
 });
 
-test("normalizeSettings migrates legacy coflixBaseUrl into sourceBaseUrls", () => {
-  const settings = normalizeSettings({
-    ...DEFAULT_APP_SETTINGS,
-    coflixBaseUrl: "https://coflix.foo",
-  });
-  assert.equal(settings.sourceBaseUrls.coflix, "https://coflix.foo");
-  assert.equal(settings.coflixBaseUrl, "https://coflix.foo");
-});
-
 test("getEffectiveSourceBaseUrl falls back to profile default", () => {
   assert.equal(
     getEffectiveSourceBaseUrl("mangalik", {}),

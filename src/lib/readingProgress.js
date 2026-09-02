@@ -8,6 +8,7 @@ import {
   getScrollHeight,
   getScrollTop,
   getScrollViewportHeight,
+  scrollReaderTo,
 } from "./platform/scrollRoot.js";
 
 export const HISTORY_DAY_GROUPS = {
@@ -53,6 +54,14 @@ export function computeReaderScrollProgress(root = getReaderScrollElement()) {
   const maximum = getMaxScrollTop(root);
   if (maximum <= 0) return 0;
   return Math.min(100, Math.max(0, Math.round((getScrollTop(root) / maximum) * 100)));
+}
+
+/** Repositionne le lecteur sur un pourcentage de défilement sauvegardé (0–100). */
+export function restoreReaderScrollToProgress(percent, { behavior = "auto", root = getReaderScrollElement() } = {}) {
+  const normalized = Math.min(100, Math.max(0, Math.round(Number(percent) || 0)));
+  const maximum = getMaxScrollTop(root);
+  scrollReaderTo(maximum * (normalized / 100), { behavior, root });
+  return normalized;
 }
 
 export function isReaderAtBottom(gap = CHAPTER_COMPLETE_SCROLL_GAP, root = getReaderScrollElement()) {
@@ -193,16 +202,29 @@ export function countHistoryByType(readingHistory, { demoCatalog = [], liveFavor
     novel: entries.filter((entry) => entry.type === "novel").length,
     anime: entries.filter((entry) => entry.type === "anime").length,
     movie: entries.filter((entry) => entry.type === "movie").length,
+    series: entries.filter((entry) => entry.type === "series").length,
   };
 }
 
 export function formatHistoryUnitLabel(record) {
   if (!record) return "";
   const type = resolveBookmarkType(record);
-  const chapterLabel = record.chapterName || record.chapterNumber;
+  const chapterLabel = resolveHistoryChapterLabel(record);
   if (type === "movie") return t("home.film");
   if (type === "anime" || type === "series") return t("home.episode", { label: chapterLabel });
   return t("home.chapter", { label: chapterLabel });
+}
+
+export function resolveHistoryChapterLabel(record) {
+  const name = String(record?.chapterName || "").trim();
+  const number = String(record?.chapterNumber ?? "").trim();
+  const raw = name || number;
+  if (!raw) return "";
+
+  const hasFormattedPrefix = /^(الفصل|فصل|chapter|ch\.?\s*\S|episode|ep\.?\s*\S|حلقة)\s*/i.test(raw);
+  if (hasFormattedPrefix) return raw;
+
+  return number || name;
 }
 
 export function formatHeroChapterLine(record) {

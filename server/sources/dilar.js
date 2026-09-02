@@ -211,18 +211,99 @@ function mapChapterEntry(entry, seriesId) {
   };
 }
 
-export function mapCatalogItem(series = {}) {
-  const seriesId = String(series.id || "");
-  const latest = series.latestChapter || {};
-  const latestNumber = formatChapterNumber(latest.chapter);
-  const media = mapMediaType(series);
+function resolveLatestReleaseId(series = {}) {
+  return String(
+    series.latestChapter?.id
+    || series.latest_chapterization_id
+    || series.latest_release_id
+    || "",
+  );
+}
+
+function buildCatalogRecentChapters(series = {}, seriesId = "") {
+  const releaseId = resolveLatestReleaseId(series);
+  const latestNumber = formatChapterNumber(series.latestChapter?.chapter);
   const totalChapters = Math.max(
     Number(series.chapters_count || series.chapter_count || series.total_chapters || 0),
     Number(latestNumber) || 0,
   );
-  const recentChapters = recentChaptersFromCount(totalChapters, (number) => (
+  const updatedAt = series.updated_at || series.latestChapter?.created_at || "";
+  const chapters = [];
+
+  if (releaseId) {
+    const number = latestNumber || formatChapterNumber(totalChapters);
+    chapters.push({
+      number,
+      name: series.latestChapter?.title ? `${number} · ${series.latestChapter.title}` : number,
+      url: buildChapterUrl(releaseId),
+      date: updatedAt,
+    });
+  }
+
+  if (chapters.length < 2 && totalChapters > 1 && seriesId) {
+    const previousNumber = Number(chapters[0]?.number || totalChapters) - 1;
+    if (previousNumber >= 1) {
+      chapters.push({
+        number: String(previousNumber),
+        name: String(previousNumber),
+        url: buildReaderUrl(seriesId, previousNumber),
+        date: "",
+      });
+    }
+  }
+
+  if (chapters.length) return chapters;
+  return recentChaptersFromCount(totalChapters, (number) => (
     seriesId ? buildReaderUrl(seriesId, number) : null
   ));
+}
+
+export function parseDilarFilterGroups(groups = []) {
+  const normalized = Array.isArray(groups) ? groups : [];
+  const categories = [];
+  const tags = [];
+  const kinds = [{ slug: "all", name: "الكل", type: "kind" }];
+
+  for (const group of normalized) {
+    const groupName = String(group?.name || group?.title || "").trim();
+    const entries = Array.isArray(group?.categories) ? group.categories : [];
+    for (const entry of entries) {
+      const slug = String(entry.id || entry.slug || "").trim();
+      const name = String(entry.name || entry.title || "").trim();
+      if (!slug || !name) continue;
+      const mapped = {
+        slug,
+        name,
+        count: Number(entry.series_count || entry.count || 0),
+        group: groupName,
+      };
+      if (groupName === "تصنيف") {
+        categories.push(mapped);
+        continue;
+      }
+      if (groupName === "أسلوب") {
+        kinds.push({ slug, name, type: "kind", queryValue: slug });
+      }
+      tags.push(mapped);
+    }
+  }
+
+  return {
+    categories: categories.sort((left, right) => right.count - left.count || left.name.localeCompare(right.name, "ar")),
+    tags: tags.sort((left, right) => right.count - left.count || left.name.localeCompare(right.name, "ar")),
+    kinds,
+  };
+}
+
+function resolveCategoryId({ genre = "", tag = "" } = {}) {
+  return String(genre || tag || "").trim();
+}
+
+export function mapCatalogItem(series = {}) {
+  const seriesId = String(series.id || "");
+  const media = mapMediaType(series);
+  const recentChapters = buildCatalogRecentChapters(series, seriesId);
+  const typeName = String(series.seriesType?.name || series.seriesType?.title || media.mediaTypeLabel || "").trim();
   return applyRecentChapterFields({
     id: seriesId,
     title: series.title || "",
@@ -232,6 +313,10 @@ export function mapCatalogItem(series = {}) {
     summary: series.summary || "",
     source: SOURCE_NAME,
     sourceId: SOURCE_ID,
+    updatedAt: series.updated_at || "",
+    categories: typeName ? [typeName] : [],
+    tags: series.primary_category_id ? [String(series.primary_category_id)] : [],
+    catalogKind: String(series.series_type_id || series.seriesType?.id || ""),
     ...media,
   }, recentChapters);
 }
@@ -351,7 +436,7 @@ async function fetchChapterPayload(releaseId, baseUrl = DEFAULT_BASE_URL) {
   return payload;
 }
 
-async function fetchSeriesList({ page = 1, path = "/series", baseUrl = DEFAULT_BASE_URL } = {}) {
+async function fetchSeriesList({ page = 1, path = "/series/latest", baseUrl = DEFAULT_BASE_URL } = {}) {
   const query = new URLSearchParams({ page: String(page) });
   const suffix = `${path}?${query}`;
   const payload = await fetchDilarJson(suffix.startsWith("/") ? suffix : `/${suffix}`, { baseUrl });
@@ -374,29 +459,22 @@ export async function handleDilarRequest(requestUrl) {
   if (requestUrl.pathname.endsWith("/filters")) {
     const payload = await fetchDilarJson("/categories", { baseUrl });
     const groups = Array.isArray(payload) ? payload : payload.data || payload.categories || [];
-    const categories = [];
-    for (const group of groups) {
-      for (const entry of group.categories || []) {
-        categories.push({
-          slug: String(entry.id || entry.slug || ""),
-          name: entry.name || entry.title || "",
-          count: Number(entry.series_count || entry.count || 0),
-          group: group.name || group.title || "",
-        });
-      }
-    }
-    return responseJson(200, { categories, tags: [], fetchedAt: new Date().toISOString() });
+    const { categories, tags, kinds } = parseDilarFilterGroups(groups);
+    return responseJson(200, { categories, tags, kinds, fetchedAt: new Date().toISOString() });
   }
 
   if (requestUrl.pathname.endsWith("/catalog")) {
     const page = Math.min(Math.max(Number(requestUrl.searchParams.get("page")) || 1, 1), 1000);
-    const genre = requestUrl.searchParams.get("genre")?.trim() || "";
-    const path = genre ? `/series/category/${encodeURIComponent(genre)}` : "/series";
+    const categoryId = resolveCategoryId({
+      genre: requestUrl.searchParams.get("genre")?.trim() || "",
+      tag: requestUrl.searchParams.get("tag")?.trim() || "",
+    });
+    const path = categoryId ? `/series/category/${encodeURIComponent(categoryId)}` : "/series/latest";
     const result = await fetchSeriesList({ page, path, baseUrl });
     return responseJson(200, {
       items: result.items,
       page: result.page,
-      genre,
+      genre: categoryId,
       hasMore: result.hasMore,
       fetchedAt: new Date().toISOString(),
     });
@@ -406,6 +484,27 @@ export async function handleDilarRequest(requestUrl) {
     const { query, valid } = normalizeSearchQuery(requestUrl.searchParams.get("q"));
     if (!valid) return responseJson(200, { items: [] });
     const page = Math.min(Math.max(Number(requestUrl.searchParams.get("page")) || 1, 1), 100);
+    const categoryId = resolveCategoryId({
+      genre: requestUrl.searchParams.get("genre")?.trim() || "",
+      tag: requestUrl.searchParams.get("tag")?.trim() || "",
+    });
+    if (categoryId) {
+      const result = await fetchSeriesList({
+        page,
+        path: `/series/category/${encodeURIComponent(categoryId)}`,
+        baseUrl,
+      });
+      const needle = query.toLocaleLowerCase("ar");
+      const items = result.items.filter((item) => (
+        `${item.title || ""} ${item.altTitle || ""} ${item.summary || ""}`.toLocaleLowerCase("ar").includes(needle)
+      ));
+      return responseJson(200, {
+        items,
+        page: result.page,
+        hasMore: result.hasMore && items.length > 0,
+        fetchedAt: new Date().toISOString(),
+      });
+    }
     const payload = await fetchDilarJson(`/series/search?q=${encodeURIComponent(query)}&page=${page}`, { baseUrl });
     const series = payload.series || payload.data?.series || payload.data || [];
     const items = Array.isArray(series) ? series.map((entry) => mapCatalogItem(entry)) : [];

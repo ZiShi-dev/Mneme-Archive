@@ -1,0 +1,318 @@
+/* ── Dock bas — lecteur vidéo mobile ── */
+/* Zone home / nav système : minimum 34px même si l'OS reporte 0 en immersif. */
+
+:root {
+  --video-episode-toolbar-gap: 0px;
+  --video-episode-toolbar-pad-block: 8px;
+  --video-episode-toolbar-control-height: 46px;
+}
+
+.video-watch-dock {
+  flex: 0 0 auto;
+  z-index: 22;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  background: rgba(6, 7, 12, 0.97);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+}
+
+.video-watch-dock > * {
+  pointer-events: auto;
+}
+
+.video-episode-toolbar {
+  position: relative;
+  flex: 0 0 auto;
+  z-index: 22;
+  width: 100%;
+  pointer-events: none;
+}
+
+.video-episode-toolbar__surface {
+  pointer-events: auto;
+  padding:
+    var(--video-episode-toolbar-pad-block)
+    max(12px, var(--safe-right, env(safe-area-inset-right, 0px)))
+    var(--video-episode-toolbar-pad-block)
+    max(12px, var(--safe-left, env(safe-area-inset-left, 0px)));
+}
+
+.video-episode-toolbar__inner {
+  width: min(100%, 700px);
+  margin: 0 auto;
+}
+
+.video-episode-toolbar .reader-playback--toolbar-nav {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.video-episode-toolbar .reader-playback--toolbar-nav .reader-playback__actions--nav-only {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: stretch;
+  width: 100%;
+}
+
+.video-episode-toolbar .reader-playback--toolbar-nav.reader-playback--has-server .reader-playback__actions--nav-only {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr) minmax(0, 1fr);
+}
+
+.video-episode-toolbar .reader-playback--toolbar-nav .reader-playback__timeline {
+  display: none;
+}
+
+.video-episode-toolbar .reader-playback__chapter--header {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  color: #f4f1ea;
+  touch-action: manipulation;
+}
+
+.video-episode-toolbar .reader-playback__chapter--header:disabled {
+  opacity: 0.35;
+}
+
+.video-episode-toolbar .reader-playback__chapter-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.video-episode-toolbar .reader-playback__chapter--header b {
+  font-size: clamp(11px, 2.8vw, 12px);
+  font-weight: 600;
+}
+
+.video-episode-toolbar .reader-playback__server-picker {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+}
+
+.video-episode-toolbar .video-server-picker--compact {
+  width: 100%;
+  min-height: 46px;
+  justify-content: center;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.video-episode-toolbar .video-server-picker__label {
+  max-width: min(100%, 120px);
+}
+
+/* Layout : vidéo au-dessus, dock sous la vidéo, zone home vide en bas */
+.live-video-immersive-root.is-netflix.has-episode-toolbar {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.live-video-immersive-root.is-netflix.has-episode-toolbar .live-video-stage-shell,
+.live-video-immersive-root.is-netflix.has-episode-toolbar.is-video-fill .live-video-stage-shell {
+  position: relative;
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 0;
+  box-sizing: border-box;
+}
+
+.live-video-immersive-root.is-netflix.has-episode-toolbar .live-video-stage,
+.live-video-immersive-root.is-netflix.has-episode-toolbar.is-video-fill .live-video-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
+}
+
+.live-video-immersive-root.is-netflix.has-episode-toolbar .live-video-player-wrap,
+.live-video-immersive-root.is-netflix.has-episode-toolbar .live-video-player-frame,
+.live-video-immersive-root.is-netflix.has-episode-toolbar .live-video-stage--embed .live-video-embed {
+  flex: 1 1 auto;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  max-height: 100%;
+  padding-bottom: 0;
+}
+
+.live-video-immersive-root.is-netflix.has-episode-toolbar .live-video-embed__frame,
+.live-video-immersive-root.is-netflix.has-episode-toolbar .plyr-hls-player,
+.live-video-immersive-root.is-netflix.has-episode-toolbar .plyr-hls-player .plyr,
+.live-video-immersive-root.is-netflix.has-episode-toolbar .live-video-player {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.video-watch-dock .live-video-chrome--controls {
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  z-index: 24;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transform: none;
+  margin: 0;
+  padding: 0 10px;
+  transition: opacity 0.22s ease, max-height 0.22s ease;
+}
+
+.video-watch-dock .live-video-chrome--controls.is-visible {
+  max-height: 160px;
+  opacity: 1;
+  pointer-events: auto;
+  padding-top: 8px;
+}
+
+.video-watch-dock .live-video-chrome--controls .reader-playback {
+  box-shadow: none;
+}
+
+.live-video-immersive-root.is-netflix.is-theater-fullscreen,
+.live-video-immersive-root.is-netflix.plyr--fullscreen-fallback,
+.live-video-immersive-root.is-netflix:fullscreen,
+.live-video-immersive-root.is-netflix:-webkit-full-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 240;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  padding-bottom: 0;
+  background: #000;
+}
+
+.live-video-immersive-root.is-netflix.is-theater-fullscreen .video-episode-header,
+.live-video-immersive-root.is-netflix.is-theater-fullscreen .video-episode-toolbar,
+.live-video-immersive-root.is-netflix.is-theater-fullscreen .video-watch-dock,
+.live-video-immersive-root.is-netflix.plyr--fullscreen-fallback .video-episode-header,
+.live-video-immersive-root.is-netflix.plyr--fullscreen-fallback .video-episode-toolbar,
+.live-video-immersive-root.is-netflix.plyr--fullscreen-fallback .video-watch-dock {
+  display: none;
+}
+
+.live-video-immersive-root.is-netflix.is-theater-fullscreen .live-video-stage-shell,
+.live-video-immersive-root.is-netflix.plyr--fullscreen-fallback .live-video-stage-shell,
+.live-video-immersive-root.is-netflix:fullscreen .live-video-stage-shell {
+  padding-bottom: 0;
+  height: 100%;
+}
+
+.live-video-immersive-root.is-netflix.is-theater-fullscreen .live-video-chrome--controls,
+.live-video-immersive-root.is-netflix.plyr--fullscreen-fallback .live-video-chrome--controls,
+.live-video-immersive-root.is-netflix:fullscreen .live-video-chrome--controls {
+  bottom: 0;
+  padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+}
+
+.live-video-immersive-root.is-netflix.is-theater-fullscreen .live-video-player,
+.live-video-immersive-root.is-netflix.is-theater-fullscreen .plyr-hls-player video,
+.live-video-immersive-root.is-netflix.plyr--fullscreen-fallback .live-video-player,
+.live-video-immersive-root.is-netflix.plyr--fullscreen-fallback .plyr-hls-player video,
+.live-video-immersive-root.is-netflix:fullscreen .live-video-player,
+.live-video-immersive-root.is-netflix:-webkit-full-screen .live-video-player {
+  object-fit: cover;
+}
+
+.live-video-immersive-root.is-netflix.is-theater-fullscreen .plyr-hls-player .plyr,
+.live-video-immersive-root.is-netflix.plyr--fullscreen-fallback .plyr-hls-player .plyr {
+  height: 100%;
+}
+
+.reader-playback--overlay .reader-playback__icon-btn--fullscreen {
+  min-width: 40px;
+}
+
+@media (max-width: 420px) {
+  .video-episode-toolbar .reader-playback--toolbar-nav .reader-playback__actions--nav-only,
+  .video-episode-toolbar .reader-playback--toolbar-nav.reader-playback--has-server .reader-playback__actions--nav-only {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr) minmax(0, 0.9fr);
+    gap: 6px;
+  }
+
+  .video-episode-toolbar .video-server-picker__label {
+    max-width: 88px;
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 380px) {
+  .video-episode-toolbar .reader-playback__chapter--header .reader-playback__chapter-label {
+    display: none;
+  }
+
+  .video-episode-toolbar .reader-playback__chapter--header {
+    padding: 0;
+    min-width: 46px;
+  }
+
+  .video-episode-toolbar .reader-playback__server-picker .video-server-picker__label,
+  .video-episode-toolbar .reader-playback__server-picker .video-server-picker__chevron {
+    display: none;
+  }
+
+  .video-episode-toolbar .reader-playback__server-picker {
+    max-width: 46px;
+    min-width: 46px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  :root {
+    --video-episode-toolbar-pad-block: 6px;
+    --video-episode-toolbar-control-height: 40px;
+  }
+
+  .video-episode-toolbar__surface {
+    padding-block: 6px;
+  }
+
+  .video-episode-toolbar .reader-playback__chapter--header,
+  .video-episode-toolbar .video-server-picker--compact {
+    min-height: 40px;
+    height: 40px;
+  }
+}
+
+@media (pointer: coarse) {
+  .video-episode-toolbar .reader-playback__chapter--header,
+  .video-episode-toolbar .video-server-picker {
+    min-height: 44px;
+  }
+}

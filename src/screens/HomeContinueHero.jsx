@@ -40,6 +40,7 @@ export function HomeContinueHero({
   typeLabel,
   isVideoContinue,
   onContinue,
+  onPrefetch,
   onDiscover,
   emptyTypeLabel,
   emptyDescription,
@@ -87,6 +88,7 @@ export function HomeContinueHero({
     <section
       className={`hero-card hero-card--continue${isVideoContinue ? " hero-card--video" : ""}`}
       onClick={onContinue}
+      onPointerDown={onPrefetch}
       onKeyDown={(event) => { if (event.key === "Enter") onContinue(); }}
       role="button"
       tabIndex={0}
@@ -161,6 +163,7 @@ export function HomeContinueHero({
             type="button"
             className="button button--dark hero-card__cta"
             onClick={(event) => { event.stopPropagation(); onContinue(); }}
+            onPointerDown={(event) => { event.stopPropagation(); onPrefetch?.(); }}
           >
             <ContinueIcon size={17} />
             {t("home.continue")}

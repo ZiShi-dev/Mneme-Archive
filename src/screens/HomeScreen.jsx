@@ -10,9 +10,11 @@ import {
   countHistoryByType,
   getLatestReadingEntry,
 } from "../lib/readingProgress";
+import { isVideoMediaType } from "../features/sources/mediaPresentation";
 import { isChromebookApp, VISIBLE_MEDIA_TYPES } from "../config/appFlavor";
 import { useI18n } from "../i18n/I18nProvider";
 import { getAppBrandText } from "../lib/brand/appBrand";
+import { continueHomeReading, prefetchLiveTitle } from "./homeActions";
 
 const MEDIA_FILTERS = VISIBLE_MEDIA_TYPES;
 
@@ -26,18 +28,6 @@ function resolveInitialMediaFilter(readingHistory, liveFavorites) {
     return latest.type;
   }
   return MEDIA_FILTERS.includes("series") ? "series" : MEDIA_FILTERS[0];
-}
-
-function continueReading(entry, { openManga, openReader, openLiveManga, openLiveReader }) {
-  const { target } = entry;
-  if (!target) return;
-  if (target.kind === "demo") {
-    if (target.chapter) openReader(target.item, target.chapter.number);
-    else openManga(target.item);
-    return;
-  }
-  if (target.chapter?.url) openLiveReader(target.item, target.chapter);
-  else openLiveManga(target.item);
 }
 
 export function HomeScreen({
@@ -72,42 +62,29 @@ export function HomeScreen({
     [liveFavorites, mediaFilter, readingHistory],
   );
 
+  const continueActions = useMemo(() => ({
+    openManga,
+    openReader,
+    openLiveManga,
+    openLiveReader,
+    navigate,
+  }), [navigate, openLiveManga, openLiveReader, openManga, openReader]);
+
   const handleContinue = () => {
-    if (!latestEntry) {
-      navigate("sources");
-      return;
-    }
-    continueReading(latestEntry, { openManga, openReader, openLiveManga, openLiveReader });
+    void continueHomeReading(latestEntry, continueActions);
+  };
+
+  const handlePrefetchContinue = () => {
+    const target = latestEntry?.target;
+    if (!target || target.kind === "demo") return;
+    prefetchLiveTitle(target.item, target.chapter);
   };
 
   const typeLabel = latestEntry
     ? contentTypes[latestEntry.type]?.singular || t("common.content")
     : contentTypes[mediaFilter]?.singular || t("common.content");
-  const isVideoMediaFilter = mediaFilter === "anime" || mediaFilter === "movie" || mediaFilter === "series";
-  const isVideoContinue = latestEntry
-    ? latestEntry.type === "anime" || latestEntry.type === "movie" || latestEntry.type === "series"
-    : isVideoMediaFilter;
+  const isVideoContinue = isVideoMediaType(latestEntry?.type || mediaFilter);
 
-  const mediaFilters = (
-    <div className="home-hero-panel__track">
-      <ChipFilterBar
-        variant="segmented"
-        className="home-hero-panel__filters"
-        role="group"
-        ariaLabel={t("home.mediaTypes")}
-      >
-        {MEDIA_FILTERS.map((filterId) => (
-          <ChipFilterButton
-            key={filterId}
-            active={mediaFilter === filterId}
-            onClick={() => setMediaFilter(filterId)}
-          >
-            {contentTypes[filterId].label}
-          </ChipFilterButton>
-        ))}
-      </ChipFilterBar>
-    </div>
-  );
   return (
     <div className="screen screen--home">
       {!isChromebookApp && (
@@ -132,12 +109,30 @@ export function HomeScreen({
             typeLabel={typeLabel}
             isVideoContinue={isVideoContinue}
             onContinue={handleContinue}
+            onPrefetch={handlePrefetchContinue}
             onDiscover={() => navigate(historyCounts.all ? "reading-history" : "sources")}
             emptyTypeLabel={typeLabel}
             emptyDescription={t("home.noHistoryForType", { type: typeLabel })}
             emptyActionLabel={historyCounts.all ? t("common.readingHistory") : t("home.discover")}
           />
-          {mediaFilters}
+          <div className="home-hero-panel__track">
+            <ChipFilterBar
+              variant="segmented"
+              className="home-hero-panel__filters"
+              role="group"
+              ariaLabel={t("home.mediaTypes")}
+            >
+              {MEDIA_FILTERS.map((filterId) => (
+                <ChipFilterButton
+                  key={filterId}
+                  active={mediaFilter === filterId}
+                  onClick={() => setMediaFilter(filterId)}
+                >
+                  {contentTypes[filterId].label}
+                </ChipFilterButton>
+              ))}
+            </ChipFilterBar>
+          </div>
         </div>
 
         {!isChromebookApp && (
@@ -156,6 +151,7 @@ export function HomeScreen({
             mediaFilter={mediaFilter}
             settings={settings}
             openLiveReader={openLiveReader}
+            openLiveManga={openLiveManga}
             navigate={navigate}
           />
         ) : null}

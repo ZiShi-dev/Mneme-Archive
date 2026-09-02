@@ -1,11 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  applyRealmChapterAccess,
   buildRealmFiltersFromDocs,
+  isRealmChapterWebLocked,
   novelIdFromUrl,
   parseRealmCatalog,
   parseRealmChapter,
   parseRealmDetails,
+  parseRealmFollowLatest,
   parseRealmMoreCatalog,
 } from "../sources/realmnovel.js";
 
@@ -45,6 +48,7 @@ test("parseRealmMoreCatalog reads JSON docs", () => {
   });
   assert.equal(items.length, 1);
   assert.equal(items[0].latestChapter, "675");
+  assert.deepEqual(items[0].recentChapters.map((entry) => entry.number), ["675", "674"]);
   assert.deepEqual(items[0].categories, ["مترجمة"]);
   assert.deepEqual(items[0].tags, ["اكشن", "سحر"]);
 });
@@ -61,7 +65,7 @@ test("buildRealmFiltersFromDocs exposes type categories and genre tags", () => {
   assert.equal(filters.tags.find((entry) => entry.slug === "سحر")?.count, 2);
 });
 
-test("parseRealmDetails extends chapter list and keeps chapters readable", () => {
+test("parseRealmDetails extends chapter list and keeps every chapter readable", () => {
   const html = `
     <article class="novel-head">
       <button data-fav-btn data-chapters="100"></button>
@@ -79,8 +83,26 @@ test("parseRealmDetails extends chapter list and keeps chapters readable", () =>
   const details = parseRealmDetails(html, "690f7c85419b78c5ab0ef3d0");
   assert.equal(details.chapters.length, 100);
   assert.equal(details.chapters[0].locked, false);
+  assert.equal(details.chapters[49].locked, false);
   assert.equal(details.chapters[50].locked, false);
+  assert.equal(details.chapters[50].lockReason, undefined);
   assert.ok(details.chapters.every((chapter) => chapter.locked === false));
+});
+
+test("parseRealmFollowLatest reads head only without full chapter list", () => {
+  const html = `
+    <article class="novel-head">
+      <button data-fav-btn data-chapters="2365"></button>
+      <h1 class="h1">سيد الحقيقة</h1>
+      <h2 class="sub">Lord of Mysteries</h2>
+      <img src="/img/novel/690f7c85419b78c5ab0ef3d0.jpg" />
+    </article>
+  `;
+  const details = parseRealmFollowLatest(html, "690f7c85419b78c5ab0ef3d0");
+  assert.equal(details.title, "سيد الحقيقة");
+  assert.equal(details.chapters.length, 1);
+  assert.equal(details.chapters[0].number, "2365");
+  assert.match(details.chapters[0].url, /\/chapter\/2365$/);
 });
 
 test("parseRealmDetails prefers Sky metadata while keeping full HTML range", () => {
@@ -105,6 +127,7 @@ test("parseRealmDetails prefers Sky metadata while keeping full HTML range", () 
   assert.equal(details.chapters.length, 100);
   assert.equal(details.chapters[50].name, "الفصل 51");
   assert.equal(details.chapters[51].locked, false);
+  assert.equal(details.chapters[50].locked, false);
   assert.deepEqual(details.tags, ["اكشن", "فانتازيا"]);
   assert.ok(details.statusBadges.includes("مستمرة"));
 });
@@ -117,9 +140,68 @@ test("parseRealmChapter extracts paragraphs", () => {
   assert.deepEqual(chapter.paragraphs, ["أول.", "ثاني."]);
 });
 
+test("parseRealmChapter ignores end-of-chapter locked footer when content exists", () => {
+  const html = `<h1 class="h1">الفصل 1</h1><div class="chapter-content"><p>محتوى الفصل.</p></div><div class="locked"><h3>نهاية الفصل 1</h3></div>`;
+  const chapter = parseRealmChapter(
+    html,
+    "https://realmnovel.com/novel/690f7c85419b78c5ab0ef3d0/chapter/1",
+  );
+  assert.deepEqual(chapter.paragraphs, ["محتوى الفصل."]);
+  assert.equal(isRealmChapterWebLocked(html), false);
+});
+
+test("applyRealmChapterAccess keeps every chapter open including 51+", () => {
+  const chapters = applyRealmChapterAccess([
+    { number: "50", url: "https://realmnovel.com/novel/x/chapter/50" },
+    { number: "51", url: "https://realmnovel.com/novel/x/chapter/51", lockReason: "sky-app" },
+  ]);
+  assert.equal(chapters[0].locked, false);
+  assert.equal(chapters[1].locked, false);
+  assert.equal(chapters[1].lockReason, undefined);
+});
+
 test("parseRealmChapter rejects locked page", () => {
   assert.throws(
     () => parseRealmChapter('<div class="locked"><h1>الفصل 51 غير متاح على الموقع</h1></div>', "https://realmnovel.com/novel/x/chapter/51"),
     /Sky Novel/,
   );
+});
+
+test("handleRealmNovelRequest search uses JSON API with genre filter", async () => {
+  const calls = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    const target = String(url);
+    calls.push(target);
+    if (target.includes("/_more")) {
+      return {
+        ok: true,
+        async json() {
+          return {
+            docs: [{
+              id: "690f7c85419b78c5ab0ef3d0",
+              title: "رواية",
+              chapters: 12,
+              category: "مترجمة",
+              tags: ["اكشن"],
+            }],
+            hasMore: false,
+          };
+        },
+      };
+    }
+    return { ok: false, status: 404, async json() { return {}; } };
+  };
+  try {
+    const { handleRealmNovelRequest } = await import("../sources/realmnovel.js");
+    const response = await handleRealmNovelRequest(
+      new URL("http://localhost/api/sources/realmnovel/search?q=solo&genre=اكشن"),
+    );
+    assert.equal(response.status, 200);
+    assert.equal(response.body.items.length, 1);
+    assert.ok(calls.some((entry) => entry.includes("q=solo")));
+    assert.ok(calls.some((entry) => entry.includes("tag=") || entry.includes("tag%3D")));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

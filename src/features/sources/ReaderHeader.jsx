@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowRight, Bookmark, ChevronLeft, ChevronRight, ExternalLink, Settings2 } from "lucide-react";
+import { ArrowRight, Bookmark, ExternalLink, Settings2 } from "lucide-react";
 import { RemoteCover } from "./RemoteCover";
 import { burstSakuraFrom } from "../../lib/sakura/burst";
 import { useI18n } from "../../i18n/I18nProvider";
@@ -18,10 +18,6 @@ export function ReaderHeader({
   hideSettings = false,
   variant = "default",
   chromeHidden = false,
-  previousChapter = null,
-  nextChapter = null,
-  onPrevious,
-  onNext,
   onBack,
   onOpenDetails,
   onOpenSettings,
@@ -30,9 +26,6 @@ export function ReaderHeader({
   const { t } = useI18n();
   const resolvedUnitLabel = unitLabel || t("media.theChapter");
   const isVideo = variant === "video";
-  const showEpisodeNav = isVideo && Boolean(onPrevious || onNext) && Boolean(previousChapter || nextChapter);
-  const navUnits = resolvedUnitLabel === t("media.theEpisode") ? t("media.theEpisodes") : resolvedUnitLabel;
-
   if (isVideo) {
     return (
       <header className="reader-header reader-header--video">
@@ -69,31 +62,7 @@ export function ReaderHeader({
         </div>
 
         <nav className="reader-header__toolbar" aria-label={t("reader.header.viewingTools")}>
-          {showEpisodeNav && (
-            <div className="reader-header__episode-nav" role="group" aria-label={t("reader.header.navBetween", { units: navUnits })}>
-              <button
-                type="button"
-                className="reader-header__episode-btn"
-                onClick={onPrevious}
-                disabled={!previousChapter}
-                aria-label={t("reader.header.previous", { unit: resolvedUnitLabel })}
-                title={previousChapter?.name || previousChapter?.number || t("reader.header.previous", { unit: resolvedUnitLabel })}
-              >
-                <ChevronRight size={15} strokeWidth={2.25} />
-              </button>
-              <button
-                type="button"
-                className="reader-header__episode-btn"
-                onClick={onNext}
-                disabled={!nextChapter}
-                aria-label={t("reader.header.next", { unit: resolvedUnitLabel })}
-                title={nextChapter?.name || nextChapter?.number || t("reader.header.next", { unit: resolvedUnitLabel })}
-              >
-                <ChevronLeft size={15} strokeWidth={2.25} />
-              </button>
-            </div>
-          )}
-          <div className={`reader-header__toolbar-utils${showEpisodeNav ? "" : " reader-header__toolbar-utils--solo"}`}>
+          <div className="reader-header__toolbar-utils reader-header__toolbar-utils--solo">
             <button
               type="button"
               className={`reader-header__action reader-header__action--video${isFavorite ? " active" : ""}`}

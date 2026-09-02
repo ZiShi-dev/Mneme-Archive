@@ -1,14 +1,22 @@
 import React from "react";
-import { BookOpen, Bookmark, ChevronLeft, Clapperboard, Film, Globe2, Sparkles } from "lucide-react";
+import { BookOpen, Bookmark, ChevronLeft, Clapperboard, Film, Globe2, Sparkles, Tv } from "lucide-react";
 import { Cover } from "../components/manga/Cover";
 import { RemoteCover } from "../features/sources";
 import { isVideoMediaType } from "../features/sources/mediaPresentation";
+import { usesContainCover } from "../features/sources/coverDisplay";
 import { useI18n } from "../i18n/I18nProvider";
+
+const STAT_ICONS = {
+  manga: BookOpen,
+  novel: Sparkles,
+  anime: Clapperboard,
+  movie: Film,
+  series: Tv,
+};
 
 export function FavoritesOverview({
   totalItems,
-  mangaCount,
-  novelCount,
+  stats = [],
   sourceCount,
   previewItems,
   onDiscover,
@@ -17,10 +25,6 @@ export function FavoritesOverview({
 }) {
   const { t } = useI18n();
   const isVideo = variant === "video";
-  const PrimaryIcon = isVideo ? Film : BookOpen;
-  const SecondaryIcon = isVideo ? Clapperboard : Sparkles;
-  const primaryLabel = isVideo ? t("content.movieSingular") : t("content.mangaSingular");
-  const secondaryLabel = isVideo ? t("content.seriesSingular") : t("content.novelSingular");
 
   return (
     <section className={`favorites-hero${desktop ? " favorites-hero--desktop" : ""}`} aria-label={t("favorites.overview")}>
@@ -37,10 +41,13 @@ export function FavoritesOverview({
                   <Cover item={entry.item} />
                 ) : (
                   <RemoteCover
-                    src={entry.item.cover}
+                    src={entry.coverSrc || entry.item.cover}
                     title={entry.item.title}
                     sourceId={entry.item.sourceId}
                     video={isVideoMediaType(entry.type)}
+                    novel={entry.type === "novel"}
+                    contain={usesContainCover(entry.item.sourceId)}
+                    priority={index === 0}
                   />
                 )}
               </span>
@@ -63,16 +70,16 @@ export function FavoritesOverview({
         </p>
         {totalItems > 0 && (
           <ul className="favorites-hero__stats">
-            <li>
-              <PrimaryIcon size={12} aria-hidden="true" />
-              <strong>{mangaCount}</strong>
-              <span>{primaryLabel}</span>
-            </li>
-            <li>
-              <SecondaryIcon size={12} aria-hidden="true" />
-              <strong>{novelCount}</strong>
-              <span>{secondaryLabel}</span>
-            </li>
+            {stats.map((stat) => {
+              const Icon = STAT_ICONS[stat.id] || BookOpen;
+              return (
+                <li key={stat.id}>
+                  <Icon size={12} aria-hidden="true" />
+                  <strong>{stat.count}</strong>
+                  <span>{stat.label}</span>
+                </li>
+              );
+            })}
             <li>
               <Globe2 size={12} aria-hidden="true" />
               <strong>{sourceCount}</strong>

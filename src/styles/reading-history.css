@@ -7,6 +7,10 @@
   position: relative;
   overflow: hidden;
   display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  grid-template-areas:
+    "icon copy"
+    "stats stats";
   gap: 12px;
   margin-bottom: 16px;
   padding: 16px;
@@ -32,6 +36,8 @@
 }
 
 .history-hero__icon {
+  grid-area: icon;
+  align-self: start;
   width: 40px;
   height: 40px;
   display: grid;
@@ -41,29 +47,39 @@
   background: color-mix(in srgb, var(--brand) 10%, var(--white));
 }
 
+.history-hero__copy {
+  grid-area: copy;
+  min-width: 0;
+}
+
 .history-hero__copy h2 {
   margin: 0;
   color: var(--ink);
-  font: 700 15px/1.35 "Reem Kufi", "Alexandria";
+  font: 700 clamp(13px, 3.8vw, 15px)/1.35 "Reem Kufi", "Alexandria";
+  overflow-wrap: anywhere;
 }
 
 .history-hero__copy p {
   margin: 4px 0 0;
   color: var(--muted);
-  font: 500 9px/1.65 "Alexandria";
+  font: 500 clamp(8px, 2.4vw, 9px)/1.65 "Alexandria";
+  overflow-wrap: anywhere;
 }
 
 .history-hero__stats {
+  grid-area: stats;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+  min-width: 0;
 }
 
 .history-hero__stats > span {
   display: grid;
   gap: 3px;
   justify-items: center;
-  padding: 8px 6px;
+  min-width: 0;
+  padding: 8px 4px;
   border-radius: 11px;
   background: color-mix(in srgb, var(--white) 72%, transparent);
   border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
@@ -81,17 +97,38 @@
 
 .history-hero__stats small {
   color: var(--muted);
-  font: 500 7px/1 "Alexandria";
+  font: 500 7px/1.25 "Alexandria";
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+.history-controls__types .la-chip-bar__chips {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+.history-controls__types .la-chip-bar__chips::-webkit-scrollbar {
+  display: none;
+}
+
+.history-controls__types .la-chip {
+  flex: 0 0 auto;
 }
 
 .history-controls {
   display: grid;
   gap: 10px;
   margin-bottom: 14px;
-  padding: 12px;
+  padding: 12px 14px;
+  min-width: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius-card);
   background: var(--white);
+  overflow: hidden;
 }
 
 .history-controls__search {
@@ -106,11 +143,22 @@
 
 .history-controls__status {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+.history-controls__status::-webkit-scrollbar {
+  display: none;
 }
 
 .history-controls__status > button {
+  flex: 0 0 auto;
   min-height: 30px;
   padding: 0 10px;
   border: 1px solid var(--line);
@@ -205,6 +253,8 @@
   border-radius: var(--radius-card);
   background: var(--white);
   overflow: hidden;
+  max-width: 100%;
+  min-width: 0;
   transition: border-color var(--motion-standard), box-shadow var(--motion-standard);
 }
 
@@ -261,7 +311,7 @@
 .history-row__type {
   position: absolute;
   top: 5px;
-  right: 5px;
+  inset-inline-end: 5px;
   padding: 2px 5px;
   border-radius: 5px;
   color: #fff;
@@ -320,16 +370,20 @@
   overflow: hidden;
   color: var(--ink);
   font: 700 11px/1.4 "Instrument Sans", "Alexandria";
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
 }
 
 .history-row__subtitle {
   overflow: hidden;
   color: var(--muted);
   font: 500 7px/1.3 "Alexandria";
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  overflow-wrap: anywhere;
 }
 
 .history-row__chapter {
@@ -337,11 +391,27 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  min-width: 0;
   color: var(--muted);
-  font: 500 8px/1 "Alexandria";
+  font: 500 8px/1.2 "Alexandria";
+}
+
+.history-row__chapter > :first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-row__chapter-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .history-row__chapter em {
+  flex: 0 0 auto;
   color: var(--ink);
   font: 600 8px/1 "Fragment Mono", monospace;
   font-style: normal;
@@ -387,62 +457,63 @@
 }
 
 .history-row__aside {
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   gap: 6px;
-  padding: 0 8px 8px;
+  padding: 0 10px 10px;
+  align-items: stretch;
 }
 
 .history-row__details,
 .history-row__continue,
-.history-row__remove {
-  min-height: 30px;
+.history-row__remove,
+.history-row__chapters {
+  min-height: 32px;
+  min-width: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 5px;
   padding: 0 10px;
   border-radius: 9px;
-  font: 600 8px/1 "Alexandria";
+  font: 600 8px/1.2 "Alexandria";
   cursor: pointer;
   transition: background var(--motion-standard), border-color var(--motion-standard);
 }
 
-.history-row__details {
-  border: 1px solid var(--line);
-  color: var(--muted);
-  background: var(--outside);
-}
-
 .history-row__continue {
-  flex: 1;
+  grid-column: 2;
   border: 0;
   color: var(--brand);
   background: color-mix(in srgb, var(--brand) 8%, var(--white));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-row__chapters {
+  grid-column: 1;
+  border: 1px solid color-mix(in srgb, var(--brand) 24%, var(--line));
+  color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 8%, var(--white));
+  font: 700 8px/1 "Fragment Mono", monospace;
+}
+
+.history-row__details {
+  grid-column: 3;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  background: var(--outside);
+  white-space: nowrap;
 }
 
 .history-row__remove {
-  width: 30px;
+  grid-column: 4;
+  width: 32px;
   padding: 0;
   border: 1px solid color-mix(in srgb, var(--danger) 25%, var(--line));
   color: var(--danger);
   background: color-mix(in srgb, var(--danger) 6%, var(--white));
-}
-
-.history-row__chapters {
-  min-width: 30px;
-  min-height: 30px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 0 8px;
-  border: 1px solid color-mix(in srgb, var(--brand) 24%, var(--line));
-  border-radius: 9px;
-  color: var(--brand);
-  background: color-mix(in srgb, var(--brand) 8%, var(--white));
-  font: 700 8px/1 "Fragment Mono", monospace;
-  cursor: pointer;
 }
 
 .history-chapter-sheet {
@@ -650,4 +721,160 @@
 
 .confirm-dialog--danger .confirm-dialog__confirm {
   box-shadow: 0 8px 18px color-mix(in srgb, var(--danger) 28%, transparent);
+}
+
+@media (max-width: 520px) {
+  .history-row__aside {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "continue continue continue"
+      "chapters details remove";
+  }
+
+  .history-row__continue {
+    grid-area: continue;
+    grid-column: auto;
+  }
+
+  .history-row__chapters {
+    grid-area: chapters;
+    grid-column: auto;
+  }
+
+  .history-row__details {
+    grid-area: details;
+    grid-column: auto;
+  }
+
+  .history-row__remove {
+    grid-area: remove;
+    grid-column: auto;
+  }
+
+  .history-row__chevron {
+    display: none;
+  }
+
+  .history-controls__footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .history-controls__actions {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 360px) {
+  .history-hero {
+    padding: 14px;
+    gap: 10px;
+  }
+
+  .history-hero__stats {
+    gap: 6px;
+  }
+
+  .history-hero__stats > span {
+    padding: 7px 3px;
+  }
+
+  .history-hero__stats small {
+    font-size: 6px;
+  }
+
+  .history-row__media {
+    width: 50px;
+    height: 70px;
+  }
+
+  .history-row__main {
+    gap: 9px;
+    padding: 9px 8px 8px 10px;
+  }
+
+  .history-row__details,
+  .history-row__continue,
+  .history-row__remove,
+  .history-row__chapters {
+    min-height: 30px;
+    padding-inline: 8px;
+    font-size: 7px;
+  }
+}
+
+/* App native (téléphones type Poco F7 ~440px logiques) */
+.native-app .history-page {
+  min-width: 0;
+  overflow-x: clip;
+}
+
+.native-app .history-hero,
+.native-app .history-controls,
+.native-app .history-row {
+  max-width: 100%;
+}
+
+.native-app .history-controls__types.la-chip-bar {
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.native-app .history-controls__footer {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.native-app .history-controls__footer > span {
+  text-align: center;
+}
+
+.native-app .history-controls__actions {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.native-app .history-row__aside {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    "continue continue continue"
+    "chapters details remove";
+  gap: 8px;
+  padding: 0 12px 12px;
+}
+
+.native-app .history-row__continue {
+  grid-area: continue;
+  grid-column: auto;
+  min-height: 36px;
+}
+
+.native-app .history-row__chapters {
+  grid-area: chapters;
+  grid-column: auto;
+}
+
+.native-app .history-row__details {
+  grid-area: details;
+  grid-column: auto;
+  flex: 1;
+  min-width: 0;
+}
+
+.native-app .history-row__remove {
+  grid-area: remove;
+  grid-column: auto;
+}
+
+.native-app .history-row__chevron {
+  display: none;
+}
+
+.native-app .history-row__main {
+  padding-inline: 12px 10px;
 }

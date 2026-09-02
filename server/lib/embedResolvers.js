@@ -6,6 +6,7 @@ const BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
 const PACKED_PLAYER_PATTERN = /\)\("([A-Za-z0-9+/=]{40,})"\)/g;
 const FAKE_STREAM_PATTERN = /(?:troll\/master|\/ads?\/|preroll|fake\.m3u8|decoy)/i;
 const VIDZY_HOST_PATTERN = /(?:^|\.)(?:vidzy\.(?:cc|live|org)|fsvid\.lol)$/i;
+const EMBED_HOST_PATTERN = /(^|\.)(4h\.b9p2m6c\.shop|[a-z0-9-]+\.b9p2m6c\.shop|[0-9][a-z0-9]\.[a-z0-9]+\.shop|[a-z0-9-]+\.anime4up\.rest|(?:[a-z0-9-]+\.)?embed4me\.com|voe\.sx|vidzy\.(?:cc|live|org)|(?:[a-z0-9-]+\.)?filemoon\.(?:to|sx|com)|(?:[a-z0-9-]+\.)?mp4upload\.com|(?:[a-z0-9-]+\.)?share4max\.(?:com|org)|vkvideo\.ru|(?:[a-z0-9-]+\.)?playmogo\.com|(?:[a-z0-9-]+\.)?rubyvidhub\.com|(?:[a-z0-9-]+\.)?uqload\.(?:com|net|to|cx|vc)|(?:[a-z0-9-]+\.)?dood\.(?:com|watch)|(?:[a-z0-9-]+\.)?streamruby\.com|videa\.hu|96ar\.com|(?:[a-z0-9-]+\.)?fsvid\.lol|(?:[a-z0-9-]+\.)?kakaflix\.[a-z]{2,}|(?:[a-z0-9-]+\.)?flixeo\.xyz|(?:[a-z0-9-]+\.)?multiup\.us|(?:[a-z0-9-]+\.)?netu\.[a-z]{2,}|(?:[a-z0-9-]+\.)?filmoon\.[a-z]{2,}|sandratableother\.com|diananatureforeign\.com|drive\.google\.com|(?:www\.)?dailymotion\.com|(?:www\.)?ok\.ru|bysezoxexe\.com)$/i;
 
 export function decodePackedPlayerSource(packed = "", hostname = "vidzy.cc") {
   const host = String(hostname || "");
@@ -122,17 +123,127 @@ export function extractPackedPlayerStreamUrl(html = "", hostname = "vidzy.cc") {
   return extractStreamFromEmbedHtml(html, hostname)?.url || "";
 }
 
-async function fetchEmbedHtml(embedUrl, referer = "") {
-  const response = await fetchWithRetries(embedUrl, {
-    headers: {
-      accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      referer: referer || embedUrl,
-      "user-agent": BROWSER_UA,
-    },
-    timeoutMs: 20_000,
-  }, 1);
-  if (!response.ok) throw new Error(`Embed indisponible (${response.status})`);
-  return response.text();
+export function isAllowedEmbedHost(hostname = "") {
+  return EMBED_HOST_PATTERN.test(String(hostname).toLowerCase());
+}
+
+export function assertProxiedEmbedUrl(rawUrl = "") {
+  const url = assertPublicHttpsUrl(rawUrl, { label: "رابط التضمين" });
+  const parsed = new URL(url);
+  if (!isAllowedEmbedHost(parsed.hostname)) {
+    throw new Error("مصدر التضمين غير مسموح");
+  }
+  return url;
+}
+
+export function wrapProxiedEmbedHtml(html = "", embedUrl = "") {
+  const body = String(html || "").trim();
+  if (!body || !/<html/i.test(body)) return body;
+  try {
+    const base = new URL(embedUrl).origin + "/";
+    if (/<base\s/i.test(body)) return body;
+    return body.replace(/<head([^>]*)>/i, `<head$1><base href="${base}">`);
+  } catch {
+    return body;
+  }
+}
+
+async function probeDirectStream(stream = {}) {
+  if (!stream?.url) return false;
+  try {
+    const response = await fetchWithRetries(stream.url, {
+      headers: {
+        accept: "*/*",
+        referer: stream.referer || stream.url,
+        "user-agent": BROWSER_UA,
+      },
+      timeoutMs: 12_000,
+    }, 0);
+    if (!response.ok) return false;
+    const text = await response.text();
+    return /\.m3u8/i.test(stream.url) || /mpegurl|m3u8/i.test(response.headers.get("content-type") || "")
+      || text.trimStart().startsWith("#EXTM3U");
+  } catch {
+    return false;
+  }
+}
+
+export async function fetchEmbedHtml(embedUrl, referer = "") {
+  const headers = {
+    accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    referer: referer || embedUrl,
+    "user-agent": BROWSER_UA,
+  };
+  let url = embedUrl;
+  let cookie = "";
+  let html = "";
+  let challengeHtml = "";
+
+  for (let hop = 0; hop < 4; hop += 1) {
+    const response = await fetchWithRetries(url, {
+      headers: {
+        ...headers,
+        ...(cookie ? { cookie } : {}),
+      },
+      timeoutMs: 20_000,
+    }, 1);
+    if (typeof response.headers.getSetCookie === "function") {
+      cookie = mergeCookieHeader(cookie, response.headers.getSetCookie());
+    }
+    html = await response.text();
+    if (!response.ok) throw new Error(`Embed indisponible (${response.status})`);
+
+    const challengeUrl = extractJsChallengeUrl(html, url);
+    if (!challengeUrl || challengeUrl === url) break;
+    challengeHtml = html;
+    headers.referer = url;
+    url = challengeUrl;
+  }
+
+  return html.trim() ? html : challengeHtml;
+}
+
+export function extractJsChallengeUrl(html = "", baseUrl = "") {
+  const match = String(html).match(/window\.location\.replace\(\s*['"]([^'"]+)['"]\s*\)/i);
+  if (!match) return "";
+  try {
+    return new URL(match[1], baseUrl).toString();
+  } catch {
+    return "";
+  }
+}
+
+function mergeCookieHeader(existing = "", setCookies = []) {
+  const jar = new Map();
+  for (const part of String(existing || "").split(";")) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+    const eq = trimmed.indexOf("=");
+    if (eq <= 0) continue;
+    jar.set(trimmed.slice(0, eq), trimmed.slice(eq + 1));
+  }
+  for (const cookie of setCookies) {
+    const pair = String(cookie || "").split(";")[0]?.trim();
+    if (!pair) continue;
+    const eq = pair.indexOf("=");
+    if (eq <= 0) continue;
+    jar.set(pair.slice(0, eq), pair.slice(eq + 1));
+  }
+  return [...jar.entries()].map(([name, value]) => `${name}=${value}`).join("; ");
+}
+
+function isLockedUqloadEmbed(html = "") {
+  return /File was locked by administrator/i.test(String(html || ""));
+}
+
+function extractNestedIframeSrc(html = "", baseUrl = "") {
+  const match = String(html).match(/<iframe[^>]+src=(['"])([^'"]+)\1/i);
+  if (!match) return "";
+  try {
+    return new URL(match[2], baseUrl).toString();
+  } catch {
+    return "";
+  }
 }
 
 export async function resolveEmbedDirectStream(embedUrl = "", referer = "") {
@@ -145,6 +256,9 @@ export async function resolveEmbedDirectStream(embedUrl = "", referer = "") {
   if (parsed.protocol !== "https:") return null;
 
   const html = await fetchEmbedHtml(parsed.toString(), referer);
+  if (/uqload\./i.test(parsed.hostname) && isLockedUqloadEmbed(html)) {
+    return { locked: true };
+  }
   if (/uqload\./i.test(parsed.hostname)) {
     const uqload = extractUqloadStream(html, parsed.toString());
     if (uqload) return uqload;
@@ -156,6 +270,19 @@ export async function resolveEmbedDirectStream(embedUrl = "", referer = "") {
 
   const generic = extractStreamFromEmbedHtml(html, parsed.hostname);
   if (generic) return { ...generic, referer: parsed.toString() };
+
+  const nestedIframe = extractNestedIframeSrc(html, parsed.toString());
+  if (nestedIframe && nestedIframe !== parsed.toString()) {
+    try {
+      const nested = new URL(nestedIframe);
+      if (nested.protocol === "https:" && nested.hostname !== parsed.hostname) {
+        return resolveEmbedDirectStream(nestedIframe, parsed.toString());
+      }
+    } catch {
+      // Ignore nested iframe invalide.
+    }
+  }
+
   return null;
 }
 
@@ -164,7 +291,15 @@ export async function enrichSourcesWithStreams(sources = [], referer = "") {
     if (!source?.url || source.streamUrl) return source;
     try {
       const stream = await resolveEmbedDirectStream(source.url, referer || source.url);
+      if (stream?.locked) return { ...source, locked: true };
       if (!stream) return source;
+      const playable = await probeDirectStream(stream);
+      if (!playable) {
+        return {
+          ...source,
+          embedFallback: true,
+        };
+      }
       return {
         ...source,
         streamUrl: stream.url,
@@ -176,7 +311,9 @@ export async function enrichSourcesWithStreams(sources = [], referer = "") {
     }
   }));
 
-  return enriched.sort((left, right) => {
+  return enriched
+    .filter((entry) => !entry.locked)
+    .sort((left, right) => {
     const leftUrl = `${left.streamUrl || ""} ${left.url || ""}`;
     const rightUrl = `${right.streamUrl || ""} ${right.url || ""}`;
     const hostRank = (url) => {
@@ -200,7 +337,8 @@ export function isAllowedProxiedStreamHost(hostname = "") {
   return VIDZY_HOST_PATTERN.test(host)
     || /fsvid\.lol$/i.test(host)
     || /^u\d+\.vidzy\./i.test(host)
-    || /(?:^|\.)(?:strm\d+\.)?uqload\./i.test(host)
+    || /(?:^|\.)(?:strm\d+\.)?uqload\.vc$/i.test(host)
+    || /(?:^|\.)uqload\.(?:com|net|to|cx|vc)$/i.test(host)
     || /filemoon\./i.test(host);
 }
 

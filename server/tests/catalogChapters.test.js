@@ -5,7 +5,18 @@ import {
   enrichCatalogItems,
   normalizeRecentChapters,
   recentChaptersFromCount,
+  recentChaptersFromList,
 } from "../lib/catalogChapters.js";
+
+test("normalizeRecentChapters strips locks for realmnovel catalog cards", () => {
+  const chapters = normalizeRecentChapters([
+    { number: "51", name: "51", url: "https://realmnovel.com/novel/x/chapter/51", locked: true, lockReason: "sky-app" },
+    { number: "50", name: "50", url: "https://realmnovel.com/novel/x/chapter/50", locked: true },
+  ], 2, { sourceId: "realmnovel" });
+  assert.equal(chapters.length, 2);
+  assert.ok(chapters.every((chapter) => chapter.locked === false));
+  assert.equal(chapters[0].lockReason, undefined);
+});
 
 test("normalizeRecentChapters keeps two unique chapters with urls", () => {
   const chapters = normalizeRecentChapters([
@@ -16,6 +27,16 @@ test("normalizeRecentChapters keeps two unique chapters with urls", () => {
   assert.equal(chapters.length, 2);
   assert.equal(chapters[0].number, "3");
   assert.equal(chapters[1].number, "2");
+});
+
+test("recentChaptersFromList picks latest chapters from ascending lists", () => {
+  const chapters = recentChaptersFromList([
+    { number: "1", name: "1", url: "https://example.com/1" },
+    { number: "2", name: "2", url: "https://example.com/2" },
+    { number: "1318", name: "1318", url: "https://example.com/1318" },
+    { number: "1317", name: "1317", url: "https://example.com/1317" },
+  ]);
+  assert.deepEqual(chapters.map((entry) => entry.number), ["1318", "1317"]);
 });
 
 test("recentChaptersFromCount builds descending chapter urls", () => {

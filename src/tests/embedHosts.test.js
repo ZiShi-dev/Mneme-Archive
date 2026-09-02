@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isAllowedEmbedUrl, isBlockedAdUrl, resolveEmbedIframeSandbox, resolveEmbedReferrerPolicy, EMBED_IFRAME_SANDBOX } from "../lib/video/embedHosts.js";
+import { isAllowedEmbedUrl, isBlockedAdUrl, isProxiedSourceEmbedUrl, resolveEmbedIframeSandbox, resolveEmbedReferrerPolicy, EMBED_IFRAME_SANDBOX } from "../lib/video/embedHosts.js";
 
 test("isAllowedEmbedUrl accepts known embed hosts", () => {
   assert.equal(isAllowedEmbedUrl("https://voe.sx/e/qonxoejekgfo"), true);
@@ -15,6 +15,10 @@ test("isAllowedEmbedUrl accepts known embed hosts", () => {
   assert.equal(isAllowedEmbedUrl("https://drive.google.com/file/d/abc123/preview"), true);
   assert.equal(isAllowedEmbedUrl("https://www.dailymotion.com/embed/video/x9wub4g"), true);
   assert.equal(isAllowedEmbedUrl("https://www.ok.ru/videoembed/123456"), true);
+  assert.equal(isAllowedEmbedUrl("https://1.multiup.us/e/demo"), true);
+  assert.equal(isAllowedEmbedUrl("https://flixeo.xyz/uptogorx/newPlayer.php?id=demo"), true);
+  assert.equal(isAllowedEmbedUrl("https://strm6.uqload.vc/hls2/demo/master.m3u8"), true);
+  assert.equal(isAllowedEmbedUrl("https://4l.w2m6p5q.shop/Anime4up-S2/mal/1/9/sub/"), true);
 });
 
 test("isAllowedEmbedUrl rejects unknown and ad hosts", () => {
@@ -27,7 +31,20 @@ test("isAllowedEmbedUrl rejects unknown and ad hosts", () => {
   assert.equal(isBlockedAdUrl("https://drive.google.com/file/d/abc/preview"), false);
 });
 
-test("resolveEmbedReferrerPolicy allows Google Drive preview", () => {
+test("isAllowedEmbedUrl accepts proxied source embed routes", () => {
+  assert.equal(isProxiedSourceEmbedUrl("https://localhost/api/sources/wiflix/embed?url=https%3A%2F%2F1.multiup.us"), true);
+  assert.equal(isAllowedEmbedUrl("https://localhost/api/sources/wiflix/embed?url=https%3A%2F%2F1.multiup.us"), true);
+});
+
+test("resolveEmbedReferrerPolicy sends referer for Wiflix embed hosts", () => {
+  assert.equal(
+    resolveEmbedReferrerPolicy("https://1.multiup.us/e/demo"),
+    "no-referrer-when-downgrade",
+  );
+  assert.equal(
+    resolveEmbedReferrerPolicy("https://localhost/api/sources/wiflix/embed?url=x"),
+    "strict-origin-when-cross-origin",
+  );
   assert.equal(
     resolveEmbedReferrerPolicy("https://drive.google.com/file/d/abc/preview"),
     "strict-origin-when-cross-origin",

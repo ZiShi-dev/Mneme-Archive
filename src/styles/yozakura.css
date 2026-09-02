@@ -51,9 +51,9 @@
   pointer-events: none;
   background:
     linear-gradient(180deg,
-      rgba(12, 8, 16, 0.1) 0%,
-      rgba(12, 8, 16, 0.22) 50%,
-      rgba(12, 8, 16, 0.36) 100%);
+      rgba(8, 5, 12, 0.14) 0%,
+      rgba(8, 5, 12, 0.28) 50%,
+      rgba(8, 5, 12, 0.42) 100%);
 }
 
 [data-theme="yozakura"] .phone-frame,
@@ -76,10 +76,28 @@
 }
 
 body[data-theme="yozakura"] {
-  background-color: #0c0810;
+  background-color: #08060c;
   background-image:
-    radial-gradient(ellipse at 14% 8%, rgba(179, 78, 100, 0.22), transparent 42%),
-    linear-gradient(180deg, #0c0810 0%, #171218 45%, #120e13 100%);
+    radial-gradient(ellipse at 12% 4%, rgba(120, 45, 80, 0.26), transparent 44%),
+    linear-gradient(180deg, #040309 0%, #0b0812 28%, #150f1a 58%, #1d1420 82%, #261828 100%);
+}
+
+/* Natif : le fond opaque de theme.css masquait toute la scène (surtout en RTL). */
+html.native-app .app-shell--yozakura .app-shell__view,
+html.native-app .app-shell--yozakura .phone-frame,
+html.native-app[dir="rtl"] .app-shell--yozakura .app-shell__view,
+html.native-app[dir="rtl"] .app-shell--yozakura .phone-frame,
+html.native-app body[data-theme="yozakura"] .app-shell__view,
+html.native-app body[data-theme="yozakura"] .phone-frame,
+html.native-app[dir="rtl"] body[data-theme="yozakura"] .app-shell__view,
+html.native-app[dir="rtl"] body[data-theme="yozakura"] .phone-frame {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+html.native-app .app-shell--yozakura .app-shell__view,
+html.native-app .app-shell--yozakura .phone-frame {
+  isolation: isolate;
 }
 
 /* Preview carte sélecteur */
@@ -101,10 +119,11 @@ body[data-theme="yozakura"] {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse at 14% 8%, rgba(179, 78, 100, .38), transparent 46%),
-    radial-gradient(ellipse at 78% 12%, rgba(255, 220, 235, .12), transparent 36%),
-    radial-gradient(ellipse at 88% 88%, rgba(120, 60, 100, .22), transparent 48%),
-    linear-gradient(180deg, #08060c 0%, #1a1218 48%, #0c080e 100%);
+    linear-gradient(118deg, transparent 30%, rgba(225, 200, 230, .07) 46%, rgba(225, 200, 230, .07) 54%, transparent 70%),
+    radial-gradient(ellipse at 12% 4%, rgba(120, 45, 80, .36), transparent 46%),
+    radial-gradient(ellipse at 78% 12%, rgba(255, 220, 235, .14), transparent 34%),
+    linear-gradient(180deg, rgba(190, 100, 130, 0) 62%, rgba(190, 100, 130, .22) 100%),
+    linear-gradient(180deg, #040309 0%, #0d0a14 34%, #160f1a 66%, #241626 100%);
 }
 
 .yozakura-preview__glow {
@@ -272,4 +291,176 @@ body[data-theme="yozakura"] {
 .theme-sheet--yozakura .notify-sheet__done {
   background: linear-gradient(135deg, #c94f6d, #e8a8ba);
   color: #fff;
+}
+
+/* ── Lisibilité UI — surfaces opaques, texte net ── */
+
+[data-theme="yozakura"],
+.app-shell--yozakura {
+  --yozakura-ui-surface: #211920;
+  --yozakura-ui-surface-raised: #2b2029;
+  --yozakura-ui-surface-soft: #30242e;
+}
+
+[data-theme="yozakura"] .content,
+[data-theme="yozakura"] .page-header,
+.app-shell--yozakura .content,
+.app-shell--yozakura .page-header {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+[data-theme="yozakura"] .page-header h1,
+[data-theme="yozakura"] .page-header .eyebrow,
+.app-shell--yozakura .page-header h1,
+.app-shell--yozakura .page-header .eyebrow {
+  text-shadow:
+    0 1px 0 rgba(8, 5, 12, 0.55),
+    0 2px 14px rgba(8, 5, 12, 0.72);
+}
+
+[data-theme="yozakura"] .page-header:not(.page-header--brand),
+.app-shell--yozakura .page-header:not(.page-header--brand) {
+  isolation: isolate;
+}
+
+[data-theme="yozakura"] .page-header:not(.page-header--brand)::before,
+.app-shell--yozakura .page-header:not(.page-header--brand)::before {
+  content: "";
+  position: absolute;
+  inset: -6px calc(var(--page-header-padding-x) * -1) 0;
+  pointer-events: none;
+  z-index: -1;
+  background: linear-gradient(
+    180deg,
+    rgba(8, 5, 12, 0.9) 0%,
+    rgba(8, 5, 12, 0.68) 58%,
+    rgba(8, 5, 12, 0.22) 84%,
+    transparent 100%
+  );
+}
+
+[data-theme="yozakura"] .page-header:not(.page-header--brand) h1,
+[data-theme="yozakura"] .page-header:not(.page-header--brand) .eyebrow,
+.app-shell--yozakura .page-header:not(.page-header--brand) h1,
+.app-shell--yozakura .page-header:not(.page-header--brand) .eyebrow {
+  text-shadow:
+    0 1px 0 rgba(8, 5, 12, 0.55),
+    0 2px 14px rgba(8, 5, 12, 0.72);
+}
+
+[data-theme="yozakura"] .page-header:not(.page-header--brand) h1,
+.app-shell--yozakura .page-header:not(.page-header--brand) h1 {
+  color: #f8f2f6;
+}
+
+[data-theme="yozakura"] .page-header:not(.page-header--brand) .eyebrow,
+.app-shell--yozakura .page-header:not(.page-header--brand) .eyebrow {
+  color: color-mix(in srgb, var(--sakura) 72%, #fff);
+}
+
+[data-theme="yozakura"] .page-header:not(.page-header--brand) .page-header__title > .icon-button,
+.app-shell--yozakura .page-header:not(.page-header--brand) .page-header__title > .icon-button {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: #f8f2f6;
+}
+
+[data-theme="yozakura"] .bottom-nav,
+.app-shell--yozakura .bottom-nav {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: var(--bottom-nav-bg);
+}
+
+[data-theme="yozakura"] :is(
+  .pill--light,
+  .icon-button--glass,
+  .library-card__type,
+  .favorite-bookmark--card,
+  .app-toast
+) {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+[data-theme="yozakura"] .pill--light {
+  background: color-mix(in srgb, var(--yozakura-ui-surface-raised) 84%, var(--sakura) 16%);
+}
+
+[data-theme="yozakura"] .app-toast {
+  background: var(--yozakura-ui-surface-raised);
+}
+
+/* Panneaux accueil : annule la transparence du mode sombre */
+.app-shell--yozakura.app-shell--dark .home-discovery,
+[data-theme="yozakura"] .app-shell--dark .home-discovery {
+  background: var(--yozakura-ui-surface);
+}
+
+.app-shell--yozakura.app-shell--dark .home-discovery .home-discovery__scope,
+[data-theme="yozakura"] .app-shell--dark .home-discovery .home-discovery__scope {
+  background: var(--yozakura-ui-surface-raised);
+}
+
+.app-shell--yozakura.app-shell--dark .home-latest-panel,
+[data-theme="yozakura"] .app-shell--dark .home-latest-panel {
+  background: var(--yozakura-ui-surface);
+}
+
+.app-shell--yozakura.app-shell--dark .home-latest-row,
+[data-theme="yozakura"] .app-shell--dark .home-latest-row {
+  background: var(--yozakura-ui-surface-soft);
+}
+
+.app-shell--yozakura.app-shell--dark .home-latest-row--new,
+[data-theme="yozakura"] .app-shell--dark .home-latest-row--new {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--home-latest-accent, var(--brand)) 14%, var(--yozakura-ui-surface-soft)),
+    var(--yozakura-ui-surface-soft)
+  );
+}
+
+.app-shell--yozakura.app-shell--dark .home-recent-panel,
+[data-theme="yozakura"] .app-shell--dark .home-recent-panel {
+  background: var(--yozakura-ui-surface);
+}
+
+.app-shell--yozakura.app-shell--dark .home-hero-panel:not(.home-hero-panel--filters-only),
+[data-theme="yozakura"] .app-shell--dark .home-hero-panel:not(.home-hero-panel--filters-only) {
+  background: var(--yozakura-ui-surface);
+}
+
+[data-theme="yozakura"] .home-hero-panel__track {
+  background: var(--yozakura-ui-surface-raised);
+}
+
+[data-theme="yozakura"] .la-chip-bar--segmented .la-chip-bar__chips,
+[data-theme="yozakura"] .home-hero-panel__filters.la-chip-bar--segmented .la-chip-bar__chips {
+  background: var(--yozakura-ui-surface-raised);
+}
+
+[data-theme="yozakura"] .la-chip-bar--segmented .la-chip:not(.active),
+[data-theme="yozakura"] .home-hero-panel__filters .la-chip:not(.active),
+[data-theme="yozakura"] .home-latest-panel__filter .la-chip:not(.active) {
+  background: color-mix(in srgb, var(--yozakura-ui-surface) 92%, transparent);
+}
+
+[data-theme="yozakura"] :is(
+  .settings-group,
+  .notification-row,
+  .update-card,
+  .source-directory-card,
+  .catalog-row,
+  .library-card,
+  .global-search,
+  .catalog-search,
+  .search-result-row,
+  .search-result-skeleton,
+  .favorites-hero
+) {
+  background: var(--yozakura-ui-surface);
 }

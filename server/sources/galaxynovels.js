@@ -2,7 +2,9 @@ import { decodeHtml, mergeFilterGroups, parseDetailTaxonomies, parseTaxonomyFilt
 import { createCachedHtmlFetcher, fetchProxiedImage } from "../lib/httpUtils.js";
 import { normalizeSearchQuery } from "../lib/queryLimits.js";
 import { responseJson } from "../lib/responseJson.js";
-import { applyRecentChapterFields, enrichCatalogItems } from "../lib/catalogChapters.js";
+import { applyRecentChapterFields, catalogNeedsRecentEnrich, enrichCatalogItems, recentChaptersFromCount, recentChaptersFromList } from "../lib/catalogChapters.js";
+import { normalizeChapterList, extractChapterNumberFromUrl } from "../lib/chapterOrdering.js";
+import { enrichChapterDates } from "../lib/chapterDates.js";
 import { enrichSourceDetails } from "../lib/detailEnrichment.js";
 import { filterNovelParagraphs } from "../lib/novelChapterText.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
@@ -11,6 +13,13 @@ import { isCloudflareChallengeHtml } from "../lib/cloudflareDetect.js";
 
 const DEFAULT_BASE_URL = "https://galaxynovels.com";
 const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
+/** Même densité que Realm Novel / MangaLik. */
+export const GALAXY_CATALOG_PAGE_SIZE = 24;
+const UPSTREAM_LIBRARY_PAGE_SIZE = 12;
+const GALAXY_FILTERS_CACHE_TTL_MS = 30 * 60_000;
+const GALAXY_JSON_TTL_MS = 10 * 60_000;
+const GALAXY_INDEX_TTL_MS = 5 * 60_000;
+const GALAXY_CHAPTER_API_TTL_MS = 5 * 60_000;
 const GALAXY_JSON_HEADERS = (baseUrl = DEFAULT_BASE_URL) => ({
   accept: "application/json",
   "accept-language": "ar,en;q=0.8",
@@ -25,6 +34,8 @@ const GALAXY_INVALID_AUTHORS = new Set(["غير متوفر", "n/a", "na", "unkno
 const galaxyIndexCache = new Map();
 const galaxyManifestCache = new Map();
 const galaxyNovelApiCache = new Map();
+const galaxyChapterApiCache = new Map();
+const galaxyTaxonomyFiltersCache = new Map();
 let galaxyAuthorFiltersCache = null;
 let galaxyAuthorFiltersWarmPromise = null;
 
@@ -87,12 +98,12 @@ async function proxyGalaxyImage(rawUrl, ctx = DEFAULT_CTX) {
   return fetchNativeImage(target, () => fetchProxiedImage(target, `${ctx.baseUrl}/`, "Galaxy Novels"));
 }
 
-async function fetchGalaxyNovelApi(novelId) {
-  const cacheKey = `${DEFAULT_BASE_URL}/wp-json/wor-reader-app/v1/novels/${novelId}`;
+async function fetchGalaxyNovelApi(novelId, baseUrl = DEFAULT_BASE_URL) {
+  const cacheKey = `${baseUrl}/wp-json/wor-reader-app/v1/novels/${novelId}`;
   const cached = galaxyNovelApiCache.get(cacheKey);
-  if (cached && Date.now() - cached.at < 10 * 60_000) return cached.data;
+  if (cached && Date.now() - cached.at < GALAXY_JSON_TTL_MS) return cached.data;
   const response = await fetch(cacheKey, {
-    headers: GALAXY_JSON_HEADERS(),
+    headers: GALAXY_JSON_HEADERS(baseUrl),
     signal: AbortSignal.timeout(12_000),
   });
   if (!response.ok) throw new Error(`واجهة رواية Galaxy Novels غير متاحة (${response.status})`);
@@ -100,6 +111,46 @@ async function fetchGalaxyNovelApi(novelId) {
   const data = payload?.data || payload || {};
   galaxyNovelApiCache.set(cacheKey, { at: Date.now(), data });
   return data;
+}
+
+export function normalizeGalaxyChapterList(chapters = []) {
+  return enrichChapterDates(normalizeChapterList(chapters));
+}
+
+export function mapGalaxyChapterEntry(chapter = {}, ctx = DEFAULT_CTX) {
+  const url = chapter.url ? toGalaxyAbsoluteUrl(chapter.url, ctx) : "";
+  const number = String(
+    extractChapterNumberFromUrl(url)
+    || chapter.number
+    || chapter.position
+    || "",
+  ).trim();
+  if (!url || !number) return null;
+  const title = textOnly(chapter.title || chapter.label || "");
+  const name = title && title !== number
+    ? `${number} · ${title}`
+    : String(chapter.name || title || number);
+  const publishedAt = chapter.date_iso || chapter.publishedAt || chapter.date || "";
+  return {
+    url,
+    name,
+    number,
+    date: chapter.date || chapter.date_iso || "",
+    publishedAt: publishedAt || "",
+    locked: Boolean(chapter.locked),
+    contentApi: chapter.content_api || chapter.contentApi
+      ? toGalaxyAbsoluteUrl(chapter.content_api || chapter.contentApi, ctx)
+      : "",
+    ...(chapter.author ? { author: chapter.author } : {}),
+  };
+}
+
+export function mapGalaxyChapters(index, ctx = DEFAULT_CTX) {
+  return normalizeGalaxyChapterList(
+    [...(index?.chapters || [])]
+      .map((chapter) => mapGalaxyChapterEntry(chapter, ctx))
+      .filter(Boolean),
+  );
 }
 
 function parseGalaxyAuthorFromHtml(html) {
@@ -141,7 +192,7 @@ function extractGalaxyNovelLink(block = "") {
   return null;
 }
 
-export function parseGalaxyCatalog(html = "") {
+export function parseGalaxyCatalog(html = "", ctx = DEFAULT_CTX) {
   const results = [];
   const seen = new Set();
   for (const match of html.matchAll(/<article\b([^>]*)>([\s\S]*?)<\/article>/gi)) {
@@ -155,7 +206,7 @@ export function parseGalaxyCatalog(html = "") {
     );
     const link = extractGalaxyNovelLink(block);
     if (!link?.url) continue;
-    const url = toGalaxyAbsoluteUrl(link.url);
+    const url = toGalaxyAbsoluteUrl(link.url, ctx);
     if (seen.has(url)) continue;
     const imageTag = block.match(/<img[^>]*class=["'][^"']*wor-cover-img[^"']*["'][^>]*>/i)?.[0]
       ?? block.match(/<img[^>]*>/i)?.[0]
@@ -163,21 +214,26 @@ export function parseGalaxyCatalog(html = "") {
     const chapterCount = textOnly(block.match(/<b[^>]*data-wor-library-chapter-count[^>]*>([\s\S]*?)<\/b>/i)?.[1] ?? "0");
     const status = textOnly(block.match(/<b>([^<]+)<\/b><small>الحالة<\/small>/i)?.[1] ?? "");
     const summary = textOnly(block.match(/<div[^>]*class=["'][^"']*wor-single-summary__text[^"']*["'][^>]*>([\s\S]*?)<\/div>/i)?.[1] ?? "");
+    const slug = new URL(url).pathname.split("/").filter(Boolean).pop();
+    const count = Number(chapterCount) || 0;
+    const recentChapters = count > 0 && slug
+      ? recentChaptersFromCount(count, (number) => toGalaxyAbsoluteUrl(`/novel/${slug}/chapter-${number}/`, ctx))
+      : [];
     seen.add(url);
     results.push(applyRecentChapterFields({
-      id: new URL(url).pathname.split("/").filter(Boolean).pop(),
+      id: slug,
       novelId,
       title: textOnly(link.title),
       url,
       cover: imageFromGalaxyTag(imageTag),
       summary,
-      chapterCount: Number(chapterCount) || 0,
+      chapterCount: count,
       status,
       source: "Galaxy Novels",
       sourceId: "galaxynovels",
       mediaType: "novel",
       mediaTypeLabel: "رواية",
-    }, []));
+    }, recentChapters));
   }
   return results;
 }
@@ -282,12 +338,12 @@ function warmGalaxyAuthorFilters(fetchGalaxyHtml, baseUrl = DEFAULT_BASE_URL) {
   return galaxyAuthorFiltersWarmPromise;
 }
 
-async function fetchGalaxyChapterManifest(novelId) {
-  const cacheKey = `${DEFAULT_BASE_URL}/wp-content/uploads/wor-reader-cache/chapters/manifest/novel-${novelId}.json`;
+async function fetchGalaxyChapterManifest(novelId, baseUrl = DEFAULT_BASE_URL) {
+  const cacheKey = `${baseUrl}/wp-content/uploads/wor-reader-cache/chapters/manifest/novel-${novelId}.json`;
   const cached = galaxyManifestCache.get(cacheKey);
-  if (cached && Date.now() - cached.at < 5 * 60_000) return cached.data;
+  if (cached && Date.now() - cached.at < GALAXY_INDEX_TTL_MS) return cached.data;
   const response = await fetch(cacheKey, {
-    headers: GALAXY_JSON_HEADERS(),
+    headers: GALAXY_JSON_HEADERS(baseUrl),
     signal: AbortSignal.timeout(12_000),
   });
   if (!response.ok) throw new Error(`manifeste Galaxy Novels indisponible (${response.status})`);
@@ -296,119 +352,212 @@ async function fetchGalaxyChapterManifest(novelId) {
   return data;
 }
 
-function recentChaptersFromManifest(manifest) {
+export function chaptersFromManifest(manifest, ctx = DEFAULT_CTX) {
   const tail = Array.isArray(manifest?.live_tail) ? manifest.live_tail : [];
-  const latestUrl = manifest?.latest_url ? toGalaxyAbsoluteUrl(manifest.latest_url) : "";
+  const latestUrl = manifest?.latest_url ? toGalaxyAbsoluteUrl(manifest.latest_url, ctx) : "";
   const latestNumber = manifest?.latest_number;
-  const chapters = [...tail]
-    .sort((a, b) => Number(b.position || b.number || 0) - Number(a.position || a.number || 0))
-    .map((chapter) => ({
-      url: chapter.url ? toGalaxyAbsoluteUrl(chapter.url) : "",
-      number: String(chapter.number || chapter.position || ""),
-      name: chapter.label || String(chapter.number || chapter.position || ""),
-      date: chapter.date_iso || chapter.date || "",
-      locked: false,
-    }))
-    .filter((chapter) => chapter.url && chapter.number);
+  const chapters = tail
+    .map((chapter) => mapGalaxyChapterEntry(chapter, ctx))
+    .filter(Boolean);
   if (latestUrl && latestNumber && !chapters.some((chapter) => chapter.url === latestUrl)) {
-    chapters.unshift({
+    const latest = mapGalaxyChapterEntry({
       url: latestUrl,
-      number: String(latestNumber),
-      name: String(latestNumber),
-      date: "",
-      locked: false,
-    });
+      number: latestNumber,
+      label: String(latestNumber),
+    }, ctx);
+    if (latest) chapters.unshift(latest);
   }
-  return chapters;
+  return normalizeGalaxyChapterList(chapters);
 }
 
-async function fetchGalaxyChapterIndex(novelId, rawIndexUrl = "") {
-  const target = rawIndexUrl || `${DEFAULT_BASE_URL}/wp-content/uploads/wor-reader-cache/chapters/novel-${novelId}.json`;
+export function recentChaptersFromManifest(manifest, ctx = DEFAULT_CTX) {
+  return recentChaptersFromList(chaptersFromManifest(manifest, ctx));
+}
+
+async function fetchGalaxyChapterIndex(novelId, rawIndexUrl = "", baseUrl = DEFAULT_BASE_URL) {
+  const target = rawIndexUrl || `${baseUrl}/wp-content/uploads/wor-reader-cache/chapters/novel-${novelId}.json`;
   const url = new URL(decodeHtml(target));
-  if (url.protocol !== "https:" || url.hostname !== "galaxynovels.com" || !/^\/wp-content\/uploads\/wor-reader-cache\/chapters\/novel-\d+\.json$/i.test(url.pathname)) throw new Error("فهرس فصول Galaxy Novels غير صالح");
+  const allowedHost = new URL(baseUrl).hostname.replace(/^www\./i, "");
+  if (url.protocol !== "https:" || !url.hostname.replace(/^www\./i, "").endsWith(allowedHost) || !/^\/wp-content\/uploads\/wor-reader-cache\/chapters\/novel-\d+\.json$/i.test(url.pathname)) {
+    throw new Error("فهرس فصول Galaxy Novels غير صالح");
+  }
   const cacheKey = url.toString();
   const cached = galaxyIndexCache.get(cacheKey);
-  if (cached && Date.now() - cached.at < 5 * 60_000) return cached.data;
-  const response = await fetch(cacheKey, { headers: GALAXY_JSON_HEADERS(), signal: AbortSignal.timeout(25_000) });
+  if (cached && Date.now() - cached.at < GALAXY_INDEX_TTL_MS) return cached.data;
+  const response = await fetch(cacheKey, { headers: GALAXY_JSON_HEADERS(baseUrl), signal: AbortSignal.timeout(25_000) });
   if (!response.ok) throw new Error(`فهرس فصول Galaxy Novels غير متاح (${response.status})`);
   const data = await response.json();
   galaxyIndexCache.set(cacheKey, { at: Date.now(), data });
   return data;
 }
 
-async function fetchGalaxyChapterApi(rawApiUrl) {
-  const url = new URL(rawApiUrl, DEFAULT_BASE_URL);
-  if (url.protocol !== "https:" || url.hostname !== "galaxynovels.com" || !/^\/wp-json\/wor-reader-app\/v1\/chapters\/\d+\/?$/i.test(url.pathname)) throw new Error("واجهة فصل Galaxy Novels غير صالحة");
-  const response = await fetch(url, { headers: GALAXY_JSON_HEADERS(), signal: AbortSignal.timeout(25_000) });
+async function fetchGalaxyChapterApi(rawApiUrl, baseUrl = DEFAULT_BASE_URL) {
+  const url = new URL(rawApiUrl, baseUrl);
+  const allowedHost = new URL(baseUrl).hostname.replace(/^www\./i, "");
+  if (url.protocol !== "https:" || !url.hostname.replace(/^www\./i, "").endsWith(allowedHost) || !/^\/wp-json\/wor-reader-app\/v1\/chapters\/\d+\/?$/i.test(url.pathname)) {
+    throw new Error("واجهة فصل Galaxy Novels غير صالحة");
+  }
+  const cacheKey = url.toString();
+  const cached = galaxyChapterApiCache.get(cacheKey);
+  if (cached && Date.now() - cached.at < GALAXY_CHAPTER_API_TTL_MS) return cached.data;
+  const response = await fetch(cacheKey, { headers: GALAXY_JSON_HEADERS(baseUrl), signal: AbortSignal.timeout(25_000) });
   if (!response.ok) throw new Error(`واجهة فصل Galaxy Novels غير متاحة (${response.status})`);
-  return response.json();
+  const data = await response.json();
+  galaxyChapterApiCache.set(cacheKey, { at: Date.now(), data });
+  return data;
 }
 
-function mapGalaxyChapters(index) {
-  return [...(index?.chapters || [])]
-    .sort((a, b) => Number(b.position || b.number || 0) - Number(a.position || a.number || 0))
-    .map((chapter) => ({
-      url: chapter.url ? toGalaxyAbsoluteUrl(chapter.url) : "",
-      name: chapter.title ? `${chapter.number} · ${chapter.title}` : String(chapter.number || chapter.label || ""),
-      number: String(chapter.number || chapter.position || ""),
-      date: chapter.date || "",
-      locked: false,
-      contentApi: chapter.content_api ? toGalaxyAbsoluteUrl(chapter.content_api) : "",
-    }))
-    .filter((chapter) => chapter.url && chapter.number);
-}
-
-async function enrichGalaxyCatalog(items, { concurrency = 6 } = {}) {
+async function enrichGalaxyCatalog(items, ctx = DEFAULT_CTX, { concurrency = 8 } = {}) {
   return enrichCatalogItems(items, {
     concurrency,
+    needsEnrich: catalogNeedsRecentEnrich,
     enrichItem: async (item) => {
-      const manifest = await fetchGalaxyChapterManifest(item.novelId);
-      return recentChaptersFromManifest(manifest);
+      if (!item.novelId) return [];
+      const manifest = await fetchGalaxyChapterManifest(item.novelId, ctx.baseUrl);
+      return recentChaptersFromManifest(manifest, ctx);
     },
   });
 }
 
-async function parseGalaxyDetails(html, url) {
+function buildGalaxyLibraryUrl(ctx, { page = 1, filterPath = "", queryParam = "", queryValue = "" } = {}) {
+  if (queryParam === "author" && queryValue) {
+    return `${ctx.baseUrl}/library/?q=${encodeURIComponent(queryValue)}&library_page=${page}`;
+  }
+  const filterTarget = new URL(filterPath || "/library/", ctx.baseUrl);
+  if (queryParam && queryValue) filterTarget.searchParams.set(queryParam, queryValue);
+  filterTarget.searchParams.set("library_page", String(page));
+  return filterTarget.toString();
+}
+
+function galaxyLibraryHasMore(html, upstreamPage) {
+  return new RegExp(`library_page=(?:${upstreamPage + 1})(?:[&\"'])`, "i").test(html);
+}
+
+export async function fetchGalaxyCatalogPage(ctx, fetchGalaxyHtml, {
+  page = 1,
+  filterPath = "",
+  queryParam = "",
+  queryValue = "",
+} = {}) {
+  const offset = (page - 1) * GALAXY_CATALOG_PAGE_SIZE;
+  const upstreamPage = Math.floor(offset / UPSTREAM_LIBRARY_PAGE_SIZE) + 1;
+  const start = offset % UPSTREAM_LIBRARY_PAGE_SIZE;
+  const needsSpill = start + GALAXY_CATALOG_PAGE_SIZE > UPSTREAM_LIBRARY_PAGE_SIZE;
+
+  const fetchUpstream = async (upstream) => {
+    const target = buildGalaxyLibraryUrl(ctx, { page: upstream, filterPath, queryParam, queryValue });
+    const html = await fetchGalaxyHtml(target);
+    return { html, items: parseGalaxyCatalog(html, ctx) };
+  };
+
+  const [first, second] = await Promise.all([
+    fetchUpstream(upstreamPage),
+    needsSpill ? fetchUpstream(upstreamPage + 1).catch(() => ({ html: "", items: [] })) : Promise.resolve({ html: "", items: [] }),
+  ]);
+
+  const pool = [...first.items];
+  if (needsSpill && second.items.length) pool.push(...second.items);
+
+  let items = pool.slice(start, start + GALAXY_CATALOG_PAGE_SIZE);
+  let nextUpstream = upstreamPage + (needsSpill ? 2 : 1);
+  let lastHtml = needsSpill ? second.html : first.html;
+  let hasMoreUpstream = galaxyLibraryHasMore(lastHtml || first.html, needsSpill ? upstreamPage + 1 : upstreamPage);
+
+  while (items.length < GALAXY_CATALOG_PAGE_SIZE && hasMoreUpstream && nextUpstream <= upstreamPage + 4) {
+    const extra = await fetchUpstream(nextUpstream).catch(() => ({ html: "", items: [] }));
+    if (!extra.items.length) break;
+    pool.push(...extra.items);
+    items = pool.slice(start, start + GALAXY_CATALOG_PAGE_SIZE);
+    lastHtml = extra.html;
+    hasMoreUpstream = galaxyLibraryHasMore(extra.html, nextUpstream);
+    nextUpstream += 1;
+  }
+
+  const pendingNovelIds = [...new Set(
+    items.filter((item) => catalogNeedsRecentEnrich(item)).map((item) => item.novelId).filter(Boolean),
+  )];
+  if (pendingNovelIds.length) {
+    await mapWithConcurrency(
+      pendingNovelIds,
+      12,
+      (novelId) => fetchGalaxyChapterManifest(novelId, ctx.baseUrl).catch(() => null),
+    );
+  }
+
+  await enrichGalaxyCatalog(items, ctx, { concurrency: 8 });
+
+  return {
+    items,
+    page,
+    hasMore: items.length === GALAXY_CATALOG_PAGE_SIZE && hasMoreUpstream,
+    fetchedAt: new Date().toISOString(),
+  };
+}
+
+async function fetchGalaxyTaxonomyFilters(ctx, fetchGalaxyHtml) {
+  const cacheKey = ctx.baseUrl;
+  const cached = galaxyTaxonomyFiltersCache.get(cacheKey);
+  if (cached && Date.now() - cached.at < GALAXY_FILTERS_CACHE_TTL_MS) return cached.data;
+  const html = await fetchGalaxyHtml(`${ctx.baseUrl}/library/`);
+  const data = mergeFilterGroups([parseTaxonomyFilterLinks(html, ctx.baseUrl, [ctx.apex, ctx.hostname])]);
+  galaxyTaxonomyFiltersCache.set(cacheKey, { at: Date.now(), data });
+  return data;
+}
+
+async function parseGalaxyDetails(html, url, ctx = DEFAULT_CTX) {
   const pageTag = html.match(/<article[^>]*class="[^"]*wor-single-novel-page[^"]*"[^>]*>/i)?.[0] ?? "";
   const novelId = Number(pageTag.match(/data-novel-id="(\d+)"/i)?.[1] ?? 0);
   const slug = new URL(url).pathname.split("/").filter(Boolean).pop() || "";
   let author = parseGalaxyAuthorFromHtml(html);
   let altTitle = "";
+  const indexUrl = decodeHtml(html.match(/data-index-url="([^"]+)"/i)?.[1] ?? "");
+  let chapters = [];
+
   if (novelId) {
-    try {
-      const api = await fetchGalaxyNovelApi(novelId);
-      author = textOnly(api.author || author);
-      altTitle = textOnly(api.original_title || "");
-    } catch { /* Passe au HTML. */ }
+    const [apiSettled, indexSettled, manifestSettled] = await Promise.allSettled([
+      fetchGalaxyNovelApi(novelId, ctx.baseUrl),
+      indexUrl || novelId ? fetchGalaxyChapterIndex(novelId, indexUrl, ctx.baseUrl) : Promise.reject(new Error("no index")),
+      fetchGalaxyChapterManifest(novelId, ctx.baseUrl),
+    ]);
+
+    if (apiSettled.status === "fulfilled") {
+      author = textOnly(apiSettled.value.author || author);
+      altTitle = textOnly(apiSettled.value.original_title || "");
+    }
+    if (indexSettled.status === "fulfilled") {
+      chapters = mapGalaxyChapters(indexSettled.value, ctx);
+    } else if (manifestSettled.status === "fulfilled") {
+      chapters = chaptersFromManifest(manifestSettled.value, ctx);
+    }
   }
+
   const title = textOnly(html.match(/<div[^>]*class="[^"]*wor-single-hero__body[^"]*"[^>]*>[\s\S]*?<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ?? "");
   const coverTag = html.match(/<div[^>]*class="[^"]*wor-single-hero__cover[^"]*"[^>]*>[\s\S]*?<img[^>]*class="[^"]*wor-cover-img[^"]*"[^>]*>/i)?.[0] ?? "";
   const cover = decodeHtml(coverTag.match(/data-src="([^"]+)"/i)?.[1] ?? html.match(/<meta property="og:image" content="([^"]+)"/i)?.[1] ?? "");
   const summary = textOnly(html.match(/<div[^>]*class="[^"]*wor-single-summary__text[^"]*"[^>]*>([\s\S]*?)<\/div>/i)?.[1] ?? html.match(/<meta name="description" content="([^"]*)"/i)?.[1] ?? "");
-  const indexUrl = decodeHtml(html.match(/data-index-url="([^"]+)"/i)?.[1] ?? "");
-  let chapters = [];
-  if (novelId) {
-    try {
-      chapters = mapGalaxyChapters(await fetchGalaxyChapterIndex(novelId, indexUrl));
-    } catch {
-      try {
-        chapters = recentChaptersFromManifest(await fetchGalaxyChapterManifest(novelId));
-      } catch { /* Passe au HTML rendu. */ }
-    }
-  }
+
   if (!chapters.length) {
     const seen = new Set();
     for (const match of html.matchAll(/<a[^>]*class="[^"]*wor-novel-chapter-item__num[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi)) {
       if (seen.has(match[1])) continue;
       seen.add(match[1]);
-      const number = textOnly(match[2]);
-      chapters.push({ url: toGalaxyAbsoluteUrl(match[1]), name: number, number, date: "", locked: false });
+      const chapterUrl = toGalaxyAbsoluteUrl(match[1], ctx);
+      const number = textOnly(match[2]) || extractChapterNumberFromUrl(chapterUrl);
+      chapters.push({
+        url: chapterUrl,
+        name: textOnly(match[2]) || String(number),
+        number: String(number),
+        date: "",
+        locked: false,
+      });
     }
+    chapters = normalizeGalaxyChapterList(chapters);
   }
+
   if (author) {
     chapters = chapters.map((chapter) => ({ ...chapter, author }));
   }
-  const taxonomies = parseDetailTaxonomies(html, DEFAULT_BASE_URL);
+  const taxonomies = parseDetailTaxonomies(html, ctx.baseUrl);
   return enrichSourceDetails({
     id: slug,
     novelId,
@@ -447,11 +596,49 @@ export function parseGalaxyChapter(html, url) {
   return { title: textOnly(title), url, kind: "novel", paragraphs, pages: [] };
 }
 
-export function parseGalaxyChapterApi(payload, fallbackUrl) {
+export function extractGalaxyChapterApiFromHtml(html = "", baseUrl = DEFAULT_BASE_URL) {
+  const raw = html.match(/data-content-api=["']([^"']+)["']/i)?.[1]
+    ?? html.match(/data-chapter-api=["']([^"']+)["']/i)?.[1]
+    ?? "";
+  if (!raw) return "";
+  try {
+    return toGalaxyAbsoluteUrl(raw, createHostContext(baseUrl));
+  } catch {
+    return "";
+  }
+}
+
+export async function resolveGalaxyChapter(target, apiUrl, fetchGalaxyHtml, ctx = DEFAULT_CTX) {
+  if (apiUrl) {
+    try {
+      const parsed = parseGalaxyChapterApi(await fetchGalaxyChapterApi(apiUrl, ctx.baseUrl), target, ctx);
+      if (parsed.paragraphs.length) return parsed;
+    } catch {
+      // Passe au HTML public.
+    }
+  }
+
+  const html = await fetchGalaxyHtml(target);
+  const inlineApi = extractGalaxyChapterApiFromHtml(html, ctx.baseUrl);
+  if (inlineApi && inlineApi !== apiUrl) {
+    try {
+      const parsed = parseGalaxyChapterApi(await fetchGalaxyChapterApi(inlineApi, ctx.baseUrl), target, ctx);
+      if (parsed.paragraphs.length) return parsed;
+    } catch {
+      // Passe au HTML rendu.
+    }
+  }
+
+  const parsed = parseGalaxyChapter(html, target);
+  if (parsed.paragraphs.length) return parsed;
+  throw new Error("تعذر استخراج نص الفصل");
+}
+
+export function parseGalaxyChapterApi(payload, fallbackUrl, ctx = DEFAULT_CTX) {
   const chapter = payload?.data || payload || {};
   const html = chapter.content_html || chapter.content || chapter.html || "";
   const paragraphs = extractGalaxyParagraphs(html);
-  const url = chapter.url ? toGalaxyAbsoluteUrl(chapter.url) : fallbackUrl;
+  const url = chapter.url ? toGalaxyAbsoluteUrl(chapter.url, ctx) : fallbackUrl;
   return { title: textOnly(chapter.display_title || chapter.title || chapter.label || ""), url, kind: "novel", paragraphs, pages: [] };
 }
 
@@ -461,8 +648,7 @@ export async function handleGalaxyRequest(requestUrl) {
 
   if (requestUrl.pathname.endsWith("/image")) return await proxyGalaxyImage(requestUrl.searchParams.get("url") ?? "", ctx);
   if (requestUrl.pathname.endsWith("/filters")) {
-    const html = await fetchGalaxyHtml(`${ctx.baseUrl}/library/`);
-    const taxonomy = mergeFilterGroups([parseTaxonomyFilterLinks(html, ctx.baseUrl, [ctx.apex, ctx.hostname])]);
+    const taxonomy = await fetchGalaxyTaxonomyFilters(ctx, fetchGalaxyHtml);
     const authors = await buildGalaxyAuthorFilters(fetchGalaxyHtml, ctx.baseUrl, GALAXY_AUTHOR_FILTER_QUICK_PAGES);
     warmGalaxyAuthorFilters(fetchGalaxyHtml, ctx.baseUrl);
     return responseJson(200, {
@@ -478,45 +664,34 @@ export async function handleGalaxyRequest(requestUrl) {
     const queryValue = requestUrl.searchParams.get("queryValue")?.trim() ?? "";
     if (filterPath && (!/^\/[\p{L}\p{N}/+_.%-]+\/?$/u.test(filterPath) || filterPath.includes(".."))) throw new Error("مسار فلتر Galaxy Novels غير صالح");
     if (queryParam && !new Set(["genres", "genre", "category", "tags", "tag", "author"]).has(queryParam)) throw new Error("فلتر Galaxy Novels غير صالح");
-    let target;
-    if (queryParam === "author" && queryValue) {
-      target = `${ctx.baseUrl}/library/?q=${encodeURIComponent(queryValue)}&library_page=${page}`;
-    } else {
-      const filterTarget = new URL(filterPath || "/library/", ctx.baseUrl);
-      if (queryParam && queryValue) filterTarget.searchParams.set(queryParam, queryValue);
-      filterTarget.searchParams.set("library_page", String(page));
-      target = filterTarget.toString();
-    }
-    const html = await fetchGalaxyHtml(target);
-    const items = parseGalaxyCatalog(html);
-    await enrichGalaxyCatalog(items, { concurrency: 6 });
-    const nextPagePattern = new RegExp(`library_page=(?:${page + 1})(?:[&\"'])`, "i");
-    return responseJson(200, { items, page, hasMore: nextPagePattern.test(html), fetchedAt: new Date().toISOString() });
+    return responseJson(200, await fetchGalaxyCatalogPage(ctx, fetchGalaxyHtml, { page, filterPath, queryParam, queryValue }));
   }
   if (requestUrl.pathname.endsWith("/search")) {
     const { query, valid } = normalizeSearchQuery(requestUrl.searchParams.get("q"));
     if (!valid) return responseJson(200, { items: [] });
-    const html = await fetchGalaxyHtml(`${ctx.baseUrl}/library/?q=${encodeURIComponent(query)}`);
-    const items = parseGalaxyCatalog(html);
-    await enrichGalaxyCatalog(items, { concurrency: 4 });
-    return responseJson(200, { items });
+    const page = Math.min(Math.max(Number(requestUrl.searchParams.get("page")) || 1, 1), 1000);
+    const html = await fetchGalaxyHtml(buildGalaxyLibraryUrl(ctx, {
+      page,
+      filterPath: "/library/",
+      queryParam: "q",
+      queryValue: query,
+    }));
+    const items = parseGalaxyCatalog(html, ctx).slice(0, GALAXY_CATALOG_PAGE_SIZE);
+    await enrichGalaxyCatalog(items, ctx, { concurrency: 4 });
+    return responseJson(200, {
+      items,
+      page,
+      hasMore: galaxyLibraryHasMore(html, page) && items.length === GALAXY_CATALOG_PAGE_SIZE,
+    });
   }
   if (requestUrl.pathname.endsWith("/manga")) {
-    const target = assertGalaxyUrl(requestUrl.searchParams.get("url") ?? "");
-    return responseJson(200, await parseGalaxyDetails(await fetchGalaxyHtml(target), target));
+    const target = assertGalaxyUrl(requestUrl.searchParams.get("url") ?? "", false, ctx);
+    return responseJson(200, await parseGalaxyDetails(await fetchGalaxyHtml(target), target, ctx));
   }
   if (requestUrl.pathname.endsWith("/chapter")) {
-    const target = assertGalaxyUrl(requestUrl.searchParams.get("url") ?? "", true);
+    const target = assertGalaxyUrl(requestUrl.searchParams.get("url") ?? "", true, ctx);
     const apiUrl = requestUrl.searchParams.get("api") ?? "";
-    if (apiUrl) {
-      try {
-        const parsed = parseGalaxyChapterApi(await fetchGalaxyChapterApi(apiUrl), target);
-        if (parsed.paragraphs.length) return responseJson(200, parsed);
-      } catch { /* La page HTML publique reste le repli. */ }
-    }
-    const parsed = parseGalaxyChapter(await fetchGalaxyHtml(target), target);
-    if (!parsed.paragraphs.length) throw new Error("تعذر استخراج نص الفصل");
-    return responseJson(200, parsed);
+    return responseJson(200, await resolveGalaxyChapter(target, apiUrl, fetchGalaxyHtml, ctx));
   }
   return responseJson(404, { error: "Route Galaxy Novels inconnue" });
 }

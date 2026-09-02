@@ -8,15 +8,32 @@ export function DetailsCinematicHero({
   heroCover,
   heroMeta,
   heroActions,
+  standaloneVideo = false,
 }) {
   const isLoading = status === "loading";
   const isReadingLayout = heroLayout === DETAILS_HERO_LAYOUT.READING;
+
+  if (standaloneVideo) {
+    return (
+      <>
+        <div className="live-details-hero__content live-details-hero__content--standalone-video">
+          {isLoading ? <DetailsDockSkeleton /> : heroCover}
+          {!isLoading ? heroMeta : null}
+        </div>
+        {!isLoading && heroActions ? (
+          <div className="live-details-hero__actions live-details-hero__actions--standalone-video">
+            {heroActions}
+          </div>
+        ) : null}
+      </>
+    );
+  }
 
   if (isReadingLayout) {
     return (
       <>
         <div className="live-details-hero__content live-details-hero__content--reading">
-          {isLoading ? <DetailsDockSkeleton /> : heroCover}
+          {heroCover}
           <div className="live-details-hero__reading-panel">
             {heroMeta}
           </div>
@@ -24,6 +41,10 @@ export function DetailsCinematicHero({
         {!isLoading && heroActions ? (
           <div className="live-details-hero__actions">
             {heroActions}
+          </div>
+        ) : isLoading ? (
+          <div className="live-details-hero__actions live-details-hero__actions--loading" aria-hidden="true">
+            <span className="details-dock-skeleton__button ui-skeleton" />
           </div>
         ) : null}
       </>

@@ -1,9 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  ANIME4UP_CATALOG_PAGE_SIZE,
+  enrichAnime4upEpisodePlayback,
   extractLatestEpisodesHtml,
   extractVnxStreamUrl,
   extractVnxSubtitleTracks,
+  fetchAnime4upCatalogPage,
+  fetchAnime4upEpisodes,
   isAnime4upCatalogScopedSearchPath,
   normalizeAnime4upUrl,
   parseAnime4upCatalog,
@@ -13,6 +17,7 @@ import {
   parseAnime4upEpisodes,
   pickAnime4upEmbedUrl,
 } from "../sources/anime4up.js";
+import { createHostContext } from "../lib/sourceBaseUrl.js";
 
 const EPISODE_CARD = `
 <div class="anime-card-themex">
@@ -52,6 +57,32 @@ const ANIME_CARD = `
   </div>
 </div>
 `;
+
+test("ANIME4UP_CATALOG_PAGE_SIZE matches AnimeDar density", () => {
+  assert.equal(ANIME4UP_CATALOG_PAGE_SIZE, 20);
+});
+
+test("fetchAnime4upCatalogPage enriches anime list cards with latest episodes", async () => {
+  const catalogHtml = ANIME_CARD;
+  const animeHtml = `
+    <div class="ep_num"><a href="https://4h.b9p2m6c.shop/episode/black-torch-ep-3/">الحلقة 3</a></div>
+    <div class="ep_num"><a href="https://4h.b9p2m6c.shop/episode/black-torch-ep-2/">الحلقة 2</a></div>
+  `;
+  const fetchHtml = async (url) => {
+    if (url.includes("/anime/black-torch")) return animeHtml;
+    return catalogHtml;
+  };
+  const ctx = { baseUrl: "https://4h.b9p2m6c.shop" };
+  const payload = await fetchAnime4upCatalogPage(ctx, fetchHtml, {
+    page: 1,
+    filterPath: "/anime-type/tv2/",
+  });
+  const item = payload.items.find((entry) => entry.id === "black-torch");
+  assert.ok(item, "black-torch should be present");
+  assert.equal(item.latestChapter, "3");
+  assert.match(item.recentChapters[0]?.url, /black-torch-ep-3/);
+  assert.equal(item.audioLabel, "مترجم");
+});
 
 test("parseAnime4upCatalog reads anime list cards", () => {
   const items = parseAnime4upCatalog(ANIME_CARD);
@@ -214,10 +245,99 @@ test("parseAnime4upEpisode keeps native player in sources but embeds external ho
   assert.ok(episode.sources.some((entry) => /Anime4up-S1/i.test(entry.url)));
 });
 
+test("enrichAnime4upEpisodePlayback keeps external mirrors in sources when HLS is available", async () => {
+  const html = `
+    <h1>الحلقة 9</h1>
+    <ul id="episode-servers">
+      <li data-watch="https://4l.w2m6p5q.shop/Anime4up-S1/mal/1/9/sub/"><a>anime4up1</a></li>
+      <li data-watch="https://voe.sx/e/test123"><a>voe</a></li>
+      <li data-watch="https://uqload.vc/e/demo"><a>uqload</a></li>
+    </ul>
+  `;
+  const fetchHtml = async (url) => {
+    if (/Anime4up-S1/i.test(url)) {
+      return 'let streamUrl = "https://cdn1.k1c6x8p.shop/?token=demo";';
+    }
+    throw new Error(`unexpected ${url}`);
+  };
+  const episode = await enrichAnime4upEpisodePlayback(
+    html,
+    "https://4l.w2m6p5q.shop/episode/test/",
+    fetchHtml,
+  );
+  assert.equal(episode.playbackMode, "hls");
+  assert.equal(episode.sources.length, 3);
+  assert.ok(episode.sources.some((entry) => /voe\.sx/i.test(entry.url)));
+  assert.ok(episode.sources.some((entry) => /uqload/i.test(entry.url)));
+});
+
 test("isAnime4upCatalogScopedSearchPath ignores kind paths but keeps genres", () => {
   assert.equal(isAnime4upCatalogScopedSearchPath(""), false);
   assert.equal(isAnime4upCatalogScopedSearchPath("/all/"), false);
   assert.equal(isAnime4upCatalogScopedSearchPath("/anime-type/tv2/"), false);
   assert.equal(isAnime4upCatalogScopedSearchPath("/anime-type/movie/"), false);
   assert.equal(isAnime4upCatalogScopedSearchPath("/anime-genre/action/"), true);
+});
+
+const ANIME4UP_CTX = createHostContext("https://4h.b9p2m6c.shop");
+
+test("fetchAnime4upCatalogPage skips extra fetches for movie cards", async () => {
+  const movieCard = `
+<div class="anime-card-themex">
+  <div class="anime-card-container">
+    <div class="anime-card-poster">
+      <img data-image="https://4h.b9p2m6c.shop/wp-content/uploads/poster.jpg" alt="Movie Torch" />
+      <a href="https://4h.b9p2m6c.shop/anime/movie-torch/" class="overlay"></a>
+    </div>
+    <div class="anime-card-details">
+      <div class="anime-card-type">فيلم</div>
+      <div class="anime-card-title">
+        <h3><a href="https://4h.b9p2m6c.shop/anime/movie-torch/">Movie Torch</a></h3>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+  const urls = [];
+  const fetchHtml = async (url) => {
+    urls.push(url);
+    return movieCard;
+  };
+  const payload = await fetchAnime4upCatalogPage(ANIME4UP_CTX, fetchHtml, {
+    page: 1,
+    filterPath: "/anime-type/movie/",
+  });
+  const item = payload.items.find((entry) => entry.id === "movie-torch");
+  assert.ok(item, "movie-torch should be present");
+  assert.equal(item.mediaType, "movie");
+  assert.equal(urls.some((url) => /\/anime\/movie-torch/i.test(url)), false);
+});
+
+test("fetchAnime4upEpisodes loads extra episode pages in parallel", async () => {
+  const started = [];
+  const page1 = `
+    <h1 class="anime-details-title">Long Show</h1>
+    <div data-max-pages="3"></div>
+    <div class="ep_num"><a href="https://4h.b9p2m6c.shop/episode/long-show-ep-30/">الحلقة 30</a></div>
+  `;
+  const fetchHtml = (url) => {
+    started.push(url);
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const page = url.match(/\/page\/(\d+)\//)?.[1] || "1";
+        resolve(`<div class="ep_num"><a href="https://4h.b9p2m6c.shop/episode/long-show-p${page}/">الحلقة ${page}</a></div>`);
+      }, 40);
+    });
+  };
+  const pending = fetchAnime4upEpisodes(
+    "https://4h.b9p2m6c.shop/anime/long-show-parallel/",
+    page1,
+    fetchHtml,
+    ANIME4UP_CTX,
+  );
+  await new Promise((resolve) => setTimeout(resolve, 15));
+  assert.ok(started.some((url) => url.includes("/page/2/")));
+  assert.ok(started.some((url) => url.includes("/page/3/")));
+  const chapters = await pending;
+  assert.ok(chapters.length >= 3);
 });

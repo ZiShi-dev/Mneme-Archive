@@ -1,9 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { getChapterProgress } from "../../../lib/storage/chapterProgress";
-import { findDriveEmbedSourceIndex, isDriveMkvStreamSource, pickBestPlaybackSourceIndex, sortPlaybackSources } from "../../../lib/hls/playbackQuality";
-import { fetchSourceChapter, fetchSourceDetails, formatSourceError } from "../sourceApi";
+import { findDriveEmbedSourceIndex, isDriveMkvStreamSource, sortPlaybackSources } from "../../../lib/hls/playbackQuality";
+import { isAllowedEmbedUrl } from "../../../lib/video/embedHosts";
+import { fetchSourceChapter, fetchSourceDetails, formatSourceError, peekSourceChapter, peekSourceDetails } from "../sourceApi";
 import { buildSubtitleTracks, resolveLivePlayback } from "./resolveLivePlayback";
+import { findNextPlaybackSourceIndex } from "./playbackFallback";
+import { resolveActiveSourceIndex, resolveCachedPlaybackData } from "./videoPlaybackCache";
+
+function readChapterBootstrap(sourceId, chapter, manga, prefetchData) {
+  return resolveCachedPlaybackData({
+    prefetchData,
+    cached: peekSourceChapter(sourceId, chapter.url, {
+      contentApi: chapter.contentApi,
+      language: chapter.preferredAudioLanguage || manga.preferredAudioLanguage || "",
+    }),
+    chapterUrl: chapter.url,
+  });
+}
 
 export function useVideoChapterSession({
   manga,
@@ -13,29 +27,42 @@ export function useVideoChapterSession({
   pushToast,
   t,
   onChapterLoadStart,
+  preferredSourceIndex,
+  prefetchData,
 }) {
   const [activeChapter, setActiveChapter] = useState(chapter);
-  const [chapters, setChapters] = useState(manga.recentChapters || [chapter]);
-  const [data, setData] = useState(null);
+  const [chapters, setChapters] = useState(
+    (Array.isArray(manga.chapters) && manga.chapters.length ? manga.chapters : manga.recentChapters) || [chapter],
+  );
+  const [data, setData] = useState(() => readChapterBootstrap(sourceId, chapter, manga, prefetchData));
   const [error, setError] = useState("");
-  const [activeSourceIndex, setActiveSourceIndex] = useState(0);
+  const [activeSourceIndex, setActiveSourceIndex] = useState(() => resolveActiveSourceIndex({
+    data: readChapterBootstrap(sourceId, chapter, manga, prefetchData),
+    preferredSourceIndex,
+    preferDriveEmbed: Capacitor.isNativePlatform(),
+    applyPreferred: Number.isInteger(preferredSourceIndex),
+  }));
   const [hlsRetryKey, setHlsRetryKey] = useState(0);
-  const [preferEmbedPlayback, setPreferEmbedPlayback] = useState(false);
+  const [embedFallbackIndexes, setEmbedFallbackIndexes] = useState(() => new Set());
 
   const orderedSources = useMemo(
     () => sortPlaybackSources(data?.sources?.length ? data.sources : []),
     [data?.sources],
   );
 
-  const currentSource = orderedSources[activeSourceIndex] ?? orderedSources[0] ?? null;
+  const currentSource = useMemo(() => {
+    const source = orderedSources[activeSourceIndex] ?? orderedSources[0] ?? null;
+    if (!source || !embedFallbackIndexes.has(activeSourceIndex)) return source;
+    const { streamUrl, streamReferer, streamType, ...rest } = source;
+    return rest;
+  }, [activeSourceIndex, embedFallbackIndexes, orderedSources]);
 
   const orderedSourcesRef = useRef(orderedSources);
   const activeSourceIndexRef = useRef(activeSourceIndex);
+  const embedFallbackIndexesRef = useRef(embedFallbackIndexes);
   orderedSourcesRef.current = orderedSources;
   activeSourceIndexRef.current = activeSourceIndex;
-
-  const preferEmbedRef = useRef(preferEmbedPlayback);
-  preferEmbedRef.current = preferEmbedPlayback;
+  embedFallbackIndexesRef.current = embedFallbackIndexes;
 
   const preferDriveEmbed = useMemo(() => {
     if (Capacitor.isNativePlatform()) return true;
@@ -52,31 +79,23 @@ export function useVideoChapterSession({
       const embedIndex = findDriveEmbedSourceIndex(sources);
       if (embedIndex >= 0 && embedIndex !== index) {
         pushToast({ type: "info", message: t("reader.stream.switchingServer") });
-        setPreferEmbedPlayback(false);
         setActiveSourceIndex(embedIndex);
         setHlsRetryKey((value) => value + 1);
         return;
       }
     }
 
-    if (current?.streamUrl && current?.url && !preferEmbedRef.current) {
-      pushToast({ type: "info", message: t("reader.stream.embedFallback") });
-      setPreferEmbedPlayback(true);
-      setHlsRetryKey((value) => value + 1);
-      return;
-    }
-
-    if (index + 1 < sources.length) {
+    if (current?.streamUrl && current?.url && !embedFallbackIndexesRef.current.has(index)) {
       pushToast({ type: "info", message: t("reader.stream.switchingServer") });
-      setPreferEmbedPlayback(false);
-      setActiveSourceIndex(index + 1);
+      setEmbedFallbackIndexes((value) => new Set(value).add(index));
       setHlsRetryKey((value) => value + 1);
       return;
     }
 
-    if (current?.url && !preferEmbedRef.current) {
-      pushToast({ type: "info", message: t("reader.stream.embedFallback") });
-      setPreferEmbedPlayback(true);
+    const nextIndex = findNextPlaybackSourceIndex(sources, index);
+    if (nextIndex >= 0) {
+      pushToast({ type: "info", message: t("reader.stream.switchingServer") });
+      setActiveSourceIndex(nextIndex);
       setHlsRetryKey((value) => value + 1);
       return;
     }
@@ -88,12 +107,17 @@ export function useVideoChapterSession({
     () => resolveLivePlayback({
       data,
       currentSource,
-      preferEmbedPlayback,
       sourceId,
       activeChapterUrl: activeChapter.url,
     }),
-    [activeChapter.url, currentSource, data, preferEmbedPlayback, sourceId],
+    [activeChapter.url, currentSource, data, sourceId],
   );
+
+  useEffect(() => {
+    if (!playback || playback.mode !== "embed" || !playback.url) return;
+    if (isAllowedEmbedUrl(playback.url)) return;
+    handleHlsError();
+  }, [handleHlsError, hlsRetryKey, playback]);
 
   const embedMode = playback?.mode === "embed";
   const usePlyrPlayer = playback?.mode === "hls";
@@ -111,6 +135,20 @@ export function useVideoChapterSession({
 
   useEffect(() => {
     let active = true;
+    const seed = Array.isArray(manga.chapters) && manga.chapters.length
+      ? manga.chapters
+      : manga.recentChapters;
+    if (seed?.length) setChapters(seed);
+
+    const cached = peekSourceDetails(sourceId, manga.url);
+    if (cached?.chapters?.length) {
+      setChapters(cached.chapters);
+      return () => { active = false; };
+    }
+    if (Array.isArray(seed) && seed.length > 1) {
+      return () => { active = false; };
+    }
+
     fetchSourceDetails(sourceId, manga.url).then((details) => {
       if (active && details.chapters?.length) setChapters(details.chapters);
     }).catch(() => {});
@@ -119,24 +157,42 @@ export function useVideoChapterSession({
 
   useEffect(() => {
     let active = true;
-    setData(null);
-    setError("");
-    setActiveSourceIndex(0);
-    setHlsRetryKey(0);
-    setPreferEmbedPlayback(false);
-    onChapterLoadStart?.();
-
-    fetchSourceChapter(sourceId, activeChapter.url, {
+    const chapterOpts = {
       contentApi: activeChapter.contentApi,
       language: activeChapter.preferredAudioLanguage || manga.preferredAudioLanguage || "",
-    })
+    };
+    const bootstrap = resolveCachedPlaybackData({
+      prefetchData,
+      cached: peekSourceChapter(sourceId, activeChapter.url, chapterOpts),
+      chapterUrl: activeChapter.url,
+    });
+
+    setError("");
+    setHlsRetryKey(0);
+    setEmbedFallbackIndexes(new Set());
+    onChapterLoadStart?.();
+
+    const applyResult = (result) => {
+      setData(result);
+      setActiveSourceIndex(resolveActiveSourceIndex({
+        data: result,
+        preferredSourceIndex,
+        preferDriveEmbed,
+        applyPreferred: Number.isInteger(preferredSourceIndex) && activeChapter.url === chapter.url,
+      }));
+    };
+
+    if (bootstrap) {
+      applyResult(bootstrap);
+      return () => { active = false; };
+    }
+
+    setData(null);
+    setActiveSourceIndex(0);
+    fetchSourceChapter(sourceId, activeChapter.url, chapterOpts)
       .then((result) => {
         if (!active) return;
-        setData(result);
-        setActiveSourceIndex(pickBestPlaybackSourceIndex(
-          sortPlaybackSources(result.sources),
-          { preferDriveEmbed },
-        ));
+        applyResult(result);
       })
       .catch((reason) => {
         if (!active) return;
@@ -154,12 +210,15 @@ export function useVideoChapterSession({
     presentation.loadError,
     pushToast,
     preferDriveEmbed,
+    preferredSourceIndex,
+    prefetchData,
     sourceId,
+    chapter.url,
   ]);
 
   const selectSource = useCallback((index) => {
     setActiveSourceIndex(index);
-    setPreferEmbedPlayback(false);
+    setEmbedFallbackIndexes(new Set());
     setHlsRetryKey((value) => value + 1);
   }, []);
 
@@ -169,10 +228,7 @@ export function useVideoChapterSession({
   }, []);
 
   const initialProgress = useMemo(
-    () => {
-      const saved = getChapterProgress(sourceId, activeChapter.url);
-      return saved > 0 && saved < 100 ? saved : 0;
-    },
+    () => Math.min(100, Math.max(0, Number(getChapterProgress(sourceId, activeChapter.url)) || 0)),
     [activeChapter.url, sourceId],
   );
 
@@ -183,7 +239,6 @@ export function useVideoChapterSession({
     error,
     activeSourceIndex,
     hlsRetryKey,
-    preferEmbedPlayback,
     orderedSources,
     currentSource,
     playback,

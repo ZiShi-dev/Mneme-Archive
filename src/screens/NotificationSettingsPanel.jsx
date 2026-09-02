@@ -141,6 +141,16 @@ export function NotificationSettingsSheet({
                 {!isNative && !isChromebookApp && ` ${t("notify.browserOnly")}`}
                 {isNative && backgroundStatus.registered && ` · ${t("notify.backgroundOn")}`}
               </p>
+
+              {isNative && !isChromebookApp && (
+                <div className="notify-sheet__battery-guide">
+                  <Smartphone size={15} aria-hidden="true" />
+                  <div>
+                    <strong>{t("notify.batteryGuideTitle")}</strong>
+                    <p>{t("notify.batteryGuideBody")}</p>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>

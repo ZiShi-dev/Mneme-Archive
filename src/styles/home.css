@@ -276,6 +276,19 @@
   transform: scale(0.995);
 }
 
+.home-latest-row--locked {
+  border-color: color-mix(in srgb, var(--brand-warm) 32%, var(--line));
+}
+.home-latest-row--locked .home-latest-row__chapter {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--brand-warm);
+}
+.home-latest-row--locked .unlock-countdown {
+  display: block;
+  margin-top: 2px;
+}
 .home-latest-row--new {
   border-color: color-mix(in srgb, var(--home-latest-accent, var(--brand)) 28%, var(--line));
   background: linear-gradient(

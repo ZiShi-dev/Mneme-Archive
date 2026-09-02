@@ -1,6 +1,6 @@
-const EMBED_HOST_PATTERN = /(^|\.)(4h\.b9p2m6c\.shop|[a-z0-9-]+\.b9p2m6c\.shop|[a-z0-9-]+\.anime4up\.rest|(?:[a-z0-9-]+\.)?embed4me\.com|voe\.sx|vidzy\.(?:cc|live|org)|(?:[a-z0-9-]+\.)?filemoon\.(?:to|sx|com)|(?:[a-z0-9-]+\.)?mp4upload\.com|(?:[a-z0-9-]+\.)?share4max\.(?:com|org)|vkvideo\.ru|(?:[a-z0-9-]+\.)?playmogo\.com|(?:[a-z0-9-]+\.)?rubyvidhub\.com|(?:[a-z0-9-]+\.)?uqload\.(?:com|net|to|cx)|(?:[a-z0-9-]+\.)?dood\.(?:com|watch)|(?:[a-z0-9-]+\.)?streamruby\.com|videa\.hu|96ar\.com|(?:[a-z0-9-]+\.)?fsvid\.lol|(?:[a-z0-9-]+\.)?kakaflix\.[a-z]{2,}|(?:[a-z0-9-]+\.)?netu\.[a-z]{2,}|(?:[a-z0-9-]+\.)?filmoon\.[a-z]{2,}|sandratableother\.com|diananatureforeign\.com|drive\.google\.com|(?:www\.)?dailymotion\.com|(?:www\.)?ok\.ru|bysezoxexe\.com)$/i;
+const EMBED_HOST_PATTERN = /(^|\.)(4h\.b9p2m6c\.shop|[a-z0-9-]+\.b9p2m6c\.shop|[0-9][a-z0-9]\.[a-z0-9]+\.shop|[a-z0-9-]+\.anime4up\.rest|(?:[a-z0-9-]+\.)?embed4me\.com|voe\.sx|vidzy\.(?:cc|live|org)|(?:[a-z0-9-]+\.)?filemoon\.(?:to|sx|com)|(?:[a-z0-9-]+\.)?mp4upload\.com|(?:[a-z0-9-]+\.)?share4max\.(?:com|org)|vkvideo\.ru|(?:[a-z0-9-]+\.)?playmogo\.com|(?:[a-z0-9-]+\.)?rubyvidhub\.com|(?:[a-z0-9-]+\.)?uqload\.(?:com|net|to|cx|vc)|(?:[a-z0-9-]+\.)?dood\.(?:com|watch)|(?:[a-z0-9-]+\.)?streamruby\.com|videa\.hu|96ar\.com|(?:[a-z0-9-]+\.)?fsvid\.lol|(?:[a-z0-9-]+\.)?kakaflix\.[a-z]{2,}|(?:[a-z0-9-]+\.)?flixeo\.xyz|(?:[a-z0-9-]+\.)?multiup\.us|(?:[a-z0-9-]+\.)?netu\.[a-z]{2,}|(?:[a-z0-9-]+\.)?filmoon\.[a-z]{2,}|sandratableother\.com|diananatureforeign\.com|drive\.google\.com|(?:www\.)?dailymotion\.com|(?:www\.)?ok\.ru|bysezoxexe\.com)$/i;
 
-const EMBED_NO_SANDBOX_HOSTS = /(^|\.)(voe\.sx|sandratableother\.com|diananatureforeign\.com|drive\.google\.com|(?:www\.)?dailymotion\.com|(?:www\.)?ok\.ru)$/i;
+const EMBED_NO_SANDBOX_HOSTS = /(^|\.)(voe\.sx|sandratableother\.com|diananatureforeign\.com|drive\.google\.com|(?:www\.)?dailymotion\.com|(?:www\.)?ok\.ru|(?:[a-z0-9-]+\.)?flixeo\.xyz|(?:[a-z0-9-]+\.)?multiup\.us|(?:[a-z0-9-]+\.)?kakaflix\.[a-z]{2,})$/i;
 
 const AD_HOST_PATTERN = /(doubleclick|googlesyndication|googleadservices|googletagmanager|googletagservices|google-analytics|adservice\.google|pagead2\.|fundingchoicesmessages\.google|popads|exoclick|clickadu|adsterra|propellerads|outbrain|taboola|mgid|revcontent|juicyads|trafficjunky|tsyndicate|adnxs|rubiconproject|pubmatic|openx\.net|play\.google\.com|market\.android\.com)/i;
 
@@ -11,8 +11,16 @@ export const EMBED_IFRAME_SANDBOX = [
   "allow-same-origin",
   "allow-presentation",
   "allow-forms",
-  "allow-fullscreen",
 ].join(" ");
+
+export function isProxiedSourceEmbedUrl(url = "") {
+  try {
+    const parsed = new URL(url, typeof window !== "undefined" ? window.location.origin : "https://localhost");
+    return /^\/api\/sources\/[^/]+\/embed$/i.test(parsed.pathname);
+  } catch {
+    return false;
+  }
+}
 
 export function isAllowedEmbedHost(hostname = "") {
   return EMBED_HOST_PATTERN.test(String(hostname).toLowerCase());
@@ -31,6 +39,9 @@ export function isGoogleDriveEmbedUrl(url = "") {
 }
 
 export function resolveEmbedReferrerPolicy(url = "") {
+  if (isProxiedSourceEmbedUrl(url)) {
+    return "strict-origin-when-cross-origin";
+  }
   try {
     const host = new URL(url).hostname.toLowerCase();
     if (host === "drive.google.com" || host.endsWith(".googleusercontent.com")) {
@@ -38,6 +49,9 @@ export function resolveEmbedReferrerPolicy(url = "") {
     }
     if (/dailymotion\.com$/i.test(host) || host === "ok.ru" || host.endsWith(".ok.ru")) {
       return "strict-origin-when-cross-origin";
+    }
+    if (/multiup\.|flixeo\.|96ar\.com|sandratableother|diananatureforeign|uqload\./i.test(host)) {
+      return "no-referrer-when-downgrade";
     }
   } catch {
     // ignore
@@ -54,6 +68,7 @@ export function resolveEmbedAllow(url = "") {
 }
 
 export function resolveEmbedIframeSandbox(url = "") {
+  if (isProxiedSourceEmbedUrl(url)) return undefined;
   try {
     const host = new URL(url).hostname.toLowerCase();
     if (embedHostRequiresOpenIframe(host)) return undefined;
@@ -80,6 +95,7 @@ export function isBlockedAdUrl(url = "") {
 }
 
 export function isAllowedEmbedUrl(url = "") {
+  if (isProxiedSourceEmbedUrl(url)) return true;
   try {
     const parsed = new URL(url);
     if (parsed.protocol !== "https:") return false;

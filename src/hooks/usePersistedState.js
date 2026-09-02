@@ -15,9 +15,10 @@ export function usePersistedState(key, fallback) {
   useEffect(() => {
     if (!ready || hydrated) return;
     let active = true;
-    kvGet(key, fallbackRef.current).then((stored) => {
+    const fallback = fallbackRef.current;
+    kvGet(key, fallback).then((stored) => {
       if (!active) return;
-      setValue(stored);
+      setValue((current) => (current === fallback ? stored : current));
       setHydrated(true);
     });
     return () => { active = false; };

@@ -65,6 +65,7 @@ export function createCachedHtmlFetcher({
   timeoutMs = 25_000,
   retries = 1,
   preferFlareSolverr = false,
+  skipFlareSolverrFallback = false,
 }) {
   return async function fetchHtml(url, options = {}) {
     const includeAssets = Boolean(options.includeAssets);
@@ -137,7 +138,7 @@ export function createCachedHtmlFetcher({
         if (targets.length === 1 && retries < 1) throw error;
       }
     }
-    if (sawCloudflare || lastStatus === 403) {
+    if (!skipFlareSolverrFallback && (sawCloudflare || lastStatus === 403)) {
       const flareHtml = await tryFlareSolverrHtml(url);
       if (flareHtml) {
         touchCacheEntry(cacheKey, { at: Date.now(), html: flareHtml });

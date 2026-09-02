@@ -19,17 +19,6 @@ test("normalizeSettings preserves booleans", () => {
   assert.equal(normalizeSettings({ wifi: false }).wifi, false);
 });
 
-test("normalizeSettings normalizes coflix base url", () => {
-  assert.equal(
-    normalizeSettings({ coflixBaseUrl: "https://coflix.foo/path" }).coflixBaseUrl,
-    "https://coflix.foo",
-  );
-  assert.equal(
-    normalizeSettings({ coflixBaseUrl: "http://insecure.test" }).coflixBaseUrl,
-    DEFAULT_APP_SETTINGS.coflixBaseUrl,
-  );
-});
-
 test("normalizeSettings normalizes flareSolverr url", () => {
   assert.equal(
     normalizeSettings({ flareSolverrUrl: "http://127.0.0.1:8191/" }).flareSolverrUrl,

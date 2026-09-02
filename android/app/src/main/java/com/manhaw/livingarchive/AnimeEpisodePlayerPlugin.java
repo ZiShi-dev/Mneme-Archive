@@ -163,6 +163,7 @@ public class AnimeEpisodePlayerPlugin extends Plugin {
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
         settings.setBuiltInZoomControls(false);
+        WebViewPerformance.applyMedia(webView);
 
         CookieManager cookieManager = CookieManager.getInstance();
         cookieManager.setAcceptCookie(true);

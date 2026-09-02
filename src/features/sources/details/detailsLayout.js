@@ -20,7 +20,7 @@ export function getDetailsHeroLayout({ isVideo, mediaType, catalogStyle, sourceI
   if (!isVideo || isMovieMediaType(mediaType)) {
     return DETAILS_HERO_LAYOUT.READING;
   }
-  if (catalogStyle === "standalone" || sourceId === "hentaigasm") {
+  if (catalogStyle === "standalone") {
     return DETAILS_HERO_LAYOUT.READING;
   }
   return DETAILS_HERO_LAYOUT.CINEMATIC_VIDEO;
@@ -38,6 +38,7 @@ export function buildDetailsScreenClasses({
   isMoviePage,
   mediaType,
   catalogStyle,
+  sourceId,
 }) {
   const classes = ["screen", "screen--live-details"];
   if (isVideo) classes.push("screen--live-video", "screen--live-anime");
@@ -45,15 +46,18 @@ export function buildDetailsScreenClasses({
   if (isManga) classes.push("screen--live-manga");
   if (isChromebookApp) classes.push("screen--details-desktop");
   if (isMoviePage) classes.push("screen--details-movie");
-  if (catalogStyle === "standalone") classes.push("screen--details-standalone-video");
+  if (catalogStyle === "standalone") {
+    classes.push("screen--details-standalone-video");
+  }
   classes.push("screen--details-cinematic", `screen--details-cinematic-${mediaType}`);
   return classes.join(" ");
 }
 
-export function buildDetailsHeroClasses({ presentation, heroLayout, isLoading }) {
+export function buildDetailsHeroClasses({ presentation, heroLayout, isLoading, standaloneVideo = false }) {
   const classes = ["live-details-hero", "live-details-hero--cinematic"];
   if (presentation.heroClass) classes.push(presentation.heroClass);
   if (heroLayout === DETAILS_HERO_LAYOUT.READING) classes.push("live-details-hero--reading");
+  if (standaloneVideo) classes.push("live-details-hero--standalone-video");
   if (isLoading) classes.push("live-details-hero--loading");
   return classes.join(" ");
 }

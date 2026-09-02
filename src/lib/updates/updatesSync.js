@@ -1,5 +1,5 @@
-import { fetchSourceDetails } from "../../features/sources/sourceApi";
-import { isChromebookApp, isNotifiableMediaType } from "../../config/appFlavor";
+import { fetchFollowLatest, fetchSourceDetails } from "../../features/sources/sourceApi";
+import { isNotifiableMediaType } from "../../config/appFlavor";
 import { getItemType } from "../../features/sources/contentTypes";
 import { buildFollowItem, getFollowKey } from "./followKeys";
 import {
@@ -9,7 +9,18 @@ import {
   normalizeFollowPreference,
   shouldAnnounceChapter,
 } from "./followPolicy";
+import { mapPool } from "./concurrency";
 import { t } from "../../i18n/runtime.js";
+
+export const FOLLOW_SYNC_CONCURRENCY = 3;
+
+async function fetchFollowProbeDetails(sourceId, url) {
+  try {
+    return await fetchFollowLatest(sourceId, url);
+  } catch {
+    return fetchSourceDetails(sourceId, url);
+  }
+}
 
 function createUpdateEvent(item, chapter, preference, kind = "auto") {
   const key = getFollowKey(item);
@@ -41,7 +52,7 @@ export async function syncFollowedTitle(item, preference, snapshot) {
   }
 
   try {
-    const details = await fetchSourceDetails(pref.sourceId, pref.url);
+    const details = await fetchFollowProbeDetails(pref.sourceId, pref.url);
     const chapters = details.chapters || [];
     const resolvedMediaType = getItemType({
       ...pref,
@@ -107,24 +118,29 @@ export async function syncFollowedTitle(item, preference, snapshot) {
 }
 
 export async function syncAllFollowedTitles(preferences, snapshots) {
-  const entries = Object.entries(preferences || {});
-  const nextSnapshots = { ...snapshots };
-  const nextEvents = [];
-  const errors = [];
-
-  for (const [key, preference] of entries) {
+  const entries = Object.entries(preferences || {}).filter(([, preference]) => {
     const pref = normalizeFollowPreference(preference);
-    if (!pref?.enabled) continue;
-    if (!isNotifiableMediaType(getItemType(pref))) continue;
+    if (!pref?.enabled) return false;
+    return isNotifiableMediaType(getItemType(pref));
+  });
 
+  const results = await mapPool(entries, FOLLOW_SYNC_CONCURRENCY, async ([key, preference]) => {
+    const pref = normalizeFollowPreference(preference);
     const result = await syncFollowedTitle(
       { ...pref, url: pref.url },
       pref,
       snapshots[key],
     );
+    return { key, ...result };
+  });
 
-    if (result.error) errors.push({ key, message: result.error });
-    if (result.snapshot) nextSnapshots[key] = result.snapshot;
+  const nextSnapshots = { ...snapshots };
+  const nextEvents = [];
+  const errors = [];
+
+  for (const result of results) {
+    if (result.error) errors.push({ key: result.key, message: result.error });
+    if (result.snapshot) nextSnapshots[result.key] = result.snapshot;
     if (result.events?.length) nextEvents.push(...result.events);
   }
 

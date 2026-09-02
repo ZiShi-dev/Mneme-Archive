@@ -15,6 +15,7 @@ import { getAppBrandText } from "../../lib/brand/appBrand";
 import {
   isExistingAppUser,
   ONBOARDING_COMPLETE_KEY,
+  peekOnboardingComplete,
   shouldSkipOnboarding,
 } from "../../lib/onboarding/constants";
 import { requestNotificationPermission } from "../../lib/notifications/pushNotifications";
@@ -29,7 +30,7 @@ import {
   themeDefaultTypeface,
 } from "../../lib/theme/appearance";
 import { applyTypeface, FONT_SANS, normalizeTypefaceId, typefaceNameKey } from "../../lib/theme/typeface";
-import { ThemeSelector } from "../../screens/ThemeSettingsPanel";
+import { OnboardingThemePicker } from "./OnboardingThemePicker";
 import { FontSelector } from "../../screens/FontSettingsPanel";
 import { TYPEFACES } from "../../lib/theme/typeface";
 
@@ -258,9 +259,7 @@ function OnboardingTheme({ theme, appearance, onSetAppearance, onContinue }) {
           <p>{t("onboarding.themeSubtitle")}</p>
         </header>
 
-        <div className="onboarding__theme-grid">
-          <ThemeSelector appearance={appearance} onSetAppearance={onSetAppearance} />
-        </div>
+        <OnboardingThemePicker appearance={appearance} onSetAppearance={onSetAppearance} />
 
         <div className="onboarding__actions">
           <button type="button" className="onboarding__primary" onClick={onContinue}>
@@ -415,14 +414,22 @@ function OnboardingFlow({ onComplete }) {
 
 export function OnboardingGate({ children }) {
   const { ready } = useStorage();
-  const [complete, setComplete] = usePersistedState(ONBOARDING_COMPLETE_KEY, false);
+  const [completePersisted, setCompletePersisted] = usePersistedState(ONBOARDING_COMPLETE_KEY, false);
+  const [completeNow, setCompleteNow] = useState(() => peekOnboardingComplete());
+  const complete = completeNow || completePersisted;
+
+  const markComplete = useCallback(() => {
+    persistStorageString(ONBOARDING_COMPLETE_KEY, "true");
+    setCompleteNow(true);
+    setCompletePersisted(true);
+  }, [setCompletePersisted]);
 
   useEffect(() => {
     if (!ready || complete || isChromebookApp) return;
     if (isExistingAppUser()) {
-      setComplete(true);
+      markComplete();
     }
-  }, [ready, complete, setComplete]);
+  }, [ready, complete, markComplete]);
 
   if (isChromebookApp || shouldSkipOnboarding() || complete) {
     return children;
@@ -438,5 +445,5 @@ export function OnboardingGate({ children }) {
     );
   }
 
-  return <OnboardingFlow onComplete={() => setComplete(true)} />;
+  return <OnboardingFlow onComplete={markComplete} />;
 }

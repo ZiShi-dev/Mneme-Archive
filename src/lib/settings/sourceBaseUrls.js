@@ -1,5 +1,4 @@
 import { sourceProfiles } from "../../config/sources.js";
-import { DEFAULT_COFLEX_BASE_URL, normalizeCoflixBaseUrl } from "./coflixBaseUrl.js";
 
 export function getDefaultSourceBaseUrl(sourceId) {
   const profile = sourceProfiles[sourceId];
@@ -24,7 +23,7 @@ export function normalizeSourceBaseUrl(sourceId, raw, { fallback } = {}) {
   }
 }
 
-export function normalizeSourceBaseUrlOverrides(raw, { legacyCoflixBaseUrl } = {}) {
+export function normalizeSourceBaseUrlOverrides(raw) {
   const overrides = {};
 
   if (raw && typeof raw === "object" && !Array.isArray(raw)) {
@@ -36,12 +35,6 @@ export function normalizeSourceBaseUrlOverrides(raw, { legacyCoflixBaseUrl } = {
         overrides[sourceId] = normalized;
       }
     }
-  }
-
-  const legacyCoflix = normalizeCoflixBaseUrl(legacyCoflixBaseUrl, { fallback: DEFAULT_COFLEX_BASE_URL });
-  const defaultCoflix = getDefaultSourceBaseUrl("coflix") || DEFAULT_COFLEX_BASE_URL;
-  if (legacyCoflix && legacyCoflix !== defaultCoflix) {
-    overrides.coflix = legacyCoflix;
   }
 
   return overrides;

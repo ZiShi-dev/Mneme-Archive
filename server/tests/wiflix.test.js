@@ -18,6 +18,8 @@ import {
   pickRelatedWiflixItems,
   rankWiflixSearch,
   relatedWiflixSearchQuery,
+  fetchWiflixCatalogPage,
+  WIFLIX_CATALOG_PAGE_SIZE,
   wiflixSearchScore,
   wiflixSearchVariants,
 } from "../sources/wiflix.js";
@@ -294,4 +296,51 @@ test("rankWiflixSearch puts You - Saison 5 before Youngblood", () => {
     { title: "Then You Run - Saison 1" },
   ], "you");
   assert.equal(ranked[0].title, "You - Saison 5");
+});
+
+test("WIFLIX_CATALOG_PAGE_SIZE matches French Stream density", () => {
+  assert.equal(WIFLIX_CATALOG_PAGE_SIZE, 20);
+});
+
+function wiflixFilmCard(slug, title) {
+  return FILM_CARD
+    .replace(/the-last-sunrise/g, slug)
+    .replace(/The Last Sunrise/g, title);
+}
+
+test("fetchWiflixCatalogPage slices catalog to 20 items per page", async () => {
+  const page1Cards = Array.from({ length: 22 }, (_, index) => wiflixFilmCard(`film-${index}`, `Film ${index}`));
+  const page2Cards = Array.from({ length: 5 }, (_, index) => wiflixFilmCard(`film-b-${index}`, `Film B ${index}`));
+  const fetchHtml = async (url) => {
+    if (url.includes("page=2")) {
+      return `<div class="navigation">${page2Cards.join("")}<a href="?page=3">Suite</a></div>`;
+    }
+    return `<div class="navigation">${page1Cards.join("")}<a href="?page=2">Suite</a></div>`;
+  };
+  const ctx = { baseUrl: "https://www.wiflix.tv" };
+  const page1 = await fetchWiflixCatalogPage(ctx, fetchHtml, { page: 1, filterPath: "/film-en-streaming/" });
+  assert.equal(page1.items.length, 20);
+  assert.equal(page1.filterPath, "/film-en-streaming/");
+  assert.equal(page1.hasMore, true);
+
+  const page2 = await fetchWiflixCatalogPage(ctx, fetchHtml, { page: 2, filterPath: "/film-en-streaming/" });
+  assert.equal(page2.items.length, 7);
+  assert.equal(page2.items[0].title, "Film 20");
+});
+
+test("fetchWiflixCatalogPage uses home page on mixed page 1", async () => {
+  const homeCard = wiflixFilmCard("home-featured", "Home Featured");
+  const baseUrl = "https://www.wiflix.tv";
+  const fetchHtml = async (url) => {
+    const pathname = new URL(url).pathname;
+    if (pathname === "/") return `<div>${homeCard}</div>`;
+    if (pathname === "/film-en-streaming/") return `<div><a href="?page=2">Suite</a></div>`;
+    if (pathname === "/serie-en-streaming/") return `<div><a href="?page=2">Suite</a></div>`;
+    return "";
+  };
+  const ctx = { baseUrl };
+  const payload = await fetchWiflixCatalogPage(ctx, fetchHtml, { page: 1, filterPath: "/all/" });
+  assert.equal(payload.items.length, 1);
+  assert.equal(payload.items[0].title, "Home Featured");
+  assert.equal(payload.hasMore, true);
 });

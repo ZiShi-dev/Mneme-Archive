@@ -1,0 +1,45 @@
+.pull-to-refresh {
+  position: fixed;
+  top: calc(var(--safe-top, 0px) + 8px);
+  left: 50%;
+  z-index: 45;
+  transform: translate3d(-50%, calc((var(--ptr-progress, 0) * 28px) - 8px), 0);
+  pointer-events: none;
+  opacity: clamp(0, calc(var(--ptr-progress, 0) * 1.4), 1);
+  transition: opacity 0.18s ease;
+}
+
+.pull-to-refresh--active {
+  opacity: 1;
+  transform: translate3d(-50%, 10px, 0);
+}
+
+.pull-to-refresh__bubble {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  color: var(--brand);
+  background: color-mix(in srgb, var(--paper) 92%, var(--white));
+  border: 1px solid color-mix(in srgb, var(--brand) 28%, var(--line));
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--ink) 14%, transparent);
+}
+
+.pull-to-refresh__icon--spin {
+  animation: pull-to-refresh-spin 0.8s linear infinite;
+}
+
+@keyframes pull-to-refresh-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pull-to-refresh {
+    transition: none;
+  }
+
+  .pull-to-refresh__icon--spin {
+    animation: none;
+  }
+}

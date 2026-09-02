@@ -28,13 +28,13 @@ test("resolveRequestBaseUrl rejects arbitrary external hosts", () => {
 });
 
 test("resolveRequestBaseUrl supports allowedHostPattern for known mirrors", () => {
-  const url = new URL("https://app.test/api/sources/coflix/catalog?baseUrl=https%3A%2F%2Fcoflix.foo");
+  const url = new URL("https://app.test/api/sources/mangalik/catalog?baseUrl=https%3A%2F%2Fmirror.mangalik.net");
   assert.equal(
-    resolveRequestBaseUrl(url, "https://coflix.esq", {
-      label: "Coflix",
-      allowedHostPattern: /^coflix\.[a-z0-9.-]+$/i,
+    resolveRequestBaseUrl(url, MANGALIK_DEFAULT, {
+      label: "MangaLik",
+      allowedHostPattern: /^mirror\.mangalik\.net$/i,
     }),
-    "https://coflix.foo",
+    "https://mirror.mangalik.net",
   );
 });
 

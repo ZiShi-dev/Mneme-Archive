@@ -2,12 +2,14 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 import { AlertCircle, CheckCircle2, Info, X } from "lucide-react";
 import { t } from "../../i18n/runtime";
+import { measureToastStackInset, subscribeToastLayout } from "../../lib/ui/toastLayout.js";
 
 const ToastContext = createContext(null);
 const TOAST_DURATION_MS = 3600;
@@ -40,7 +42,10 @@ function ToastItem({ toast, onDismiss }) {
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
+  const [stackInset, setStackInset] = useState(() => measureToastStackInset());
   const timersRef = useRef(new Map());
+
+  useEffect(() => subscribeToastLayout(setStackInset), []);
 
   const dismissToast = useCallback((id) => {
     const timer = timersRef.current.get(id);
@@ -65,7 +70,17 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="app-toast-stack" aria-label={t("toast.region")}>
+      <div
+        className={`app-toast-stack app-toast-stack--${stackInset.mode}`}
+        style={{
+          top: `${stackInset.top}px`,
+          bottom: "auto",
+          paddingBottom: 0,
+          "--toast-stack-top": `${stackInset.top}px`,
+          "--toast-stack-bottom": `${stackInset.bottom}px`,
+        }}
+        aria-label={t("toast.region")}
+      >
         {toasts.map((toast) => (
           <ToastItem key={toast.id} toast={toast} onDismiss={dismissToast} />
         ))}

@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { resolveVideoPlayback } from "../features/sources/mediaPresentation.js";
+import {
+  resolveVideoPlayback,
+  formatVideoChapterNavLabel,
+} from "../features/sources/mediaPresentation.js";
 
 test("resolveVideoPlayback ignores catalog html pages as direct video urls", () => {
   const playback = resolveVideoPlayback({
@@ -44,4 +47,17 @@ test("resolveVideoPlayback keeps hls mode for m3u8 stream sources", () => {
     }],
   });
   assert.equal(playback.mode, "hls");
+});
+
+test("formatVideoChapterNavLabel prefixes numbered episodes and keeps episode titles", () => {
+  const label = formatVideoChapterNavLabel(
+    { name: "5 · Trancher dans le vif", number: "5" },
+    "الحلقة",
+  );
+  assert.equal(label, "الحلقة 5 · Trancher dans le vif");
+});
+
+test("formatVideoChapterNavLabel falls back to chapter number", () => {
+  const label = formatVideoChapterNavLabel({ number: "5" }, "الحلقة");
+  assert.equal(label, "الحلقة 5");
 });

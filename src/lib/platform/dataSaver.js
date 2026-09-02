@@ -26,7 +26,7 @@ export function getMeteredNetworkLimits(settings = getRuntimeSettings()) {
   return {
     metered,
     homeLatestLimit: metered ? 6 : 12,
-    homeLatestConcurrency: metered ? 1 : 3,
+    homeLatestConcurrency: metered ? 1 : 4,
     detailsCacheTtlMs: metered ? 5 * 60_000 : 3 * 60_000,
   };
 }

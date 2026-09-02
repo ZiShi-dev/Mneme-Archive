@@ -50,28 +50,57 @@ export async function fetchMadaraChapterListHtml(baseUrl, mangaId, refererUrl) {
   return await response.text();
 }
 
-export async function resolveMadaraChapters(html, { baseUrl, refererUrl, normalizeUrl, fetchHtml }) {
+export async function resolveMadaraChapters(html, {
+  baseUrl,
+  refererUrl,
+  normalizeUrl,
+  fetchHtml,
+  preferHtmlFetcher = false,
+} = {}) {
   const inlineChapters = parseMadaraChapters(html, { normalizeUrl });
   const mangaId = extractMadaraMangaId(html);
   let chapters = inlineChapters;
   const ajaxGetUrl = refererUrl ? `${String(refererUrl).replace(/\/+$/, "")}/ajax/chapters/` : "";
 
-  if (typeof fetchHtml === "function" && ajaxGetUrl) {
+  const applyAjaxHtml = (chapterHtml) => {
+    const ajaxChapters = parseMadaraChapters(chapterHtml, { normalizeUrl });
+    if (ajaxChapters.length >= chapters.length) chapters = ajaxChapters;
+    return ajaxChapters.length;
+  };
+
+  const finish = () => enrichServerChapterDates(normalizeChapterList(chapters));
+
+  if (preferHtmlFetcher && typeof fetchHtml === "function" && ajaxGetUrl) {
     try {
-      const chapterHtml = await fetchHtml(ajaxGetUrl);
-      const ajaxChapters = parseMadaraChapters(chapterHtml, { normalizeUrl });
-      chapters = ajaxChapters.length >= inlineChapters.length ? ajaxChapters : inlineChapters;
+      const count = applyAjaxHtml(await fetchHtml(ajaxGetUrl));
+      if (count > inlineChapters.length) return finish();
+    } catch {
+      // Repli POST ci-dessous.
+    }
+  }
+
+  if (mangaId && baseUrl && refererUrl) {
+    try {
+      const chapterHtml = await fetchMadaraChapterListHtml(baseUrl, mangaId, refererUrl);
+      const count = applyAjaxHtml(chapterHtml);
+      if (count > inlineChapters.length) return finish();
+    } catch {
+      // Repli GET ci-dessous.
+    }
+  }
+
+  if (typeof fetchHtml === "function" && ajaxGetUrl && !preferHtmlFetcher) {
+    try {
+      applyAjaxHtml(await fetchHtml(ajaxGetUrl));
     } catch {
       chapters = inlineChapters;
     }
-  } else if (mangaId) {
+  } else if (mangaId && baseUrl && refererUrl && !preferHtmlFetcher) {
     try {
-      const chapterHtml = await fetchMadaraChapterListHtml(baseUrl, mangaId, refererUrl);
-      const ajaxChapters = parseMadaraChapters(chapterHtml, { normalizeUrl });
-      chapters = ajaxChapters.length >= inlineChapters.length ? ajaxChapters : inlineChapters;
+      applyAjaxHtml(await fetchMadaraChapterListHtml(baseUrl, mangaId, refererUrl));
     } catch {
       chapters = inlineChapters;
     }
   }
-  return enrichServerChapterDates(normalizeChapterList(chapters));
+  return finish();
 }

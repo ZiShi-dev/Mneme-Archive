@@ -1,6 +1,6 @@
 import { decodeHtml, textOnly } from "../lib/htmlUtils.js";
 import { createCachedHtmlFetcher, fetchProxiedImage } from "../lib/httpUtils.js";
-import { fetchSkyChapter, fetchSkyNovelChapters } from "../lib/skynovelApi.js";
+import { fetchSkyChapter, fetchSkyNovelChapters, SKY_APP_ONLY_CHAPTER_MESSAGE } from "../lib/skynovelApi.js";
 import { normalizeSearchQuery } from "../lib/queryLimits.js";
 import { responseJson } from "../lib/responseJson.js";
 import { applyRecentChapterFields, recentChaptersFromCount } from "../lib/catalogChapters.js";
@@ -15,6 +15,9 @@ const SOURCE_ID = "realmnovel";
 const FREE_WEB_CHAPTERS = 50;
 const CATALOG_PAGE_SIZE = 24;
 const FILTER_SCAN_MAX_PAGES = 25;
+/** Pages parcourues pour construire la liste des genres/étiquettes (bootstrap rapide). */
+const FILTER_BOOTSTRAP_PAGES = 6;
+const FILTER_SCAN_BATCH_SIZE = 3;
 const REALM_TYPE_CATEGORIES = new Set(["مترجمة", "مؤلفة"]);
 const realmFiltersCache = new Map();
 
@@ -55,7 +58,12 @@ async function fetchRealmJson(path, { searchParams = {}, baseUrl = DEFAULT_BASE_
 }
 
 function mapRealmCatalogChapters(novelId, totalChapters, baseUrl = DEFAULT_BASE_URL) {
-  return recentChaptersFromCount(totalChapters, (number) => buildChapterUrl(novelId, number, baseUrl));
+  return recentChaptersFromCount(
+    totalChapters,
+    (number) => buildChapterUrl(novelId, number, baseUrl),
+    undefined,
+    { sourceId: SOURCE_ID },
+  );
 }
 
 function mapMoreCatalogDoc(entry = {}, baseUrl = DEFAULT_BASE_URL) {
@@ -158,20 +166,38 @@ export function buildRealmFiltersFromDocs(docs = []) {
   };
 }
 
+async function fetchRealmMoreDocs(page, baseUrl) {
+  const data = await fetchRealmJson("/_more", {
+    searchParams: { page: String(page) },
+    baseUrl,
+  });
+  return {
+    docs: Array.isArray(data?.docs) ? data.docs : [],
+    hasMore: Boolean(data?.hasMore),
+  };
+}
+
 async function collectFilterTags(_fetchRealmHtml, baseUrl) {
   const cacheKey = baseUrl;
   const cached = realmFiltersCache.get(cacheKey);
   if (cached && Date.now() - cached.at < 30 * 60_000) return cached.data;
 
   const docs = [];
-  for (let page = 1; page <= FILTER_SCAN_MAX_PAGES; page += 1) {
-    const data = await fetchRealmJson("/_more", {
-      searchParams: { page: String(page) },
-      baseUrl,
-    });
-    const batch = Array.isArray(data?.docs) ? data.docs : [];
-    docs.push(...batch);
-    if (!data?.hasMore || !batch.length) break;
+  for (let start = 1; start <= FILTER_BOOTSTRAP_PAGES; start += FILTER_SCAN_BATCH_SIZE) {
+    const pages = Array.from(
+      { length: FILTER_SCAN_BATCH_SIZE },
+      (_, index) => start + index,
+    ).filter((page) => page <= FILTER_BOOTSTRAP_PAGES);
+    const settled = await Promise.allSettled(
+      pages.map((page) => fetchRealmMoreDocs(page, baseUrl)),
+    );
+    let hasMore = false;
+    for (const entry of settled) {
+      if (entry.status !== "fulfilled") continue;
+      docs.push(...entry.value.docs);
+      if (entry.value.hasMore) hasMore = true;
+    }
+    if (!hasMore) break;
   }
 
   const filters = buildRealmFiltersFromDocs(docs);
@@ -318,8 +344,12 @@ function extendChapterList(chapters, totalChapters, novelId, baseUrl = DEFAULT_B
   return extended.sort((a, b) => Number(a.number) - Number(b.number));
 }
 
-function unlockChapters(chapters = []) {
-  return chapters.map((chapter) => ({ ...chapter, locked: false }));
+export function applyRealmChapterAccess(chapters = []) {
+  return chapters.map((chapter) => {
+    const next = { ...chapter, locked: false, permanentlyLocked: false };
+    if (next.lockReason === "sky-app") delete next.lockReason;
+    return next;
+  });
 }
 
 export function mergeRealmChapterLists(fromHtml = [], fromSky = []) {
@@ -353,9 +383,17 @@ export function mapSkyChaptersToRealm(list = [], novelId, baseUrl = DEFAULT_BASE
       const number = Number(entry?.chapterNumber ?? entry?.number);
       if (!Number.isFinite(number) || number < 1) return null;
       const key = String(number);
+      const rawTitle = textOnly(entry?.title || entry?.name || key) || key;
+      const stripped = rawTitle.replace(/^الفصل\s*/i, "").trim();
+      let name = rawTitle;
+      if (/^\d+(?:\.\d+)?$/.test(stripped) && stripped !== key) {
+        name = `الفصل ${key} · ${stripped}`;
+      } else if (!/^الفصل\s+/i.test(rawTitle)) {
+        name = `الفصل ${key}${rawTitle && rawTitle !== key ? ` · ${rawTitle}` : ""}`;
+      }
       return {
         url: buildChapterUrl(novelId, number, baseUrl),
-        name: textOnly(entry?.title || entry?.name || key) || key,
+        name,
         number: key,
         date: entry?.createdAt || entry?.updatedAt || "",
         publishedAt: entry?.createdAt || "",
@@ -366,13 +404,38 @@ export function mapSkyChaptersToRealm(list = [], novelId, baseUrl = DEFAULT_BASE
     .sort((a, b) => Number(a.number) - Number(b.number));
 }
 
+export function parseRealmFollowLatest(html, novelId, baseUrl = DEFAULT_BASE_URL) {
+  const head = parseNovelHead(html, novelId, baseUrl);
+  const latestNumber = Number(head.totalChapters) || 0;
+  const chapters = latestNumber > 0
+    ? [{
+      url: buildChapterUrl(novelId, latestNumber, baseUrl),
+      number: String(latestNumber),
+      name: String(latestNumber),
+      locked: false,
+    }]
+    : [];
+
+  return {
+    id: novelId,
+    title: head.title,
+    altTitle: head.altTitle,
+    cover: head.cover,
+    url: buildNovelUrl(novelId, baseUrl),
+    source: SOURCE_NAME,
+    sourceId: SOURCE_ID,
+    mediaType: "novel",
+    mediaTypeLabel: "رواية",
+    chapters,
+  };
+}
+
 export function parseRealmDetails(html, novelId, baseUrl = DEFAULT_BASE_URL, skyChapters = null) {
   const head = parseNovelHead(html, novelId, baseUrl);
-  const fromSky = Array.isArray(skyChapters) && skyChapters.length
-    ? mapSkyChaptersToRealm(skyChapters, novelId, baseUrl)
-    : [];
+  const skyAvailable = Array.isArray(skyChapters) && skyChapters.length > 0;
+  const fromSky = skyAvailable ? mapSkyChaptersToRealm(skyChapters, novelId, baseUrl) : [];
   const fromHtml = extendChapterList(parseChapterRows(html, novelId, baseUrl), head.totalChapters, novelId, baseUrl);
-  const chapters = unlockChapters(mergeRealmChapterLists(fromHtml, fromSky));
+  const chapters = applyRealmChapterAccess(mergeRealmChapterLists(fromHtml, fromSky));
   const headBlock = html.match(/<article class="novel-head"[\s\S]*?<\/article>/i)?.[0] ?? "";
   const statusBadges = [...headBlock.matchAll(/<span class="badge">([\s\S]*?)<\/span>/gi)]
     .map((entry) => textOnly(entry[1]))
@@ -395,16 +458,27 @@ export function parseRealmDetails(html, novelId, baseUrl = DEFAULT_BASE_URL, sky
   }, { parser: "badges" });
 }
 
-export function parseRealmChapter(html, url) {
-  if (html.includes('class="locked"') || /غير متاح على الموقع/i.test(html)) {
-    throw new Error("هذا الفصل متاح داخل تطبيق Sky Novel فقط (مجاني)");
-  }
+function extractRealmChapterParagraphs(html = "") {
   const block = html.match(/<div class="chapter-content">([\s\S]*?)<\/div>/i)?.[1] ?? "";
-  const title = textOnly(html.match(/<h1 class="h1"[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ?? "فصل");
-  const paragraphs = [...block.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)]
+  return [...block.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)]
     .map((match) => textOnly(match[1]))
     .filter((text) => text && text.length > 1);
-  if (!paragraphs.length) throw new Error("تعذر استخراج محتوى الفصل");
+}
+
+export function isRealmChapterWebLocked(html = "") {
+  if (/غير متاح على الموقع/i.test(html)) return true;
+  return !extractRealmChapterParagraphs(html).length && html.includes('class="locked"');
+}
+
+export function parseRealmChapter(html, url) {
+  const paragraphs = extractRealmChapterParagraphs(html);
+  const title = textOnly(html.match(/<h1 class="h1"[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ?? "فصل");
+  if (!paragraphs.length) {
+    if (isRealmChapterWebLocked(html)) {
+      throw new Error(SKY_APP_ONLY_CHAPTER_MESSAGE);
+    }
+    throw new Error("تعذر استخراج محتوى الفصل");
+  }
   return {
     title,
     url,
@@ -425,18 +499,6 @@ function buildCatalogUrl(page, { genre = "", tag = "", baseUrl = DEFAULT_BASE_UR
   if (tag) query.searchParams.set("tag", tag);
   if (genre && !tag) query.searchParams.set("tag", genre);
   return query.toString();
-}
-
-async function loadChapterViaSky(novelId, chapterNumber, url) {
-  try {
-    return await fetchSkyChapter(novelId, chapterNumber, url);
-  } catch (skyError) {
-    throw new Error(
-      skyError?.message?.includes("تحديث")
-        ? skyError.message
-        : `الفصول عبر Sky Novel API: ${skyError?.message || "فشل الاتصال"}`,
-    );
-  }
 }
 
 export async function handleRealmNovelRequest(requestUrl) {
@@ -485,8 +547,10 @@ export async function handleRealmNovelRequest(requestUrl) {
     const { query, valid } = normalizeSearchQuery(requestUrl.searchParams.get("q"));
     if (!valid) return responseJson(200, { items: [] });
     const page = Math.min(Math.max(Number(requestUrl.searchParams.get("page")) || 1, 1), 1000);
+    const genre = requestUrl.searchParams.get("genre")?.trim() || "";
+    const tag = requestUrl.searchParams.get("tag")?.trim() || genre;
     try {
-      const { items, hasMore } = await fetchMoreCatalog(page, { q: query, baseUrl });
+      const { items, hasMore } = await fetchMoreCatalog(page, { q: query, tag, genre, baseUrl });
       return responseJson(200, { items, page, hasMore });
     } catch {
       const target = new URL(`${baseUrl}/`);
@@ -501,15 +565,20 @@ export async function handleRealmNovelRequest(requestUrl) {
     }
   }
 
+  if (requestUrl.pathname.endsWith("/follow-latest")) {
+    const { novelId } = novelIdFromUrl(requestUrl.searchParams.get("url") ?? "", ctx);
+    const novelUrl = buildNovelUrl(novelId, baseUrl);
+    const html = await fetchRealmHtml(novelUrl);
+    return responseJson(200, parseRealmFollowLatest(html, novelId, baseUrl));
+  }
+
   if (requestUrl.pathname.endsWith("/manga")) {
     const { novelId } = novelIdFromUrl(requestUrl.searchParams.get("url") ?? "", ctx);
-    const html = await fetchRealmHtml(buildNovelUrl(novelId, baseUrl));
-    let skyChapters = null;
-    try {
-      skyChapters = await fetchSkyNovelChapters(novelId);
-    } catch {
-      skyChapters = null;
-    }
+    const novelUrl = buildNovelUrl(novelId, baseUrl);
+    const [html, skyChapters] = await Promise.all([
+      fetchRealmHtml(novelUrl),
+      fetchSkyNovelChapters(novelId).catch(() => null),
+    ]);
     return responseJson(200, parseRealmDetails(html, novelId, baseUrl, skyChapters));
   }
 
@@ -518,14 +587,14 @@ export async function handleRealmNovelRequest(requestUrl) {
     if (!chapterNumber || chapterNumber < 1) throw new Error("رابط فصل Realm Novel غير صالح");
     const url = buildChapterUrl(novelId, chapterNumber, baseUrl);
     if (chapterNumber > FREE_WEB_CHAPTERS) {
-      return responseJson(200, await loadChapterViaSky(novelId, chapterNumber, url));
+      return responseJson(200, await fetchSkyChapter(novelId, chapterNumber, url));
     }
     try {
       const html = await fetchRealmHtml(url);
       return responseJson(200, parseRealmChapter(html, url));
     } catch (webError) {
       try {
-        return responseJson(200, await loadChapterViaSky(novelId, chapterNumber, url));
+        return responseJson(200, await fetchSkyChapter(novelId, chapterNumber, url));
       } catch {
         throw webError;
       }

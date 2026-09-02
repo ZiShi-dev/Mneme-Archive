@@ -19,9 +19,9 @@ test("resolveHtml falls back to HTTP when native fetch fails or is empty", async
   });
 
   const fetchers = createWpMangaFetchers({
-    baseUrl: "https://mangaforfree.com",
-    apexHostname: "mangaforfree.com",
-    sourceName: "MangaForFree",
+    baseUrl: "https://mangalik.net",
+    apexHostname: "mangalik.net",
+    sourceName: "MangaLik",
   });
 
   const originalFetch = globalThis.fetch;
@@ -33,7 +33,7 @@ test("resolveHtml falls back to HTTP when native fetch fails or is empty", async
   });
 
   try {
-    const html = await fetchers.resolveHtml("https://mangaforfree.com/manga/");
+    const html = await fetchers.resolveHtml("https://mangalik.net/manga/");
     assert.match(html, /page-item-detail/);
   } finally {
     globalThis.fetch = originalFetch;
@@ -67,14 +67,14 @@ test("preferFlareSolverr skips native WebView and source HTTP", async () => {
   };
 
   const fetchers = createWpMangaFetchers({
-    baseUrl: "https://hentairead.com",
-    apexHostname: "hentairead.com",
-    sourceName: "HentaiRead",
+    baseUrl: "https://mangalik.net",
+    apexHostname: "mangalik.net",
+    sourceName: "MangaLik",
     preferFlareSolverr: true,
   });
 
   try {
-    const html = await fetchers.resolveHtml("https://hentairead.com/hentai/");
+    const html = await fetchers.resolveHtml("https://mangalik.net/manga/");
     assert.match(html, /page-item-detail/);
     assert.equal(called.length, 1);
     assert.equal(called[0], "http://127.0.0.1:8191/v1");

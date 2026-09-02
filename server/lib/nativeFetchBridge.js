@@ -29,6 +29,21 @@ export async function fetchNativeHtml(url, fallback) {
 
 export async function fetchNativeImage(url, fallback) {
   const { fetchImage } = state();
-  if (fetchImage) return fetchImage(url);
+  if (fetchImage) {
+    try {
+      return await fetchImage(url);
+    } catch {
+      // Repli HTTP / Flare si le fetch natif échoue (Cloudflare, etc.).
+    }
+  }
   return fallback();
+}
+
+export async function invalidateNativeHtmlCacheSafe(url = "") {
+  try {
+    const mod = await import("../../src/lib/platform/nativeHtmlCache.js");
+    mod.invalidateNativeHtmlCache?.(url);
+  } catch {
+    // Module client indisponible (tests Node, serveur distant).
+  }
 }

@@ -52,11 +52,7 @@ test("buildDetailsHeroClasses marks reading hero state", () => {
 
 test("getDetailsHeroLayout uses reading layout for standalone anime feeds", () => {
   assert.equal(
-    getDetailsHeroLayout({ isVideo: true, mediaType: "anime", catalogStyle: "standalone", sourceId: "hentaigasm" }),
-    DETAILS_HERO_LAYOUT.READING,
-  );
-  assert.equal(
-    getDetailsHeroLayout({ isVideo: true, mediaType: "anime", sourceId: "hentaigasm" }),
+    getDetailsHeroLayout({ isVideo: true, mediaType: "anime", catalogStyle: "standalone" }),
     DETAILS_HERO_LAYOUT.READING,
   );
 });
@@ -72,6 +68,17 @@ test("buildDetailsScreenClasses adds standalone video modifier", () => {
     catalogStyle: "standalone",
   });
   assert.match(classes, /screen--details-standalone-video/);
+  assert.doesNotMatch(classes, /screen--source-/);
+});
+
+test("buildDetailsHeroClasses marks standalone video hero", () => {
+  const classes = buildDetailsHeroClasses({
+    presentation: { heroClass: "live-details-hero--video" },
+    heroLayout: DETAILS_HERO_LAYOUT.READING,
+    isLoading: false,
+    standaloneVideo: true,
+  });
+  assert.match(classes, /live-details-hero--standalone-video/);
 });
 
 test("shouldShowChapterList hides single-chapter movies", () => {

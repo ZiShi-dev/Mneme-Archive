@@ -16,6 +16,8 @@ export { isNativeNotificationsAvailable };
 
 const WEB_ICON = "./pwa/icon-192.png";
 
+let webNotificationOpenHandler = null;
+
 export function isWebNotificationsSupported() {
   return typeof window !== "undefined" && "Notification" in window;
 }
@@ -98,7 +100,9 @@ export async function showChapterUpdateNotifications(events = []) {
         },
       });
       notification.onclick = () => {
-        if (isElectronApp()) focusElectronApp();
+        if (webNotificationOpenHandler && notification.data) {
+          webNotificationOpenHandler(notification.data);
+        } else if (isElectronApp()) focusElectronApp();
         else window.focus();
         notification.close();
       };
@@ -145,11 +149,18 @@ export function registerNotificationOpenHandler(handler) {
 
   if (!isWebNotificationsSupported()) return () => {};
 
+  webNotificationOpenHandler = handler;
+
   function onMessage(event) {
     const data = event.data?.payload?.data || event.data;
     if (data && typeof data === "object") handler(data);
   }
 
   navigator.serviceWorker?.addEventListener("message", onMessage);
-  return () => navigator.serviceWorker?.removeEventListener("message", onMessage);
+  return () => {
+    if (webNotificationOpenHandler === handler) {
+      webNotificationOpenHandler = null;
+    }
+    navigator.serviceWorker?.removeEventListener("message", onMessage);
+  };
 }

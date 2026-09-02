@@ -1,11 +1,14 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { BellRing, ChevronLeft, Clock, RefreshCw } from "lucide-react";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ChipFilterBar, ChipFilterButton } from "../components/ui/ChipFilterBar";
 import { contentTypes } from "../features/sources/contentTypes";
+import { useAppPullRefreshHandler } from "../hooks/useAppPullRefreshHandler";
 import { useHomeLatestChapters } from "../hooks/useHomeLatestChapters";
 import { useI18n } from "../i18n/I18nProvider";
 import { HomeLatestChapterRow } from "./HomeLatestChapterRow";
+import { isCatalogChapterBlocked } from "../lib/media/chapterLock";
+import { liveReaderPrefetchOptions, prefetchLiveTitle } from "./homeActions";
 
 const HOME_PREVIEW_LIMIT = 6;
 
@@ -67,6 +70,7 @@ export function HomeLatestChaptersSection({
   mediaFilter,
   settings,
   openLiveReader,
+  openLiveManga,
   navigate,
 }) {
   const { t } = useI18n();
@@ -85,17 +89,21 @@ export function HomeLatestChaptersSection({
     mediaFilter,
     settings,
   });
+  const handleAppPullRefresh = useCallback(() => refresh({ force: true }), [refresh]);
+  useAppPullRefreshHandler(handleAppPullRefresh);
   const copy = latestCopy(t, mediaFilter);
   const accent = MEDIA_ACCENTS[mediaFilter] || MEDIA_ACCENTS.all;
   const TypeIcon = contentTypes[mediaFilter]?.icon || contentTypes.all.icon;
 
   const visibleEntries = useMemo(() => {
     const filtered = scope === "new" ? entries.filter((entry) => entry.isNew) : entries;
-    return filtered.slice(0, HOME_PREVIEW_LIMIT);
+    return {
+      items: filtered.slice(0, HOME_PREVIEW_LIMIT),
+      total: filtered.length,
+    };
   }, [entries, scope]);
 
-  const totalVisible = scope === "new" ? entries.filter((entry) => entry.isNew).length : entries.length;
-  const hiddenCount = Math.max(0, totalVisible - visibleEntries.length);
+  const hiddenCount = Math.max(0, visibleEntries.total - visibleEntries.items.length);
   const metaLine = buildMetaLine({
     t,
     trackedCount,
@@ -105,7 +113,12 @@ export function HomeLatestChaptersSection({
   });
 
   function openEntry(entry) {
-    openLiveReader(entry.item, entry.latestChapter);
+    prefetchLiveTitle(entry.item, entry.latestChapter);
+    if (isCatalogChapterBlocked(entry.item?.sourceId, entry.latestChapter)) {
+      if (typeof openLiveManga === "function") openLiveManga(entry.item);
+      return;
+    }
+    openLiveReader(entry.item, entry.latestChapter, liveReaderPrefetchOptions(entry.item, entry.latestChapter));
   }
 
   return (
@@ -168,14 +181,15 @@ export function HomeLatestChaptersSection({
 
       {loading && !entries.length ? (
         <HomeLatestSkeleton />
-      ) : visibleEntries.length ? (
+      ) : visibleEntries.items.length ? (
         <>
           <div className={`home-latest-panel__feed${loading ? " is-refreshing" : ""}`}>
-            {visibleEntries.map((entry) => (
+            {visibleEntries.items.map((entry) => (
               <HomeLatestChapterRow
                 key={`${entry.item.sourceId}:${entry.item.url}:${entry.latestChapter.url}`}
                 entry={entry}
                 onClick={() => openEntry(entry)}
+                onPrefetch={() => prefetchLiveTitle(entry.item, entry.latestChapter)}
               />
             ))}
           </div>

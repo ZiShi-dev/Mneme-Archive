@@ -1,31 +1,39 @@
 import { resolveVideoPlayback } from "../mediaPresentation.js";
 import { sourceStreamUrl, sourceSubtitleUrl } from "../sourceApi.js";
+import { buildSourceEmbedUrl, usesSourceEmbedProxy } from "../../../lib/video/sourceEmbedProxy.js";
 
 function resolveStreamPlaybackMode(streamUrl = "", streamType = "") {
   if (streamType === "hls" || /\.m3u8/i.test(streamUrl)) return "hls";
   return "video";
 }
 
+function resolveStreamFromSource(currentSource, sourceId, activeChapterUrl, data) {
+  const referer = currentSource.streamReferer || data?.streamReferer || data?.url || activeChapterUrl;
+  return {
+    mode: resolveStreamPlaybackMode(currentSource.streamUrl, currentSource.streamType),
+    url: sourceStreamUrl(sourceId, currentSource.streamUrl, referer),
+    referer,
+  };
+}
+
 export function resolveLivePlayback({
   data,
   currentSource,
-  preferEmbedPlayback,
   sourceId,
   activeChapterUrl,
 }) {
   if (!data) return null;
 
-  if (currentSource?.streamUrl && !preferEmbedPlayback) {
-    const referer = currentSource.streamReferer || data.streamReferer || data.url || activeChapterUrl;
-    return {
-      mode: resolveStreamPlaybackMode(currentSource.streamUrl, currentSource.streamType),
-      url: sourceStreamUrl(sourceId, currentSource.streamUrl, referer),
-      referer,
-    };
+  if (currentSource?.streamUrl) {
+    return resolveStreamFromSource(currentSource, sourceId, activeChapterUrl, data);
   }
 
   if (currentSource?.url) {
-    return { mode: "embed", url: currentSource.url };
+    const referer = data?.streamReferer || data?.url || activeChapterUrl;
+    const url = usesSourceEmbedProxy(sourceId, currentSource.url)
+      ? buildSourceEmbedUrl(sourceId, currentSource.url, referer)
+      : currentSource.url;
+    return { mode: "embed", url };
   }
 
   const resolved = resolveVideoPlayback(data);
@@ -50,7 +58,12 @@ export function resolveLivePlayback({
   }
 
   if (data.embedUrl || resolved?.mode === "embed") {
-    return { mode: "embed", url: data.embedUrl || resolved.url };
+    const referer = data.streamReferer || data.url || activeChapterUrl;
+    const embedUrl = data.embedUrl || resolved.url;
+    const url = usesSourceEmbedProxy(sourceId, embedUrl)
+      ? buildSourceEmbedUrl(sourceId, embedUrl, referer)
+      : embedUrl;
+    return { mode: "embed", url };
   }
 
   return resolved;

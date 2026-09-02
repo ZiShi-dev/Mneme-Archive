@@ -386,7 +386,7 @@ export function ReadingHistoryScreen({
                                 <span className="history-row__subtitle" dir="auto">{record.altTitle}</span>
                               )}
                               <span className="history-row__chapter">
-                                {formatHistoryUnitLabel(record)}
+                                <span className="history-row__chapter-label">{formatHistoryUnitLabel(record)}</span>
                                 <em>{completed ? t("history.completed") : `${progress}%`}</em>
                               </span>
                               <span className="history-row__source">

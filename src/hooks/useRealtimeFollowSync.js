@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
-import { App } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
+import { App } from "@capacitor/app";
 import { allowsHeavyNetworkUse } from "../lib/platform/dataSaver";
 import { refreshNetworkStatus } from "../lib/platform/networkStatus";
 import {
@@ -8,6 +8,7 @@ import {
   registerNotificationOpenHandler,
   showChapterUpdateNotifications,
 } from "../lib/notifications/pushNotifications";
+import { shouldRunFollowIntervalPoll } from "../lib/updates/followSyncPollPolicy";
 import { t } from "../i18n/runtime.js";
 import { isChromebookApp } from "../config/appFlavor";
 import { isElectronApp } from "../lib/platform/electronApp.js";
@@ -73,9 +74,10 @@ export function useRealtimeFollowSync({
     }
 
     const desktopBackground = isElectronApp();
+    const nativePlatform = Capacitor.isNativePlatform();
 
     async function bootstrap() {
-      if (Capacitor.isNativePlatform() || desktopBackground) {
+      if (nativePlatform || desktopBackground) {
         try {
           await initSystemNotifications();
         } catch {
@@ -103,8 +105,12 @@ export function useRealtimeFollowSync({
 
     const pollMinutes = Math.max(1, Number(settings.followPollMinutes) || DEFAULT_POLL_MINUTES);
     intervalId = window.setInterval(() => {
-      if (!desktopBackground && !appActiveRef.current) return;
-      if (!desktopBackground && typeof document !== "undefined" && document.hidden) return;
+      if (!shouldRunFollowIntervalPoll({
+        isNative: nativePlatform,
+        desktopBackground,
+        appActive: appActiveRef.current,
+        documentHidden: typeof document !== "undefined" && document.hidden,
+      })) return;
       runBackgroundSync("interval");
     }, Math.max(MIN_POLL_MS, pollMinutes * 60_000));
 

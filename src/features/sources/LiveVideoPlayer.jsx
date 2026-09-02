@@ -1,23 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, Bookmark, Check, ChevronRight, Clapperboard, ExternalLink, Maximize2, RefreshCw, RotateCcw, RotateCw, Wifi } from "lucide-react";
+import { ArrowRight, Bookmark, Check, Clapperboard, ExternalLink, RefreshCw, RotateCcw, RotateCw, Wifi } from "lucide-react";
 import { burstSakuraFrom } from "../../lib/sakura/burst";
 import { unlockOrientation } from "../../lib/video/orientationLock";
 import { useToast } from "../../components/ui/ToastProvider";
 import { getSourceProfile, resolveSourceId } from "../../config/sources";
 import { getChapterProgress, setChapterProgress } from "../../lib/storage/chapterProgress";
-import { ReaderHeader } from "./ReaderHeader";
 import { VideoPlaybackControls } from "./VideoPlaybackControls";
 import { PlyrHlsPlayer } from "./PlyrHlsPlayer";
 import { EmbedPlayerFrame } from "./EmbedPlayerFrame";
 import { getItemType } from "./contentTypes";
-import { getMediaPresentation, formatEpisodeHeaderLabel } from "./mediaPresentation";
+import { getMediaPresentation, formatVideoChapterNavLabel } from "./mediaPresentation";
 import { isChromebookApp } from "../../config/appFlavor";
 import { scrollAppToTop } from "../../lib/platform/scrollRoot";
 import { useI18n } from "../../i18n/I18nProvider";
 import {
-  EMBED_PROGRESS_CAP,
-  EMBED_SECONDS_PER_PERCENT,
-  EMBED_TICK_MS,
   formatUniqueServerLabels,
   PLAYBACK_SPEEDS,
   SKIP_SECONDS,
@@ -31,11 +27,16 @@ import { useVideoCinemaChrome } from "./liveVideo/useVideoCinemaChrome";
 import { VideoStageSkeleton } from "../../components/ui/ContentSkeleton";
 import { VideoEpisodePlaylist } from "./liveVideo/VideoEpisodePlaylist";
 import { VideoSubtitleOverlay } from "./liveVideo/VideoSubtitleOverlay";
+import { VideoServerSheet } from "./liveVideo/VideoServerSheet";
+import { VideoServerPickerButton } from "./liveVideo/VideoServerPickerButton";
+import { VideoEpisodeHeader } from "./liveVideo/VideoEpisodeHeader";
 import { useFetchedSubtitles } from "./liveVideo/useFetchedSubtitles";
 
 export function LiveVideoPlayer({
   manga,
   chapter,
+  preferredSourceIndex,
+  prefetchData,
   onBack,
   onOpenDetails,
   isFavorite,
@@ -57,6 +58,7 @@ export function LiveVideoPlayer({
   const [muted, setMuted] = useState(false);
   const [subtitlesEnabled, setSubtitlesEnabled] = useState(true);
   const [skipFlash, setSkipFlash] = useState(null);
+  const [serversOpen, setServersOpen] = useState(false);
   const videoRef = useRef(null);
   const [plyrInstance, setPlyrInstance] = useState(null);
   const plyrInstanceRef = useRef(null);
@@ -64,13 +66,9 @@ export function LiveVideoPlayer({
   const singleTapTimerRef = useRef(0);
   const skipFlashTimerRef = useRef(0);
   const tapStateRef = useRef({ time: 0, x: 0 });
+  const chromeAtGestureStartRef = useRef(false);
   const completedRef = useRef(false);
   const playErrorAtRef = useRef(0);
-
-  const mangaRef = useRef(manga);
-  const saveProgressRef = useRef(onSaveProgress);
-  mangaRef.current = manga;
-  saveProgressRef.current = onSaveProgress;
 
   const onChapterLoadStart = useCallback(() => {
     setPlaying(false);
@@ -105,6 +103,8 @@ export function LiveVideoPlayer({
     pushToast,
     t,
     onChapterLoadStart,
+    preferredSourceIndex,
+    prefetchData,
   });
 
   const { cues: subtitleCues, loading: subtitlesLoading } = useFetchedSubtitles(
@@ -112,11 +112,11 @@ export function LiveVideoPlayer({
     !embedMode && subtitlesEnabled,
   );
 
-  const chapterRef = useRef(activeChapter);
-  chapterRef.current = activeChapter;
 
   const handleHlsReady = useCallback((video) => {
-    setDuration(video.duration || 0);
+    const nextDuration = Number.isFinite(video.duration) ? video.duration : 0;
+    setDuration(nextDuration || 0);
+    setPlaying(!video.paused);
   }, []);
 
   const {
@@ -126,6 +126,7 @@ export function LiveVideoPlayer({
     isFullscreen,
     immersiveMode,
     cinemaMode,
+    isVideoImmersive,
     cssFullscreen,
     bindImmersiveRoot,
     requestFullscreen,
@@ -141,30 +142,14 @@ export function LiveVideoPlayer({
     playing,
     plyrInstance,
     plyrInstanceRef,
+    netflixMode: !isChromebookApp,
   });
-
-  const requestEmbedFullscreen = useCallback(async () => {
-    const node = embedRef.current;
-    if (!node) return;
-    try {
-      if (document.fullscreenElement) {
-        await document.exitFullscreen();
-        return;
-      }
-      if (node.requestFullscreen) {
-        await node.requestFullscreen();
-      } else if (node.webkitRequestFullscreen) {
-        await node.webkitRequestFullscreen();
-      }
-    } catch {
-      pushToast({ type: "error", message: t("reader.stream.playFailed") });
-    }
-  }, [pushToast, t]);
 
   useEffect(() => {
     resetChromeOnChapterChange();
     completedRef.current = false;
     setProgress(initialProgress);
+    setServersOpen(false);
   }, [activeChapter.url, initialProgress, resetChromeOnChapterChange]);
 
   useEffect(() => () => {
@@ -203,25 +188,31 @@ export function LiveVideoPlayer({
     const video = videoRef.current;
     if (!video || !playback || playback.mode === "embed") return undefined;
 
+    const syncPlaying = () => setPlaying(!video.paused);
+    const syncDuration = () => {
+      const nextDuration = video.duration;
+      if (Number.isFinite(nextDuration) && nextDuration > 0) {
+        setDuration(nextDuration);
+      }
+    };
+
     const onTimeUpdate = () => {
-      const nextDuration = video.duration || 0;
+      const nextDuration = Number.isFinite(video.duration) ? video.duration : 0;
       const nextTime = video.currentTime || 0;
       const nextProgress = nextDuration > 0 ? Math.round((nextTime / nextDuration) * 100) : 0;
       setDuration(nextDuration);
       setCurrentTime(nextTime);
       setProgress(nextProgress);
-      setChapterProgress(sourceId, activeChapter.url, nextProgress);
-      if (onSaveProgress && nextProgress > 0 && !completedRef.current) {
-        onSaveProgress(manga, activeChapter, nextProgress, { completed: false });
-      }
-      if (nextProgress >= VIDEO_COMPLETE_THRESHOLD && !completedRef.current) {
-        markComplete();
+      if (nextProgress > 0) {
+        setChapterProgress(sourceId, activeChapter.url, nextProgress);
+        if (onSaveProgress && !completedRef.current) {
+          onSaveProgress(manga, activeChapter, nextProgress, { completed: false });
+        }
       }
     };
 
     const onEnded = () => {
       setPlaying(false);
-      markComplete();
     };
 
     const onPlay = () => setPlaying(true);
@@ -237,18 +228,40 @@ export function LiveVideoPlayer({
 
     video.addEventListener("timeupdate", onTimeUpdate);
     video.addEventListener("progress", onProgress);
+    video.addEventListener("durationchange", syncDuration);
+    video.addEventListener("loadedmetadata", syncDuration);
     video.addEventListener("ended", onEnded);
     video.addEventListener("play", onPlay);
     video.addEventListener("pause", onPause);
+    syncPlaying();
+    syncDuration();
     if (video.readyState >= 1) onProgress();
     return () => {
       video.removeEventListener("timeupdate", onTimeUpdate);
       video.removeEventListener("progress", onProgress);
+      video.removeEventListener("durationchange", syncDuration);
+      video.removeEventListener("loadedmetadata", syncDuration);
       video.removeEventListener("ended", onEnded);
       video.removeEventListener("play", onPlay);
       video.removeEventListener("pause", onPause);
     };
-  }, [activeChapter, manga, markComplete, onSaveProgress, playback?.mode, playback?.url, sourceId]);
+  }, [activeChapter, manga, onSaveProgress, playback?.mode, playback?.url, sourceId, plyrInstance]);
+
+  useEffect(() => {
+    const plyr = plyrInstance;
+    if (!plyr || !usePlyrPlayer) return undefined;
+
+    const onPlay = () => setPlaying(true);
+    const onPause = () => setPlaying(false);
+    plyr.on("play", onPlay);
+    plyr.on("pause", onPause);
+    setPlaying(plyr.playing);
+
+    return () => {
+      plyr.off("play", onPlay);
+      plyr.off("pause", onPause);
+    };
+  }, [plyrInstance, usePlyrPlayer, playback?.url]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -387,57 +400,6 @@ export function LiveVideoPlayer({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [embedMode, pipSupported, playback, revealChrome, requestFullscreen]);
 
-  useEffect(() => {
-    if (!embedMode || !playback?.url || !data || error) return undefined;
-    const chapterUrl = activeChapter.url;
-    const saved = getChapterProgress(sourceId, chapterUrl);
-    if (saved >= VIDEO_COMPLETE_THRESHOLD) {
-      completedRef.current = true;
-      setProgress(100);
-      return undefined;
-    }
-
-    let visibleSeconds = 0;
-    let lastTick = Date.now();
-    let latestProgress = Math.max(saved, 1);
-
-    const persist = (nextProgress) => {
-      if (completedRef.current) return;
-      const clamped = Math.min(EMBED_PROGRESS_CAP, Math.max(latestProgress, nextProgress));
-      latestProgress = clamped;
-      setProgress(clamped);
-      setChapterProgress(sourceId, chapterUrl, clamped);
-      saveProgressRef.current?.(mangaRef.current, chapterRef.current, clamped, { completed: false });
-    };
-
-    persist(latestProgress);
-
-    const tick = () => {
-      if (document.visibilityState !== "visible") {
-        lastTick = Date.now();
-        return;
-      }
-      const now = Date.now();
-      visibleSeconds += (now - lastTick) / 1000;
-      lastTick = now;
-      persist(Math.max(saved, 1) + Math.floor(visibleSeconds / EMBED_SECONDS_PER_PERCENT));
-    };
-
-    const interval = window.setInterval(tick, EMBED_TICK_MS);
-    const onVisibility = () => {
-      if (document.visibilityState === "hidden") tick();
-      else lastTick = Date.now();
-    };
-    window.addEventListener("pagehide", tick);
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => {
-      tick();
-      window.clearInterval(interval);
-      window.removeEventListener("pagehide", tick);
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
-  }, [activeChapter.url, data, embedMode, error, playback?.url, sourceId]);
-
   const currentIndex = useMemo(
     () => chapters.findIndex((entry) => entry.url === activeChapter.url || (entry.number && String(entry.number) === String(activeChapter.number))),
     [activeChapter, chapters],
@@ -506,6 +468,11 @@ export function LiveVideoPlayer({
   }
 
   async function requestPictureInPicture() {
+    const plyr = plyrInstanceRef.current;
+    if (usePlyrPlayer && plyr?.pip) {
+      plyr.pip.toggle();
+      return;
+    }
     const video = videoRef.current;
     if (!video) return;
     try {
@@ -528,20 +495,29 @@ export function LiveVideoPlayer({
   }
 
   function performSingleTapAction() {
-    if (!chromeVisible) {
-      revealChrome({ autoHide: playing });
+    if (!chromeAtGestureStartRef.current) {
+      revealChrome({ autoHide: true });
       return;
     }
-    togglePlay();
-    revealChrome();
+    hideChrome();
+  }
+
+  function handleVideoSurfacePointerDown(event) {
+    if (!playback) return;
+    if (event.target.closest(".live-video-servers, .live-video-chrome, .reader-playback, .live-video-mark-complete, button, a, input, label")) {
+      return;
+    }
+    if (usePlyrPlayer && event.target.closest(".plyr__controls, .plyr__menu")) return;
+    chromeAtGestureStartRef.current = chromeVisible;
   }
 
   function handleVideoSurfacePointerUp(event) {
     if (!playback) return;
     if (event.pointerType === "mouse" && event.button !== 0) return;
-    if (event.target.closest(".live-video-servers, .live-video-chrome, .reader-playback, .live-video-mark-complete, .live-video-embed-fullscreen, button, a, input, label")) {
+    if (event.target.closest(".live-video-servers, .live-video-chrome, .reader-playback, .live-video-mark-complete, button, a, input, label")) {
       return;
     }
+    if (usePlyrPlayer && event.target.closest(".plyr__controls, .plyr__menu")) return;
 
     const stage = event.currentTarget;
     const rect = stage.getBoundingClientRect();
@@ -551,40 +527,27 @@ export function LiveVideoPlayer({
     const now = Date.now();
     const last = tapStateRef.current;
 
-    if (embedMode) {
-      if (event.target.closest(".live-video-embed, .live-video-embed__frame, iframe")) {
-        return;
-      }
-      if (now - last.time <= DOUBLE_TAP_MS && xRatio > SKIP_ZONE_RATIO && xRatio < 1 - SKIP_ZONE_RATIO) {
-        tapStateRef.current = { time: 0, x: 0 };
-        void requestEmbedFullscreen();
-        return;
-      }
-      tapStateRef.current = { time: now, x: xRatio };
-      return;
-    }
-
-    if (usePlyrPlayer) return;
+    if (embedMode && event.target.closest("iframe")) return;
 
     if (now - last.time <= DOUBLE_TAP_MS) {
       if (singleTapTimerRef.current) window.clearTimeout(singleTapTimerRef.current);
       singleTapTimerRef.current = 0;
       tapStateRef.current = { time: 0, x: 0 };
 
-      if (xRatio < SKIP_ZONE_RATIO) {
-        skipBy(-SKIP_SECONDS);
-        showSkipFlash("back");
-        revealChrome();
-        return;
+      if (!embedMode) {
+        if (xRatio < SKIP_ZONE_RATIO) {
+          skipBy(-SKIP_SECONDS);
+          showSkipFlash("back");
+          revealChrome({ autoHide: true });
+          return;
+        }
+        if (xRatio > 1 - SKIP_ZONE_RATIO) {
+          skipBy(SKIP_SECONDS);
+          showSkipFlash("forward");
+          revealChrome({ autoHide: true });
+          return;
+        }
       }
-      if (xRatio > 1 - SKIP_ZONE_RATIO) {
-        skipBy(SKIP_SECONDS);
-        showSkipFlash("forward");
-        revealChrome();
-        return;
-      }
-      togglePlay();
-      revealChrome();
       return;
     }
 
@@ -598,6 +561,12 @@ export function LiveVideoPlayer({
   }
 
   function togglePlay() {
+    const plyr = plyrInstanceRef.current;
+    if (usePlyrPlayer && plyr) {
+      plyr.togglePlay();
+      window.setTimeout(() => setPlaying(plyr.playing), 0);
+      return;
+    }
     const video = videoRef.current;
     if (!video) return;
     if (video.paused) {
@@ -614,13 +583,12 @@ export function LiveVideoPlayer({
     }
   }
 
-  const episodeLabel = formatEpisodeHeaderLabel(
-    activeChapter.number || activeChapter.name,
-    presentation.headerUnit,
-  );
+  const episodeLabel = formatVideoChapterNavLabel(activeChapter, presentation.headerUnit);
 
-  const immersiveLock = immersiveMode && !isFullscreen;
   const watchDesktopLayout = isChromebookApp;
+  const useNetflixLayout = !watchDesktopLayout;
+  const isTheaterFullscreen = useNetflixLayout && Boolean(immersiveMode || isFullscreen || cssFullscreen);
+  const videoEdgeToEdge = (useNetflixLayout && Boolean(playback)) || isTheaterFullscreen;
 
   const markCompleteAction = playback && progress < VIDEO_COMPLETE_THRESHOLD ? (
     <button
@@ -634,81 +602,201 @@ export function LiveVideoPlayer({
   ) : null;
 
   const showStandaloneMarkComplete = Boolean(
-    markCompleteAction && (watchDesktopLayout || embedMode || usePlyrPlayer),
+    markCompleteAction && watchDesktopLayout,
   );
+  const controlsChromeVisible = chromeVisible;
 
   const serverLabels = useMemo(
     () => formatUniqueServerLabels(orderedSources, t),
     [orderedSources, t],
   );
+  const activeServerLabel = serverLabels[activeSourceIndex] ?? serverLabels[0] ?? "";
+  const showServerPicker = orderedSources.length > 0 && Boolean(data);
 
-  const serverBar = orderedSources.length > 0 && data && !cinemaMode ? (
+  const openServers = useCallback(() => {
+    setServersOpen(true);
+    revealChrome();
+  }, [revealChrome]);
+
+  const serverSheet = showServerPicker ? (
+    <VideoServerSheet
+      open={serversOpen}
+      onClose={() => setServersOpen(false)}
+      serverLabels={serverLabels}
+      activeIndex={activeSourceIndex}
+      embedOnlyServer={embedMode}
+      onSelect={(index) => {
+        selectSource(index);
+        setServersOpen(false);
+        revealChrome();
+      }}
+    />
+  ) : null;
+
+  const pinChrome = useCallback(() => {
+    handleChromeInteractionStart();
+    revealChrome({ autoHide: false });
+    handleChromeInteractionEnd();
+  }, [handleChromeInteractionEnd, handleChromeInteractionStart, revealChrome]);
+
+  const nudgeChrome = useCallback((options = {}) => {
+    if (useNetflixLayout) {
+      pinChrome();
+      return;
+    }
+    revealChrome(options);
+  }, [pinChrome, revealChrome, useNetflixLayout]);
+
+  const playbackControlProps = {
+    progress,
+    buffered,
+    currentTime,
+    duration,
+    playing,
+    embedMode,
+    netflixMode: useNetflixLayout,
+    hideFullscreen: embedMode,
+    playbackRate,
+    volume,
+    muted,
+    pipSupported,
+    isFullscreen: isFullscreen || immersiveMode,
+    subtitlesAvailable: subtitleTracks.length > 0,
+    subtitlesEnabled,
+    onToggleSubtitles: () => {
+      setSubtitlesEnabled((value) => !value);
+      nudgeChrome();
+    },
+    onSeek: (value) => {
+      seekToPercent(value);
+      revealChrome({ autoHide: false });
+    },
+    onSeekEnd: (value) => {
+      seekToPercent(value);
+      handleChromeInteractionStart();
+      handleChromeInteractionEnd();
+    },
+    onTogglePlay: () => {
+      togglePlay();
+      nudgeChrome();
+    },
+    onSkip: (seconds) => {
+      skipBy(seconds);
+      nudgeChrome();
+    },
+    onCycleSpeed: () => {
+      cyclePlaybackSpeed();
+      nudgeChrome();
+    },
+    onVolumeChange: (value) => {
+      handleVolumeChange(value);
+      nudgeChrome();
+    },
+    onToggleMute: () => {
+      toggleMute();
+      nudgeChrome();
+    },
+    onPictureInPicture: async () => {
+      await requestPictureInPicture();
+      nudgeChrome();
+    },
+    previousChapter,
+    nextChapter,
+    onPrevious: () => {
+      changeChapter(previousChapter);
+      nudgeChrome();
+    },
+    onNext: () => {
+      changeChapter(nextChapter);
+      nudgeChrome();
+    },
+    onClose: hideChrome,
+    onFullscreen: () => {
+      requestFullscreen(videoRef);
+      revealChrome({ autoHide: true });
+    },
+    showServerPicker,
+    currentServerLabel: activeServerLabel,
+    onOpenServers: openServers,
+    unitLabel: presentation.headerUnit,
+    compact: cinemaMode || phoneLandscape,
+  };
+
+  const chromeInteractionHandlers = {
+    onPointerDown: (event) => {
+      event.stopPropagation();
+      handleChromeInteractionStart();
+    },
+    onPointerUp: (event) => {
+      event.stopPropagation();
+      handleChromeInteractionEnd();
+    },
+    onPointerCancel: (event) => {
+      event.stopPropagation();
+      handleChromeInteractionEnd();
+    },
+  };
+
+  const overlayControlProps = {
+    ...playbackControlProps,
+    minimalOverlay: useNetflixLayout && !embedMode,
+    previousChapter: useNetflixLayout ? null : previousChapter,
+    nextChapter: useNetflixLayout ? null : nextChapter,
+    showServerPicker: useNetflixLayout ? false : showServerPicker,
+  };
+
+  const videoEpisodeHeader = useNetflixLayout && !isTheaterFullscreen ? (
+    <VideoEpisodeHeader
+      episodeLabel={episodeLabel}
+      seriesTitle={manga.title}
+      onBack={onBack}
+      onOpenDetails={onOpenDetails}
+    />
+  ) : null;
+
+  const showPlaybackOverlay = playback && (!useNetflixLayout || !embedMode);
+
+  const playbackOverlay = showPlaybackOverlay ? (
     <div
-      className={`live-video-servers live-video-servers--dock${embedMode ? " live-video-servers--embed" : ""}`}
-      aria-label={t("reader.stream.serversAria")}
+      className={`live-video-chrome live-video-chrome--controls${controlsChromeVisible ? " is-visible" : ""}`}
+      {...chromeInteractionHandlers}
     >
-      <div className="live-video-servers__chips" role="list">
-        {orderedSources.map((source, index) => (
-          <button
-            key={`${source.url}-${index}`}
-            type="button"
-            role="listitem"
-            className={`live-video-servers__chip${index === activeSourceIndex ? " active" : ""}${source.streamUrl ? " live-video-servers__chip--native" : ""}`}
-            onClick={() => selectSource(index)}
-            aria-pressed={index === activeSourceIndex}
-            title={serverLabels[index]}
-          >
-            {serverLabels[index]}
-          </button>
-        ))}
-      </div>
-      {embedMode ? (
-        <p className="live-video-servers__hint">{t("reader.stream.embedFallback")}</p>
-      ) : null}
+      <VideoPlaybackControls
+        {...overlayControlProps}
+        navOnly={!useNetflixLayout && embedMode}
+        className={useNetflixLayout || cinemaMode ? "reader-playback--overlay reader-playback--netflix" : "reader-playback--docked"}
+        showClose={!useNetflixLayout && !embedMode && !usePlyrPlayer}
+        compact={useNetflixLayout || cinemaMode || phoneLandscape}
+      />
     </div>
   ) : null;
 
   const immersiveRoot = (
       <div
         ref={bindImmersiveRoot}
-        className={`live-video-immersive-root${cinemaMode ? " is-cinema" : ""}${embedMode ? " is-embed" : ""}${cssFullscreen ? " plyr--fullscreen-fallback" : ""}${chromeVisible ? " is-chrome-visible" : " is-chrome-hidden"}`}
+        className={`live-video-immersive-root${videoEdgeToEdge ? " is-video-fill" : (cinemaMode ? " is-cinema" : "")}${isTheaterFullscreen ? " is-theater-fullscreen" : ""}${useNetflixLayout ? " is-netflix has-episode-header" : ""}${embedMode ? " is-embed" : ""}${cssFullscreen || isTheaterFullscreen ? " plyr--fullscreen-fallback" : ""}${chromeVisible ? " is-chrome-visible" : " is-chrome-hidden"}`}
         onPointerMove={(event) => {
-          if (cinemaMode) {
+          if (isVideoImmersive) {
             revealChrome();
             return;
           }
           if (event.pointerType === "mouse") revealChrome();
         }}
         onPointerDown={(event) => {
-          if (cinemaMode) {
-            if (event.target.closest(".live-video-chrome, .reader-playback, .live-video-cinema-back, .live-video-servers, .plyr__controls, .plyr__menu")) return;
-            revealChrome();
+          if (isVideoImmersive) {
+            if (event.target.closest(".live-video-chrome, .video-episode-header, .video-episode-toolbar, .reader-playback, .live-video-cinema-back, .live-video-servers, .plyr__controls, .plyr__menu")) return;
+            if (!event.target.closest(".live-video-stage, .live-video-player, .live-video-player-wrap, .plyr-hls-player, video")) return;
+            chromeAtGestureStartRef.current = chromeVisible;
             return;
           }
-          if (event.target.closest(".live-video-chrome, .reader-playback, .live-video-cinema-back, .live-video-servers")) return;
+          if (event.target.closest(".live-video-chrome, .video-episode-header, .video-episode-toolbar, .reader-playback, .live-video-cinema-back, .live-video-servers")) return;
           if (event.target.closest(".live-video-player, .live-video-player-frame, video")) return;
           revealChrome();
         }}
       >
-        {cinemaMode && (
-          <div
-            className={`live-video-chrome live-video-chrome--top${chromeVisible ? " is-visible" : ""}`}
-          >
-            <button
-              type="button"
-              className="live-video-cinema-back"
-              onClick={onBack}
-              aria-label={t("reader.header.back")}
-            >
-              <ChevronRight size={18} />
-            </button>
-            <div className="live-video-cinema-title">
-              <b>{episodeLabel}</b>
-              <span>{manga.title}</span>
-            </div>
-          </div>
-        )}
-        <div className={`live-video-stage${embedMode ? " live-video-stage--embed" : ""}`} onPointerUp={handleVideoSurfacePointerUp}>
+        {videoEpisodeHeader}
+        <div className="live-video-stage-shell">
+        <div className={`live-video-stage${embedMode ? " live-video-stage--embed" : ""}`} onPointerDown={handleVideoSurfacePointerDown} onPointerUp={handleVideoSurfacePointerUp}>
         {error ? (
           <div className="reader-live-state live-video-state">
             <Wifi size={30} />
@@ -759,17 +847,11 @@ export function LiveVideoPlayer({
             ) : playback.mode === "embed" ? (
               <div className="live-video-embed" ref={embedRef}>
                 <EmbedPlayerFrame
+                  key={`${activeChapter.url}-${activeSourceIndex}-${hlsRetryKey}`}
                   src={playback.url}
                   title={data.title || episodeLabel}
+                  onBlocked={handleHlsError}
                 />
-                <button
-                  type="button"
-                  className="live-video-embed-fullscreen"
-                  onClick={() => { void requestEmbedFullscreen(); }}
-                  aria-label={t("reader.plyr.enterFullscreen")}
-                >
-                  <Maximize2 size={16} aria-hidden="true" />
-                </button>
               </div>
             ) : (
               <div className="live-video-player-frame live-video-player-frame--native">
@@ -807,91 +889,13 @@ export function LiveVideoPlayer({
             <span>{t("reader.playback.secondsShort", { n: SKIP_SECONDS })}</span>
           </div>
         )}
-        {playback && !embedMode && !usePlyrPlayer && (
-          <div
-            className={`live-video-chrome live-video-chrome--controls${chromeVisible ? " is-visible" : ""}`}
-            onPointerEnter={handleChromeInteractionStart}
-            onPointerLeave={handleChromeInteractionEnd}
-            onPointerDown={handleChromeInteractionStart}
-            onPointerUp={handleChromeInteractionEnd}
-            onPointerCancel={handleChromeInteractionEnd}
-          >
-            <VideoPlaybackControls
-              progress={progress}
-              buffered={buffered}
-              currentTime={currentTime}
-              duration={duration}
-              playing={playing}
-              embedMode={false}
-              playbackRate={playbackRate}
-              volume={volume}
-              muted={muted}
-              pipSupported={pipSupported}
-              isFullscreen={isFullscreen || immersiveMode}
-              showMarkComplete={progress < VIDEO_COMPLETE_THRESHOLD}
-              subtitlesAvailable={subtitleTracks.length > 0}
-              subtitlesEnabled={subtitlesEnabled}
-              onToggleSubtitles={() => {
-                setSubtitlesEnabled((value) => !value);
-                revealChrome();
-              }}
-              onSeek={(value) => {
-                seekToPercent(value);
-                revealChrome();
-              }}
-              onTogglePlay={() => {
-                togglePlay();
-                revealChrome();
-              }}
-              onSkip={(seconds) => {
-                skipBy(seconds);
-                revealChrome();
-              }}
-              onCycleSpeed={() => {
-                cyclePlaybackSpeed();
-                revealChrome();
-              }}
-              onVolumeChange={(value) => {
-                handleVolumeChange(value);
-                revealChrome();
-              }}
-              onToggleMute={() => {
-                toggleMute();
-                revealChrome();
-              }}
-              onPictureInPicture={async () => {
-                await requestPictureInPicture();
-                revealChrome();
-              }}
-              onMarkComplete={() => {
-                markComplete();
-                revealChrome();
-              }}
-              previousChapter={previousChapter}
-              nextChapter={nextChapter}
-              onPrevious={() => {
-                changeChapter(previousChapter);
-                revealChrome();
-              }}
-              onNext={() => {
-                changeChapter(nextChapter);
-                revealChrome();
-              }}
-              onClose={hideChrome}
-              onFullscreen={() => requestFullscreen(videoRef)}
-              unitLabel={presentation.headerUnit}
-              className={cinemaMode ? "reader-playback--overlay" : "reader-playback--docked"}
-              compact={cinemaMode || phoneLandscape}
-            />
-          </div>
-        )}
-        {!watchDesktopLayout && serverBar}
-        {!watchDesktopLayout && showStandaloneMarkComplete ? markCompleteAction : null}
+        {playbackOverlay}
+        </div>
       </div>
   );
 
   return (
-    <div className={`reader live-reader live-reader--video reader--theme-night${isChromebookApp ? " live-reader--desktop live-reader--watch" : ""}${cinemaMode ? " live-reader--cinema" : ""}${immersiveLock ? " live-reader--immersive-lock" : ""}`} dir={dir}>
+    <div className={`reader live-reader live-reader--video reader--theme-night${isChromebookApp ? " live-reader--desktop live-reader--watch" : ""}${videoEdgeToEdge ? " live-reader--video-fill" : ""}${(cinemaMode && watchDesktopLayout) || isTheaterFullscreen ? " live-reader--cinema" : ""}${isTheaterFullscreen ? " live-reader--immersive-lock" : ""}`} dir={dir}>
       {watchDesktopLayout ? (
         <>
           <header className="video-watch-header" dir={dir}>
@@ -929,7 +933,11 @@ export function LiveVideoPlayer({
           <div className={`video-watch-layout${showEpisodePlaylist ? " video-watch-layout--series" : ""}`}>
             <div className="video-watch-main">
               {immersiveRoot}
-              {serverBar}
+              {showServerPicker ? (
+                <div className="video-watch-servers">
+                  <VideoServerPickerButton label={activeServerLabel} onClick={openServers} />
+                </div>
+              ) : null}
               <div className="video-watch-meta">
                 <h1 className="video-watch-meta__episode" dir="auto">{episodeLabel}</h1>
                 <button type="button" className="video-watch-meta__series" onClick={onOpenDetails} dir="auto">
@@ -955,31 +963,10 @@ export function LiveVideoPlayer({
         </>
       ) : (
         <>
-          {!cinemaMode && (
-            <ReaderHeader
-              title={manga.title}
-              cover={manga.cover}
-              chapterName={episodeLabel}
-              sourceId={sourceId}
-              sourceName={profile.name}
-              progress={progress}
-              chapterUrl={activeChapter.url}
-              isFavorite={isFavorite}
-              onBack={onBack}
-              onOpenDetails={onOpenDetails}
-              onToggleFavorite={onToggleFavorite}
-              unitLabel={presentation.headerUnit}
-              previousChapter={previousChapter}
-              nextChapter={nextChapter}
-              onPrevious={() => changeChapter(previousChapter)}
-              onNext={() => changeChapter(nextChapter)}
-              hideSettings
-              variant="video"
-            />
-          )}
           {immersiveRoot}
         </>
       )}
+      {serverSheet}
     </div>
   );
 }

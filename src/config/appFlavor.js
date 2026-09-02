@@ -3,7 +3,7 @@ export const APP_FLAVOR = import.meta.env?.VITE_APP_FLAVOR || "archive";
 export const isChromebookApp = APP_FLAVOR === "chromebook";
 
 export const ALLOWED_SOURCE_IDS = isChromebookApp
-  ? ["frenchstream", "wiflix", "coflix"]
+  ? ["frenchstream", "wiflix"]
   : null;
 
 export const VISIBLE_MEDIA_TYPES = isChromebookApp

@@ -2,9 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   buildGalaxyAuthorFilterEntries,
+  chaptersFromManifest,
+  extractGalaxyChapterApiFromHtml,
   galaxyAuthorFilterEntry,
+  GALAXY_CATALOG_PAGE_SIZE,
   handleGalaxyRequest,
+  mapGalaxyChapters,
   normalizeGalaxyAuthorName,
+  normalizeGalaxyChapterList,
   parseGalaxyCatalog,
   parseGalaxyCatalogNovelIds,
   parseGalaxyChapter,
@@ -20,6 +25,52 @@ const CATALOG_CARD = `
   <b data-wor-library-chapter-count>12</b>
 </article>`;
 
+test("GALAXY_CATALOG_PAGE_SIZE matches Realm Novel / MangaLik density", () => {
+  assert.equal(GALAXY_CATALOG_PAGE_SIZE, 24);
+});
+
+test("mapGalaxyChapters orders by URL number, not misleading titles", () => {
+  const chapters = mapGalaxyChapters({
+    chapters: [
+      { url: "/novel/demo/chapter-942/", number: "1", label: "1" },
+      { url: "/novel/demo/chapter-1/", number: "1", label: "1" },
+      { url: "/novel/demo/chapter-10/", number: "10", label: "10" },
+    ],
+  });
+  assert.deepEqual(chapters.map((chapter) => chapter.number), ["942", "10", "1"]);
+  assert.match(chapters[0].url, /chapter-942/);
+});
+
+test("normalizeGalaxyChapterList dedupes by url", () => {
+  const chapters = normalizeGalaxyChapterList([
+    { url: "https://galaxynovels.com/novel/demo/chapter-1/", name: "1", number: "1" },
+    { url: "https://galaxynovels.com/novel/demo/chapter-1/", name: "1 bis", number: "1" },
+  ]);
+  assert.equal(chapters.length, 1);
+});
+
+test("chaptersFromManifest maps live_tail and latest chapter", () => {
+  const chapters = chaptersFromManifest({
+    live_tail: [
+      { url: "/novel/demo/chapter-9/", number: "9", label: "9" },
+      { url: "/novel/demo/chapter-10/", number: "10", label: "10" },
+    ],
+    latest_url: "/novel/demo/chapter-11/",
+    latest_number: "11",
+  });
+  assert.equal(chapters.length, 3);
+  assert.equal(chapters[0].number, "11");
+  assert.equal(chapters[2].number, "9");
+});
+
+test("extractGalaxyChapterApiFromHtml reads data-content-api", () => {
+  const html = '<article data-content-api="/wp-json/wor-reader-app/v1/chapters/42/"></article>';
+  assert.match(
+    extractGalaxyChapterApiFromHtml(html),
+    /\/wp-json\/wor-reader-app\/v1\/chapters\/42\/?$/,
+  );
+});
+
 test("parseGalaxyCatalogNovelIds reads library novel ids", () => {
   const html = `
     <article data-wor-library-novel-id="48220"></article>
@@ -27,6 +78,15 @@ test("parseGalaxyCatalogNovelIds reads library novel ids", () => {
     <article data-wor-library-novel-id="48220"></article>
   `;
   assert.deepEqual(parseGalaxyCatalogNovelIds(html), [48220, 313293]);
+});
+
+test("parseGalaxyCatalog builds recent chapters from chapter count without extra fetch", () => {
+  const items = parseGalaxyCatalog(CATALOG_CARD);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].recentChapters.length, 2);
+  assert.equal(items[0].recentChapters[0].number, "12");
+  assert.match(items[0].recentChapters[0].url, /chapter-12/);
+  assert.equal(items[0].recentChapters[1].number, "11");
 });
 
 test("parseGalaxyCatalog reads library cards", () => {

@@ -11,6 +11,7 @@ import {
   parseEpisodeTarget,
   slugFromAnimeUrl,
 } from "../sources/animedar.js";
+import { normalizeChapterList } from "../lib/chapterOrdering.js";
 
 const ANIME_URL = "https://animedar.net/anime-p/demo-anime/";
 const CARD_HTML = `
@@ -110,6 +111,23 @@ test("parseAnimedarServerBlocks and buildServerEmbedUrl resolve hosts", () => {
   assert.equal(buildServerEmbedUrl({ type: "asnwish", data: "abc123" }), "https://asnwish.com/e/abc123");
   assert.equal(buildServerEmbedUrl({ type: "videa", data: "vid001" }), "https://videa.hu/player?v=vid001");
   assert.equal(blocks[0][0].url, "https://asnwish.com/e/abc123");
+});
+
+test("normalizeChapterList keeps animedar episodes with ep query distinct", () => {
+  const base = "https://animedar.net/anime-p/demo-anime/";
+  const chapters = normalizeChapterList([
+    { number: "1", name: "الحلقة 1", url: `${base}?ep=1` },
+    { number: "2", name: "الحلقة 2", url: `${base}?ep=2` },
+    { number: "3", name: "الحلقة 3", url: `${base}?ep=3` },
+  ]);
+  assert.equal(chapters.length, 3);
+  assert.deepEqual(chapters.map((chapter) => chapter.number).sort(), ["1", "2", "3"]);
+});
+
+test("normalizeChapterList preserves all animedar episode urls", () => {
+  const chapters = parseAnimedarEpisodes(DETAILS_HTML, ANIME_URL);
+  const normalized = normalizeChapterList(chapters);
+  assert.equal(normalized.length, chapters.length);
 });
 
 test("parseAnimedarDetails merges metadata and chapters", () => {

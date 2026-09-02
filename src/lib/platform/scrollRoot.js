@@ -15,8 +15,9 @@ export function getStandaloneReaderElement() {
 export function getAppScrollElement() {
   if (typeof document === "undefined") return null;
 
+  // Manga / roman : le scroll vit dans .live-reader__body (web, desktop et natif).
   const standaloneReader = getStandaloneReaderElement();
-  if (standaloneReader && document.documentElement.classList.contains("native-app")) {
+  if (standaloneReader) {
     return standaloneReader;
   }
 

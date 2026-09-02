@@ -1,4 +1,4 @@
-const HTML_CACHE_TTL_MS = 2 * 60_000;
+const HTML_CACHE_TTL_MS = 4 * 60_000;
 const htmlMemoryCache = new Map();
 const htmlInFlight = new Map();
 
@@ -28,18 +28,26 @@ export function normalizeNativeHtmlUrl(url = "") {
     }
 
     if (host === "mangalik.net" || host === "www.mangalik.net") {
-      if (stripTrailingSlash(parsed.pathname) === "/manga") {
+      const pathParts = stripTrailingSlash(parsed.pathname).split("/").filter(Boolean);
+      if (pathParts[0] === "manga" && pathParts.length === 1) {
         parsed.search = "";
         parsed.hash = "";
         return `${parsed.origin}/manga/`;
       }
-    }
-
-    if (host === "mangaforfree.com" || host === "www.mangaforfree.com") {
-      if (stripTrailingSlash(parsed.pathname) === "/manga") {
+      if (pathParts[0] === "manga" && pathParts.length === 2) {
         parsed.search = "";
         parsed.hash = "";
-        return `${parsed.origin}/manga/`;
+        return `${parsed.origin}/manga/${pathParts[1]}/`;
+      }
+      if (pathParts[0] === "manga" && pathParts.length >= 3) {
+        parsed.searchParams.set("style", "list");
+        parsed.hash = "";
+        return parsed.toString();
+      }
+      if (pathParts.length >= 3 && pathParts[pathParts.length - 1] === "chapters" && pathParts[pathParts.length - 2] === "ajax") {
+        parsed.search = "";
+        parsed.hash = "";
+        return `${parsed.origin}/${pathParts.join("/")}/`;
       }
     }
 
@@ -79,52 +87,6 @@ export function normalizeNativeHtmlUrl(url = "") {
           parsed.hash = "";
           return `${parsed.origin}${parsed.pathname}`;
         }
-      }
-    }
-
-    if (host === "arabshentai.com" || host === "www.arabshentai.com") {
-      if (stripTrailingSlash(parsed.pathname) === "/manga") {
-        parsed.search = "";
-        parsed.hash = "";
-        return `${parsed.origin}/manga/`;
-      }
-    }
-
-    if (host === "hentairead.com" || host === "www.hentairead.com") {
-      const path = stripTrailingSlash(parsed.pathname);
-      if (path === "/hentai") {
-        const sortby = parsed.searchParams.get("sortby");
-        if (!sortby || sortby === "views") {
-          parsed.search = sortby === "views" ? "?sortby=views" : "";
-          parsed.hash = "";
-          return `${parsed.origin}/hentai${parsed.search}`;
-        }
-      }
-    }
-
-    if (host === "hentaigasm.com" || host === "www.hentaigasm.com") {
-      const path = stripTrailingSlash(parsed.pathname);
-      if (!path) {
-        parsed.search = "";
-        parsed.hash = "";
-        return `${parsed.origin}/`;
-      }
-    }
-
-    if (host === "mangadistrict.com" || host === "www.mangadistrict.com") {
-      if (stripTrailingSlash(parsed.pathname) === "/manga") {
-        parsed.search = "";
-        parsed.hash = "";
-        return `${parsed.origin}/manga/`;
-      }
-    }
-
-    if (host === "manhwaread.com" || host === "www.manhwaread.com"
-      || host === "manhwaread.org" || host === "www.manhwaread.org") {
-      if (stripTrailingSlash(parsed.pathname) === "/manhwa") {
-        parsed.search = "";
-        parsed.hash = "";
-        return `${parsed.origin}/manhwa/`;
       }
     }
 

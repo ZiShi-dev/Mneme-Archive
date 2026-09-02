@@ -1,16 +1,21 @@
-import { fetchSourceDetails } from "../../features/sources/sourceApi";
-import { getItemType } from "../../features/sources/contentTypes";
-import { getTitleReadingKey } from "../readingProgress";
-import { kvGet, kvSet } from "../storage/kvStore";
-import { buildFollowItem } from "./followKeys";
+import { fetchSourceDetails, peekSourceDetails } from "../../features/sources/sourceApi.js";
+import { getItemType } from "../../features/sources/contentTypes.js";
+import { kvGet, kvSet } from "../storage/kvStore.js";
+import { buildFollowItem } from "./followKeys.js";
 import {
   formatChapterPublishedLabel,
   isChapterWithinNewWindow,
   parseChapterPublishedAt,
 } from "../media/chapterTiming.js";
+import {
+  buildHomeLatestPayload,
+  isLatestChapterUnread,
+  pickLatestChapter,
+} from "./homeLatestModel.js";
 
 export const HOME_CHAPTER_TTL_MS = 24 * 60 * 60 * 1000;
 export { formatChapterPublishedLabel, parseChapterPublishedAt };
+export { buildHomeLatestPayload, isLatestChapterUnread, pickLatestChapter };
 export const isChapterWithinHomeWindow = isChapterWithinNewWindow;
 const FIRST_SEEN_KEY = "living-archive:home-chapter-first-seen";
 const HOME_LATEST_RESULT_TTL_MS = 5 * 60_000;
@@ -33,25 +38,55 @@ export function collectHomeTrackedItems(followPreferences = {}) {
   return items;
 }
 
-export function pickLatestChapter(chapters = [], fallback = null) {
-  if (!chapters.length) return fallback;
-  const readable = chapters.find((chapter) => !chapter.locked);
-  return readable || chapters[0] || fallback;
+export async function fetchHomeLatestChapter(item) {
+  const cached = peekSourceDetails(item.sourceId, item.url);
+  const details = cached || await fetchSourceDetails(item.sourceId, item.url);
+  return buildHomeLatestPayload(item, details);
 }
 
-export function isLatestChapterUnread(item, latestChapter, readingHistory = {}) {
-  if (!latestChapter?.url) return false;
-  const record = readingHistory[getTitleReadingKey(item)];
-  if (!record?.chapterUrl) return true;
-  if (record.chapterUrl === latestChapter.url) return false;
+export function peekHomeLatestChapters({ mediaFilter = "all", trackedCount = 0, limit = 12 } = {}) {
+  const cacheKey = buildHomeLatestCacheKey(mediaFilter, trackedCount, limit);
+  if (
+    homeLatestResultCache?.key === cacheKey
+    && Date.now() - homeLatestResultCache.at < HOME_LATEST_RESULT_TTL_MS
+  ) {
+    return homeLatestResultCache.data;
+  }
+  return null;
+}
 
-  const latestNumber = Number(latestChapter.number);
-  const readNumber = Number(record.chapterNumber);
-  if (Number.isFinite(latestNumber) && Number.isFinite(readNumber)) {
-    return latestNumber > readNumber;
+export function hydrateHomeLatestChapters({
+  followPreferences,
+  readingHistory,
+  mediaFilter = "all",
+  limit = 12,
+} = {}) {
+  const tracked = collectHomeTrackedItems(followPreferences)
+    .filter((item) => mediaFilter === "all" || getItemType(item) === mediaFilter);
+  const now = Date.now();
+  const results = [];
+
+  for (const item of tracked) {
+    const details = peekSourceDetails(item.sourceId, item.url);
+    if (!details) continue;
+    const payload = buildHomeLatestPayload(item, details);
+    if (!payload.latestChapter) continue;
+    const publishedAt = parseChapterPublishedAt(payload.latestChapter);
+    if (!publishedAt || !isChapterWithinHomeWindow(publishedAt, now)) continue;
+    results.push({
+      ...payload,
+      publishedAt,
+      isNew: isLatestChapterUnread(payload.item, payload.latestChapter, readingHistory),
+      trackedBy: item.trackedBy,
+    });
   }
 
-  return true;
+  return {
+    entries: results
+      .sort((left, right) => new Date(right.publishedAt) - new Date(left.publishedAt))
+      .slice(0, limit),
+    trackedCount: tracked.length,
+  };
 }
 
 function pruneFirstSeenMap(map, now = Date.now()) {
@@ -76,25 +111,6 @@ async function resolvePublishedAt(chapter, firstSeenMap) {
   return now;
 }
 
-export async function fetchHomeLatestChapter(item) {
-  const details = await fetchSourceDetails(item.sourceId, item.url);
-  const chapters = details.chapters || [];
-  const latestChapter = pickLatestChapter(chapters, item.recentChapters?.[0] || null);
-
-  return {
-    item: {
-      ...item,
-      title: details.title || item.title,
-      altTitle: details.altTitle || item.altTitle || "",
-      cover: details.cover || item.cover,
-      mediaType: details.mediaType || item.mediaType,
-      mediaTypeLabel: details.mediaTypeLabel || item.mediaTypeLabel,
-    },
-    latestChapter,
-    mediaType: getItemType({ ...item, mediaType: details.mediaType || item.mediaType }),
-  };
-}
-
 export async function loadHomeLatestChapters({
   followPreferences,
   readingHistory,
@@ -110,16 +126,17 @@ export async function loadHomeLatestChapters({
     return { entries: [], trackedCount: 0 };
   }
 
-  const cacheKey = buildHomeLatestCacheKey(mediaFilter, tracked.length, limit);
-  if (
-    !skipCache
-    && homeLatestResultCache?.key === cacheKey
-    && Date.now() - homeLatestResultCache.at < HOME_LATEST_RESULT_TTL_MS
-  ) {
-    return homeLatestResultCache.data;
+  if (!skipCache) {
+    const cached = peekHomeLatestChapters({
+      mediaFilter,
+      trackedCount: tracked.length,
+      limit,
+    });
+    if (cached) return cached;
   }
 
-  const firstSeenMap = pruneFirstSeenMap(await kvGet(FIRST_SEEN_KEY, {}));
+  const storedFirstSeen = await kvGet(FIRST_SEEN_KEY, {});
+  const firstSeenMap = pruneFirstSeenMap(storedFirstSeen);
   const results = [];
   let cursor = 0;
   const now = Date.now();
@@ -152,13 +169,24 @@ export async function loadHomeLatestChapters({
     Array.from({ length: Math.min(concurrency, tracked.length) }, () => worker()),
   );
 
-  await kvSet(FIRST_SEEN_KEY, pruneFirstSeenMap(firstSeenMap, now));
+  const nextFirstSeen = pruneFirstSeenMap(firstSeenMap, now);
+  if (JSON.stringify(storedFirstSeen) !== JSON.stringify(nextFirstSeen)) {
+    await kvSet(FIRST_SEEN_KEY, nextFirstSeen);
+  }
 
   const entries = results
     .sort((left, right) => new Date(right.publishedAt) - new Date(left.publishedAt))
     .slice(0, limit);
 
   const payload = { entries, trackedCount: tracked.length };
-  homeLatestResultCache = { key: cacheKey, at: Date.now(), data: payload };
+  homeLatestResultCache = {
+    key: buildHomeLatestCacheKey(mediaFilter, tracked.length, limit),
+    at: Date.now(),
+    data: payload,
+  };
   return payload;
+}
+
+export function clearHomeLatestChaptersCache() {
+  homeLatestResultCache = null;
 }

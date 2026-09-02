@@ -4,15 +4,7 @@ import {
   addReaderScrollListener,
   getAppScrollElement,
 } from "../../lib/platform/scrollRoot";
-
-/** Place le pill dans le tiers supérieur de la zone de scroll visible. */
-function computeToastTop(root) {
-  if (!root || typeof root.getBoundingClientRect !== "function") {
-    return Math.max(88, window.innerHeight * 0.22);
-  }
-  const rect = root.getBoundingClientRect();
-  return rect.top + Math.max(72, Math.min(rect.height * 0.24, 148));
-}
+import { computeCatalogLoadingToastTop } from "../../lib/ui/toastLayout.js";
 
 export function CatalogLoadingToast({ visible, label, hint = "" }) {
   const [top, setTop] = useState(0);
@@ -20,7 +12,7 @@ export function CatalogLoadingToast({ visible, label, hint = "" }) {
   useEffect(() => {
     if (!visible) return undefined;
     const root = getAppScrollElement();
-    const sync = () => setTop(computeToastTop(root));
+    const sync = () => setTop(computeCatalogLoadingToastTop(root));
     sync();
     const onResize = () => sync();
     window.addEventListener("resize", onResize);

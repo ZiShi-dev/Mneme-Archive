@@ -10,24 +10,31 @@ test("MangalikHtmlFetcher web stub rejects native-only call", async () => {
   );
 });
 
-test("mangalik catalog uses FlareSolverr directly", async () => {
+test("mangalik catalog falls back to FlareSolverr when direct HTTP is blocked", async () => {
   const { configureFlareSolverr } = await import("../../server/lib/flareSolverrConfig.js");
   const { responseCache } = await import("../../server/lib/httpUtils.js");
   const originalFetch = globalThis.fetch;
   responseCache.clear();
   configureFlareSolverr(() => ({ baseUrl: "http://127.0.0.1:8191" }));
   globalThis.fetch = async (url) => {
-    assert.match(String(url), /\/v1$/);
+    const target = String(url);
+    if (target.includes("/v1")) {
+      return {
+        ok: true,
+        async json() {
+          return {
+            status: "ok",
+            solution: {
+              response: '<html><body><div class="page-item-detail manga"><a href="/manga/sample/" title="Sample"><div class="post-title"><a>Sample</a></div></a></div></body></html>',
+            },
+          };
+        },
+      };
+    }
     return {
-      ok: true,
-      async json() {
-        return {
-          status: "ok",
-          solution: {
-            response: '<html><body><div class="page-item-detail manga"><a href="/manga/sample/" title="Sample"><div class="post-title"><a>Sample</a></div></a></div></body></html>',
-          },
-        };
-      },
+      ok: false,
+      status: 403,
+      async text() { return "<html>Just a moment...</html>"; },
     };
   };
   try {
@@ -69,6 +76,14 @@ test("normalizeNativeHtmlUrl deduplicates catalog page-1 URLs", async () => {
     "https://mangalik.net/manga/",
   );
   assert.equal(
+    normalizeNativeHtmlUrl("https://mangalik.net/manga/sample-title/"),
+    "https://mangalik.net/manga/sample-title/",
+  );
+  assert.equal(
+    normalizeNativeHtmlUrl("https://mangalik.net/manga/sample-title/12/?style=paged"),
+    "https://mangalik.net/manga/sample-title/12/?style=list",
+  );
+  assert.equal(
     normalizeNativeHtmlUrl("https://galaxynovels.com/library/?library_page=1"),
     "https://galaxynovels.com/library/",
   );
@@ -102,8 +117,8 @@ test("fetchNativeHtmlWithCache reuses in-flight fetch", async () => {
 
 test("webViewSources marks native catalog sources", async () => {
   const { WEBVIEW_SOURCE_IDS, FLARE_DIRECT_SOURCE_IDS, shouldDeferCatalogFilters } = await import("../lib/platform/webViewSources.js");
-  assert.deepEqual(WEBVIEW_SOURCE_IDS, ["azorafly", "galaxynovels", "manhwaread", "mangaforfree", "novelphoenix"]);
-  assert.deepEqual(FLARE_DIRECT_SOURCE_IDS, ["mangalik", "arabshentai", "hentairead", "novelsparadise"]);
+  assert.deepEqual(WEBVIEW_SOURCE_IDS, ["azorafly", "galaxynovels", "novelphoenix"]);
+  assert.deepEqual(FLARE_DIRECT_SOURCE_IDS, ["mangalik", "novelsparadise"]);
   assert.equal(shouldDeferCatalogFilters("azorafly"), true);
   assert.equal(shouldDeferCatalogFilters("mangalik"), true);
   assert.equal(shouldDeferCatalogFilters("paradise"), false);

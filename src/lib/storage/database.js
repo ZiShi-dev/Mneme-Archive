@@ -27,12 +27,37 @@ CREATE TABLE IF NOT EXISTS image_cache (
 CREATE INDEX IF NOT EXISTS idx_image_cache_fetched ON image_cache(fetched_at);
 `;
 
+const DB_OPEN_TIMEOUT_MS = 12000;
+const FRESH_ENCRYPTED_OPTIONS = { encrypted: true, mode: "secret" };
+
 let sqliteConnection = null;
 let db = null;
 let initPromise = null;
 
 export function isNativeStorage() {
   return Capacitor.isNativePlatform() && !isChromebookApp;
+}
+
+function withTimeout(promise, ms, label) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`Storage timeout: ${label}`));
+    }, ms);
+    Promise.resolve(promise)
+      .then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+  });
+}
+
+export function resetDatabaseState() {
+  initPromise = null;
+  db = null;
 }
 
 async function runMigrations(connection) {
@@ -49,29 +74,70 @@ async function createDatabaseConnection(connection, { encrypted, mode }) {
   return created;
 }
 
+async function closeDatabaseConnection(connection) {
+  try {
+    const isConn = (await connection.isConnection(DB_NAME, false)).result;
+    if (!isConn) return;
+    await connection.closeConnection(DB_NAME, false);
+  } catch {
+    // Connexion déjà fermée ou plugin indisponible.
+  }
+}
+
+async function resetDatabaseFiles(connection) {
+  await closeDatabaseConnection(connection);
+  try {
+    await connection.deleteDatabase(DB_NAME);
+  } catch {
+    // La base peut déjà être absente.
+  }
+  db = null;
+}
+
+async function openFreshConnection(connection, openOptions) {
+  await closeDatabaseConnection(connection);
+  return createDatabaseConnection(connection, openOptions);
+}
+
+async function openDatabaseInternal() {
+  const { CapacitorSQLite, SQLiteConnection } = await import("@capacitor-community/sqlite");
+  sqliteConnection = new SQLiteConnection(CapacitorSQLite);
+  const { resolveDatabaseOpenOptions } = await import("./dbEncryption.js");
+  const openOptions = await withTimeout(
+    resolveDatabaseOpenOptions(sqliteConnection, DB_NAME),
+    DB_OPEN_TIMEOUT_MS,
+    "resolveDatabaseOpenOptions",
+  );
+
+  try {
+    db = await withTimeout(
+      openFreshConnection(sqliteConnection, openOptions),
+      DB_OPEN_TIMEOUT_MS,
+      "openDatabase",
+    );
+  } catch (primaryError) {
+    await resetDatabaseFiles(sqliteConnection);
+    db = await withTimeout(
+      createDatabaseConnection(sqliteConnection, FRESH_ENCRYPTED_OPTIONS),
+      DB_OPEN_TIMEOUT_MS,
+      "openDatabaseRecovery",
+    );
+  }
+
+  await runMigrations(db);
+  return db;
+}
+
 export async function openDatabase() {
   if (!isNativeStorage()) return null;
   if (db) return db;
   if (!initPromise) {
-    initPromise = (async () => {
-      const { CapacitorSQLite, SQLiteConnection } = await import("@capacitor-community/sqlite");
-      sqliteConnection = new SQLiteConnection(CapacitorSQLite);
-      const consistency = await sqliteConnection.checkConnectionsConsistency();
-      const isConn = (await sqliteConnection.isConnection(DB_NAME, false)).result;
-      const { resolveDatabaseOpenOptions } = await import("./dbEncryption.js");
-      const openOptions = await resolveDatabaseOpenOptions(sqliteConnection, DB_NAME);
-
-      if (consistency.result && isConn) {
-        db = await sqliteConnection.retrieveConnection(DB_NAME, false);
-        await db.open();
-      } else {
-        db = await createDatabaseConnection(sqliteConnection, openOptions);
-      }
-
-      await runMigrations(db);
-      return db;
-    })().catch((error) => {
-      initPromise = null;
+    initPromise = withTimeout(
+      openDatabaseInternal(),
+      DB_OPEN_TIMEOUT_MS * 2,
+      "openDatabaseTotal",
+    ).catch((error) => {
+      resetDatabaseState();
       throw error;
     });
   }

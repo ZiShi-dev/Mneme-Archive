@@ -73,7 +73,6 @@ body.desktop-app {
   box-shadow: none;
   background-image: none;
   box-sizing: border-box;
-  padding-inline-end: 32px;
 }
 
 .desktop-app .phone-frame::-webkit-scrollbar {
@@ -1611,7 +1610,8 @@ html[dir="ltr"] .desktop-app .live-catalog {
 }
 
 .desktop-app .screen--favorites-desktop .bookmarks-controls__types.la-chip-bar--segmented .la-chip-bar__chips {
-  max-width: 520px;
+  max-width: none;
+  flex-wrap: wrap;
   padding: 4px;
 }
 
@@ -1687,10 +1687,17 @@ html[dir="ltr"] .desktop-app .live-catalog {
 }
 
 .desktop-app .screen--favorites-desktop .bookmark-row--series .bookmark-row__media,
-.desktop-app .screen--favorites-desktop .bookmark-row__media--series {
+.desktop-app .screen--favorites-desktop .bookmark-row__media--series,
+.desktop-app .screen--favorites-desktop .bookmark-row--anime .bookmark-row__media,
+.desktop-app .screen--favorites-desktop .bookmark-row__media--anime,
+.desktop-app .screen--favorites-desktop .bookmark-row--manga .bookmark-row__media,
+.desktop-app .screen--favorites-desktop .bookmark-row__media--manga,
+.desktop-app .screen--favorites-desktop .bookmark-row--novel .bookmark-row__media,
+.desktop-app .screen--favorites-desktop .bookmark-row__media--novel {
   width: 50px;
   aspect-ratio: 2 / 3;
   min-height: 0;
+  height: auto;
 }
 
 .desktop-app .screen--favorites-desktop .bookmark-row__media .cover,
@@ -3034,9 +3041,9 @@ html[dir="ltr"] .desktop-app .live-catalog {
   max-width: none;
 }
 
-.desktop-app .screen--details-movie .details-movie-hero-actions .details-audio-language__chips.la-chip-bar--segmented .la-chip {
-  min-height: 36px;
-  font-size: 12px;
+.desktop-app .screen--details-movie .details-movie-hero-actions .details-audio-toggle__option {
+  min-height: 38px;
+  font-size: 13px;
 }
 
 .desktop-app .screen--details-movie .details-content--movie {
@@ -3810,6 +3817,28 @@ html[dir="ltr"] .desktop-app .live-catalog {
   font-size: 13px;
 }
 
+.desktop-app .live-reader--watch .video-watch-servers {
+  flex: 0 0 auto;
+  padding: 0 0 4px;
+}
+
+.desktop-app .live-reader--watch .video-watch-servers .video-server-picker {
+  width: fit-content;
+  min-width: 200px;
+  max-width: 360px;
+  min-height: 40px;
+  border-color: var(--line);
+  background: color-mix(in srgb, var(--paper) 94%, transparent);
+  color: var(--ink);
+  backdrop-filter: none;
+}
+
+.desktop-app .live-reader--watch .video-watch-servers .video-server-picker__label {
+  max-width: none;
+  flex: 1;
+  font-size: 12px;
+}
+
 .desktop-app .live-reader--watch .live-video-servers {
   position: absolute;
   top: 0;
@@ -4262,4 +4291,28 @@ html.video-cinema-active .live-video-immersive-root.plyr--fullscreen-fallback .l
 [dir="ltr"] .desktop-app .screen--details-desktop .live-details-hero__title,
 [dir="ltr"] .desktop-app .screen--details-movie .live-details-hero__title {
   font-family: var(--font-display);
+}
+
+/* Theme gallery — priorité sur les règles desktop legacy */
+.desktop-app .theme-sheet--gallery .theme-selector.theme-selector--gallery > .theme-selector__option,
+.desktop-app .theme-sheet--gallery .theme-selector.theme-selector--gallery > .theme-selector__option--sakura,
+.desktop-app .theme-sheet--gallery .theme-selector.theme-selector--gallery > .theme-selector__option--yozakura,
+.desktop-app .theme-sheet--gallery .theme-selector.theme-selector--gallery > .theme-selector__option--lune-neige {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  grid-template-columns: none;
+  min-height: 0;
+  padding: 0;
+  gap: 0;
+}
+
+.desktop-app .theme-sheet--gallery .theme-selector--gallery .theme-selector__copy strong {
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.desktop-app .theme-sheet--gallery .theme-selector--gallery .theme-selector__copy small {
+  font-size: 11px;
+  line-height: 1.35;
 }

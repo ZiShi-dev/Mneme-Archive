@@ -106,9 +106,9 @@ test("sanitizeCatalogKind drops video kinds on MangaLik", () => {
 
 test("sanitizeCatalogKind keeps server sort presets on single-content sources", () => {
   const popular = { slug: "popular", name: "الأكثر شعبية", type: "kind", queryValue: "popular" };
-  const views = { slug: "views", name: "الأكثر مشاهدة", type: "kind", queryValue: "views" };
+  const views = { slug: "trending", name: "رائج", type: "kind", queryValue: "trending" };
   assert.equal(sanitizeCatalogKind("novelphoenix", popular)?.queryValue, "popular");
-  assert.equal(sanitizeCatalogKind("hentairead", views)?.queryValue, "views");
+  assert.equal(sanitizeCatalogKind("wtrlab", views)?.queryValue, "trending");
 });
 
 test("shouldUseCatalogScopedSearch keeps kind-only search on the site search", () => {
@@ -134,7 +134,8 @@ test("shouldUseCatalogScopedSearch keeps kind-only search on the site search", (
   assert.equal(shouldUseCatalogScopedSearch("azorafly", novel, null, "solo"), false);
   assert.equal(shouldUseCatalogScopedSearch("cenele", manga, null, "solo"), false);
   assert.equal(shouldUseCatalogScopedSearch("anime4up", movies, genre, "naruto"), true);
-  assert.equal(shouldUseCatalogScopedSearch("mangalik", null, genre, "naruto"), true);
+  assert.equal(shouldUseCatalogScopedSearch("mangalik", null, genre, "naruto"), false);
+  assert.equal(shouldUseCatalogScopedSearch("realmnovel", null, genre, "solo"), false);
 });
 
 test("catalogItemMatchesFilter covers video and reading kinds", () => {

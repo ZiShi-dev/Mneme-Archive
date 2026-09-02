@@ -1,21 +1,53 @@
-import { openDatabase } from "./database";
-import { initKvStore } from "./kvStore";
-import { migrateFromLegacyLocalStorage } from "./migrate";
-import { migrateChapterReadLogBackfill } from "./migrateChapterReadLog";
-import { initNetworkStatus } from "../platform/networkStatus";
+import { openDatabase, resetDatabaseState } from "./database.js";
+import { initKvStore, resetKvStore } from "./kvStore.js";
+import { migrateFromLegacyLocalStorage } from "./migrate.js";
+import { initNetworkStatus } from "../platform/networkStatus.js";
+
+const BOOT_TIMEOUT_MS = 20000;
 
 let initPromise = null;
 
+function withTimeout(promise, ms, label) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`Boot timeout: ${label}`));
+    }, ms);
+    Promise.resolve(promise)
+      .then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+  });
+}
+
+async function runStorageBootstrap() {
+  await Promise.race([
+    initNetworkStatus(),
+    new Promise((resolve) => { setTimeout(resolve, 4000); }),
+  ]);
+  await openDatabase();
+  await initKvStore();
+  await migrateFromLegacyLocalStorage();
+}
+
+export function resetStorageInit() {
+  initPromise = null;
+  resetDatabaseState();
+  resetKvStore();
+}
+
 export async function initStorage() {
   if (!initPromise) {
-    initPromise = (async () => {
-      await initNetworkStatus();
-      await openDatabase();
-      await initKvStore();
-      await migrateFromLegacyLocalStorage();
-      await migrateChapterReadLogBackfill();
-    })().catch((error) => {
-      initPromise = null;
+    initPromise = withTimeout(
+      runStorageBootstrap(),
+      BOOT_TIMEOUT_MS,
+      "initStorage",
+    ).catch((error) => {
+      resetStorageInit();
       throw error;
     });
   }

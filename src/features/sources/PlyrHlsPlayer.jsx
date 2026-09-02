@@ -16,19 +16,20 @@ const PLYR_FULLSCREEN_CONTAINER = ".live-video-immersive-root";
 function getPlyrOptions(t) {
   return {
     autoplay: false,
-    clickToPlay: true,
-    hideControls: !isChromebookApp,
+    clickToPlay: isChromebookApp,
+    hideControls: true,
     resetOnEnd: false,
     keyboard: { focused: true, global: false },
     tooltips: { controls: true, seek: true },
     speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] },
+    pip: { enabled: true },
     fullscreen: {
       enabled: true,
       fallback: Capacitor.isNativePlatform() ? "force" : true,
       iosNative: !isChromebookApp,
       container: PLYR_FULLSCREEN_CONTAINER,
     },
-    controls: [
+    controls: isChromebookApp ? [
       "play-large",
       "play",
       "progress",
@@ -42,8 +43,7 @@ function getPlyrOptions(t) {
       "settings",
       "pip",
       "airplay",
-      "fullscreen",
-    ],
+    ] : [],
     i18n: {
       restart: t("reader.plyr.restart"),
       play: t("reader.plyr.play"),
@@ -124,9 +124,11 @@ export function PlyrHlsPlayer({
         return;
       }
       attempts += 1;
-      if (attempts < 60) {
-        window.setTimeout(waitForVideo, 50);
+      if (attempts < 90) {
+        window.requestAnimationFrame(waitForVideo);
+        return;
       }
+      onErrorRef.current?.(new Error("plyr video unavailable"));
     };
 
     waitForVideo();

@@ -1,11 +1,13 @@
 import React from "react";
-import { BookOpen, Clapperboard, Play } from "lucide-react";
+import { BookOpen, Clapperboard, Lock, Play } from "lucide-react";
 import { t } from "../../i18n/runtime";
 import { RemoteCover } from "./RemoteCover";
 import { usesContainCover, usesWideCover, isStandaloneVideoCatalogItem } from "./coverDisplay";
 import { getItemType, contentTypes } from "./contentTypes";
 import { getMediaPresentation, isVideoMediaType } from "./mediaPresentation";
 import { formatChapterPublishedLabel } from "../../lib/media/chapterTiming";
+import { isCatalogChapterBlocked } from "../../lib/media/chapterLock";
+import { UnlockCountdown } from "../../components/media/UnlockCountdown";
 
 function audioBadgeKind(label = "") {
   const text = String(label).toUpperCase();
@@ -47,16 +49,17 @@ function emptyChaptersMessage(item, profile, presentation) {
   return t("sources.noChaptersManga");
 }
 
-export function CatalogCard({ item, profile, onOpenDetails, onOpenChapter }) {
+export function CatalogCard({ item, profile, onOpenDetails, onOpenChapter, onPrefetchDetails }) {
   const recentChapters = resolveCatalogChapters(item);
   const mediaType = getItemType(item);
   const presentation = getMediaPresentation(mediaType);
   const isVideo = isVideoMediaType(mediaType);
   const UnitIcon = isVideo ? Clapperboard : BookOpen;
   const coverContain = usesContainCover(item.sourceId || profile?.id);
-  const coverWide = isVideo || usesWideCover(item.sourceId || profile?.id);
+  const coverWide = isVideo || usesWideCover(item.sourceId || profile?.id, item.catalogStyle);
   const standaloneVideo = isStandaloneVideoCatalogItem(item);
   const postedLabel = formatChapterPublishedLabel(item.publishedAt);
+  const prefetchDetails = onPrefetchDetails ? () => onPrefetchDetails(item) : undefined;
 
   const cardClass = [
     "live-manga-card",
@@ -87,7 +90,7 @@ export function CatalogCard({ item, profile, onOpenDetails, onOpenChapter }) {
           </span>
         </button>
         <div className="live-manga-card__youtube-meta">
-          <button type="button" className="live-manga-card__title-btn" onClick={() => onOpenDetails(item)}>
+          <button type="button" className="live-manga-card__title-btn" onPointerDown={prefetchDetails} onClick={() => onOpenDetails(item)}>
             <strong dir="auto">{item.title}</strong>
           </button>
           {postedLabel ? <small className="live-manga-card__posted">{postedLabel}</small> : null}
@@ -98,7 +101,7 @@ export function CatalogCard({ item, profile, onOpenDetails, onOpenChapter }) {
 
   return (
     <article className={cardClass}>
-      <button className="live-manga-card__main" onClick={() => onOpenDetails(item)} aria-label={t("sources.detailsOf", { title: item.title })}>
+      <button className="live-manga-card__main" onPointerDown={prefetchDetails} onClick={() => onOpenDetails(item)} aria-label={t("sources.detailsOf", { title: item.title })}>
         <span className={`media-type-badge media-type-badge--${item.mediaType || "manga"}`}>{contentTypes[item.mediaType]?.singular || item.mediaTypeLabel || contentTypes.manga.singular}</span>
         <CoverAudioBadge label={item.audioLabel} />
         <span className="live-manga-card__cover">
@@ -110,17 +113,23 @@ export function CatalogCard({ item, profile, onOpenDetails, onOpenChapter }) {
       {recentChapters.length ? (
         <div className="live-manga-card__chapters">
           {recentChapters.map((chapter, index) => {
-            const canOpen = Boolean(chapter.url);
+            const blocked = isCatalogChapterBlocked(item.sourceId || profile?.id, chapter);
+            const canOpen = Boolean(chapter.url) && !blocked;
             return (
               <button
                 key={chapter.url || `${item.url}-${chapter.number || index}`}
+                type="button"
+                className={blocked ? "is-locked" : undefined}
                 disabled={!canOpen}
                 onClick={() => canOpen && onOpenChapter(item, chapter)}
-                aria-label={`${presentation.openAria(chapter.number || chapter.name)} — ${item.title}`}
+                aria-label={blocked
+                  ? t("sources.lockedChapterAria", { name: chapter.number || chapter.name })
+                  : `${presentation.openAria(chapter.number || chapter.name)} — ${item.title}`}
               >
                 <i>{index === 0 ? t("sources.latest") : t("sources.previous")}</i>
                 <b>{presentation.rowPrefix} {chapter.number || chapter.name}</b>
-                <UnitIcon size={12} />
+                {blocked ? <Lock size={12} aria-hidden="true" /> : <UnitIcon size={12} />}
+                {blocked ? <UnlockCountdown unlockAt={chapter.unlockAt} className="unlock-countdown--compact" /> : null}
               </button>
             );
           })}

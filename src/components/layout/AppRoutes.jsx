@@ -59,6 +59,7 @@ export function AppRoutes({
         onOpenRelated={openLiveManga}
         readingProgress={preferences.getReadingProgress(selectedLive)}
         chapterFollow={chapterFollow}
+        chapterReadLog={chapterReadLog}
       />
     );
   }

@@ -1,6 +1,5 @@
-import React, { useState } from "react";
+import React from "react";
 import {
-  Check,
   ChevronLeft,
   ChevronRight,
   Captions,
@@ -13,12 +12,15 @@ import {
   Play,
   RotateCcw,
   RotateCw,
+  Server,
   Volume2,
   VolumeX,
   X,
 } from "lucide-react";
 import { Slider, SliderThumb, SliderTrack } from "react-aria-components";
 import { useI18n } from "../../i18n/I18nProvider";
+import { VideoServerPickerButton } from "./liveVideo/VideoServerPickerButton";
+import { formatVideoChapterNavLabel } from "./mediaPresentation";
 
 function formatTime(seconds = 0) {
   if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
@@ -36,6 +38,11 @@ function formatSpeed(rate = 1) {
   return Number.isInteger(rate) ? `${rate}×` : `${rate}×`;
 }
 
+function chapterLabel(chapter, unitLabel) {
+  if (!chapter) return "";
+  return formatVideoChapterNavLabel(chapter, unitLabel);
+}
+
 export function VideoPlaybackControls({
   progress,
   buffered = 0,
@@ -50,184 +57,120 @@ export function VideoPlaybackControls({
   muted = false,
   pipSupported = false,
   isFullscreen = false,
-  showMarkComplete = false,
   subtitlesAvailable = false,
   subtitlesEnabled = true,
   onToggleSubtitles,
   onSeek,
+  onSeekEnd,
   onTogglePlay,
   onSkip,
   onCycleSpeed,
   onVolumeChange,
   onToggleMute,
   onPictureInPicture,
-  onMarkComplete,
   previousChapter,
   nextChapter,
   onPrevious,
   onNext,
   onClose,
   onFullscreen,
+  showServerPicker = false,
+  currentServerLabel = "",
+  onOpenServers,
   unitLabel,
+  netflixMode = false,
+  showCenterPlay = false,
+  hideFullscreen = false,
+  dockOnly = false,
+  minimalOverlay = false,
   className = "",
   compact = false,
 }) {
   const { t, dir } = useI18n();
   const resolvedUnitLabel = unitLabel || t("media.theEpisode");
-  const [volumeOpen, setVolumeOpen] = useState(false);
-  const showChapterNav = Boolean(previousChapter || nextChapter);
+  const showChapterNav = Boolean(previousChapter || nextChapter) && !minimalOverlay;
   const minimalMode = navOnly;
+  const showAuxTools = !navOnly && !minimalOverlay;
+  const showRemainingTime = netflixMode && minimalOverlay && duration > 0;
+  const remainingTime = Math.max(0, duration - currentTime);
+  const playbackClassName = [
+    "reader-playback",
+    "reader-playback--video",
+    embedMode ? "reader-playback--embed" : "",
+    compact ? "reader-playback--compact" : "",
+    navOnly ? "reader-playback--nav-only" : "",
+    netflixMode ? "reader-playback--netflix" : "",
+    minimalOverlay ? "reader-playback--minimal" : "",
+    showServerPicker ? "reader-playback--has-server" : "",
+    showChapterNav ? "" : "reader-playback--no-nav",
+    className,
+  ].filter(Boolean).join(" ");
 
-  return (
-    <section
-      className={`reader-playback reader-playback--video${compact ? " reader-playback--compact" : ""}${navOnly ? " reader-playback--nav-only" : ""}${showChapterNav ? "" : " reader-playback--no-nav"}${className ? ` ${className}` : ""}`}
-      dir={dir}
-      aria-label={t("reader.playback.watchUnit", { unit: resolvedUnitLabel })}
-      onMouseLeave={() => setVolumeOpen(false)}
-    >
-      {!minimalMode && (
-        <div className="reader-playback__timeline">
-          <span className="reader-playback__time" aria-hidden="true">{formatTime(currentTime)}</span>
-          <Slider
-            className="reader-playback__slider"
-            dir="ltr"
-            aria-label={t("reader.playback.watchProgress")}
-            value={progress}
-            minValue={0}
-            maxValue={100}
-            onChange={onSeek}
-          >
-            <SliderTrack className="reader-playback__track">
-              {({ state }) => (
-                <>
-                  <span
-                    className="reader-playback__track-buffered"
-                    style={{ width: `${Math.max(0, Math.min(100, buffered))}%` }}
-                  />
-                  <span style={{ width: `${state.getThumbPercent(0) * 100}%` }} />
-                  <SliderThumb className="reader-playback__thumb" />
-                </>
-              )}
-            </SliderTrack>
-          </Slider>
-          <span className="reader-playback__time" aria-hidden="true">{formatTime(duration)}</span>
-          {showClose && (
-            <button type="button" className="reader-playback__close" onClick={onClose} aria-label={t("reader.playback.hideViewControls")}>
-              <X size={15} />
-            </button>
+  function renderChapterButton(side, chapter, onClick, disabled) {
+    const isPrev = side === "prev";
+    const label = chapterLabel(chapter, resolvedUnitLabel);
+    const isHeaderNav = className.includes("toolbar-nav");
+    return (
+      <button
+        type="button"
+        className={`reader-playback__chapter reader-playback__chapter--${side}${navOnly ? " reader-playback__chapter--dock" : ""}${isHeaderNav ? " reader-playback__chapter--header" : ""}`}
+        onClick={onClick}
+        disabled={disabled}
+        aria-label={t(isPrev ? "reader.playback.previousUnit" : "reader.playback.nextUnit", { unit: resolvedUnitLabel })}
+      >
+        {isPrev ? <ChevronLeft size={isHeaderNav ? 16 : (navOnly ? 18 : 19)} aria-hidden="true" /> : null}
+        <span className="reader-playback__chapter-label">
+          {navOnly ? (
+            <b dir="auto">{label || (disabled ? "—" : "")}</b>
+          ) : (
+            <>
+              <small>{t(isPrev ? "reader.playback.previousUnit" : "reader.playback.nextUnit", { unit: resolvedUnitLabel })}</small>
+              {label ? <b dir="auto">{label}</b> : null}
+            </>
           )}
-        </div>
-      )}
+        </span>
+        {!isPrev ? <ChevronRight size={isHeaderNav ? 16 : (navOnly ? 18 : 19)} aria-hidden="true" /> : null}
+      </button>
+    );
+  }
 
-      <div className={`reader-playback__actions reader-playback__actions--primary${navOnly ? " reader-playback__actions--nav-only" : ""}`}>
-        {showChapterNav && (
+  function renderToolButtons() {
+    return (
+      <>
+        {showServerPicker && !minimalOverlay && !navOnly && (
           <button
             type="button"
-            className={`reader-playback__chapter reader-playback__chapter--prev${navOnly ? " reader-playback__chapter--icon-only" : ""}`}
-            onClick={onPrevious}
-            disabled={!previousChapter}
-            aria-label={t("reader.playback.previousUnit", { unit: resolvedUnitLabel })}
+            className="reader-playback__tool-btn"
+            onClick={() => onOpenServers?.()}
+            aria-label={t("reader.stream.openServers", { server: currentServerLabel || t("reader.stream.server") })}
           >
-            <ChevronLeft size={19} aria-hidden="true" />
-            {!navOnly && (
-              <span>
-                <small>{t("reader.playback.previousUnit", { unit: resolvedUnitLabel })}</small>
-                {!compact && previousChapter && <b dir="auto">{previousChapter.name || previousChapter.number}</b>}
-              </span>
-            )}
+            <Server size={14} />
+            <span dir="ltr">{currentServerLabel || t("reader.stream.server")}</span>
           </button>
         )}
 
-        {!minimalMode && (
-          <button
-            type="button"
-            className="reader-playback__icon-btn"
-            onClick={() => onSkip?.(-10)}
-            aria-label={t("reader.playback.skipBack")}
-          >
-            <RotateCcw size={16} />
-            <span>10</span>
-          </button>
-        )}
-
-        {!minimalMode && (
-          <button
-            type="button"
-            className={`reader-playback__play ${playing ? "active" : ""}`}
-            onClick={onTogglePlay}
-            aria-label={playing ? t("reader.playback.pause") : t("reader.playback.play")}
-          >
-            {playing ? <Pause size={21} /> : <Play size={21} />}
-          </button>
-        )}
-
-        {!minimalMode && (
-          <button
-            type="button"
-            className="reader-playback__icon-btn"
-            onClick={() => onSkip?.(10)}
-            aria-label={t("reader.playback.skipForward")}
-          >
-            <RotateCw size={16} />
-            <span>10</span>
-          </button>
-        )}
-
-        {showChapterNav && (
-          <button
-            type="button"
-            className={`reader-playback__chapter reader-playback__chapter--next${navOnly ? " reader-playback__chapter--icon-only" : ""}`}
-            onClick={onNext}
-            disabled={!nextChapter}
-            aria-label={t("reader.playback.nextUnit", { unit: resolvedUnitLabel })}
-          >
-            {!navOnly && (
-              <span>
-                <small>{t("reader.playback.nextUnit", { unit: resolvedUnitLabel })}</small>
-                {!compact && nextChapter && <b dir="auto">{nextChapter.name || nextChapter.number}</b>}
-              </span>
-            )}
-            <ChevronRight size={19} aria-hidden="true" />
-          </button>
-        )}
-
-        {navOnly && (
-          <button
-            type="button"
-            className="reader-playback__tool-btn reader-playback__tool-btn--center"
-            onClick={onFullscreen}
-            aria-label={isFullscreen ? t("reader.playback.exitFullscreen") : t("reader.playback.enterFullscreen")}
-          >
-            {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-          </button>
-        )}
-      </div>
-
-      <div className={`reader-playback__actions reader-playback__actions--tools${navOnly ? " reader-playback__actions--hidden" : ""}`}>
         {!minimalMode && (
           <button
             type="button"
             className="reader-playback__tool-btn"
-            onClick={onCycleSpeed}
+            onClick={() => onCycleSpeed?.()}
             aria-label={t("reader.playback.playbackSpeed", { speed: formatSpeed(playbackRate) })}
           >
             <Gauge size={14} />
-            {!compact && <span>{formatSpeed(playbackRate)}</span>}
+            <span>{formatSpeed(playbackRate)}</span>
           </button>
         )}
 
         {!minimalMode && (
-          <div
-            className={`reader-playback__volume${volumeOpen ? " is-open" : ""}`}
-            onMouseEnter={() => setVolumeOpen(true)}
-          >
+          <div className="reader-playback__menu-volume">
             <button
               type="button"
               className="reader-playback__tool-btn"
-              onClick={onToggleMute}
+              onClick={() => onToggleMute?.()}
               aria-label={muted || volume === 0 ? t("reader.playback.unmute") : t("reader.playback.mute")}
             >
               {muted || volume === 0 ? <VolumeX size={14} /> : <Volume2 size={14} />}
+              {!compact ? <span>{t("reader.playback.volumeLevel")}</span> : null}
             </button>
             <input
               type="range"
@@ -246,12 +189,12 @@ export function VideoPlaybackControls({
           <button
             type="button"
             className={`reader-playback__tool-btn${subtitlesEnabled ? " reader-playback__tool-btn--accent" : ""}`}
-            onClick={onToggleSubtitles}
+            onClick={() => onToggleSubtitles?.()}
             aria-label={subtitlesEnabled ? t("reader.playback.hideSubtitles") : t("reader.playback.showSubtitles")}
             aria-pressed={subtitlesEnabled}
           >
             {subtitlesEnabled ? <Captions size={14} /> : <CaptionsOff size={14} />}
-            {!compact && <span>{t("reader.playback.subtitles")}</span>}
+            <span>{t("reader.playback.subtitles")}</span>
           </button>
         )}
 
@@ -259,36 +202,221 @@ export function VideoPlaybackControls({
           <button
             type="button"
             className="reader-playback__tool-btn"
-            onClick={onPictureInPicture}
+            onClick={() => onPictureInPicture?.()}
             aria-label={t("reader.playback.pictureInPicture")}
           >
             <PictureInPicture2 size={14} />
+            <span>{t("reader.playback.pictureInPicture")}</span>
           </button>
         )}
 
-        {!navOnly && (
+        {!hideFullscreen && (
           <button
             type="button"
             className="reader-playback__tool-btn"
-            onClick={onFullscreen}
-          aria-label={isFullscreen ? t("reader.playback.exitFullscreen") : t("reader.playback.enterFullscreen")}
-        >
-          {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+            onClick={() => onFullscreen?.()}
+            aria-label={isFullscreen ? t("reader.playback.exitFullscreen") : t("reader.playback.enterFullscreen")}
+          >
+            {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+            <span>{isFullscreen ? t("reader.playback.exitFullscreen") : t("reader.playback.enterFullscreen")}</span>
+          </button>
+        )}
+      </>
+    );
+  }
+
+  if (dockOnly) {
+    const showDockTimeline = !navOnly || embedMode;
+    return (
+      <section
+        className={`reader-playback reader-playback--video reader-playback--dock${embedMode ? " reader-playback--embed" : ""}${navOnly ? " reader-playback--nav-only" : ""}${netflixMode ? " reader-playback--netflix" : ""}${showServerPicker ? " reader-playback--has-server" : ""}${showChapterNav ? "" : " reader-playback--no-nav"}${className ? ` ${className}` : ""}`}
+        dir={dir}
+        aria-label={t("reader.playback.watchUnit", { unit: resolvedUnitLabel })}
+      >
+        {showDockTimeline ? (
+          <div className="reader-playback__timeline reader-playback__timeline--compact">
+            <Slider
+              className="reader-playback__slider"
+              dir="ltr"
+              aria-label={t("reader.playback.watchProgress")}
+              value={progress}
+              minValue={0}
+              maxValue={100}
+              onChange={onSeek}
+            onChangeEnd={onSeekEnd ?? onSeek}
+            >
+              <SliderTrack className="reader-playback__track">
+                {({ state }) => (
+                  <>
+                    <span
+                      className="reader-playback__track-buffered"
+                      style={{ width: `${Math.max(0, Math.min(100, buffered))}%` }}
+                    />
+                    <span style={{ width: `${state.getThumbPercent(0) * 100}%` }} />
+                    <SliderThumb className="reader-playback__thumb" />
+                  </>
+                )}
+              </SliderTrack>
+            </Slider>
+            <span className="reader-playback__time reader-playback__time--dock" aria-hidden="true">
+              {formatTime(currentTime)} / {formatTime(duration)}
+            </span>
+          </div>
+        ) : null}
+        <div className="reader-playback__actions reader-playback__actions--primary reader-playback__actions--nav-only">
+          {showChapterNav && renderChapterButton("prev", previousChapter, onPrevious, !previousChapter)}
+
+          {showServerPicker && !minimalOverlay ? (
+            <VideoServerPickerButton
+              compact
+              label={currentServerLabel}
+              onClick={onOpenServers}
+              className="reader-playback__server-picker"
+            />
+          ) : null}
+
+          {showChapterNav && renderChapterButton("next", nextChapter, onNext, !nextChapter)}
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section
+      className={playbackClassName}
+      dir={dir}
+      aria-label={t("reader.playback.watchUnit", { unit: resolvedUnitLabel })}
+    >
+      {!minimalMode && (
+        <div className="reader-playback__timeline">
+          <span className="reader-playback__time reader-playback__time--current" aria-hidden="true">{formatTime(currentTime)}</span>
+          <Slider
+            className="reader-playback__slider"
+            dir="ltr"
+            aria-label={t("reader.playback.watchProgress")}
+            value={progress}
+            minValue={0}
+            maxValue={100}
+            onChange={onSeek}
+            onChangeEnd={onSeekEnd ?? onSeek}
+          >
+            <SliderTrack className="reader-playback__track">
+              {({ state }) => (
+                <>
+                  <span
+                    className="reader-playback__track-buffered"
+                    style={{ width: `${Math.max(0, Math.min(100, buffered))}%` }}
+                  />
+                  <span style={{ width: `${state.getThumbPercent(0) * 100}%` }} />
+                  <SliderThumb className="reader-playback__thumb" />
+                </>
+              )}
+            </SliderTrack>
+          </Slider>
+          <span
+            className={`reader-playback__time${showRemainingTime ? " reader-playback__time--remaining" : ""}`}
+            aria-hidden="true"
+          >
+            {showRemainingTime ? `-${formatTime(remainingTime)}` : formatTime(duration)}
+          </span>
+          {showClose && (
+            <button type="button" className="reader-playback__close" onClick={onClose} aria-label={t("reader.playback.hideViewControls")}>
+              <X size={15} />
+            </button>
+          )}
+        </div>
+      )}
+
+      <div className={`reader-playback__actions reader-playback__actions--primary${navOnly ? " reader-playback__actions--nav-only" : ""}`}>
+        {showChapterNav && renderChapterButton("prev", previousChapter, onPrevious, !previousChapter)}
+
+        {showServerPicker && !minimalOverlay ? (
+          <VideoServerPickerButton
+            compact
+            label={currentServerLabel}
+            onClick={onOpenServers}
+            className="reader-playback__server-picker"
+          />
+        ) : null}
+
+        {showCenterPlay && (
+          <button
+            type="button"
+            className={`reader-playback__play reader-playback__play--center ${playing ? "active" : ""}`}
+            onClick={onTogglePlay}
+            aria-label={playing ? t("reader.playback.pause") : t("reader.playback.play")}
+          >
+            {playing ? <Pause size={21} /> : <Play size={21} />}
           </button>
         )}
 
-        {!minimalMode && showMarkComplete && (
+        <div className="reader-playback__transport">
+          {!minimalMode && (
+            <button
+              type="button"
+              className="reader-playback__icon-btn reader-playback__icon-btn--skip"
+              onClick={() => onSkip?.(-10)}
+              aria-label={t("reader.playback.skipBack")}
+            >
+              <RotateCcw size={16} />
+              <span>10</span>
+            </button>
+          )}
+
+          {!minimalMode && (
+            <button
+              type="button"
+              className={`reader-playback__play ${playing ? "active is-playing" : ""}`}
+              onClick={onTogglePlay}
+              aria-label={playing ? t("reader.playback.pause") : t("reader.playback.play")}
+            >
+              {playing ? <Pause size={22} /> : <Play size={22} />}
+            </button>
+          )}
+
+          {!minimalMode && (
+            <button
+              type="button"
+              className="reader-playback__icon-btn reader-playback__icon-btn--skip"
+              onClick={() => onSkip?.(10)}
+              aria-label={t("reader.playback.skipForward")}
+            >
+              <RotateCw size={16} />
+              <span>10</span>
+            </button>
+          )}
+        </div>
+
+        {minimalOverlay && !embedMode && onPictureInPicture ? (
           <button
             type="button"
-            className="reader-playback__tool-btn reader-playback__tool-btn--accent"
-            onClick={onMarkComplete}
-            aria-label={t("reader.playback.markComplete")}
+            className="reader-playback__icon-btn reader-playback__icon-btn--pip"
+            onClick={() => onPictureInPicture?.()}
+            aria-label={t("reader.playback.pictureInPicture")}
           >
-            <Check size={14} />
-            {!compact && <span>{t("reader.playback.completed")}</span>}
+            <PictureInPicture2 size={16} />
           </button>
-        )}
+        ) : null}
+
+        {minimalOverlay && !hideFullscreen && onFullscreen ? (
+          <button
+            type="button"
+            className="reader-playback__icon-btn reader-playback__icon-btn--fullscreen"
+            onClick={() => onFullscreen?.()}
+            aria-label={isFullscreen ? t("reader.playback.exitFullscreen") : t("reader.playback.enterFullscreen")}
+          >
+            {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+          </button>
+        ) : null}
+
+        {showChapterNav && renderChapterButton("next", nextChapter, onNext, !nextChapter)}
       </div>
+
+      {showAuxTools ? (
+        <div className="reader-playback__actions reader-playback__actions--tools">
+          {renderToolButtons()}
+        </div>
+      ) : null}
     </section>
   );
 }

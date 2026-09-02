@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.webkit.WebView;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
@@ -24,16 +25,24 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(AnimeEpisodePlayerPlugin.class);
         super.onCreate(savedInstanceState);
         configureEdgeToEdgeWindow();
+        configureWebViewPerformance();
         scheduleSafeAreaInsetUpdates();
         getWindow().getDecorView().post(this::installEmbedNavigationGuards);
+    }
+
+    private void configureWebViewPerformance() {
+        if (getBridge() == null || getBridge().getWebView() == null) return;
+        WebViewPerformance.applyMain(getBridge().getWebView());
     }
 
     private void installEmbedNavigationGuards() {
         if (embedGuardsInstalled) return;
         try {
             if (getBridge() == null || getBridge().getWebView() == null) return;
-            getBridge().getWebView().setWebViewClient(new AdBlockingBridgeWebViewClient(getBridge()));
-            getBridge().getWebView().setWebChromeClient(new PopupBlockingWebChromeClient(getBridge()));
+            WebView webView = getBridge().getWebView();
+            WebViewPerformance.applyMain(webView);
+            webView.setWebViewClient(new AdBlockingBridgeWebViewClient(getBridge()));
+            webView.setWebChromeClient(new PopupBlockingWebChromeClient(getBridge()));
             embedGuardsInstalled = true;
         } catch (RuntimeException ignored) {
             // Ne jamais faire planter le démarrage si le WebView n'est pas prêt.
@@ -113,11 +122,10 @@ public class MainActivity extends BridgeActivity {
         return Insets.of(left, top, right, bottom);
     }
 
-    /** Boutons système = zone "tappable" en bas ; sinon navigation par gestes. */
+    /** Boutons système = barre de navigation ≥ 48dp ; sinon gestes. */
     private static String resolveNavMode(WindowInsetsCompat windowInsets) {
-        int tappableBottom = windowInsets.getInsets(WindowInsetsCompat.Type.tappableElement()).bottom;
         int navBottom = windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
-        if (tappableBottom > 0 || navBottom >= 40) {
+        if (navBottom >= 48) {
             return "buttons";
         }
         return "gesture";
@@ -135,14 +143,18 @@ public class MainActivity extends BridgeActivity {
     private void pushSafeAreaInsets(WindowInsetsCompat windowInsets) {
         Insets insets = resolveSafeAreaInsets(windowInsets);
         String navMode = resolveNavMode(windowInsets);
+        boolean systemBarsVisible = windowInsets.isVisible(WindowInsetsCompat.Type.statusBars())
+            || windowInsets.isVisible(WindowInsetsCompat.Type.navigationBars());
         if (getBridge() == null || getBridge().getWebView() == null) return;
         String js = String.format(
             "document.documentElement.style.setProperty('--app-safe-area-top','%dpx');"
                 + "document.documentElement.style.setProperty('--app-safe-area-bottom','%dpx');"
                 + "document.documentElement.style.setProperty('--app-safe-area-left','%dpx');"
                 + "document.documentElement.style.setProperty('--app-safe-area-right','%dpx');"
-                + "document.documentElement.dataset.navMode='%s';",
-            insets.top, insets.bottom, insets.left, insets.right, navMode
+                + "document.documentElement.dataset.navMode='%s';"
+                + "document.documentElement.dataset.systemBarsVisible='%s';",
+            insets.top, insets.bottom, insets.left, insets.right, navMode,
+            systemBarsVisible ? "true" : "false"
         );
         getBridge().getWebView().post(() -> getBridge().getWebView().evaluateJavascript(js, null));
     }

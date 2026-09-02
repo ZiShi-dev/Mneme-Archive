@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { BellRing, ChevronLeft, Globe2, History, Layers, SlidersHorizontal } from "lucide-react";
 import { EnableSourcesSheet } from "../features/sources";
 import { Header } from "../components/layout/Header";
 import { useToast } from "../components/ui/ToastProvider";
 import { usePersistedState } from "../hooks/usePersistedState";
+import { useSettingsPanel } from "../hooks/useSettingsPanel";
 import { useI18n } from "../i18n/I18nProvider";
 import { DATA_USAGE_PRESETS } from "../lib/settings/dataPresets";
 import { DEFAULT_APP_SETTINGS, PRELOAD_PAGES_MAX, PRELOAD_PAGES_MIN } from "../lib/settings/defaults";
@@ -32,13 +33,7 @@ export function SettingsScreen({ navigate, appearance, typeface, onSetAppearance
   const { pushToast } = useToast();
   const [rawSettings, setRawSettings] = usePersistedState("mangashelf:settings", DEFAULT_APP_SETTINGS);
   const settings = normalizeSettings(rawSettings);
-  const [dataUsageOpen, setDataUsageOpen] = useState(false);
-  const [enableSourcesOpen, setEnableSourcesOpen] = useState(false);
-  const [themeOpen, setThemeOpen] = useState(false);
-  const [fontOpen, setFontOpen] = useState(false);
-  const [languageOpen, setLanguageOpen] = useState(false);
-  const [sourceUrlsOpen, setSourceUrlsOpen] = useState(false);
-  const [flareSolverrOpen, setFlareSolverrOpen] = useState(false);
+  const panels = useSettingsPanel();
   const activeSourceCount = sources.filter((entry) => entry.enabled !== false).length;
   const sourceUrlOverrideCount = countSourceBaseUrlOverrides(settings.sourceBaseUrls);
 
@@ -116,7 +111,7 @@ export function SettingsScreen({ navigate, appearance, typeface, onSetAppearance
             </span>
             <ChevronLeft size={18} />
           </button>
-          <button type="button" className="setting-row" onClick={() => setEnableSourcesOpen(true)}>
+          <button type="button" className="setting-row" onClick={() => panels.open("enable-sources")}>
             <span className="setting-row__icon"><Globe2 size={19} /></span>
             <span className="setting-row__copy">
               <strong>{t("settings.enableSources")}</strong>
@@ -126,12 +121,12 @@ export function SettingsScreen({ navigate, appearance, typeface, onSetAppearance
           </button>
           <SourceUrlsSettingsEntry
             overrideCount={sourceUrlOverrideCount}
-            onOpen={() => setSourceUrlsOpen(true)}
+            onOpen={() => panels.open("source-urls")}
           />
           {!isChromebookApp && (
             <FlareSolverrSettingsEntry
               baseUrl={settings.flareSolverrUrl}
-              onOpen={() => setFlareSolverrOpen(true)}
+              onOpen={() => panels.open("flare")}
             />
           )}
           </div>
@@ -148,15 +143,15 @@ export function SettingsScreen({ navigate, appearance, typeface, onSetAppearance
             </span>
             <ChevronLeft size={18} />
           </button>
-          <DataUsageSettingsEntry settings={settings} onOpen={() => setDataUsageOpen(true)} />
+          <DataUsageSettingsEntry settings={settings} onOpen={() => panels.open("data-usage")} />
           </div>
         </section>
 
         <section className="settings-section">
           <h2 className="settings-group-title">{t("settings.appearanceGroup")}</h2>
           <div className="settings-group">
-          <ThemeSettingsEntry appearance={appearance} onOpen={() => setThemeOpen(true)} />
-          <FontSettingsEntry typeface={typeface} onOpen={() => setFontOpen(true)} />
+          <ThemeSettingsEntry appearance={appearance} onOpen={() => panels.open("theme")} />
+          <FontSettingsEntry typeface={typeface} onOpen={() => panels.open("font")} />
           </div>
         </section>
 
@@ -171,7 +166,7 @@ export function SettingsScreen({ navigate, appearance, typeface, onSetAppearance
             </span>
             <ChevronLeft size={18} />
           </button>
-          <LanguageSettingsEntry onOpen={() => setLanguageOpen(true)} />
+          <LanguageSettingsEntry onOpen={() => panels.open("language")} />
           {!isChromebookApp && (
           <button type="button" className="setting-row">
             <span className="setting-row__icon"><SlidersHorizontal size={19} /></span>
@@ -188,21 +183,21 @@ export function SettingsScreen({ navigate, appearance, typeface, onSetAppearance
       </main>
 
       <ThemeSettingsSheet
-        open={themeOpen}
-        onClose={() => setThemeOpen(false)}
+        open={panels.isOpen("theme")}
+        onClose={panels.close}
         appearance={appearance}
         onSetAppearance={onSetAppearance}
       />
       <FontSettingsSheet
-        open={fontOpen}
-        onClose={() => setFontOpen(false)}
+        open={panels.isOpen("font")}
+        onClose={panels.close}
         typeface={typeface}
         onSetTypeface={onSetTypeface}
       />
-      <LanguageSettingsSheet open={languageOpen} onClose={() => setLanguageOpen(false)} />
+      <LanguageSettingsSheet open={panels.isOpen("language")} onClose={panels.close} />
       <SourceUrlsSettingsSheet
-        open={sourceUrlsOpen}
-        onClose={() => setSourceUrlsOpen(false)}
+        open={panels.isOpen("source-urls")}
+        onClose={panels.close}
         sourceBaseUrls={settings.sourceBaseUrls}
         onSaveOverride={(sourceId, nextUrl) => {
           setSettings((current) => {
@@ -212,15 +207,14 @@ export function SettingsScreen({ navigate, appearance, typeface, onSetAppearance
             if (!defaultUrl || normalized === defaultUrl) delete nextOverrides[sourceId];
             else nextOverrides[sourceId] = normalized;
             const next = { ...current, sourceBaseUrls: nextOverrides };
-            if (sourceId === "coflix") next.coflixBaseUrl = normalized;
             return next;
           });
           notifyUpdated(t("settings.sourceUrlUpdated", { name: getSourceDisplayName(sourceId) }));
         }}
       />
       <FlareSolverrSettingsSheet
-        open={flareSolverrOpen}
-        onClose={() => setFlareSolverrOpen(false)}
+        open={panels.isOpen("flare")}
+        onClose={panels.close}
         baseUrl={settings.flareSolverrUrl}
         onSave={(nextUrl) => {
           setSettings((current) => ({ ...current, flareSolverrUrl: nextUrl }));
@@ -228,16 +222,16 @@ export function SettingsScreen({ navigate, appearance, typeface, onSetAppearance
         }}
       />
       <EnableSourcesSheet
-        open={enableSourcesOpen}
+        open={panels.isOpen("enable-sources")}
         sources={sources}
         sourcePreferences={sourcePreferences}
-        onClose={() => setEnableSourcesOpen(false)}
+        onClose={panels.close}
         onToggleSite={onToggleSite}
         onSetSitesEnabled={onSetSitesEnabled}
       />
       <DataUsageSettingsSheet
-        open={dataUsageOpen}
-        onClose={() => setDataUsageOpen(false)}
+        open={panels.isOpen("data-usage")}
+        onClose={panels.close}
         settings={settings}
         onApplyPreset={applyPreset}
         onToggleWifiOnly={() => {

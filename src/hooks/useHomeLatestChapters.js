@@ -1,12 +1,32 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { getMeteredNetworkLimits, allowsHeavyNetworkUse, allowsHomeAutoUpdates } from "../lib/platform/dataSaver";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { getMeteredNetworkLimits, allowsHomeAutoUpdates } from "../lib/platform/dataSaver";
 import { refreshNetworkStatus } from "../lib/platform/networkStatus";
 import {
   collectHomeTrackedItems,
+  hydrateHomeLatestChapters,
   loadHomeLatestChapters,
+  peekHomeLatestChapters,
 } from "../lib/updates/homeLatestChapters";
 import { getItemType } from "../features/sources/contentTypes";
 import { t } from "../i18n/runtime.js";
+
+function readHomeLatestState({ followPreferences, readingHistory, mediaFilter, settings }) {
+  const { homeLatestLimit } = getMeteredNetworkLimits(settings);
+  const tracked = collectHomeTrackedItems(followPreferences)
+    .filter((item) => mediaFilter === "all" || getItemType(item) === mediaFilter);
+  const cached = peekHomeLatestChapters({
+    mediaFilter,
+    trackedCount: tracked.length,
+    limit: homeLatestLimit,
+  });
+  if (cached) return cached;
+  return hydrateHomeLatestChapters({
+    followPreferences,
+    readingHistory,
+    mediaFilter,
+    limit: homeLatestLimit,
+  });
+}
 
 export function useHomeLatestChapters({
   followPreferences,
@@ -14,18 +34,16 @@ export function useHomeLatestChapters({
   mediaFilter = "all",
   settings = {},
 }) {
-  const [entries, setEntries] = useState([]);
-  const [trackedCount, setTrackedCount] = useState(0);
+  const [entries, setEntries] = useState(() => (
+    readHomeLatestState({ followPreferences, readingHistory, mediaFilter, settings }).entries
+  ));
+  const [trackedCount, setTrackedCount] = useState(() => (
+    readHomeLatestState({ followPreferences, readingHistory, mediaFilter, settings }).trackedCount
+  ));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [pausedForData, setPausedForData] = useState(false);
   const requestIdRef = useRef(0);
-
-  const resolveTrackedCount = useCallback(() => {
-    return collectHomeTrackedItems(followPreferences)
-      .filter((item) => mediaFilter === "all" || getItemType(item) === mediaFilter)
-      .length;
-  }, [followPreferences, mediaFilter]);
 
   const refresh = useCallback(async ({ silent = false, force = false } = {}) => {
     const requestId = requestIdRef.current + 1;
@@ -65,14 +83,21 @@ export function useHomeLatestChapters({
     let cancelled = false;
 
     async function bootstrap() {
-      const count = resolveTrackedCount();
-      setTrackedCount(count);
+      const hydrated = readHomeLatestState({
+        followPreferences,
+        readingHistory,
+        mediaFilter,
+        settings,
+      });
+      if (!cancelled) {
+        setEntries(hydrated.entries);
+        setTrackedCount(hydrated.trackedCount);
+      }
 
       await refreshNetworkStatus();
       if (!allowsHomeAutoUpdates(settings)) {
         if (!cancelled) {
-          setPausedForData(count > 0);
-          setEntries([]);
+          setPausedForData(hydrated.trackedCount > 0 && !hydrated.entries.length);
           setError("");
         }
         return;
@@ -86,8 +111,14 @@ export function useHomeLatestChapters({
     bootstrap();
     return () => {
       cancelled = true;
+      requestIdRef.current += 1;
     };
-  }, [refresh, resolveTrackedCount, settings, settings?.homeAutoUpdates, settings?.wifi]);
+  }, [followPreferences, mediaFilter, readingHistory, refresh, settings]);
+
+  const newCount = useMemo(
+    () => entries.filter((entry) => entry.isNew).length,
+    [entries],
+  );
 
   return {
     entries,
@@ -96,6 +127,6 @@ export function useHomeLatestChapters({
     error,
     pausedForData,
     refresh,
-    newCount: entries.filter((entry) => entry.isNew).length,
+    newCount,
   };
 }

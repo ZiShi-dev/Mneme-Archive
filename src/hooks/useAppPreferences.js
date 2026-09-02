@@ -20,6 +20,7 @@ import {
   upsertChapterReadLog,
 } from "../lib/reading/chapterReadLog";
 import { resolveBookmarkType } from "../features/sources/contentTypes";
+import { applyRecentChapterFields, recentChaptersFromList } from "../../server/lib/catalogChapters.js";
 import { applyAppearance, isDarkTheme, normalizeThemeId, THEME_INK } from "../lib/theme/appearance";
 import { applyTypeface, FONT_SANS, normalizeTypefaceId } from "../lib/theme/typeface";
 import { usePersistedState } from "./usePersistedState";
@@ -119,15 +120,18 @@ export function useAppPreferences() {
     if (current.some((favorite) => liveFavoriteKey(favorite) === key)) {
       return current.filter((favorite) => liveFavoriteKey(favorite) !== key);
     }
+    const sourceId = resolveSourceId(item);
     return [...current, {
       url: item.url,
       title: item.title,
       altTitle: item.altTitle || item.subtitle || "",
       cover: item.cover,
-      sourceId: resolveSourceId(item),
+      sourceId,
       mediaType: resolveBookmarkType(item),
       mediaTypeLabel: item.mediaTypeLabel,
-      recentChapters: item.recentChapters || item.chapters?.slice?.(0, 2) || [],
+      ...applyRecentChapterFields({ ...item, sourceId }, item.recentChapters?.length
+        ? item.recentChapters
+        : recentChaptersFromList(item.chapters, undefined, { sourceId })),
     }];
   });
 

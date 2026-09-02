@@ -55,7 +55,7 @@ test("applyAudioLanguageToChapter rewrites wiflix episode url", () => {
 
 test("sourceSupportsAudioFilter covers video sources", () => {
   assert.equal(sourceSupportsAudioFilter("wiflix"), true);
-  assert.equal(sourceSupportsAudioFilter("coflix"), true);
+  assert.equal(sourceSupportsAudioFilter("frenchstream"), true);
   assert.equal(sourceSupportsAudioFilter("mangalik"), false);
 });
 

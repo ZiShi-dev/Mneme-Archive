@@ -212,12 +212,8 @@ export function flareHtmlMatchesRequest(html = "", requestedUrl = "") {
   // Empreintes d'autres sources CF — ignorer l'hôte demandé lui-même.
   const competitors = [
     { host: "mangalik.net", re: /mangalik\.net/i },
-    { host: "hentairead.com", re: /hentairead\.com/i },
     { host: "kolnovel.com", re: /kolnovel\.com/i },
     { host: "novelsparadise.site", re: /novelsparadise\./i },
-    { host: "arabshentai.com", re: /arabshentai\.com/i },
-    { host: "mangadistrict.com", re: /mangadistrict\.com/i },
-    { host: "manhwaread.com", re: /manhwaread\.(?:com|org)/i },
   ];
   for (const competitor of competitors) {
     if (competitor.host === expected || expected.endsWith(`.${competitor.host}`)) continue;
@@ -425,4 +421,63 @@ export async function tryFlareSolverrHtml(url) {
   } catch {
     return null;
   }
+}
+
+function flareImageEndpoint(baseUrl = "") {
+  const trimmed = String(baseUrl || "").trim().replace(/\/+$/, "");
+  if (isFlareProxyUrl(trimmed)) return `${trimmed}/image`;
+  return "";
+}
+
+function base64ToUint8Array(base64 = "") {
+  if (typeof Buffer !== "undefined") {
+    return new Uint8Array(Buffer.from(base64, "base64"));
+  }
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
+}
+
+/** Image derrière Cloudflare (catalogue / couverture) via le proxy Night-Novel. */
+export async function fetchImageViaFlareSolverr(imageUrl) {
+  const { getFlareSolverrConfig } = await import("./flareSolverrConfig.js");
+  const config = getFlareSolverrConfig();
+  if (!config?.baseUrl) throw new Error("FlareSolverr non configuré");
+
+  const endpoint = flareImageEndpoint(config.baseUrl);
+  if (!endpoint) throw new Error("Proxy Flare image indisponible");
+
+  return withFlareSlot(async () => {
+    if (isFlareHostBlockCooldown(imageUrl)) {
+      throw new Error("Cloudflare a bloqué l'IP du serveur pour ce site. Réessaie plus tard.");
+    }
+    const timeoutSignal = AbortSignal.timeout(DEFAULT_TIMEOUT_MS + 15_000);
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: imageUrl }),
+      signal: timeoutSignal,
+    });
+    const rawText = await readFlareResponseBody(response);
+    const payload = parseFlarePayload(rawText);
+    if (!response.ok && payload?.success !== true) {
+      throw errorFromFlareResponse(response, payload, rawText);
+    }
+    if (payload?.success === false) {
+      throw new Error(payload.error || "Image Flare indisponible");
+    }
+    const contentType = String(payload?.contentType || "image/jpeg").split(";")[0].trim() || "image/jpeg";
+    const base64 = String(payload?.base64 || "").trim();
+    if (!base64 || !contentType.startsWith("image/")) {
+      throw new Error("Image Flare indisponible");
+    }
+    return {
+      kind: "image",
+      contentType,
+      buffer: base64ToUint8Array(base64),
+    };
+  });
 }

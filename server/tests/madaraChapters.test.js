@@ -25,21 +25,88 @@ test("parseMadaraChapters reads all wp-manga-chapter rows", () => {
   assert.equal(chapters[0].number, "10");
 });
 
+test("resolveMadaraChapters prefers html fetcher before admin-ajax when requested", async () => {
+  const html = `
+    <div id="manga-chapters-holder" data-id="99"></div>
+    <li class="wp-manga-chapter"><a href="https://example.com/manga/sample/chapter-1/">Chapter 1</a></li>
+  `;
+  let postCalls = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    postCalls += 1;
+    return { ok: true, async text() { return CHAPTER_LIST; } };
+  };
+  try {
+    const chapters = await resolveMadaraChapters(html, {
+      baseUrl: "https://example.com",
+      refererUrl: "https://example.com/manga/sample/",
+      preferHtmlFetcher: true,
+      fetchHtml: async (url) => {
+        assert.equal(url, "https://example.com/manga/sample/ajax/chapters/");
+        return CHAPTER_LIST;
+      },
+    });
+    assert.equal(chapters.length, 2);
+    assert.equal(chapters[0].number, "10");
+    assert.equal(postCalls, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("resolveMadaraChapters prefers admin-ajax POST before html fetcher", async () => {
+  const html = `
+    <div id="manga-chapters-holder" data-id="99"></div>
+    <li class="wp-manga-chapter"><a href="https://example.com/manga/sample/chapter-1/">Chapter 1</a></li>
+  `;
+  let fetchHtmlCalls = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({
+    ok: true,
+    async text() { return CHAPTER_LIST; },
+  });
+  try {
+    const chapters = await resolveMadaraChapters(html, {
+      baseUrl: "https://example.com",
+      refererUrl: "https://example.com/manga/sample/",
+      fetchHtml: async () => {
+        fetchHtmlCalls += 1;
+        return CHAPTER_LIST;
+      },
+    });
+    assert.equal(chapters.length, 2);
+    assert.equal(chapters[0].number, "10");
+    assert.equal(fetchHtmlCalls, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("resolveMadaraChapters uses FlareSolverr html fetcher for ajax chapters", async () => {
   const html = `
     <div id="manga-chapters-holder" data-id="99"></div>
     <li class="wp-manga-chapter"><a href="https://example.com/manga/sample/chapter-1/">Chapter 1</a></li>
   `;
-  const chapters = await resolveMadaraChapters(html, {
-    baseUrl: "https://example.com",
-    refererUrl: "https://example.com/manga/sample/",
-    fetchHtml: async (url) => {
-      assert.equal(url, "https://example.com/manga/sample/ajax/chapters/");
-      return CHAPTER_LIST;
-    },
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({
+    ok: false,
+    status: 500,
+    async text() { return ""; },
   });
-  assert.equal(chapters.length, 2);
-  assert.equal(chapters[0].number, "10");
+  try {
+    const chapters = await resolveMadaraChapters(html, {
+      baseUrl: "https://example.com",
+      refererUrl: "https://example.com/manga/sample/",
+      fetchHtml: async (url) => {
+        assert.equal(url, "https://example.com/manga/sample/ajax/chapters/");
+        return CHAPTER_LIST;
+      },
+    });
+    assert.equal(chapters.length, 2);
+    assert.equal(chapters[0].number, "10");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("resolveMadaraChapters prefers longer ajax list", async () => {

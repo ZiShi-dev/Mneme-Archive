@@ -1,3 +1,4 @@
+import { Capacitor } from "@capacitor/core";
 import { allowsVideoDataSaver, isMeteredConnection } from "../platform/dataSaver.js";
 import { getRuntimeSettings } from "../settings/runtimeSettings.js";
 import { isChromebookApp } from "../../config/appFlavor.js";
@@ -12,14 +13,19 @@ export function prefersHighVideoQuality(settings = getRuntimeSettings()) {
   return !shouldLimitVideoQuality(settings);
 }
 
-export function createHlsPlayerConfig({ loader } = {}) {
+export function isNativeMobilePlayback() {
+  return Capacitor.isNativePlatform() && !isChromebookApp;
+}
+
+export function createHlsPlayerConfig({ loader, nativeMobile = isNativeMobilePlayback() } = {}) {
   const settings = getRuntimeSettings();
   const limitQuality = shouldLimitVideoQuality(settings);
+  const compactBuffer = limitQuality || nativeMobile;
 
   return {
     enableWorker: false,
-    maxBufferLength: limitQuality ? 12 : 45,
-    maxMaxBufferLength: limitQuality ? 24 : 90,
+    maxBufferLength: limitQuality ? 12 : compactBuffer ? 24 : 45,
+    maxMaxBufferLength: limitQuality ? 24 : compactBuffer ? 48 : 90,
     maxLoadingRetry: limitQuality ? 4 : 8,
     maxNetworkErrorRetry: limitQuality ? 4 : 8,
     startLevel: limitQuality ? 0 : -1,

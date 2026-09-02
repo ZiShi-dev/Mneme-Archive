@@ -286,25 +286,6 @@ body[data-theme="galaxie"] {
   color: #eef1ff;
 }
 
-.theme-selector--gallery > .theme-selector__option--galaxie > span {
-  background: color-mix(in srgb, #07061a 74%, transparent);
-  border-color: color-mix(in srgb, white 14%, transparent);
-}
-
-.theme-selector--gallery > .theme-selector__option--galaxie > span strong {
-  color: #eef1ff;
-}
-
-.theme-selector--gallery > .theme-selector__option--galaxie > span small {
-  color: color-mix(in srgb, #c8d0ff 82%, transparent);
-}
-
-.theme-selector--gallery > .theme-selector__option--galaxie > svg:first-of-type {
-  background: color-mix(in srgb, #12102c 75%, transparent) !important;
-  color: #c9a0ff;
-  border-color: color-mix(in srgb, white 16%, transparent);
-}
-
 .theme-sheet--galaxie {
   border-color: color-mix(in srgb, #9bb0ff 30%, #12102c);
   background:

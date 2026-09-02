@@ -8,12 +8,23 @@ import {
 } from "../lib/hls/playbackQuality.js";
 
 test("createHlsPlayerConfig uses smaller buffers on metered connections", () => {
-  const config = createHlsPlayerConfig();
+  const config = createHlsPlayerConfig({ nativeMobile: false });
   if (prefersHighVideoQuality()) {
     assert.equal(config.maxBufferLength, 45);
     assert.equal(config.maxMaxBufferLength, 90);
     assert.equal(config.startLevel, -1);
     assert.equal(config.capLevelToPlayerSize, false);
+  } else {
+    assert.equal(config.maxBufferLength, 12);
+    assert.equal(config.maxMaxBufferLength, 24);
+  }
+});
+
+test("createHlsPlayerConfig keeps a compact buffer on Android WebView", () => {
+  const config = createHlsPlayerConfig({ nativeMobile: true });
+  if (prefersHighVideoQuality()) {
+    assert.equal(config.maxBufferLength, 24);
+    assert.equal(config.maxMaxBufferLength, 48);
   } else {
     assert.equal(config.maxBufferLength, 12);
     assert.equal(config.maxMaxBufferLength, 24);

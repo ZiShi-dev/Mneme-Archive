@@ -1,9 +1,12 @@
 import React from "react";
-import { ArrowUpDown, BookOpen, ChevronLeft, ChevronRight, ExternalLink, Lock, Search } from "lucide-react";
+import { ArrowUpDown, BookOpen, Check, ChevronLeft, ChevronRight, ExternalLink, Lock, Search } from "lucide-react";
 import { AccessibleSearchField } from "../../../components/ui/AccessibleSearchField";
 import { ChipFilterBar, ChipFilterButton } from "../../../components/ui/ChipFilterBar";
 import { ChapterListSkeleton } from "../../../components/ui/ContentSkeleton";
+import { UnlockCountdown } from "../../../components/media/UnlockCountdown";
 import { useI18n } from "../../../i18n/I18nProvider";
+import { isAzoraChapterBlocked, isDetailsChapterPaid } from "../../../lib/media/chapterLock";
+import { getChapterReadState } from "../../../lib/storage/chapterProgress";
 import { formatChapterPublishedLabel, parseChapterPublishedAt } from "../../../lib/media/chapterTiming";
 import { AUDIO_LANGUAGE_LABELS } from "../audioLanguage";
 import { formatEpisodeHeaderLabel } from "../mediaPresentation";
@@ -26,37 +29,65 @@ function chapterDisplayTitle(chapter, presentation) {
   return formatEpisodeHeaderLabel(number || name, unit);
 }
 
-function ChapterListRow({ chapter, sourceName, isLatest, onOpen, presentation, activeAudioLanguage = "" }) {
+function ChapterListRow({
+  chapter,
+  sourceId,
+  sourceName,
+  isLatest,
+  onOpen,
+  onPrefetch,
+  presentation,
+  activeAudioLanguage = "",
+  chapterReadEntries = [],
+}) {
   const { t } = useI18n();
-  const isPaid = Boolean(chapter.locked);
+  const isPaid = isDetailsChapterPaid(sourceId, chapter);
+  const blocked = isAzoraChapterBlocked(sourceId, chapter);
   const priceLabel = Number(chapter.price) > 0 ? t("details.coins", { n: chapter.price }) : "";
   const publishedLabel = formatChapterPublishedLabel(parseChapterPublishedAt(chapter));
   const title = chapterDisplayTitle(chapter, presentation);
+  const { progress, read, inProgress } = getChapterReadState(sourceId, chapter, chapterReadEntries);
+  const showRead = !blocked && !isPaid && read;
   const episodeLanguages = Object.keys(chapter.audioLanguages || {}).filter((entry) => AUDIO_LANGUAGE_LABELS[entry]);
-  const metaLabel = isPaid
-    ? t("details.requiresPurchase", { source: sourceName })
-    : publishedLabel || "";
+  const metaLabel = blocked
+    ? (chapter.unlockAt ? "" : t("details.permanentlyLocked"))
+    : isPaid
+      ? (chapter.lockReason === "sky-app" ? t("details.skyAppOnly") : t("details.requiresPurchase", { source: sourceName }))
+      : publishedLabel || "";
 
   return (
     <button
-      className={`chapter-row ${isPaid ? "chapter-row--locked" : ""}${presentation.isVideo ? " chapter-row--video" : ""}`}
-      onClick={() => onOpen(chapter)}
+      className={`chapter-row ${isPaid ? "chapter-row--locked" : ""}${showRead ? " chapter-row--read" : ""}${inProgress ? " chapter-row--progress" : ""}${presentation.isVideo ? " chapter-row--video" : ""}`}
+      onPointerDown={() => { if (!blocked && !isPaid) onPrefetch?.(chapter); }}
+      onClick={() => { if (!blocked) onOpen(chapter); }}
       type="button"
+      disabled={blocked}
+      aria-disabled={blocked ? "true" : undefined}
       aria-label={isPaid ? presentation.lockedAria(chapter.name) : presentation.openAria(chapter.name)}
     >
-      <span className="chapter-number">{chapter.number || "—"}</span>
+      <span className="chapter-number">
+        {showRead ? <Check size={14} aria-hidden="true" className="chapter-number__read" /> : (chapter.number || "—")}
+      </span>
       <span className="chapter-row__body">
         <span className="chapter-row__title">
           <strong>{title}</strong>
           {isPaid && (
             <span className="chapter-badge chapter-badge--paid">
               <Lock size={11} aria-hidden="true" />
-              <span>{t("details.paid")}</span>
+              <span>{chapter.lockReason === "sky-app" ? t("details.skyAppOnly") : (blocked && !chapter.unlockAt ? t("details.permanentlyLocked") : t("details.paid"))}</span>
               {priceLabel && <span className="chapter-badge__price">{priceLabel}</span>}
             </span>
           )}
+          {showRead ? (
+            <span className="chapter-badge chapter-badge--read">
+              <Check size={11} aria-hidden="true" />
+              <span>{t("details.chapterRead")}</span>
+            </span>
+          ) : null}
         </span>
-        {metaLabel ? <small>{metaLabel}</small> : null}
+        {blocked ? <UnlockCountdown unlockAt={chapter.unlockAt} className="chapter-row__countdown" /> : null}
+        {inProgress ? <small className="chapter-row__progress">{progress}%</small> : null}
+        {!inProgress && metaLabel ? <small>{metaLabel}</small> : null}
         {episodeLanguages.length > 0 && (
           <span className="chapter-row__audio-tags" aria-label={t("details.audioVersionAria")}>
             {episodeLanguages.map((language) => (
@@ -71,7 +102,7 @@ function ChapterListRow({ chapter, sourceName, isLatest, onOpen, presentation, a
         )}
       </span>
       {isLatest && <span className={`new-badge ${isPaid ? "new-badge--paid" : ""}`}>{isPaid ? t("details.newPaid") : t("common.new")}</span>}
-      {isPaid ? <ExternalLink size={16} className="chapter-row__external" aria-hidden="true" /> : <ChevronLeft size={18} aria-hidden="true" />}
+      {blocked ? null : isPaid ? <ExternalLink size={16} className="chapter-row__external" aria-hidden="true" /> : !showRead ? <ChevronLeft size={18} aria-hidden="true" /> : null}
     </button>
   );
 }
@@ -96,9 +127,12 @@ export function DetailsChapterSection({
   chapterPageSize,
   latestChapter,
   isLatestChapterNew,
+  sourceId,
   sourceName,
   audioLanguage,
   onOpenChapter,
+  onPrefetchChapter,
+  chapterReadEntries = [],
 }) {
   const { t } = useI18n();
 
@@ -150,11 +184,14 @@ export function DetailsChapterSection({
                 <ChapterListRow
                   key={chapter.url}
                   chapter={chapter}
+                  sourceId={sourceId}
                   sourceName={sourceName}
                   isLatest={chapter.url === latestChapter?.url && isLatestChapterNew}
                   onOpen={onOpenChapter}
+                  onPrefetch={onPrefetchChapter}
                   presentation={presentation}
                   activeAudioLanguage={audioLanguage}
+                  chapterReadEntries={chapterReadEntries}
                 />
               ))}
             </div>

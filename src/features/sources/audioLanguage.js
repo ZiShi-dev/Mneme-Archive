@@ -1,6 +1,7 @@
 import { isChromebookApp, PREFERRED_AUDIO_LANGUAGE } from "../../config/appFlavor.js";
+import { isVideoCatalogSource } from "./videoCatalog.js";
 
-const AUDIO_SOURCES = new Set(["wiflix", "frenchstream", "coflix"]);
+const AUDIO_SOURCES = new Set(["wiflix", "frenchstream"]);
 
 export const AUDIO_LANGUAGE_LABELS = {
   VF: "VF",
@@ -28,7 +29,7 @@ export function episodeLanguagesFromChapters(chapters = []) {
 }
 
 export function resolveAvailableAudioLanguages(item, chapters = [], sourceId = "") {
-  if (!AUDIO_SOURCES.has(sourceId)) return [];
+  if (!isVideoCatalogSource(sourceId)) return [];
   const fromItem = Array.isArray(item?.availableAudioLanguages)
     ? item.availableAudioLanguages.filter((entry) => AUDIO_LANGUAGE_LABELS[entry])
     : [];
@@ -52,7 +53,7 @@ export function itemOffersPreferredAudio(item, preferred = PREFERRED_AUDIO_LANGU
 }
 
 export function sourceSupportsAudioFilter(sourceId = "") {
-  return AUDIO_SOURCES.has(sourceId);
+  return isVideoCatalogSource(sourceId);
 }
 
 export function resolveItemAudioOptions(item = {}) {

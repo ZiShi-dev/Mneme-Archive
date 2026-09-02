@@ -2,8 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   handleNovelsParadiseRequest,
+  mapParadiseChapterEntry,
   normalizeChapterUrl,
+  normalizeParadiseChapterList,
   normalizeSeriesUrl,
+  PARADISE_CATALOG_PAGE_SIZE,
   paradiseCatalogHtmlLooksValid,
   parseParadiseCatalog,
   parseParadiseChapter,
@@ -13,6 +16,30 @@ import {
   resolveParadiseTitles,
   seriesSlugFromSlug,
 } from "../sources/novelsparadise.js";
+
+test("PARADISE_CATALOG_PAGE_SIZE matches Realm Novel / MangaLik density", () => {
+  assert.equal(PARADISE_CATALOG_PAGE_SIZE, 24);
+});
+
+test("mapParadiseChapterEntry prefers URL number over misleading labels", () => {
+  const entry = mapParadiseChapterEntry({
+    url: "/novel-a-942/",
+    eplNum: "1",
+    eplTitle: "1",
+  });
+  assert.equal(entry.number, "942");
+  assert.match(entry.url, /novel-a-942/);
+});
+
+test("normalizeParadiseChapterList dedupes by url and sorts newest first", () => {
+  const chapters = normalizeParadiseChapterList([
+    { url: "https://novelsparadise.site/novel-a-1/", name: "1", number: "1" },
+    { url: "https://novelsparadise.site/novel-a-10/", name: "10", number: "10" },
+    { url: "https://novelsparadise.site/novel-a-1/", name: "1 bis", number: "1" },
+  ]);
+  assert.equal(chapters.length, 2);
+  assert.deepEqual(chapters.map((chapter) => chapter.number), ["10", "1"]);
+});
 
 test("novelsparadise search URL encodes spaces without double-encoding plus signs", () => {
   const query = "أنا الشرير المقدر";
@@ -115,8 +142,8 @@ test("parseParadiseChapters merges all eplister volume blocks", () => {
   `;
   const chapters = parseParadiseChapters(html, "https://novelsparadise.site/series/novel-a/");
   assert.equal(chapters.length, 2);
-  assert.equal(chapters[0].number, "1");
-  assert.equal(chapters[1].number, "2");
+  assert.equal(chapters[0].number, "2");
+  assert.equal(chapters[1].number, "1");
 });
 
 test("parseParadiseChapters reads eplister list", () => {
@@ -130,8 +157,8 @@ test("parseParadiseChapters reads eplister list", () => {
   `;
   const chapters = parseParadiseChapters(html, "https://novelsparadise.site/series/novel-a/");
   assert.equal(chapters.length, 2);
-  assert.equal(chapters[0].number, "1");
-  assert.equal(chapters[1].number, "2");
+  assert.equal(chapters[0].number, "2");
+  assert.equal(chapters[1].number, "1");
 });
 
 test("parseParadiseChapters keeps alternate slug prefixes from the same series page", () => {
@@ -145,8 +172,8 @@ test("parseParadiseChapters keeps alternate slug prefixes from the same series p
   `;
   const chapters = parseParadiseChapters(html, "https://novelsparadise.site/series/i-am-the-fated-villain/");
   assert.equal(chapters.length, 2);
-  assert.equal(chapters[0].url, "https://novelsparadise.site/i-am-the-fated-villain-1-2/");
-  assert.equal(chapters[1].url, "https://novelsparadise.site/pharaoh-means-i-am-the-fated-villain-king-1441/");
+  assert.equal(chapters[0].url, "https://novelsparadise.site/pharaoh-means-i-am-the-fated-villain-king-1441/");
+  assert.equal(chapters[1].url, "https://novelsparadise.site/i-am-the-fated-villain-1-2/");
 });
 
 test("parseParadiseFilters reads genre and type checkboxes", () => {

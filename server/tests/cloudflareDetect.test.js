@@ -26,6 +26,11 @@ test("isCloudflareChallengeHtml ignores valid catalog pages", () => {
   assert.equal(CLOUDFLARE_CHALLENGE_PATTERN.test(html), false);
 });
 
+test("isCloudflareChallengeHtml ignores wiflix watch pages with soft cf scripts", () => {
+  const html = '<div class="mov clearfix"><a class="mov-t" href="/watch/demo">Demo</a></div><div class="server-item"></div>';
+  assert.equal(isCloudflareChallengeHtml(html), false);
+});
+
 test("isValidSourceHtml combines cloudflare and business checks", () => {
   const valid = '<div class="page-item-detail manga"></div>';
   const blocked = '<title>Just a moment...</title>';

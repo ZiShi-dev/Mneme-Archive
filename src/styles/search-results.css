@@ -45,6 +45,15 @@
   font: 700 8px/1 "Fragment Mono";
 }
 
+.search-results-head__badge--refreshing {
+  animation: search-badge-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes search-badge-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
 .search-results-alert {
   display: grid;
   gap: 6px;

@@ -1,6 +1,7 @@
 import { decodeHtml } from "./htmlUtils.js";
 import { createCachedHtmlFetcher, fetchProxiedImage } from "./httpUtils.js";
 import { isCloudflareChallengeHtml } from "./cloudflareDetect.js";
+import { fetchImageViaFlareSolverr } from "./flareSolverr.js";
 import { fetchNativeHtml, fetchNativeImage, configureSourceNativeFetch, hasNativeHtmlFetcher } from "./nativeFetchBridge.js";
 
 const WP_MANGA_PAGE_MARKERS = /page-item-detail|c-tabs-item__content|\bitem\b[^"']*\bwp-manga\b|\bwp-manga\b[^"']*\bitem\b|manga-item|reading-content|wp-manga-chapter|manga-reading|chapter-image|text-chapter/i;
@@ -129,7 +130,21 @@ export function createWpMangaFetchers({
 
   async function resolveImage(rawUrl, assertImageUrl) {
     const target = assertImageUrl(rawUrl);
-    return fetchNativeImage(target, () => fetchProxiedImage(target, `${baseUrl}/`, sourceName));
+    const attempts = [
+      () => fetchProxiedImage(target, `${baseUrl}/`, sourceName),
+      ...(preferFlareSolverr ? [() => fetchImageViaFlareSolverr(target)] : []),
+    ];
+    return fetchNativeImage(target, async () => {
+      let lastError;
+      for (const attempt of attempts) {
+        try {
+          return await attempt();
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      throw lastError || new Error(`Image ${sourceName} indisponible`);
+    });
   }
 
   return { configureNativeFetch, resolveHtml, resolveImage, fetchHtmlRemote };

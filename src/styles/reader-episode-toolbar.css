@@ -1,0 +1,551 @@
+/* ── Dock bas flottant — lecteur manga / roman ── */
+
+.live-reader--immersive {
+  --reader-episode-toolbar-gap: 8px;
+  --reader-episode-toolbar-float-pad: max(10px, env(safe-area-inset-bottom, 0px));
+  --reader-episode-toolbar-card: 96px;
+  --reader-episode-toolbar-bar: calc(
+    var(--reader-episode-toolbar-gap)
+    + var(--reader-episode-toolbar-card)
+    + var(--reader-episode-toolbar-float-pad)
+  );
+  --reader-episode-header-block-height: calc(
+    max(6px, env(safe-area-inset-top, 0px)) + max(40px, 32px) + 10px
+  );
+  --reader-episode-toolbar-height: var(--reader-episode-toolbar-bar);
+  --reader-episode-toolbar-bg: color-mix(in srgb, var(--reader-surface, #10121b) 88%, transparent);
+  --reader-episode-toolbar-border: color-mix(in srgb, var(--reader-chrome-border, var(--reader-border, #292c38)) 62%, transparent);
+  --reader-episode-toolbar-fg: var(--reader-chrome-fg, var(--reader-text, #f4f1ea));
+  --reader-episode-toolbar-muted: var(--reader-chrome-muted, var(--reader-muted, #a7a8b4));
+  --reader-episode-toolbar-control-bg: color-mix(in srgb, var(--reader-chrome-fg, #f4f1ea) 7%, transparent);
+  --reader-episode-toolbar-control-bg-hover: color-mix(in srgb, var(--reader-chrome-fg, #f4f1ea) 12%, transparent);
+  --reader-episode-toolbar-accent: var(--brand);
+  --reader-episode-toolbar-play-bg: var(--brand);
+  --reader-episode-toolbar-play-fg: #090a12;
+  --reader-episode-toolbar-play-ring: color-mix(in srgb, var(--brand) 28%, transparent);
+  --reader-episode-toolbar-track-bg: color-mix(in srgb, var(--reader-border, #292c38) 72%, transparent);
+  --reader-episode-toolbar-track-fill: color-mix(in srgb, var(--reader-episode-toolbar-accent) 88%, var(--reader-episode-toolbar-fg));
+  --reader-episode-toolbar-thumb-bg: var(--reader-episode-toolbar-fg);
+  --reader-episode-toolbar-thumb-border: var(--reader-episode-toolbar-accent);
+  --reader-episode-toolbar-shadow:
+    0 10px 40px color-mix(in srgb, var(--reader-bg, #000) 42%, transparent),
+    0 1px 0 color-mix(in srgb, var(--reader-chrome-fg, #fff) 6%, transparent) inset;
+}
+
+.live-reader--immersive:not([class*="reader--theme-"]) {
+  --reader-bg: #05060a;
+  --reader-surface: #10121b;
+  --reader-text: #f4f1ea;
+  --reader-muted: #a7a8b4;
+  --reader-border: #292c38;
+  --reader-chrome-control-bg: rgba(255, 255, 255, 0.08);
+  --reader-chrome-control-bg-hover: rgba(255, 255, 255, 0.14);
+  --reader-chrome-fg: #f4f1ea;
+  --reader-chrome-muted: #a7a8b4;
+  --reader-chrome-border: #292c38;
+}
+
+.reader-episode-toolbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 22;
+  width: 100%;
+  padding:
+    0
+    max(10px, env(safe-area-inset-left, 0px))
+    var(--reader-episode-toolbar-float-pad)
+    max(10px, env(safe-area-inset-right, 0px));
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.reader-episode-toolbar__surface {
+  pointer-events: auto;
+  width: min(100%, 700px);
+  margin: 0 auto;
+  padding: 10px 12px 12px;
+  border-radius: 18px;
+  background: var(--reader-episode-toolbar-bg);
+  border: 1px solid var(--reader-episode-toolbar-border);
+  box-shadow: var(--reader-episode-toolbar-shadow);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  color: var(--reader-episode-toolbar-fg);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.reader-episode-toolbar__inner {
+  width: 100%;
+  min-width: 0;
+}
+
+.reader-episode-toolbar .reader-playback--toolbar-dock {
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  transform: none;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  animation: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+}
+
+/* ── Progression ── */
+
+.reader-episode-toolbar .reader-playback__timeline--dock {
+  margin: 0;
+  gap: 10px;
+  align-items: center;
+  direction: ltr;
+}
+
+.reader-episode-toolbar .reader-playback__timeline--dock .reader-playback__progress-value {
+  flex: 0 0 auto;
+  min-width: 2.6em;
+  font: 600 11px/1 "Fragment Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--reader-episode-toolbar-muted);
+  text-align: end;
+  order: 2;
+}
+
+.reader-episode-toolbar .reader-playback__timeline--dock .reader-playback__slider {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 0;
+  order: 1;
+}
+
+/* ── Actions : transport centré, outils sur le bord inline-end ── */
+
+.reader-episode-toolbar .reader-playback__actions--dock {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  overflow: hidden;
+}
+
+.reader-episode-toolbar .reader-playback__chrome {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+}
+
+.reader-episode-toolbar .reader-playback__chrome-action {
+  flex: 0 0 auto;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--reader-episode-toolbar-border) 85%, transparent);
+  border-radius: 999px;
+  background: var(--reader-episode-toolbar-control-bg);
+  color: var(--reader-episode-toolbar-fg);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.14s ease;
+}
+
+.reader-episode-toolbar .reader-playback__chrome-action:not(:disabled):hover,
+.reader-episode-toolbar .reader-playback__chrome-action:not(:disabled):focus-visible {
+  background: var(--reader-episode-toolbar-control-bg-hover);
+  border-color: color-mix(in srgb, var(--reader-episode-toolbar-accent) 35%, var(--reader-episode-toolbar-border));
+}
+
+.reader-episode-toolbar .reader-playback__chrome-action:not(:disabled):active {
+  transform: scale(0.96);
+}
+
+.reader-episode-toolbar .reader-playback__chrome-action.is-active {
+  color: var(--reader-episode-toolbar-accent);
+  border-color: color-mix(in srgb, var(--reader-episode-toolbar-accent) 42%, var(--reader-episode-toolbar-border));
+}
+
+.reader-episode-toolbar .reader-playback__chrome-action > svg {
+  color: currentColor;
+  flex-shrink: 0;
+}
+
+.reader-episode-toolbar .reader-playback__transport {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+}
+
+.reader-episode-toolbar .reader-playback__tools {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: min(44%, 128px);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.reader-episode-toolbar .reader-playback__tool--list {
+  flex: 1 1 auto;
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  padding-inline: 7px 8px;
+}
+
+.reader-episode-toolbar .reader-playback__tool-chapter {
+  font: 600 10px/1 "Fragment Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--reader-episode-toolbar-muted);
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reader-episode-toolbar .reader-playback__nav {
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
+  flex: 0 0 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--reader-episode-toolbar-border) 85%, transparent);
+  border-radius: 999px;
+  background: var(--reader-episode-toolbar-control-bg);
+  color: var(--reader-episode-toolbar-fg);
+  box-sizing: border-box;
+  transition: background 0.16s ease, border-color 0.16s ease, transform 0.14s ease, opacity 0.16s ease;
+}
+
+.reader-episode-toolbar .reader-playback__nav > svg {
+  color: var(--reader-episode-toolbar-accent);
+  flex-shrink: 0;
+}
+
+html[dir="ltr"] .reader-episode-toolbar .reader-playback__nav > svg,
+[dir="ltr"] .reader-episode-toolbar .reader-playback__nav > svg {
+  transform: none;
+}
+
+html[dir="rtl"] .reader-episode-toolbar .reader-playback__nav > svg,
+[dir="rtl"] .reader-episode-toolbar .reader-playback__nav > svg {
+  transform: scaleX(-1);
+}
+
+.reader-episode-toolbar .reader-playback__nav:not(:disabled):hover,
+.reader-episode-toolbar .reader-playback__nav:not(:disabled):focus-visible {
+  background: var(--reader-episode-toolbar-control-bg-hover);
+  border-color: color-mix(in srgb, var(--reader-episode-toolbar-accent) 35%, var(--reader-episode-toolbar-border));
+}
+
+.reader-episode-toolbar .reader-playback__nav:not(:disabled):active {
+  transform: scale(0.96);
+}
+
+.reader-episode-toolbar .reader-playback__nav:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.reader-episode-toolbar .reader-playback__nav:disabled > svg {
+  color: var(--reader-episode-toolbar-muted);
+}
+
+.reader-episode-toolbar .reader-playback__play--dock {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: var(--reader-episode-toolbar-play-bg);
+  color: var(--reader-episode-toolbar-play-fg);
+  box-sizing: border-box;
+  box-shadow:
+    0 4px 16px color-mix(in srgb, var(--reader-episode-toolbar-play-bg) 38%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--reader-chrome-fg, #fff) 10%, transparent) inset;
+  transition: transform 0.14s ease, box-shadow 0.16s ease;
+}
+
+.reader-episode-toolbar .reader-playback__play--dock:not(:disabled):hover,
+.reader-episode-toolbar .reader-playback__play--dock:not(:disabled):focus-visible {
+  transform: scale(1.04);
+}
+
+.reader-episode-toolbar .reader-playback__play--dock.active {
+  box-shadow:
+    0 4px 16px color-mix(in srgb, var(--reader-episode-toolbar-play-bg) 38%, transparent),
+    0 0 0 3px var(--reader-episode-toolbar-play-ring);
+}
+
+.reader-episode-toolbar .reader-playback__tool {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  height: 36px;
+  padding: 0 9px;
+  border: 1px solid color-mix(in srgb, var(--reader-episode-toolbar-border) 85%, transparent);
+  border-radius: 999px;
+  background: var(--reader-episode-toolbar-control-bg);
+  color: var(--reader-episode-toolbar-fg);
+  transition: background 0.16s ease, border-color 0.16s ease;
+  overflow: hidden;
+}
+
+.reader-episode-toolbar .reader-playback__tool:not(:disabled):hover,
+.reader-episode-toolbar .reader-playback__tool:not(:disabled):focus-visible {
+  background: var(--reader-episode-toolbar-control-bg-hover);
+  border-color: color-mix(in srgb, var(--reader-episode-toolbar-accent) 35%, var(--reader-episode-toolbar-border));
+}
+
+.reader-episode-toolbar .reader-playback__tool:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.reader-episode-toolbar .reader-playback__tool svg {
+  color: var(--reader-episode-toolbar-accent);
+  flex-shrink: 0;
+}
+
+.reader-episode-toolbar .reader-playback__tool span {
+  font: 600 10px/1 "Fragment Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--reader-episode-toolbar-muted);
+  white-space: nowrap;
+}
+
+.reader-episode-toolbar .reader-playback__timeline--dock .reader-playback__track {
+  height: 4px;
+  background: var(--reader-episode-toolbar-track-bg);
+}
+
+.reader-episode-toolbar .reader-playback__timeline--dock .reader-playback__track > span {
+  background: var(--reader-episode-toolbar-track-fill);
+}
+
+.reader-episode-toolbar .reader-playback__timeline--dock .reader-playback__thumb {
+  width: 14px;
+  height: 14px;
+  border-width: 2px;
+  border-color: var(--reader-episode-toolbar-thumb-border);
+  background: var(--reader-episode-toolbar-thumb-bg);
+  box-shadow: 0 1px 6px color-mix(in srgb, var(--reader-bg, #000) 30%, transparent);
+}
+
+.reader-episode-toolbar .reader-playback__timeline--dock .reader-playback__thumb[data-focus-visible] {
+  box-shadow: 0 0 0 4px var(--reader-episode-toolbar-play-ring);
+}
+
+.chapter-label {
+  display: inline;
+  unicode-bidi: isolate;
+}
+
+.chapter-label__number {
+  unicode-bidi: isolate;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Corps lecteur ── */
+
+.reader-episode-toolbar .reader-playback__tool--speed {
+  flex: 0 0 auto;
+  padding-inline: 7px;
+}
+
+.live-reader--immersive:not(.live-reader--video) .live-reader__body {
+  padding-top: var(--reader-episode-header-block-height);
+  padding-bottom: var(--reader-episode-toolbar-height);
+  box-sizing: border-box;
+}
+
+.live-reader--immersive.live-reader--reader-sheet-open .live-reader__body {
+  padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+}
+
+.live-reader--immersive.live-reader--chrome-hidden .live-reader__body {
+  padding-top: max(8px, env(safe-area-inset-top, 0px));
+}
+
+.live-reader--immersive.live-reader--chrome-hidden:not(.live-reader--auto-scroll) .live-reader__body {
+  padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+}
+
+.live-reader--immersive .live-reader__body > .novel-reader-content {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: clip;
+  padding:
+    8px
+    max(16px, env(safe-area-inset-right, 0px), env(safe-area-inset-left, 0px))
+    12px;
+  margin: 0;
+}
+
+.live-reader--immersive .live-reader__body > .live-reader-pages {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: clip;
+  padding:
+    4px
+    max(0px, env(safe-area-inset-right, 0px), env(safe-area-inset-left, 0px))
+    0;
+  margin: 0;
+}
+
+.live-reader--immersive .live-reader__body > .novel-reader-content > p {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+.live-reader--immersive .live-reader-pages__page,
+.live-reader--immersive .live-reader-pages__image,
+.live-reader--immersive .live-reader-pages__page img {
+  max-width: 100%;
+}
+
+.live-reader--immersive .chapter-end {
+  padding: 24px max(16px, env(safe-area-inset-right, 0px), env(safe-area-inset-left, 0px)) 8px;
+}
+
+.live-reader--immersive > .pull-to-refresh {
+  top: calc(env(safe-area-inset-top, 0px) + var(--reader-episode-header-block-height, 62px) + 2px);
+  z-index: 18;
+}
+
+.live-reader--immersive.live-reader--chrome-hidden .live-reader__body > .novel-reader-content {
+  padding-top: 8px;
+}
+
+.live-reader--immersive.live-reader--chrome-hidden .live-reader__body > .live-reader-pages {
+  padding-top: 4px;
+}
+
+@media (max-width: 380px) {
+  .reader-episode-toolbar__surface {
+    padding-inline: 10px;
+  }
+
+  .reader-episode-toolbar .reader-playback__actions--dock {
+    min-height: 44px;
+  }
+
+  .reader-episode-toolbar .reader-playback__nav {
+    width: 36px;
+    height: 36px;
+    min-height: 36px;
+    flex-basis: 36px;
+  }
+
+  .reader-episode-toolbar .reader-playback__play--dock {
+    flex-basis: 40px;
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+  }
+
+  .reader-episode-toolbar .reader-playback__transport {
+    gap: 8px;
+    height: 40px;
+  }
+
+  .reader-episode-toolbar .reader-playback__tools {
+    gap: 4px;
+    max-width: min(48%, 118px);
+  }
+
+  .reader-episode-toolbar .reader-playback__transport {
+    gap: 6px;
+  }
+
+  .reader-episode-toolbar .reader-playback__tool {
+    height: 34px;
+    padding-inline: 7px;
+    gap: 3px;
+  }
+}
+
+@media (max-width: 340px) {
+  .reader-episode-toolbar .reader-playback__tool--speed span {
+    display: none;
+  }
+
+  .reader-episode-toolbar .reader-playback__tool--speed {
+    width: 34px;
+    min-width: 34px;
+    padding: 0;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .live-reader--immersive {
+    --reader-episode-toolbar-card: 88px;
+    --reader-episode-toolbar-gap: 6px;
+  }
+
+  .reader-episode-toolbar__surface {
+    padding-block: 8px;
+  }
+
+  .reader-episode-toolbar .reader-playback--toolbar-dock {
+    gap: 6px;
+  }
+
+  .reader-episode-toolbar .reader-playback__play--dock {
+    flex-basis: 38px;
+    width: 38px;
+    height: 38px;
+    min-height: 38px;
+  }
+
+  .reader-episode-toolbar .reader-playback__nav {
+    width: 38px;
+    height: 38px;
+    min-height: 38px;
+    flex-basis: 38px;
+  }
+
+  .reader-episode-toolbar .reader-playback__transport {
+    height: 38px;
+  }
+}

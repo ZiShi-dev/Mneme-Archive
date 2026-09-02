@@ -3,6 +3,8 @@ services:
     image: budtmo/docker-android:emulator_11.0
     container_name: manhaw-android
     privileged: true
+    devices:
+      - /dev/kvm
     ports:
       - "6080:6080"   # noVNC (navigateur)
       - "5555:5555"   # ADB

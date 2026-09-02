@@ -13,6 +13,6 @@ test("getMeteredNetworkLimits reduces home fetch quotas on metered networks", ()
     assert.equal(limits.homeLatestConcurrency, 1);
   } else {
     assert.equal(limits.homeLatestLimit, 12);
-    assert.equal(limits.homeLatestConcurrency, 3);
+    assert.equal(limits.homeLatestConcurrency, 4);
   }
 });

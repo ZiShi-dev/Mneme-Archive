@@ -1,7 +1,6 @@
 import { DEFAULT_APP_SETTINGS, PRELOAD_PAGES_MAX, PRELOAD_PAGES_MIN } from "./defaults.js";
-import { normalizeCoflixBaseUrl } from "./coflixBaseUrl.js";
 import { getDefaultFlareSolverrUrl, normalizeFlareSolverrUrl } from "./flareSolverrUrl.js";
-import { getEffectiveSourceBaseUrl, normalizeSourceBaseUrlOverrides } from "./sourceBaseUrls.js";
+import { normalizeSourceBaseUrlOverrides } from "./sourceBaseUrls.js";
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -16,9 +15,7 @@ export function normalizeSettings(raw) {
   const parsedPoll = Number(raw.followPollMinutes);
   const parsedBackgroundInterval = Number(raw.backgroundIntervalMinutes);
 
-  const sourceBaseUrls = normalizeSourceBaseUrlOverrides(raw.sourceBaseUrls, {
-    legacyCoflixBaseUrl: raw.coflixBaseUrl,
-  });
+  const sourceBaseUrls = normalizeSourceBaseUrlOverrides(raw.sourceBaseUrls);
 
   return {
     ...DEFAULT_APP_SETTINGS,
@@ -45,7 +42,6 @@ export function normalizeSettings(raw) {
       120,
     ),
     sourceBaseUrls,
-    coflixBaseUrl: getEffectiveSourceBaseUrl("coflix", sourceBaseUrls) || normalizeCoflixBaseUrl(raw.coflixBaseUrl),
     flareSolverrUrl: normalizeFlareSolverrUrl(raw.flareSolverrUrl, {
       fallback: getDefaultFlareSolverrUrl(),
     }),

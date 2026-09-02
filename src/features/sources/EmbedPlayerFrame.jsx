@@ -37,7 +37,6 @@ export function EmbedPlayerFrame({
       className={className}
       {...(sandbox ? { sandbox } : {})}
       allow={resolveEmbedAllow(src)}
-      allowFullScreen
       referrerPolicy={resolveEmbedReferrerPolicy(src)}
       loading="eager"
     />

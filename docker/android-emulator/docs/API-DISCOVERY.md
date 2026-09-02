@@ -9,7 +9,35 @@
 
 **Note :** le domaine `api.novels-app.com` ne résout plus (NXDOMAIN). L’API live utilisée par Sky Novel est `http://62.171.141.197:5007` (embarquée dans `libapp.so`).
 
-**Chapitres 51+ (août 2026) :** `GET /novels/{novelId}/chapters/{n}` avec headers `x-app-version: 10.0.0` (minimum) et `x-app-package: com.myapp.novels_sky`. Toute version `< 10.0.0` renvoie HTTP 426 `forceUpdate`.
+**Chapitres 51+ (sept. 2026, capture Packet Capture Pro) :** aucune auth JWT. Headers exacts de l’app :
+
+```http
+GET /novels/{novelId}/chapters/{n} HTTP/1.1
+user-agent: Dart/3.9 (dart:io)
+content-type: application/json
+x-app-version: 10
+accept-encoding: gzip
+host: 62.171.141.197:5007
+```
+
+- `x-app-version: 10` — **pas** `10.0.0` (sinon `403 غير مصرح`)
+- `user-agent: Dart/3.9 (dart:io)` — **pas** `okhttp/4.12.0`
+- Pas de `Authorization`, `deviceId`, ni `x-app-package` sur les lectures de chapitre
+
+Auth (`/auth/register`, JWT, `/push/register`) sert aux comptes utilisateur, pas à la lecture publique des chapitres.
+
+Script de sonde : `scripts/probe-skynovel-auth.mjs`
+
+### Capturer le trafic HTTP clair (téléphone réel)
+
+Le proxy HTTP global Android **ne capture pas** `http://62.171.141.197:5007` (HTTP direct). Utiliser une app VPN locale :
+
+1. Installer **Packet Capture** ou **HttpCanary** sur le POCO
+2. Lancer la capture, ouvrir Sky Novel, lire le chapitre **51**
+3. Exporter la requête vers `62.171.141.197:5007` (headers complets)
+4. Coller le résultat ou définir `SKYNOVEL_AUTH_TOKEN` / `SKYNOVEL_BUILD_SIGNATURE` dans l’env serveur Manhaw
+
+Après capture MITM : `adb shell settings put global http_proxy :0` pour désactiver le proxy.
 
 ## Endpoints Realm Novel (libapp.so)
 

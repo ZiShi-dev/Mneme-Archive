@@ -275,7 +275,7 @@ html[dir="ltr"] {
   --moon-white: var(--text);
   --shadow: 0 22px 50px rgba(0, 0, 0, .38);
   --radius-control: 14px;
-  --bottom-nav-bg: color-mix(in srgb, var(--surface) 92%, transparent);
+  --bottom-nav-bg: var(--surface-raised);
   --bottom-nav-border: color-mix(in srgb, var(--border) 60%, transparent);
   --bottom-nav-shadow: 0 -14px 40px color-mix(in srgb, #000 35%, transparent);
   --bottom-nav-inactive: color-mix(in srgb, var(--sumi-muted) 85%, var(--sumi));

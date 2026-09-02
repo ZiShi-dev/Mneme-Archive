@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { configureFlareSolverr, getFlareSolverrConfig } from "../lib/flareSolverrConfig.js";
-import { fetchHtmlViaFlareSolverr, isFlareProxyUrl, requireFlareSolverrHtml, tryFlareSolverrHtml } from "../lib/flareSolverr.js";
+import { fetchHtmlViaFlareSolverr, fetchImageViaFlareSolverr, isFlareProxyUrl, requireFlareSolverrHtml, tryFlareSolverrHtml } from "../lib/flareSolverr.js";
 import {
   BUILTIN_FLARESOLVERR_URL,
   getDefaultFlareSolverrUrl,
@@ -160,7 +160,7 @@ test("fetchHtmlViaFlareSolverr ne retente pas quand l'IP serveur est bannie", as
 
 test("fetchHtmlViaFlareSolverr rejects HTML from another host", async () => {
   await assert.rejects(
-    () => fetchHtmlViaFlareSolverr("https://arabshentai.com/manga/x/", {
+    () => fetchHtmlViaFlareSolverr("https://novelsparadise.site/series/x/", {
       baseUrl: "https://nightnovelapp.tech/api/public/flare",
       fetchImpl: async () => ({
         ok: true,
@@ -255,6 +255,36 @@ test("fetchHtmlViaFlareSolverr inlines chapter images from the proxy", async () 
   assert.match(html, /data:image\/jpeg;base64,/);
 });
 
+test("fetchImageViaFlareSolverr loads cover via proxy image endpoint", async () => {
+  configureFlareSolverr(() => ({ baseUrl: "https://nightnovelapp.tech/api/public/flare" }));
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options) => {
+    assert.equal(url, "https://nightnovelapp.tech/api/public/flare/image");
+    assert.deepEqual(JSON.parse(options.body), {
+      url: "https://mangalik.net/wp-content/uploads/2026/05/cover.webp",
+    });
+    return {
+      ok: true,
+      async text() {
+        return JSON.stringify({
+          success: true,
+          contentType: "image/webp",
+          base64: Buffer.from("cover").toString("base64"),
+        });
+      },
+    };
+  };
+  try {
+    const result = await fetchImageViaFlareSolverr("https://mangalik.net/wp-content/uploads/2026/05/cover.webp");
+    assert.equal(result.kind, "image");
+    assert.equal(result.contentType, "image/webp");
+    assert.equal(Buffer.from(result.buffer).toString(), "cover");
+  } finally {
+    globalThis.fetch = originalFetch;
+    configureFlareSolverr(() => null);
+  }
+});
+
 test("tryFlareSolverrHtml returns null when not configured", async () => {
   configureFlareSolverr(() => null);
   const html = await tryFlareSolverrHtml("https://example.com/");
@@ -294,7 +324,7 @@ test("tryFlareSolverrHtml uses configured base URL", async () => {
 test("fetchHtmlViaFlareSolverr maps Chrome tab crashes without retry storm", async () => {
   let calls = 0;
   await assert.rejects(
-    () => fetchHtmlViaFlareSolverr("https://arabshentai.com/manga/x/", {
+    () => fetchHtmlViaFlareSolverr("https://novelsparadise.site/series/x/", {
       baseUrl: "https://nightnovelapp.tech/api/public/flare",
       fetchImpl: async () => {
         calls += 1;
@@ -348,4 +378,39 @@ test("fetchHtmlViaFlareSolverr serializes concurrent requests", async () => {
     }),
   ]);
   assert.equal(peak, 1);
+});
+
+test("skipFlareSolverrFallback avoids FlareSolverr on upstream 403", async () => {
+  const { createCachedHtmlFetcher, responseCache } = await import("../lib/httpUtils.js");
+  configureFlareSolverr(() => ({ baseUrl: "http://127.0.0.1:8191" }));
+  responseCache.clear();
+  let flareCalls = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    if (String(url).includes("8191")) {
+      flareCalls += 1;
+      throw new Error("FlareSolverr should not run");
+    }
+    return {
+      ok: false,
+      status: 403,
+      async text() {
+        return "blocked";
+      },
+    };
+  };
+  const fetchHtml = createCachedHtmlFetcher({
+    ttlMs: 1000,
+    headers: {},
+    buildError: (status) => `upstream ${status || "sans réponse"}`,
+    skipFlareSolverrFallback: true,
+  });
+  try {
+    await assert.rejects(() => fetchHtml("https://www.wiflix.tv/watch/demo"), /upstream 403/);
+    assert.equal(flareCalls, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+    configureFlareSolverr(() => null);
+    responseCache.clear();
+  }
 });

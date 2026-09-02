@@ -27,6 +27,7 @@ export function getMediaPresentation(mediaType) {
       continueAction: t("media.continueWatch"),
       watchedToday: t("media.watchedToday"),
       lastUnitComplete: isMovie ? t("media.lastMovieDone") : t("media.lastEpisodeDone"),
+      startAction: isMovie ? t("media.watchMovie") : t("media.readFirstEpisode"),
       watchLatest: isMovie ? t("media.watchMovie") : t("media.watchEpisode"),
       watchFromLatest: t("media.fromLatest"),
       orWatchLatest: t("media.orFromLatest"),
@@ -61,6 +62,7 @@ export function getMediaPresentation(mediaType) {
       continueAction: t("media.continueRead"),
       watchedToday: t("media.readToday"),
       lastUnitComplete: t("media.lastChapterDone"),
+      startAction: t("media.readFirstChapter"),
       watchLatest: t("media.readChapter"),
       watchFromLatest: t("media.fromLatest"),
       orWatchLatest: t("media.orFromLatest"),
@@ -94,6 +96,7 @@ export function getMediaPresentation(mediaType) {
     continueAction: t("media.continueRead"),
     watchedToday: t("media.readToday"),
     lastUnitComplete: t("media.lastChapterDone"),
+    startAction: t("media.readFirstChapter"),
     watchLatest: t("media.readChapter"),
     watchFromLatest: t("media.fromLatest"),
     orWatchLatest: t("media.orFromLatest"),
@@ -115,8 +118,58 @@ export function formatEpisodeHeaderLabel(chapterName, unitLabel = "") {
   const name = String(chapterName || "").trim();
   const unit = String(unitLabel || t("media.theEpisode")).trim();
   if (!name) return unit;
-  if (new RegExp(`^${unit}\\s+`, "i").test(name)) return name;
+  if (new RegExp(`^${escapeRegExp(unit)}\\s+`, "i").test(name)) return name;
   return `${unit} ${name}`;
+}
+
+function chapterRawLabel(chapter) {
+  if (chapter == null) return "";
+  if (typeof chapter === "object") {
+    return String(chapter.name || chapter.number || "").trim();
+  }
+  return String(chapter).trim();
+}
+
+/** Libellé épisode partagé entre l'en-tête vidéo et la barre de navigation. */
+export function formatVideoChapterNavLabel(chapter, unitLabel = "") {
+  const name = chapterRawLabel(chapter);
+  const number = typeof chapter === "object" ? String(chapter?.number || "").trim() : "";
+  const unit = String(unitLabel || t("media.theEpisode")).trim();
+  if (!name) return formatEpisodeHeaderLabel(number, unit);
+
+  const titledEpisode = name.match(/^(\d+(?:\.\d+)?)\s*·\s*(.+)$/);
+  if (titledEpisode) {
+    const episodeLabel = formatEpisodeHeaderLabel(titledEpisode[1], unit);
+    return `${episodeLabel} · ${titledEpisode[2].trim()}`;
+  }
+
+  if (/^\d+(?:\.\d+)?$/.test(name) || (number && name === number)) {
+    return formatEpisodeHeaderLabel(name, unit);
+  }
+
+  if (new RegExp(`^${escapeRegExp(unit)}\\s`, "i").test(name)) return name;
+  return name;
+}
+
+export function formatChapterHeaderLabel(chapter, unitLabel = "") {
+  const name = chapterRawLabel(chapter);
+  const unit = String(unitLabel || t("media.theChapter")).trim();
+  if (!name) return unit;
+  if (name.includes(unit) || new RegExp(`^${escapeRegExp(unit)}\\s+`, "i").test(name)) return name;
+  if (/^(الفصل|chapter|chapitre|فصل)\s/i.test(name)) return name;
+  if (/^\d+(?:\.\d+)?$/.test(name)) return `${unit} ${name}`;
+  return name;
+}
+
+function escapeRegExp(value = "") {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export function splitChapterHeaderLabel(label = "") {
+  const text = String(label || "").trim();
+  const match = text.match(/^(.+?)\s+(\d+(?:\.\d+)?)$/);
+  if (!match) return null;
+  return { prefix: match[1], number: match[2] };
 }
 
 function resolveStreamSourceMode(source = {}, data = {}) {

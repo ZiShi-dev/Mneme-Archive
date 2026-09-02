@@ -3,7 +3,10 @@ import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { useI18n } from "../../i18n/I18nProvider";
 
 export function CatalogCarouselNav({ page, hasMore, loadingMore, error, onPrevious, onNext, onGoToPage }) {
-  const { t } = useI18n();
+  const { t, dir } = useI18n();
+  const rtl = dir === "rtl";
+  const PreviousIcon = rtl ? ChevronRight : ChevronLeft;
+  const NextIcon = rtl ? ChevronLeft : ChevronRight;
   const [open, setOpen] = useState(false);
   const [draftPage, setDraftPage] = useState(String(page));
 
@@ -38,7 +41,7 @@ export function CatalogCarouselNav({ page, hasMore, loadingMore, error, onPrevio
             disabled={page === 1 || loadingMore}
             aria-label={t("common.previous")}
           >
-            <ChevronRight size={16} />
+            <PreviousIcon size={16} />
           </button>
 
           <button
@@ -58,7 +61,7 @@ export function CatalogCarouselNav({ page, hasMore, loadingMore, error, onPrevio
             disabled={!hasMore || loadingMore}
             aria-label={t("common.next")}
           >
-            <ChevronLeft size={16} />
+            <NextIcon size={16} />
           </button>
 
           <span className="catalog-carousel-nav__divider" aria-hidden="true" />

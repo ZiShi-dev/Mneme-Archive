@@ -32,6 +32,25 @@ function getPickerMeta(t) {
   };
 }
 
+function CatalogFiltersSkeleton() {
+  const { t } = useI18n();
+  return (
+    <div className="catalog-filters-skeleton" aria-busy="true" aria-live="polite" aria-label={t("sources.loadingFilters")}>
+      <div className="catalog-filters-skeleton__head">
+        <span className="catalog-filters-skeleton__icon" aria-hidden="true">
+          <LayoutGrid size={14} />
+        </span>
+        <span className="catalog-filters-skeleton__title">{t("sources.filter")}</span>
+      </div>
+      <div className="catalog-filters-skeleton__chips" aria-hidden="true">
+        <span className="catalog-filters-skeleton__chip catalog-filters-skeleton__chip--genre" />
+        <span className="catalog-filters-skeleton__chip catalog-filters-skeleton__chip--tag" />
+      </div>
+      <p className="catalog-filters-skeleton__hint">{t("sources.loadingFilters")}</p>
+    </div>
+  );
+}
+
 export function CatalogFilters({
   categories = [],
   tags = [],
@@ -64,9 +83,7 @@ export function CatalogFilters({
 
   const localizedKinds = useMemo(() => localizeCatalogKinds(kinds), [kinds, t]);
   const hasKinds = localizedKinds.length > 0;
-  const showTaxonomyBar = categories.length > 0
-    || tags.length > 0
-    || (loading && !hasKinds && !showAudioFilter);
+  const showTaxonomyBar = categories.length > 0 || tags.length > 0;
 
   const selectedKindSlug = useMemo(() => {
     if (!localizedKinds.length) return "";
@@ -93,7 +110,7 @@ export function CatalogFilters({
     : Boolean(selected) && selected.slug !== "all";
 
   if (loading && !hasKinds && !showAudioFilter && !showTaxonomyBar) {
-    return <ChipFilterBar label={t("sources.filter")} loading ariaLabel={t("sources.loadingFilters")} />;
+    return <CatalogFiltersSkeleton />;
   }
 
   if (!showTaxonomyBar && !hasKinds && !showAudioFilter) return null;
@@ -193,7 +210,7 @@ export function CatalogFilters({
       )}
       {showTaxonomyBar && (
       <ChipFilterBar
-        className="catalog-taxonomy-filters"
+        className="catalog-taxonomy-filters catalog-taxonomy-filters--ready"
         label={t("sources.filter")}
         role="group"
         ariaLabel={t("sources.catalogFilters")}
