@@ -11,6 +11,7 @@ import { RemoteCover, SEARCH_RESULTS_PAGE_SIZE, SearchResultsList, SearchResults
 import { contentTypes, getItemType } from "../features/sources/contentTypes";
 import { pickBestCover } from "../features/sources/coverDisplay";
 import { fetchSourceDetails, peekSourceDetails } from "../features/sources/sourceApi";
+import { allowsSpeculativePrefetch } from "../lib/platform/dataSaver.js";
 import { SourceScopeBar } from "../components/sources/SourceScopeBar";
 import { sourceSupportsMediaType } from "../lib/unifiedSearch";
 import { useUnifiedSearch } from "../hooks/useUnifiedSearch";
@@ -34,7 +35,7 @@ function isVisibleUpdateType(mediaType) {
 }
 
 function resolveFavoriteCover(item) {
-  const cached = item?.sourceId && item?.url ? peekSourceDetails(item.sourceId, item.url) : null;
+  const cached = item?.sourceId && item?.url ? peekSourceDetails(item.sourceId, item.url, item) : null;
   return pickBestCover(item?.cover, cached?.cover);
 }
 
@@ -132,7 +133,8 @@ export function LibraryScreen({ favorites, liveFavorites, toggleFavorite, toggle
 
   function prefetchFavorite(item) {
     if (!item?.url || !item.sourceId) return;
-    void fetchSourceDetails(item.sourceId, item.url);
+    if (!allowsSpeculativePrefetch()) return;
+    void fetchSourceDetails(item.sourceId, item.url, item);
   }
 
   return (

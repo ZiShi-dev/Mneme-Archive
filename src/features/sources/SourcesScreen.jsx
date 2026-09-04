@@ -9,8 +9,8 @@ import { kvSet } from "../../lib/storage/initStorage";
 import { contentTypes } from "./contentTypes";
 import { Header } from "../../components/layout/Header";
 import { applyRecentChapterFields, recentChaptersFromList } from "../../../server/lib/catalogChapters.js";
-import { buildSearchPath, clearSourceApiCache, fetchCatalog, fetchSourceDetails, fetchSourceFilters, formatSourceError, peekSourceFilters, peekSourceSearch, searchSource } from "./sourceApi";
-import { usesWebViewSource, usesFlareDirectSource } from "../../lib/platform/webViewSources.js";
+import { buildSearchPath, clearSourceApiCache, fetchCatalog, fetchSourceDetails, fetchSourceFilters, formatSourceError, peekCatalog, peekSourceFilters, peekSourceSearch, searchSource } from "./sourceApi";
+import { shouldDeferCatalogFilters, usesWebViewSource, usesFlareDirectSource } from "../../lib/platform/webViewSources.js";
 import { CatalogCard, CatalogGridSkeleton } from "./CatalogCard";
 import { filterItemsByAudioLanguage, sourceSupportsAudioFilter } from "./audioLanguage";
 import { CatalogFilters } from "./CatalogFilters";
@@ -36,6 +36,7 @@ import { getCatalogSkeletonCount } from "../../lib/catalog/catalogLayout";
 import { resolveCatalogSwipeAction } from "../../lib/catalog/catalogSwipe.js";
 import { scrollAppToElement } from "../../lib/platform/scrollRoot";
 import { cancelCloudflarePending } from "../../lib/platform/mangalikNative.js";
+import { allowsSpeculativePrefetch, getReaderImageBudget } from "../../lib/platform/dataSaver.js";
 import { useAppPullRefreshHandler } from "../../hooks/useAppPullRefreshHandler";
 
 import { CatalogCarouselNav } from "./CatalogCarouselNav";
@@ -87,6 +88,7 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
   const [filtersLoading, setFiltersLoading] = useState(
     !hasInitialFilters && effectiveMode === "full" && activeSource.enabled !== false,
   );
+  const [catalogSourceId, setCatalogSourceId] = useState(() => (boot.items.length ? activeSource.id : ""));
   const [selectedFilter, setSelectedFilter] = useState(boot.filter);
   const [selectedKind, setSelectedKind] = useState(boot.kind);
   const [selectedAudioFilter, setSelectedAudioFilter] = useState(boot.audioFilter || "all");
@@ -242,13 +244,27 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
         setItems(cachedSearch.items);
         setHasMore(Boolean(cachedSearch.hasMore));
         setStatus("ready");
+        setCatalogSourceId(sourceId);
       } else {
         setStatus("loading");
         setError("");
       }
     } else if (!silent) {
-      setStatus("loading");
-      setError("");
+      const cachedCatalog = peekCatalog(sourceId, {
+        page: pageToLoad,
+        ...filterRequestParams(getActiveFilter(kind, taxonomy)),
+      });
+      const snapshot = readCatalogSnapshot(sourceId, taxonomy, pageToLoad, catalogQuery, kind);
+      const warmItems = cachedCatalog?.items?.length ? cachedCatalog.items : snapshot?.items;
+      if (warmItems?.length) {
+        setItems(warmItems);
+        setHasMore(Boolean(cachedCatalog?.hasMore ?? snapshot?.hasMore));
+        setStatus("ready");
+        setCatalogSourceId(sourceId);
+      } else {
+        setStatus("loading");
+        setError("");
+      }
     }
     if (searchActive) setSearching(true);
 
@@ -271,6 +287,24 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
       setHasMore(nextHasMore);
       rememberCatalogView(sourceId, taxonomy, kind, catalogQuery, pageToLoad, nextHasMore, nextItems);
       setStatus("ready");
+      setCatalogSourceId(sourceId);
+
+      if (nextHasMore && pageToLoad === 1 && !searchActive && !controller.signal.aborted) {
+        void fetchCatalogPage(sourceId, kind, taxonomy, pageToLoad + 1)
+          .then((nextPageData) => {
+            if (!mountedRef.current || !nextPageData?.items?.length) return;
+            writeCatalogSnapshot(
+              sourceId,
+              taxonomy,
+              pageToLoad + 1,
+              nextPageData.items,
+              Boolean(nextPageData.hasMore),
+              catalogQuery,
+              kind,
+            );
+          })
+          .catch(() => {});
+      }
 
       if (notify) {
         if (!nextItems.length) {
@@ -291,6 +325,7 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
         const message = formatSourceError(reason, fallback);
         setError(message);
         setStatus("error");
+        setCatalogSourceId(sourceId);
         if (notify) pushToast({ type: "error", message });
       }
     } finally {
@@ -456,12 +491,14 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
     if (cached?.items?.length) {
       setItems(cached.items);
       setStatus("ready");
+      setCatalogSourceId(activeSource.id);
       const stale = Date.now() - (cached.at || 0) > CATALOG_SNAPSHOT_MAX_AGE_MS;
       if (stale) void refreshCatalog({ filter: savedFilter, kind: savedKind, catalogQuery: savedQuery, page: savedPage, silent: true });
       return;
     }
 
     setItems([]);
+    setCatalogSourceId("");
     void refreshCatalog({ filter: savedFilter, kind: savedKind, catalogQuery: savedQuery, page: savedPage });
   }, [activeSource.id, activeSource.enabled, effectiveMode]);
 
@@ -499,6 +536,10 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
       setFiltersLoading(true);
     }
 
+    if (shouldDeferCatalogFilters(activeSource.id) && catalogSourceId !== activeSource.id) {
+      return () => { cancelled = true; };
+    }
+
     fetchSourceFilters(activeSource.id).then((data) => {
       if (cancelled) return;
       applyFilters(data);
@@ -512,7 +553,7 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
     });
 
     return () => { cancelled = true; };
-  }, [activeSource.enabled, activeSource.id, effectiveMode, setCatalogState]);
+  }, [activeSource.enabled, activeSource.id, catalogSourceId, effectiveMode, setCatalogState]);
 
   useEffect(() => () => {
     if (queryTimer.current) clearTimeout(queryTimer.current);
@@ -528,7 +569,7 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
     Promise.all(selectedItems.map(async (item) => {
       if (item.recentChapters?.length >= 2) return item;
       try {
-        const details = await fetchSourceDetails(activeSource.id, item.url);
+        const details = await fetchSourceDetails(activeSource.id, item.url, item);
         return { ...item, ...applyRecentChapterFields(item, recentChaptersFromList(details.chapters, undefined, { sourceId: activeSource.id })) };
       } catch {
         return item;
@@ -570,7 +611,8 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
 
   function prefetchLiveManga(item) {
     if (!item?.url) return;
-    void fetchSourceDetails(activeSource.id, item.url);
+    if (!allowsSpeculativePrefetch()) return;
+    void fetchSourceDetails(activeSource.id, item.url, item);
   }
 
   function applyAudioFilter(nextAudioFilter) {
@@ -672,6 +714,7 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
   const connectingHint = (usesWebViewSource(activeSource.id) || usesFlareDirectSource(activeSource.id))
     ? t("sources.connectingCloudflare")
     : t("sources.connecting");
+  const coverBudget = getReaderImageBudget();
 
   return (
     <div className="screen screen--discover">
@@ -747,7 +790,18 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
             }}
             aria-busy={catalogPaging}
           >
-            <div className="live-manga-grid">{visible.map((item) => <CatalogCard key={item.url} item={item} profile={profile} onOpenDetails={handleOpenLiveManga} onPrefetchDetails={prefetchLiveManga} onOpenChapter={openLiveChapter} />)}</div>
+            <div className="live-manga-grid">{visible.map((item, index) => (
+              <CatalogCard
+                key={item.url}
+                item={item}
+                profile={profile}
+                onOpenDetails={handleOpenLiveManga}
+                onPrefetchDetails={prefetchLiveManga}
+                onOpenChapter={openLiveChapter}
+                priority={index < coverBudget.catalogPriorityCount}
+                lazyCover={index >= coverBudget.catalogLazyCoverFrom}
+              />
+            ))}</div>
           </div>
           {!visible.length && !catalogPaging && <div className="empty-state"><Search size={31} /><h2>{effectiveMode === "selected" ? t("sources.noTitlesYet") : t("sources.noResults")}</h2><p>{effectiveMode === "selected" ? t("sources.pickMangaNovels") : t("sources.tryOtherName")}</p>{effectiveMode === "selected" && <button className="button button--primary" onClick={() => navigate("source-management")}>{t("sources.managePicks")}</button>}</div>}
             </>

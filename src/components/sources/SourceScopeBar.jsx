@@ -66,6 +66,7 @@ export function SourceScopeBar({
   sources,
   sourcePreferences,
   onClick,
+  onPointerDown,
   className = "",
   ariaLabel = t("sources.scopeAria"),
 }) {
@@ -81,6 +82,7 @@ export function SourceScopeBar({
       type="button"
       className={`search-scope ${className}`.trim()}
       onClick={onClick}
+      onPointerDown={onPointerDown}
       aria-label={ariaLabel}
     >
       <span className="search-scope__avatars" ref={avatarsRef}>

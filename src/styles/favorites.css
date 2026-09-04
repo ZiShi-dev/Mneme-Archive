@@ -5,6 +5,12 @@
   --favorite-type-anime: var(--anime);
   --favorite-type-movie: var(--film);
   --favorite-type-series: color-mix(in srgb, var(--film) 58%, var(--brand));
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--content-max-width, 100%);
+  margin-inline: auto;
+  min-width: 0;
+  overflow-x: clip;
   padding-bottom: 112px;
 }
 

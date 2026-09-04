@@ -286,15 +286,26 @@ export async function resolveCachedImage(sourceId, remoteUrl, fetchImage) {
   const contentType = validateFetchedImage(fetched.contentType, buffer.byteLength);
 
   revokeObjectUrl(cacheKey);
-  if (isNativeStorage()) {
-    return writeNativeCache(cacheKey, sourceId, remoteUrl, buffer, contentType);
-  }
-  if (typeof indexedDB !== "undefined") {
-    return writeWebCache(cacheKey, sourceId, remoteUrl, buffer, contentType);
-  }
-
   const objectUrl = URL.createObjectURL(new Blob([buffer], { type: contentType }));
   memoryObjectUrls.set(cacheKey, objectUrl);
+
+  if (isNativeStorage()) {
+    void writeNativeCache(cacheKey, sourceId, remoteUrl, buffer, contentType).catch(() => {});
+    return objectUrl;
+  }
+  if (typeof indexedDB !== "undefined") {
+    void writeWebCacheEntry({
+      cacheKey,
+      sourceId,
+      remoteUrl,
+      blob: new Blob([buffer], { type: contentType }),
+      contentType,
+      sizeBytes: buffer.byteLength,
+      fetchedAt: Date.now(),
+    }).then(() => evictWebIfNeeded()).catch(() => {});
+    return objectUrl;
+  }
+
   return objectUrl;
 }
 

@@ -58,6 +58,8 @@
   --safe-left: max(env(safe-area-inset-left, 0px), var(--app-safe-area-left));
   --safe-right: max(env(safe-area-inset-right, 0px), var(--app-safe-area-right));
   --bottom-nav-height: 80px;
+  --nav-dock: bottom;
+  --screen-top-padding: 0px;
   --screen-bottom-padding: calc(var(--bottom-nav-height) + 24px + var(--safe-bottom));
   --bottom-nav-bg: color-mix(in srgb, var(--paper) 88%, transparent);
   --bottom-nav-border: color-mix(in srgb, var(--line) 72%, transparent);
@@ -71,6 +73,11 @@
   --content-padding-top: 8px;
   --content-padding-bottom: 24px;
   --page-header-padding-x: 22px;
+  /* Colonne fluide — largeurs alignées sur les familles d’écrans 2026, pas un appareil. */
+  --app-frame-max: 430px;
+  --content-max-width: 100%;
+  --details-max-width: 100%;
+  --reader-max-width: 100%;
   --sheet-height: min(94dvh, calc(100dvh - var(--safe-top)));
   --sheet-width: 100%;
   --sheet-max-width-desktop: min(92vw, 680px);
@@ -409,4 +416,117 @@ html[dir="ltr"] {
   --bottom-nav-halo: color-mix(in srgb, var(--brand) 68%, var(--surface));
   --bottom-nav-halo-glow: color-mix(in srgb, var(--brand) 32%, transparent);
   --bottom-nav-active: var(--brand);
+}
+
+/* ── Familles d’écrans (contenu, pas un modèle) ──
+   320–359 compact · 360–479 téléphone · 480–639 grand téléphone
+   640–767 paysage / petite tablette · 768–1023 tablette
+   1024–1279 portable · 1280–1535 bureau · 1536+ large / fold ouvert */
+@media (max-width: 359px) {
+  :root {
+    --content-padding-x: 14px;
+    --page-header-padding-x: 14px;
+    --app-frame-max: 100%;
+  }
+}
+
+@media (min-width: 480px) {
+  :root {
+    --content-padding-x: 20px;
+    --page-header-padding-x: 20px;
+  }
+}
+
+@media (min-width: 640px) {
+  :root {
+    --content-max-width: min(100%, 480px);
+    --details-max-width: min(100%, 560px);
+    --reader-max-width: min(100%, 520px);
+    --app-frame-max: 100%;
+  }
+}
+
+@media (min-width: 768px) {
+  :root {
+    --content-padding-x: 24px;
+    --page-header-padding-x: 24px;
+    --content-max-width: min(100%, 560px);
+    --details-max-width: min(100%, 680px);
+    --reader-max-width: min(100%, 600px);
+    --app-frame-max: 100%;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --content-padding-x: 28px;
+    --page-header-padding-x: 28px;
+    --content-max-width: min(100%, 600px);
+    --details-max-width: min(100%, 860px);
+    --reader-max-width: min(100%, 720px);
+    --app-frame-max: 100%;
+  }
+}
+
+@media (min-width: 1280px) {
+  :root {
+    --content-max-width: min(100%, 640px);
+    --details-max-width: min(100%, 960px);
+    --reader-max-width: min(100%, 800px);
+    --app-frame-max: 100%;
+  }
+}
+
+@media (min-width: 1536px) {
+  :root {
+    --content-max-width: min(100%, 680px);
+    --details-max-width: min(100%, 1040px);
+    --reader-max-width: min(100%, 860px);
+    --app-frame-max: 100%;
+  }
+}
+
+@media (min-width: 1920px) {
+  :root {
+    --content-max-width: min(100%, 720px);
+    --details-max-width: min(100%, 1100px);
+    --reader-max-width: min(100%, 900px);
+    --app-frame-max: 100%;
+  }
+}
+
+/* Téléphone couché : garder une colonne lisible sans écraser la scène */
+@media (orientation: landscape) and (max-height: 520px) {
+  :root {
+    --content-padding-top: 4px;
+    --content-padding-bottom: 16px;
+    --page-header-padding-x: 16px;
+  }
+}
+
+/* Pliable ouvert (deux segments) : rester dans une colonne, pas à cheval sur la charnière */
+@media (horizontal-viewport-segments: 2) {
+  :root {
+    --content-max-width: min(100%, 560px);
+    --details-max-width: min(100%, 640px);
+    --reader-max-width: min(100%, 560px);
+    --app-frame-max: 100%;
+  }
+}
+
+/* Bureau / tablette paysage assez haute : la nav passe au-dessus de la page */
+@media (min-width: 1024px) and (min-height: 700px) {
+  .app-shell:not(.app-shell--desktop):has(.bottom-nav) {
+    --nav-dock: top;
+    --screen-top-padding: calc(var(--bottom-nav-height) + 16px);
+    --screen-bottom-padding: 32px;
+    --bottom-nav-shadow: 0 12px 36px color-mix(in srgb, var(--ink) 10%, transparent);
+  }
+
+  html.native-app:has(.bottom-nav) {
+    --nav-dock: top;
+    --screen-top-padding: calc(var(--bottom-nav-height) + 12px);
+    --screen-bottom-padding: 24px;
+    --bottom-nav-shadow: 0 12px 36px color-mix(in srgb, var(--ink) 12%, transparent);
+  }
 }

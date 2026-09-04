@@ -1,4 +1,4 @@
-const HTML_CACHE_TTL_MS = 4 * 60_000;
+const HTML_CACHE_TTL_MS = 10 * 60_000;
 const htmlMemoryCache = new Map();
 const htmlInFlight = new Map();
 

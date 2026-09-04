@@ -7,6 +7,7 @@ import { t } from "../../i18n/runtime.js";
 import { MAX_SEARCH_QUERY_LENGTH } from "../../../server/lib/queryLimits.js";
 import { Capacitor } from "@capacitor/core";
 import { getRuntimeSettings } from "../../lib/settings/runtimeSettings.js";
+import { allowsSpeculativePrefetch } from "../../lib/platform/dataSaver.js";
 import { getDefaultSourceBaseUrl, getEffectiveSourceBaseUrl } from "../../lib/settings/sourceBaseUrls.js";
 import { FLARE_DIRECT_SOURCE_ID_SET, WEBVIEW_SOURCE_ID_SET } from "../../lib/platform/webViewSources.js";
 import { getKindQueryParam, sourcesWithCapability } from "../../config/sourceCapabilities.js";
@@ -109,14 +110,18 @@ function throwIfAborted(signal) {
   }
 }
 
-async function requestJson(path, fallbackMessage, { ttlMs = 0, signal } = {}) {
+async function requestJson(path, fallbackMessage, { ttlMs = 0, signal, staleMs = 0 } = {}) {
   assertLiveSourcesAvailable();
   throwIfAborted(signal);
   if (ttlMs > 0) {
-    const cached = readJsonCache(path, ttlMs);
-    if (cached) return cached;
+    const cached = readJsonCache(path, ttlMs, { staleMs });
+    if (cached && !isJsonCacheStale(path, ttlMs, staleMs)) return cached;
     const inflight = jsonInFlight.get(path);
     if (inflight) return inflight;
+    if (cached && isJsonCacheStale(path, ttlMs, staleMs)) {
+      void refreshJsonCache(path, fallbackMessage);
+      return cached;
+    }
   }
 
   const pending = (async () => {
@@ -149,22 +154,56 @@ const jsonResponseCache = new Map();
 const jsonInFlight = new Map();
 
 const SEARCH_CACHE_TTL_MS = 120_000;
-const CATALOG_CACHE_TTL_MS = 90_000;
+export const CATALOG_CACHE_TTL_MS = 5 * 60_000;
+const CATALOG_STALE_TTL_MS = 10 * 60_000;
 const DETAILS_CACHE_TTL_MS = 180_000;
 const CHAPTER_CACHE_TTL_MS = 300_000;
 
-function readJsonCache(path, ttlMs) {
+function readJsonCache(path, ttlMs, { staleMs = 0 } = {}) {
   const entry = jsonResponseCache.get(path);
   if (!entry) return null;
-  if (Date.now() - entry.at > ttlMs) {
-    jsonResponseCache.delete(path);
-    return null;
-  }
-  return entry.data;
+  const age = Date.now() - entry.at;
+  if (age <= ttlMs) return entry.data;
+  if (staleMs > 0 && age <= ttlMs + staleMs) return entry.data;
+  jsonResponseCache.delete(path);
+  return null;
+}
+
+function isJsonCacheStale(path, ttlMs, staleMs = 0) {
+  const entry = jsonResponseCache.get(path);
+  if (!entry) return false;
+  const age = Date.now() - entry.at;
+  return age > ttlMs && age <= ttlMs + staleMs;
 }
 
 function writeJsonCache(path, data) {
   jsonResponseCache.set(path, { at: Date.now(), data });
+}
+
+async function refreshJsonCache(path, fallbackMessage) {
+  if (jsonInFlight.has(path)) return;
+  const pending = (async () => {
+    const data = isNative()
+      ? await withTimeout((async () => {
+        if (pathUsesCloudflareNative(path)) await ensureCloudflareNative();
+        const { handleSourceRequest } = await import("../../../server/clientSourceRequest.js");
+        const result = await handleSourceRequest(path);
+        if (!result || result.kind !== "json") throw new Error(fallbackMessage);
+        if (result.status !== 200) throw new Error(result.body.error || fallbackMessage);
+        return result.body;
+      })(), fallbackMessage)
+      : await fetch(path).then((response) => readJson(response, fallbackMessage));
+    writeJsonCache(path, data);
+    return data;
+  })();
+  jsonInFlight.set(path, pending);
+  try {
+    await pending;
+  } catch {
+    // Conserve la copie stale.
+  } finally {
+    jsonInFlight.delete(path);
+  }
 }
 
 export function peekSourceRequest(path, ttlMs) {
@@ -183,10 +222,15 @@ export function clearSourceApiCache(sourceId = "") {
   }
 }
 
-function buildCatalogPath(sourceId, { page = 1, genre = "", tag = "", tagPath = "", filterPath = "", queryParam = "", queryValue = "" } = {}) {
+function buildCatalogPath(sourceId, { page = 1, genre = "", tag = "", tagPath = "", filterPath = "", queryParam = "", queryValue = "", enrich } = {}) {
   const query = new URLSearchParams({ page: String(page) });
   appendCatalogQueryFilters(query, sourceId, { genre, tag, tagPath, filterPath, queryParam, queryValue });
   appendSourceQueryParams(query, sourceId);
+  if (enrich === false || enrich === "0") {
+    query.set("enrich", "0");
+  } else if (isNative() && enrich !== true && enrich !== "1") {
+    query.set("enrich", "0");
+  }
   return `${sourcePath(sourceId, "catalog")}?${query}`;
 }
 
@@ -208,6 +252,7 @@ export function buildSearchPath(sourceId, query, {
 }
 
 const imageUrlCache = new Map();
+const imageInFlight = new Map();
 
 async function fetchImagePayload(sourceId, url) {
   if (!isNative()) {
@@ -263,14 +308,40 @@ export async function resolveSourceImageUrl(sourceId, url) {
   const cacheKey = `${sourceId}:${normalized}`;
   if (imageUrlCache.has(cacheKey)) return imageUrlCache.get(cacheKey);
 
-  const displayUrl = await resolveCachedImage(sourceId, normalized, () => fetchImagePayload(sourceId, normalized));
-  imageUrlCache.set(cacheKey, displayUrl);
-  return displayUrl;
+  const inflight = imageInFlight.get(cacheKey);
+  if (inflight) return inflight;
+
+  const pending = (async () => {
+    const displayUrl = await resolveCachedImage(sourceId, normalized, () => fetchImagePayload(sourceId, normalized));
+    imageUrlCache.set(cacheKey, displayUrl);
+    return displayUrl;
+  })();
+
+  imageInFlight.set(cacheKey, pending);
+  try {
+    return await pending;
+  } finally {
+    imageInFlight.delete(cacheKey);
+  }
 }
 
 export function fetchCatalog(sourceId, { page = 1, genre = "", tag = "", tagPath = "", filterPath = "", queryParam = "", queryValue = "", signal } = {}) {
   const path = buildCatalogPath(sourceId, { page, genre, tag, tagPath, filterPath, queryParam, queryValue });
-  return requestJson(path, t("errors.loadCatalog"), { ttlMs: CATALOG_CACHE_TTL_MS, signal });
+  return requestJson(path, t("errors.loadCatalog"), {
+    ttlMs: CATALOG_CACHE_TTL_MS,
+    staleMs: CATALOG_STALE_TTL_MS,
+    signal,
+  });
+}
+
+export function peekCatalog(sourceId, options = {}) {
+  return peekSourceRequest(buildCatalogPath(sourceId, options), CATALOG_CACHE_TTL_MS);
+}
+
+export function prefetchCatalog(sourceId, options = {}) {
+  if (!sourceId) return Promise.resolve(null);
+  if (options.force !== true && !allowsSpeculativePrefetch()) return Promise.resolve(null);
+  return fetchCatalog(sourceId, { page: 1, ...options }).catch(() => null);
 }
 
 const FILTERS_CACHE_TTL_MS = 300_000;
@@ -318,24 +389,26 @@ export function peekSourceSearch(path) {
   return peekSourceRequest(path, SEARCH_CACHE_TTL_MS);
 }
 
-export function buildDetailsPath(sourceId, url) {
+export function buildDetailsPath(sourceId, url, item = {}) {
   const query = new URLSearchParams({ url });
+  const novelId = Number(item?.novelId || 0);
+  if (sourceId === "galaxynovels" && novelId > 0) query.set("novelId", String(novelId));
   appendSourceQueryParams(query, sourceId);
   return `${sourcePath(sourceId, "manga")}?${query}`;
+}
+
+export function peekSourceDetails(sourceId, url, item = {}) {
+  return peekSourceRequest(buildDetailsPath(sourceId, url, item), DETAILS_CACHE_TTL_MS);
+}
+
+export function fetchSourceDetails(sourceId, url, item = {}) {
+  return requestJson(buildDetailsPath(sourceId, url, item), t("errors.loadDetails"), { ttlMs: DETAILS_CACHE_TTL_MS });
 }
 
 export function buildFollowLatestPath(sourceId, url) {
   const query = new URLSearchParams({ url });
   appendSourceQueryParams(query, sourceId);
   return `${sourcePath(sourceId, "follow-latest")}?${query}`;
-}
-
-export function peekSourceDetails(sourceId, url) {
-  return peekSourceRequest(buildDetailsPath(sourceId, url), DETAILS_CACHE_TTL_MS);
-}
-
-export function fetchSourceDetails(sourceId, url) {
-  return requestJson(buildDetailsPath(sourceId, url), t("errors.loadDetails"), { ttlMs: DETAILS_CACHE_TTL_MS });
 }
 
 export function fetchFollowLatest(sourceId, url) {

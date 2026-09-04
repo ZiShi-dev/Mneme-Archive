@@ -140,7 +140,7 @@ export function useVideoChapterSession({
       : manga.recentChapters;
     if (seed?.length) setChapters(seed);
 
-    const cached = peekSourceDetails(sourceId, manga.url);
+    const cached = peekSourceDetails(sourceId, manga.url, manga);
     if (cached?.chapters?.length) {
       setChapters(cached.chapters);
       return () => { active = false; };
@@ -149,7 +149,7 @@ export function useVideoChapterSession({
       return () => { active = false; };
     }
 
-    fetchSourceDetails(sourceId, manga.url).then((details) => {
+    fetchSourceDetails(sourceId, manga.url, manga).then((details) => {
       if (active && details.chapters?.length) setChapters(details.chapters);
     }).catch(() => {});
     return () => { active = false; };

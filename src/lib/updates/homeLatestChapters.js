@@ -39,8 +39,8 @@ export function collectHomeTrackedItems(followPreferences = {}) {
 }
 
 export async function fetchHomeLatestChapter(item) {
-  const cached = peekSourceDetails(item.sourceId, item.url);
-  const details = cached || await fetchSourceDetails(item.sourceId, item.url);
+  const cached = peekSourceDetails(item.sourceId, item.url, item);
+  const details = cached || await fetchSourceDetails(item.sourceId, item.url, item);
   return buildHomeLatestPayload(item, details);
 }
 
@@ -67,7 +67,7 @@ export function hydrateHomeLatestChapters({
   const results = [];
 
   for (const item of tracked) {
-    const details = peekSourceDetails(item.sourceId, item.url);
+    const details = peekSourceDetails(item.sourceId, item.url, item);
     if (!details) continue;
     const payload = buildHomeLatestPayload(item, details);
     if (!payload.latestChapter) continue;

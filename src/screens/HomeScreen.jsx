@@ -32,6 +32,7 @@ function resolveInitialMediaFilter(readingHistory, liveFavorites) {
 
 export function HomeScreen({
   sources,
+  activeSourceId,
   sourcePreferences,
   readingHistory,
   liveFavorites,
@@ -139,6 +140,7 @@ export function HomeScreen({
           <HomeDiscoverySection
             sources={sources}
             sourcePreferences={sourcePreferences}
+            activeSourceId={activeSourceId}
             onOpenCatalog={() => navigate("sources")}
             onManage={() => navigate("source-management")}
           />

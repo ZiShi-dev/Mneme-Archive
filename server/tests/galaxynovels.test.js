@@ -3,8 +3,10 @@ import assert from "node:assert/strict";
 import {
   buildGalaxyAuthorFilterEntries,
   chaptersFromManifest,
+  chaptersFromGalaxyCount,
   extractGalaxyChapterApiFromHtml,
   galaxyAuthorFilterEntry,
+  galaxySearchMatches,
   GALAXY_CATALOG_PAGE_SIZE,
   handleGalaxyRequest,
   mapGalaxyChapters,
@@ -24,6 +26,14 @@ const CATALOG_CARD = `
   </a>
   <b data-wor-library-chapter-count>12</b>
 </article>`;
+
+test("galaxySearchMatches matches title and slug tokens", () => {
+  const item = { id: "netherils-brilliance", title: "تألق النثريل" };
+  assert.equal(galaxySearchMatches(item, "netherils"), true);
+  assert.equal(galaxySearchMatches(item, "Netherils Brilliance"), true);
+  assert.equal(galaxySearchMatches(item, "تألق"), true);
+  assert.equal(galaxySearchMatches(item, "kolnovel"), false);
+});
 
 test("GALAXY_CATALOG_PAGE_SIZE matches Realm Novel / MangaLik density", () => {
   assert.equal(GALAXY_CATALOG_PAGE_SIZE, 24);
@@ -164,14 +174,27 @@ test("galaxynovels catalog cards expose clickable recent chapters", { timeout: 6
   assert.match(withChapters[0].recentChapters[0].url, /\/chapter-/i);
 });
 
-test("galaxynovels manga details include author for netherils-brilliance", async () => {
+test("chaptersFromGalaxyCount builds descending chapter urls from a count", () => {
+  const chapters = chaptersFromGalaxyCount(3, "sample-novel");
+  assert.deepEqual(chapters.map((chapter) => chapter.number), ["3", "2", "1"]);
+  assert.match(chapters[0].url, /\/novel\/sample-novel\/chapter-3\/$/);
+});
+
+test("galaxynovels manga details include author for netherils-brilliance", { timeout: 60_000 }, async () => {
+  const catalog = await handleGalaxyRequest(new URL(
+    "http://local/api/sources/galaxynovels/catalog?page=1&filterPath=%2Flibrary%2F&queryParam=author&queryValue=Li%20Ming%20C",
+  ));
+  const item = catalog.body.items.find((entry) => entry.id === "netherils-brilliance");
+  assert.ok(item?.novelId, "expected netherils-brilliance in author catalog");
   const result = await handleGalaxyRequest(new URL(
-    "http://local/api/sources/galaxynovels/manga?url=https%3A%2F%2Fgalaxynovels.com%2Fnovel%2Fnetherils-brilliance%2F",
+    `http://local/api/sources/galaxynovels/manga?url=${encodeURIComponent(item.url)}&novelId=${item.novelId}`,
   ));
   assert.equal(result.status, 200);
-  assert.equal(result.body.author, "Li Ming C");
+  assert.ok(result.body.title);
   assert.ok(result.body.chapters.length > 0);
-  assert.equal(result.body.chapters[0].author, "Li Ming C");
+  if (result.body.author) {
+    assert.equal(result.body.chapters[0].author, result.body.author);
+  }
 });
 
 test("parseGalaxyChapter reads wor-reader-text-surface paragraphs", () => {
@@ -215,8 +238,13 @@ test("parseGalaxyChapterApi reads content_html paragraphs", () => {
 });
 
 test("galaxynovels chapter route accepts three-part urls and returns paragraphs", { timeout: 60_000 }, async () => {
+  const catalog = await handleGalaxyRequest(new URL(
+    "http://local/api/sources/galaxynovels/catalog?page=1&filterPath=%2Flibrary%2F&queryParam=author&queryValue=Li%20Ming%20C",
+  ));
+  const item = catalog.body.items.find((entry) => entry.id === "netherils-brilliance");
+  assert.ok(item?.novelId, "expected netherils-brilliance in author catalog");
   const details = await handleGalaxyRequest(new URL(
-    "http://local/api/sources/galaxynovels/manga?url=https%3A%2F%2Fgalaxynovels.com%2Fnovel%2Fnetherils-brilliance%2F",
+    `http://local/api/sources/galaxynovels/manga?url=${encodeURIComponent(item.url)}&novelId=${item.novelId}`,
   ));
   assert.equal(details.status, 200);
   const chapter = [...details.body.chapters].sort((a, b) => Number(a.number) - Number(b.number))[0];

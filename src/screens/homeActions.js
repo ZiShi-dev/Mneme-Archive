@@ -2,6 +2,7 @@ import { fetchSourceDetails } from "../features/sources/sourceApi.js";
 import { resolveBookmarkType } from "../features/sources/contentTypes.js";
 import { isVideoMediaType } from "../features/sources/mediaPresentation.js";
 import { findChapterByRecord } from "../lib/readingProgress.js";
+import { allowsSpeculativePrefetch } from "../lib/platform/dataSaver.js";
 import { liveReaderPrefetchOptions, prefetchReaderChapter } from "../lib/reading/readerChapterCache.js";
 import { isUsableChapterUrl, resolveHomeContinueAction } from "../lib/updates/homeLatestModel.js";
 
@@ -9,7 +10,8 @@ export { liveReaderPrefetchOptions, prefetchReaderChapter } from "../lib/reading
 
 export function prefetchLiveTitle(item, chapter) {
   if (!item?.url || !item.sourceId) return;
-  void fetchSourceDetails(item.sourceId, item.url);
+  if (!allowsSpeculativePrefetch()) return;
+  void fetchSourceDetails(item.sourceId, item.url, item);
   prefetchReaderChapter(item.sourceId, chapter, item);
   if (isVideoMediaType(resolveBookmarkType(item))) {
     void import("../features/sources/LiveVideoPlayer");
@@ -25,7 +27,7 @@ export async function resolveLiveContinueChapter(item, chapter, record) {
     chapterName: chapter?.name ?? record?.chapterName,
   };
 
-  const details = await fetchSourceDetails(item.sourceId, item.url).catch(() => null);
+  const details = await fetchSourceDetails(item.sourceId, item.url, item).catch(() => null);
   const chapters = details?.chapters || item.recentChapters || [];
   const resolved = findChapterByRecord(chapters, lookupRecord);
   if (resolved?.url) return resolved;

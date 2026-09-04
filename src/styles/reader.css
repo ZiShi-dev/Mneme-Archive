@@ -14,7 +14,7 @@
   --reader-chrome-control-bg: rgba(255, 255, 255, 0.06);
   --reader-chrome-control-bg-hover: rgba(255, 255, 255, 0.12);
   width: 100%;
-  max-width: 430px;
+  max-width: var(--reader-max-width, 100%);
   min-height: 100dvh;
   margin-inline: auto;
   background: var(--reader-black, #05060a);
@@ -24,7 +24,7 @@
 
 .native-app .reader,
 .native-app .live-reader {
-  max-width: 100%;
+  max-width: var(--reader-max-width, 100%);
   overflow-x: hidden;
   --reader-safe-top: var(--safe-top, env(safe-area-inset-top, 0px));
   --reader-safe-bottom: var(--safe-bottom, env(safe-area-inset-bottom, 0px));
@@ -33,16 +33,25 @@
 }
 
 .desktop-app .reader.live-reader--watch,
-.desktop-app .live-reader.live-reader--watch {
+.desktop-app .live-reader.live-reader--watch,
+.live-reader--video,
+.live-reader--cinema,
+.live-reader--watch,
+html.app-immersive-fullscreen .live-reader,
+html.video-cinema-active .live-reader {
   width: 100%;
   max-width: none;
   margin-inline: 0;
+}
+
+.desktop-app .reader.live-reader--watch,
+.desktop-app .live-reader.live-reader--watch {
   min-height: 0;
 }
 
 .native-app .reader-playback {
-  width: calc(100% - 16px);
-  max-width: calc(100vw - 16px);
+  width: min(calc(100% - 16px), var(--reader-max-width, 100%));
+  max-width: min(calc(100vw - 16px), var(--reader-max-width, 100%));
 }
 
 .live-reader:not(.live-reader--video) .live-reader__dock .reader-playback,
@@ -482,12 +491,12 @@ html.native-app[data-nav-mode="buttons"] .live-reader:not(.live-reader--video) .
   }
 
   .reader-header__title {
-    font-size: 11px;
+    font-size: 13px;
   }
 
   .reader-header__meta {
     gap: 4px;
-    font-size: 7px;
+    font-size: 10px;
   }
 
   .reader-header__meta i {
@@ -524,7 +533,7 @@ html.native-app[data-nav-mode="buttons"] .live-reader:not(.live-reader--video) .
   top: 0;
   left: 50%;
   z-index: 12;
-  width: min(100%, 430px);
+  width: min(100%, var(--reader-max-width, 100%));
   box-sizing: border-box;
   min-height: auto;
   transform: translateX(-50%);

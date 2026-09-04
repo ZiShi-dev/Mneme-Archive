@@ -1,15 +1,18 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { SourcePageImage } from "./SourcePageImage";
+import { getReaderImageBudget } from "../../lib/platform/dataSaver.js";
 import { scrollReaderTo } from "../../lib/platform/scrollRoot.js";
 
-const INITIAL_PRELOAD_COUNT = 3;
+function initialLoadThrough(pages) {
+  const { initialWindow } = getReaderImageBudget();
+  return Math.min(initialWindow - 1, Math.max(0, pages.length - 1));
+}
 
 export function ReaderPageList({ sourceId, pages, onFirstPageReady }) {
-  const initialThrough = Math.min(INITIAL_PRELOAD_COUNT - 1, Math.max(0, pages.length - 1));
-  const [loadThroughIndex, setLoadThroughIndex] = useState(initialThrough);
+  const [loadThroughIndex, setLoadThroughIndex] = useState(() => initialLoadThrough(pages));
 
   useEffect(() => {
-    setLoadThroughIndex(Math.min(INITIAL_PRELOAD_COUNT - 1, Math.max(0, pages.length - 1)));
+    setLoadThroughIndex(initialLoadThrough(pages));
     scrollReaderTo(0);
   }, [pages]);
 
@@ -20,7 +23,8 @@ export function ReaderPageList({ sourceId, pages, onFirstPageReady }) {
     }
     setLoadThroughIndex((current) => {
       if (pages.length <= 0) return current;
-      const next = Math.max(current, index + 1);
+      const { unlockBatch } = getReaderImageBudget();
+      const next = Math.max(current, index + unlockBatch);
       return Math.min(next, pages.length - 1);
     });
   }, [pages.length, onFirstPageReady]);

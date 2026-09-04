@@ -322,6 +322,7 @@ html.native-app .app-shell--yozakura .phone-frame {
 
 [data-theme="yozakura"] .page-header:not(.page-header--brand),
 .app-shell--yozakura .page-header:not(.page-header--brand) {
+  position: relative;
   isolation: isolate;
 }
 
@@ -329,7 +330,7 @@ html.native-app .app-shell--yozakura .phone-frame {
 .app-shell--yozakura .page-header:not(.page-header--brand)::before {
   content: "";
   position: absolute;
-  inset: -6px calc(var(--page-header-padding-x) * -1) 0;
+  inset: -8px 0 -12px;
   pointer-events: none;
   z-index: -1;
   background: linear-gradient(
@@ -460,7 +461,164 @@ html.native-app .app-shell--yozakura .phone-frame {
   .catalog-search,
   .search-result-row,
   .search-result-skeleton,
-  .favorites-hero
+  .favorites-hero,
+  .history-hero,
+  .history-controls,
+  .history-row,
+  .bookmarks-controls
 ) {
   background: var(--yozakura-ui-surface);
+}
+
+[data-theme="yozakura"] .history-hero {
+  background: linear-gradient(
+    155deg,
+    color-mix(in srgb, var(--sakura) 16%, var(--yozakura-ui-surface)),
+    var(--yozakura-ui-surface) 58%,
+    color-mix(in srgb, var(--yozakura-ui-surface-raised) 80%, transparent)
+  );
+}
+
+[data-theme="yozakura"] .history-hero__stats > span,
+[data-theme="yozakura"] .history-controls__status > button {
+  background: color-mix(in srgb, var(--yozakura-ui-surface-raised) 88%, transparent);
+}
+
+/* ── Familles d’écrans : la scène reste visible, le texte reste lisible ── */
+
+[data-theme="yozakura"],
+.app-shell--yozakura {
+  --yozakura-veil-span: min(92vw, calc(var(--content-max-width, 100%) + 72px));
+}
+
+@media (max-width: 359px) {
+  [data-theme="yozakura"] .yozakura-night--frame::after,
+  .app-shell--yozakura .yozakura-night--frame::after {
+    background: linear-gradient(
+      180deg,
+      rgba(8, 5, 12, 0.22) 0%,
+      rgba(8, 5, 12, 0.38) 48%,
+      rgba(8, 5, 12, 0.5) 100%
+    );
+  }
+
+  .yozakura-preview__moon {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+@media (min-width: 640px) {
+  [data-theme="yozakura"] .yozakura-night--frame::after,
+  .app-shell--yozakura .yozakura-night--frame::after {
+    background:
+      linear-gradient(180deg, rgba(8, 5, 12, 0.05) 0%, rgba(8, 5, 12, 0.1) 58%, rgba(8, 5, 12, 0.18) 100%),
+      radial-gradient(
+        ellipse var(--yozakura-veil-span) 90% at 50% 42%,
+        rgba(8, 5, 12, 0.44) 0%,
+        rgba(8, 5, 12, 0.2) 46%,
+        transparent 74%
+      );
+  }
+
+  .theme-selector--five > .theme-selector__option--yozakura {
+    grid-column: span 2;
+    min-height: 120px;
+  }
+}
+
+@media (min-width: 1024px) {
+  [data-theme="yozakura"] .yozakura-night--frame::after,
+  .app-shell--yozakura .yozakura-night--frame::after {
+    background:
+      linear-gradient(180deg, rgba(8, 5, 12, 0.03) 0%, rgba(8, 5, 12, 0.08) 62%, rgba(8, 5, 12, 0.14) 100%),
+      radial-gradient(
+        ellipse var(--yozakura-veil-span) 86% at 50% 40%,
+        rgba(8, 5, 12, 0.4) 0%,
+        rgba(8, 5, 12, 0.14) 48%,
+        transparent 72%
+      );
+  }
+
+  .theme-selector--five > .theme-selector__option--yozakura {
+    grid-column: auto;
+    min-height: 108px;
+  }
+}
+
+@media (min-width: 1024px) and (min-height: 700px) {
+  [data-theme="yozakura"] .bottom-nav,
+  .app-shell--yozakura .bottom-nav {
+    box-shadow: 0 14px 36px rgba(8, 5, 12, 0.42);
+    border-color: color-mix(in srgb, var(--sakura) 22%, var(--border));
+  }
+
+  [data-theme="yozakura"] .page-header:not(.page-header--brand)::before,
+  .app-shell--yozakura .page-header:not(.page-header--brand)::before {
+    inset: -6px 0 -8px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  [data-theme="yozakura"] .yozakura-night--frame::after,
+  .app-shell--yozakura .yozakura-night--frame::after {
+    background: linear-gradient(
+      90deg,
+      rgba(8, 5, 12, 0.08) 0%,
+      rgba(8, 5, 12, 0.34) 36%,
+      rgba(8, 5, 12, 0.34) 64%,
+      rgba(8, 5, 12, 0.08) 100%
+    );
+  }
+
+  [data-theme="yozakura"] .page-header:not(.page-header--brand)::before,
+  .app-shell--yozakura .page-header:not(.page-header--brand)::before {
+    inset: -4px 0 -6px;
+    background: linear-gradient(
+      180deg,
+      rgba(8, 5, 12, 0.78) 0%,
+      rgba(8, 5, 12, 0.28) 70%,
+      transparent 100%
+    );
+  }
+
+  .yozakura-preview__petal--5,
+  .yozakura-preview__petal--6 {
+    display: none;
+  }
+}
+
+@media (horizontal-viewport-segments: 2) {
+  [data-theme="yozakura"] .yozakura-night--frame::after,
+  .app-shell--yozakura .yozakura-night--frame::after {
+    background:
+      radial-gradient(
+        ellipse 48% 88% at 25% 42%,
+        rgba(8, 5, 12, 0.4) 0%,
+        transparent 72%
+      ),
+      radial-gradient(
+        ellipse 48% 88% at 75% 42%,
+        rgba(8, 5, 12, 0.4) 0%,
+        transparent 72%
+      );
+  }
+}
+
+@media (pointer: coarse) {
+  [data-theme="yozakura"] .bottom-nav,
+  .app-shell--yozakura .bottom-nav {
+    touch-action: manipulation;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="yozakura"] .yozakura-night--frame::after,
+  .app-shell--yozakura .yozakura-night--frame::after {
+    background: linear-gradient(
+      180deg,
+      rgba(8, 5, 12, 0.2) 0%,
+      rgba(8, 5, 12, 0.34) 100%
+    );
+  }
 }

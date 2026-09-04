@@ -47,8 +47,9 @@ test("parseKolnovelCatalog reads series cards", () => {
   assert.equal(items.length, 1);
   assert.equal(items[0].id, "novel-a");
   assert.equal(items[0].latestChapter, "12");
-  assert.equal(items[0].recentChapters.length, 0);
-  assert.equal(items[0].latestChapterUrl, null);
+  assert.equal(items[0].recentChapters.length, 1);
+  assert.equal(items[0].recentChapters[0].number, "12");
+  assert.equal(items[0].latestChapterUrl, "https://kolnovel.com/shaag24novel-az435ggye-12/");
   assert.deepEqual(items[0].genres, ["أكشن"]);
 });
 
@@ -68,10 +69,11 @@ test("parseKolnovelCatalog ignores kolnovel post ids in chapter urls", () => {
   `;
   const items = parseKolnovelCatalog(html);
   assert.equal(items[0].latestChapter, "100");
-  assert.equal(items[0].recentChapters.length, 0);
+  assert.equal(items[0].recentChapters.length, 1);
+  assert.equal(items[0].recentChapters[0].number, "100");
 });
 
-test("fetchKolnovelCatalogPage enriches catalog cards with real chapter urls", async () => {
+test("fetchKolnovelCatalogPage keeps catalog nchapter urls without series fetch", async () => {
   const catalogHtml = `
     <article class="maindet">
       <h2 itemprop="headline"><a href="https://kolnovel.com/series/novel-a/" title="Novel A">Novel A</a></h2>
@@ -79,6 +81,36 @@ test("fetchKolnovelCatalogPage enriches catalog cards with real chapter urls", a
       <div class="mdinfodet">
         <span class="nchapter"><a href="https://kolnovel.com/shaag24novel-az435ggye-12/"><i></i> الفصل. 12</a></span>
       </div>
+    </article>
+  `;
+  const seriesHtml = `
+    <div class="eplister"><ul>
+      <li><a href="https://kolnovel.com/shaag24novel-az435ggye-99/"><span class="epl-num">الفصل 99</span><span class="epl-title">الأخير</span></a></li>
+    </ul></div>
+  `;
+  let seriesFetched = false;
+  const fetchHtml = async (url) => {
+    if (url.includes("/series/novel-a")) {
+      seriesFetched = true;
+      return seriesHtml;
+    }
+    return catalogHtml;
+  };
+
+  const ctx = { baseUrl: "https://kolnovel.com" };
+  const payload = await fetchKolnovelCatalogPage(ctx, fetchHtml, { page: 1 });
+  const item = payload.items.find((entry) => entry.id === "novel-a");
+  assert.ok(item, "novel-a should be present");
+  assert.equal(item.latestChapter, "12");
+  assert.match(item.recentChapters[0]?.url, /shaag24novel-az435ggye-12/);
+  assert.equal(seriesFetched, false);
+});
+
+test("fetchKolnovelCatalogPage enriches cards without nchapter links", async () => {
+  const catalogHtml = `
+    <article class="maindet">
+      <h2 itemprop="headline"><a href="https://kolnovel.com/series/novel-a/" title="Novel A">Novel A</a></h2>
+      <img class="ts-post-image" src="https://kolnovel.com/cover.jpg" />
     </article>
   `;
   const seriesHtml = `

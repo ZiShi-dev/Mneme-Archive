@@ -293,6 +293,25 @@
   }
 }
 
+.live-video-immersive-root.is-chrome-hidden .video-watch-dock .live-video-chrome--controls {
+  max-height: 0 !important;
+  opacity: 0 !important;
+  padding: 0 !important;
+  pointer-events: none !important;
+}
+
+.live-video-immersive-root.is-netflix .reader-playback--progress-only {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.live-video-immersive-root.is-netflix .reader-playback--progress-only .reader-playback__timeline--dock {
+  margin-bottom: 0;
+}
+
 @media (orientation: landscape) and (max-height: 520px) {
   :root {
     --video-episode-toolbar-pad-block: 6px;

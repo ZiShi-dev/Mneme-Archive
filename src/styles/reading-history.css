@@ -1,5 +1,11 @@
 /* ── سجل القراءة ── */
 .history-page {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--content-max-width, 100%);
+  margin-inline: auto;
+  min-width: 0;
+  overflow-x: clip;
   padding-bottom: 112px;
 }
 
@@ -27,7 +33,7 @@
 .history-hero__glow {
   position: absolute;
   top: -40%;
-  left: -10%;
+  inset-inline-start: -10%;
   width: 160px;
   height: 160px;
   border-radius: 50%;
@@ -55,14 +61,14 @@
 .history-hero__copy h2 {
   margin: 0;
   color: var(--ink);
-  font: 700 clamp(13px, 3.8vw, 15px)/1.35 "Reem Kufi", "Alexandria";
+  font: 700 17px/1.4 var(--font-display, "Reem Kufi", "Alexandria");
   overflow-wrap: anywhere;
 }
 
 .history-hero__copy p {
   margin: 4px 0 0;
   color: var(--muted);
-  font: 500 clamp(8px, 2.4vw, 9px)/1.65 "Alexandria";
+  font: 500 13px/1.55 var(--font-sans, "Alexandria");
   overflow-wrap: anywhere;
 }
 
@@ -92,39 +98,51 @@
 
 .history-hero__stats strong {
   color: var(--ink);
-  font: 700 12px/1 "Fragment Mono", monospace;
+  font: 700 16px/1 "Fragment Mono", monospace;
 }
 
 .history-hero__stats small {
   color: var(--muted);
-  font: 500 7px/1.25 "Alexandria";
+  font: 500 11px/1.35 var(--font-sans, "Alexandria");
   overflow-wrap: anywhere;
   hyphens: auto;
 }
 
-.history-controls__types .la-chip-bar__chips {
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  padding-bottom: 2px;
+.history-controls__types {
+  margin: 0;
+  min-height: 36px;
 }
 
-.history-controls__types .la-chip-bar__chips::-webkit-scrollbar {
-  display: none;
+.history-controls__types .la-chip-bar__label {
+  font: 500 11px/1.35 var(--font-sans, "Alexandria");
+}
+
+.history-controls__types .la-chip-bar__chips {
+  flex-wrap: wrap;
+  overflow: visible;
+  padding-bottom: 0;
 }
 
 .history-controls__types .la-chip {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
+  min-height: 34px;
+  padding: 0 12px;
+  font: 600 12px/1.25 var(--font-sans, "Alexandria");
+}
+
+.history-controls__types .la-chip small {
+  min-width: 18px;
+  height: 18px;
+  font: 600 10px/1 var(--font-sans, "Alexandria");
 }
 
 .history-controls {
   display: grid;
-  gap: 10px;
-  margin-bottom: 14px;
-  padding: 12px 14px;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px;
   min-width: 0;
+  width: 100%;
   border: 1px solid var(--line);
   border-radius: var(--radius-card);
   background: var(--white);
@@ -132,40 +150,33 @@
 }
 
 .history-controls__search {
-  height: 42px;
+  height: 44px;
   margin: 0;
   border-radius: var(--radius-control);
+  box-shadow: none;
 }
 
 .history-controls__search input {
-  font-size: 10px;
+  font-size: 14px;
+  line-height: 1.4;
 }
 
 .history-controls__status {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 6px;
   min-width: 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  padding-bottom: 2px;
-}
-
-.history-controls__status::-webkit-scrollbar {
-  display: none;
 }
 
 .history-controls__status > button {
-  flex: 0 0 auto;
-  min-height: 30px;
-  padding: 0 10px;
+  flex: 1 1 auto;
+  min-height: 34px;
+  padding: 0 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius-pill);
   color: var(--muted);
   background: var(--outside);
-  font: 600 8px/1 "Alexandria";
+  font: 600 12px/1.25 var(--font-sans, "Alexandria");
   cursor: pointer;
   transition: color var(--motion-standard), border-color var(--motion-standard), background var(--motion-standard);
 }
@@ -181,9 +192,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  min-height: 28px;
+  min-height: 32px;
   color: var(--muted);
-  font: 500 8px/1 "Alexandria";
+  font: 500 12px/1.35 var(--font-sans, "Alexandria");
 }
 
 .history-controls__actions {
@@ -199,7 +210,7 @@
   gap: 4px;
   border: 0;
   background: transparent;
-  font: 600 8px/1 "Alexandria";
+  font: 600 12px/1.25 var(--font-sans, "Alexandria");
   cursor: pointer;
 }
 
@@ -227,7 +238,7 @@
 
 .history-day__head span {
   color: var(--ink);
-  font: 700 11px/1 "Reem Kufi", "Alexandria";
+  font: 700 14px/1.2 var(--font-display, "Reem Kufi", "Alexandria");
 }
 
 .history-day__head i {
@@ -272,7 +283,7 @@
   display: flex;
   align-items: stretch;
   gap: 11px;
-  padding: 10px 10px 8px 12px;
+  padding: 10px 12px 8px;
   border: 0;
   background: transparent;
   color: inherit;
@@ -312,11 +323,11 @@
   position: absolute;
   top: 5px;
   inset-inline-end: 5px;
-  padding: 2px 5px;
+  padding: 2px 6px;
   border-radius: 5px;
   color: #fff;
   background: rgba(9, 10, 18, .72);
-  font: 600 6px/1 "Alexandria";
+  font: 600 10px/1 var(--font-sans, "Alexandria");
   backdrop-filter: blur(5px);
 }
 
@@ -352,7 +363,7 @@
 
 .history-row__meta-line time {
   color: var(--muted);
-  font: 500 7px/1 "Alexandria";
+  font: 500 11px/1.35 var(--font-sans, "Alexandria");
 }
 
 .history-row__today {
@@ -363,13 +374,13 @@
   border-radius: var(--radius-pill);
   color: color-mix(in srgb, var(--success) 85%, #0a2018);
   background: color-mix(in srgb, var(--success) 14%, var(--white));
-  font: 700 6px/1 "Alexandria";
+  font: 700 10px/1 var(--font-sans, "Alexandria");
 }
 
 .history-row__body > strong {
   overflow: hidden;
   color: var(--ink);
-  font: 700 11px/1.4 "Instrument Sans", "Alexandria";
+  font: 700 14px/1.4 var(--font-sans, "Instrument Sans", "Alexandria");
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -379,7 +390,7 @@
 .history-row__subtitle {
   overflow: hidden;
   color: var(--muted);
-  font: 500 7px/1.3 "Alexandria";
+  font: 500 12px/1.35 var(--font-sans, "Alexandria");
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 1;
@@ -393,7 +404,7 @@
   gap: 8px;
   min-width: 0;
   color: var(--muted);
-  font: 500 8px/1.2 "Alexandria";
+  font: 500 12px/1.35 var(--font-sans, "Alexandria");
 }
 
 .history-row__chapter > :first-child {
@@ -413,7 +424,7 @@
 .history-row__chapter em {
   flex: 0 0 auto;
   color: var(--ink);
-  font: 600 8px/1 "Fragment Mono", monospace;
+  font: 600 11px/1 "Fragment Mono", monospace;
   font-style: normal;
 }
 
@@ -422,7 +433,7 @@
   align-items: center;
   gap: 4px;
   color: var(--brand);
-  font: 600 7px/1 "Alexandria";
+  font: 600 11px/1.35 var(--font-sans, "Alexandria");
 }
 
 .history-row__source .source-logo {
@@ -458,9 +469,12 @@
 
 .history-row__aside {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
-  gap: 6px;
-  padding: 0 10px 10px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    "continue continue continue"
+    "chapters details remove";
+  gap: 8px;
+  padding: 0 12px 12px;
   align-items: stretch;
 }
 
@@ -468,21 +482,23 @@
 .history-row__continue,
 .history-row__remove,
 .history-row__chapters {
-  min-height: 32px;
+  min-height: 36px;
   min-width: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 5px;
-  padding: 0 10px;
-  border-radius: 9px;
-  font: 600 8px/1.2 "Alexandria";
+  padding: 0 12px;
+  border-radius: 10px;
+  font: 600 12px/1.25 var(--font-sans, "Alexandria");
   cursor: pointer;
   transition: background var(--motion-standard), border-color var(--motion-standard);
 }
 
 .history-row__continue {
-  grid-column: 2;
+  grid-area: continue;
+  grid-column: auto;
+  width: 100%;
   border: 0;
   color: var(--brand);
   background: color-mix(in srgb, var(--brand) 8%, var(--white));
@@ -492,7 +508,8 @@
 }
 
 .history-row__chapters {
-  grid-column: 1;
+  grid-area: chapters;
+  grid-column: auto;
   border: 1px solid color-mix(in srgb, var(--brand) 24%, var(--line));
   color: var(--brand);
   background: color-mix(in srgb, var(--brand) 8%, var(--white));
@@ -500,7 +517,10 @@
 }
 
 .history-row__details {
-  grid-column: 3;
+  grid-area: details;
+  grid-column: auto;
+  flex: 1;
+  min-width: 0;
   border: 1px solid var(--line);
   color: var(--muted);
   background: var(--outside);
@@ -508,7 +528,8 @@
 }
 
 .history-row__remove {
-  grid-column: 4;
+  grid-area: remove;
+  grid-column: auto;
   width: 32px;
   padding: 0;
   border: 1px solid color-mix(in srgb, var(--danger) 25%, var(--line));
@@ -724,33 +745,6 @@
 }
 
 @media (max-width: 520px) {
-  .history-row__aside {
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    grid-template-areas:
-      "continue continue continue"
-      "chapters details remove";
-  }
-
-  .history-row__continue {
-    grid-area: continue;
-    grid-column: auto;
-  }
-
-  .history-row__chapters {
-    grid-area: chapters;
-    grid-column: auto;
-  }
-
-  .history-row__details {
-    grid-area: details;
-    grid-column: auto;
-  }
-
-  .history-row__remove {
-    grid-area: remove;
-    grid-column: auto;
-  }
-
   .history-row__chevron {
     display: none;
   }
@@ -784,7 +778,7 @@
   }
 
   .history-hero__stats small {
-    font-size: 6px;
+    font-size: 10px;
   }
 
   .history-row__media {
@@ -794,87 +788,74 @@
 
   .history-row__main {
     gap: 9px;
-    padding: 9px 8px 8px 10px;
+    padding: 9px 10px 8px;
+  }
+
+  .history-row__aside {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "continue continue"
+      "chapters details"
+      "remove remove";
   }
 
   .history-row__details,
   .history-row__continue,
   .history-row__remove,
   .history-row__chapters {
-    min-height: 30px;
+    min-height: 34px;
     padding-inline: 8px;
-    font-size: 7px;
+    font-size: 11px;
   }
 }
 
-/* App native (téléphones type Poco F7 ~440px logiques) */
-.native-app .history-page {
+/* App native : même colonne que favoris / mises à jour (padding .content conservé) */
+.native-app .screen--history .content.history-page {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--content-max-width, 100%);
+  margin-inline: auto;
   min-width: 0;
   overflow-x: clip;
 }
 
-.native-app .history-hero,
-.native-app .history-controls,
-.native-app .history-row {
-  max-width: 100%;
+.native-app .screen--history .history-hero,
+.native-app .screen--history .history-controls,
+.native-app .screen--history .history-timeline,
+.native-app .screen--history .history-row,
+.native-app .screen--history .search-results-pagination,
+.native-app .screen--history .la-empty {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
 }
 
-.native-app .history-controls__types.la-chip-bar {
+.native-app .screen--history .history-controls__types.la-chip-bar {
   min-width: 0;
   margin-bottom: 0;
 }
 
-.native-app .history-controls__footer {
+.native-app .screen--history .history-controls__status {
+  flex-wrap: wrap;
+  overflow: visible;
+}
+
+.native-app .screen--history .history-controls__footer {
   flex-direction: column;
   align-items: stretch;
   gap: 10px;
 }
 
-.native-app .history-controls__footer > span {
+.native-app .screen--history .history-controls__footer > span {
   text-align: center;
 }
 
-.native-app .history-controls__actions {
+.native-app .screen--history .history-controls__actions {
   width: 100%;
   justify-content: space-between;
 }
 
-.native-app .history-row__aside {
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  grid-template-areas:
-    "continue continue continue"
-    "chapters details remove";
-  gap: 8px;
-  padding: 0 12px 12px;
-}
-
-.native-app .history-row__continue {
-  grid-area: continue;
-  grid-column: auto;
-  min-height: 36px;
-}
-
-.native-app .history-row__chapters {
-  grid-area: chapters;
-  grid-column: auto;
-}
-
-.native-app .history-row__details {
-  grid-area: details;
-  grid-column: auto;
-  flex: 1;
-  min-width: 0;
-}
-
-.native-app .history-row__remove {
-  grid-area: remove;
-  grid-column: auto;
-}
-
-.native-app .history-row__chevron {
+.native-app .screen--history .history-row__chevron {
   display: none;
-}
-
-.native-app .history-row__main {
-  padding-inline: 12px 10px;
 }

@@ -52,7 +52,7 @@ function useDeferredCanvas(enabled, delayMs = 160) {
 }
 
 function SakuraDecor({ appearance, variant }) {
-  if (!isSakuraTheme(appearance)) return null;
+  if (!isSakuraTheme(appearance) || appearance === THEME_YOZAKURA) return null;
 
   return (
     <>

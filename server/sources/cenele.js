@@ -10,6 +10,7 @@ import {
 } from "../lib/catalogChapters.js";
 import { extractChapterNumber, normalizeChapterList } from "../lib/chapterOrdering.js";
 import { enrichSourceDetails } from "../lib/detailEnrichment.js";
+import { catalogEnrichFromSearchParams } from "../lib/catalogEnrichPolicy.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
 import { filterNovelParagraphs } from "../lib/novelChapterText.js";
 
@@ -445,7 +446,7 @@ function catalogHasMore(html, page, filterPath = CATALOG_PATH) {
     || new RegExp(`${trimmed}/page/${page + 1}/`, "i").test(html);
 }
 
-export async function fetchCeneleCatalogPage(ctx, fetchCeneleHtml, { page = 1, filterPath = CATALOG_PATH } = {}) {
+export async function fetchCeneleCatalogPage(ctx, fetchCeneleHtml, { page = 1, filterPath = CATALOG_PATH, enrich = true } = {}) {
   const offset = (page - 1) * CENELE_CATALOG_PAGE_SIZE;
   const upstreamPage = Math.floor(offset / UPSTREAM_CATALOG_PAGE_SIZE) + 1;
   const start = offset % UPSTREAM_CATALOG_PAGE_SIZE;
@@ -490,7 +491,9 @@ export async function fetchCeneleCatalogPage(ctx, fetchCeneleHtml, { page = 1, f
     nextUpstream += 1;
   }
 
-  await enrichCeneleCatalog(items, fetchCeneleHtml, ctx);
+  if (enrich) {
+    await enrichCeneleCatalog(items, fetchCeneleHtml, ctx);
+  }
 
   return {
     items,
@@ -584,7 +587,8 @@ export async function handleCeneleRequest(requestUrl) {
     if (!/^\/[\p{L}\p{N}/+_.%-]+\/?$/u.test(filterPath) || filterPath.includes("..")) {
       throw new Error("مسار فلتر Cenele غير صالح");
     }
-    const payload = await fetchCeneleCatalogPage(ctx, fetchCeneleHtml, { page, filterPath });
+    const enrich = catalogEnrichFromSearchParams(requestUrl.searchParams);
+    const payload = await fetchCeneleCatalogPage(ctx, fetchCeneleHtml, { page, filterPath, enrich });
     return responseJson(200, {
       ...payload,
       filterPath,

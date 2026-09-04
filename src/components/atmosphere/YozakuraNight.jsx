@@ -1,4 +1,10 @@
 import React, { useEffect, useRef } from "react";
+import {
+  yozakuraMoonPosition,
+  yozakuraMotionBudget,
+  yozakuraTreeAnchors,
+  yozakuraTreeUnit,
+} from "../../lib/theme/yozakuraScene.js";
 
 function prefersReducedMotion() {
   return Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches);
@@ -162,11 +168,7 @@ function drawStaticStars(ctx, w, h, rng, count) {
 /* ───────────── Lune ───────────── */
 
 function moonPosition(w, h, variant) {
-  return {
-    x: w * 0.74,
-    y: h * 0.115,
-    r: Math.min(w, h) * (variant === "stage" ? 0.052 : 0.064),
-  };
+  return yozakuraMoonPosition(w, h, variant);
 }
 
 function drawMoon(ctx, moon, rng) {
@@ -522,9 +524,8 @@ function drawCluster(ctx, bloom, scale, moon, layer, w, h) {
   }
 }
 
-function buildTree(rng, w, h, anchors) {
+function buildTree(rng, w, h, anchors, unit = yozakuraTreeUnit(w, h)) {
   const tree = { branches: [], blooms: [] };
-  const unit = Math.min(w, h);
   for (const a of anchors) {
     growBranch(rng, a.x * w, a.y * h, a.angle, a.len * unit, a.w * (unit / 420), a.depth ?? 2, tree);
   }
@@ -533,22 +534,8 @@ function buildTree(rng, w, h, anchors) {
   return tree;
 }
 
-const NEAR_ANCHORS = [
-  { x: -0.03, y: 0.03, angle: 0.62, len: 0.66, w: 11 },
-  { x: 1.03, y: -0.02, angle: Math.PI - 0.52, len: 0.72, w: 12 },
-  { x: 0.38, y: -0.04, angle: 1.32, len: 0.3, w: 5.5, depth: 1 },
-  { x: 1.04, y: 0.97, angle: Math.PI + 0.72, len: 0.5, w: 9 },
-  { x: -0.04, y: 0.9, angle: -0.42, len: 0.46, w: 8 },
-];
-
-const FAR_ANCHORS = [
-  { x: 0.58, y: -0.03, angle: 1.85, len: 0.4, w: 4.5, depth: 1 },
-  { x: -0.03, y: 0.44, angle: 0.12, len: 0.42, w: 4.5, depth: 1 },
-  { x: 1.03, y: 0.56, angle: Math.PI + 0.08, len: 0.36, w: 4, depth: 1 },
-];
-
-function drawTreeLayer(ctx, tree, w, h, moon, layer, rng) {
-  const scale = Math.min(w, h) / 420;
+function drawTreeLayer(ctx, tree, w, h, moon, layer, rng, unit = yozakuraTreeUnit(w, h)) {
+  const scale = unit / 420;
   const bark = BARK[layer];
   for (const branch of tree.branches) {
     drawBranch(ctx, branch, bark, moon, rng);
@@ -839,7 +826,17 @@ function isNativeAppShell() {
 
 function buildStaticLayer(w, h, variant) {
   const canvas = document.createElement("canvas");
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const native = isNativeAppShell();
+  const saveData = Boolean(navigator.connection?.saveData);
+  const budget = yozakuraMotionBudget({
+    w,
+    h,
+    variant,
+    native,
+    saveData,
+    devicePixelRatio: window.devicePixelRatio || 1,
+  });
+  const dpr = budget.dpr;
   canvas.width = Math.floor(w * dpr);
   canvas.height = Math.floor(h * dpr);
   const ctx = canvas.getContext("2d", { alpha: false });
@@ -849,28 +846,26 @@ function buildStaticLayer(w, h, variant) {
   const rng = makeRng(20240407);
   const moon = moonPosition(w, h, variant);
   const supportsFilter = typeof ctx.filter === "string";
-  const native = isNativeAppShell();
-  const starCount = variant === "stage"
-    ? (native ? 220 : 340)
-    : (native ? 170 : 260);
+  const unit = yozakuraTreeUnit(w, h);
+  const anchors = yozakuraTreeAnchors(w, h);
 
   drawSky(ctx, w, h);
   drawGrain(ctx, w, h, rng);
   drawMilkyWay(ctx, w, h, rng);
-  drawStaticStars(ctx, w, h, rng, starCount);
+  drawStaticStars(ctx, w, h, rng, budget.staticStars);
   drawMoon(ctx, moon, rng);
 
-  if (!native) {
-    const farTree = buildTree(makeRng(777), w, h, FAR_ANCHORS);
+  if (budget.farTrees) {
+    const farTree = buildTree(makeRng(777), w, h, anchors.far, unit);
     ctx.save();
     if (supportsFilter) ctx.filter = "blur(1.6px)";
     ctx.globalAlpha = 0.62;
-    drawTreeLayer(ctx, farTree, w, h, moon, "far", makeRng(778));
+    drawTreeLayer(ctx, farTree, w, h, moon, "far", makeRng(778), unit);
     ctx.restore();
   }
 
-  const nearTree = buildTree(makeRng(4242), w, h, NEAR_ANCHORS);
-  drawTreeLayer(ctx, nearTree, w, h, moon, "near", makeRng(4243));
+  const nearTree = buildTree(makeRng(4242), w, h, anchors.near, unit);
+  drawTreeLayer(ctx, nearTree, w, h, moon, "near", makeRng(4243), unit);
 
   // Lumière lunaire diffuse sur la canopée
   ctx.save();
@@ -1000,7 +995,17 @@ export function YozakuraNight({ variant = "frame" }) {
         width = Math.max(1, parent?.clientWidth || window.innerWidth);
         height = Math.max(1, parent?.clientHeight || window.innerHeight);
       }
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const saveData = Boolean(navigator.connection?.saveData);
+      const native = isNativeAppShell();
+      const budget = yozakuraMotionBudget({
+        w: width,
+        h: height,
+        variant,
+        native,
+        saveData,
+        devicePixelRatio: window.devicePixelRatio || 1,
+      });
+      const dpr = budget.dpr;
       canvas.width = Math.floor(width * dpr);
       canvas.height = Math.floor(height * dpr);
       canvas.style.width = `${width}px`;
@@ -1008,14 +1013,13 @@ export function YozakuraNight({ variant = "frame" }) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       const rng = makeRng(Math.floor(width * 31 + height * 17));
-      const stage = variant === "stage";
       state.w = width;
       state.h = height;
-      state.petals = createPetals(rng, stage ? 54 : 42, width, height);
-      state.bokeh = createBokehPetals(rng, stage ? 18 : 14, width, height);
-      state.stars = createTwinkleStars(rng, stage ? 70 : 54, width, height);
+      state.petals = createPetals(rng, budget.petals, width, height);
+      state.bokeh = createBokehPetals(rng, budget.bokeh, width, height);
+      state.stars = createTwinkleStars(rng, budget.twinkles, width, height);
       state.mist = createMist(rng, width, height);
-      state.lanterns = createLanterns(rng, stage ? 8 : 6, width, height);
+      state.lanterns = createLanterns(rng, budget.lanterns, width, height);
       scheduleStaticLayer(width, height);
     };
 

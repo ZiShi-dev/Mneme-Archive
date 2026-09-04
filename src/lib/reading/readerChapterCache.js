@@ -1,4 +1,5 @@
 import { fetchSourceChapter, peekSourceChapter } from "../../features/sources/sourceApi.js";
+import { allowsSpeculativePrefetch } from "../platform/dataSaver.js";
 
 export function chapterDataMatchesUrl(data, chapterUrl) {
   if (!data || !chapterUrl) return false;
@@ -31,6 +32,7 @@ export function resolveReaderChapterCache(sourceId, chapter, { prefetchData, man
 
 export function prefetchReaderChapter(sourceId, chapter, manga = {}, extra = {}) {
   if (!sourceId || !chapter?.url) return;
+  if (!allowsSpeculativePrefetch()) return;
   const opts = buildChapterFetchOptions(sourceId, chapter, manga, extra);
   if (peekSourceChapter(sourceId, chapter.url, opts)) return;
   void fetchSourceChapter(sourceId, chapter.url, opts).catch(() => {});

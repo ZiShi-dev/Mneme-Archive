@@ -49,7 +49,7 @@ function emptyChaptersMessage(item, profile, presentation) {
   return t("sources.noChaptersManga");
 }
 
-export function CatalogCard({ item, profile, onOpenDetails, onOpenChapter, onPrefetchDetails }) {
+export function CatalogCard({ item, profile, onOpenDetails, onOpenChapter, onPrefetchDetails, priority = false, lazyCover = false }) {
   const recentChapters = resolveCatalogChapters(item);
   const mediaType = getItemType(item);
   const presentation = getMediaPresentation(mediaType);
@@ -59,6 +59,16 @@ export function CatalogCard({ item, profile, onOpenDetails, onOpenChapter, onPre
   const coverWide = isVideo || usesWideCover(item.sourceId || profile?.id, item.catalogStyle);
   const standaloneVideo = isStandaloneVideoCatalogItem(item);
   const postedLabel = formatChapterPublishedLabel(item.publishedAt);
+  const coverProps = {
+    src: item.cover,
+    title: item.title,
+    sourceId: item.sourceId || profile?.id,
+    video: isVideo,
+    contain: coverContain,
+    priority,
+    lazy: lazyCover && !priority,
+  };
+
   const prefetchDetails = onPrefetchDetails ? () => onPrefetchDetails(item) : undefined;
 
   const cardClass = [
@@ -83,7 +93,7 @@ export function CatalogCard({ item, profile, onOpenDetails, onOpenChapter, onPre
           </span>
           <CoverAudioBadge label={item.audioLabel} />
           <span className="live-manga-card__cover">
-            <RemoteCover src={item.cover} title={item.title} sourceId={item.sourceId || profile?.id} video={isVideo} contain={coverContain} />
+            <RemoteCover {...coverProps} />
             <span className="live-manga-card__play" aria-hidden="true">
               <Play size={22} fill="currentColor" strokeWidth={0} />
             </span>
@@ -105,7 +115,7 @@ export function CatalogCard({ item, profile, onOpenDetails, onOpenChapter, onPre
         <span className={`media-type-badge media-type-badge--${item.mediaType || "manga"}`}>{contentTypes[item.mediaType]?.singular || item.mediaTypeLabel || contentTypes.manga.singular}</span>
         <CoverAudioBadge label={item.audioLabel} />
         <span className="live-manga-card__cover">
-          <RemoteCover src={item.cover} title={item.title} sourceId={item.sourceId || profile?.id} video={isVideo} contain={coverContain} />
+          <RemoteCover {...coverProps} />
         </span>
         <strong dir="auto">{item.title}</strong>
         {standaloneVideo && postedLabel ? <small className="live-manga-card__posted">{postedLabel}</small> : null}

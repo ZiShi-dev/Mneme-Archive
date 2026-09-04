@@ -20,6 +20,7 @@ test("isAllowedStorageKey accepts locale and reader preference keys", () => {
   assert.equal(isAllowedStorageKey("living-archive:onboarding-complete"), true);
   assert.equal(isAllowedStorageKey("living-archive:reader-preferences"), true);
   assert.equal(isAllowedStorageKey("cinevault:pwa-install-dismissed"), true);
+  assert.equal(isAllowedStorageKey("living-archive:catalog-snapshots"), true);
 });
 
 test("isAllowedStorageKey rejects unknown and oversized keys", () => {

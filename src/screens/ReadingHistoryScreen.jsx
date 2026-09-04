@@ -55,7 +55,6 @@ export function ReadingHistoryScreen({
   chapterReadLog = {},
   liveFavorites,
   navigate,
-  onBack,
   openManga,
   openLiveManga,
   openReader,
@@ -222,7 +221,7 @@ export function ReadingHistoryScreen({
   ];
 
   return (
-    <div className={`screen${isChromebookApp ? " screen--history-desktop" : ""}`}>
+    <div className={`screen screen--history${isChromebookApp ? " screen--history-desktop" : ""}`}>
       {isChromebookApp ? (
         <header className="settings-desktop-head">
           <span className="eyebrow">
@@ -234,7 +233,6 @@ export function ReadingHistoryScreen({
         <Header
           title={t("history.title")}
           eyebrow={stats.total ? t("history.nFollowed", { count: stats.total }) : t("history.eyebrow")}
-          onBack={onBack}
           onSearch={() => navigate("search")}
           onNotifications={() => navigate("updates")}
         />

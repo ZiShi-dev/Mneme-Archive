@@ -124,7 +124,6 @@ export function AppRoutes({
         chapterReadLog={chapterReadLog}
         liveFavorites={liveFavorites}
         navigate={navigate}
-        onBack={goBack}
         openManga={openManga}
         openLiveManga={openLiveManga}
         openReader={openReader}
@@ -191,6 +190,7 @@ export function AppRoutes({
   return (
     <HomeScreen
       sources={sources}
+      activeSourceId={activeSourceId}
       sourcePreferences={sourcePreferences}
       readingHistory={readingHistory}
       liveFavorites={liveFavorites}

@@ -1,11 +1,14 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { Settings2 } from "lucide-react";
 import { SourceScopeBar } from "../components/sources/SourceScopeBar";
+import { prefetchCatalog } from "../features/sources/sourceApi";
+import { DEFAULT_SOURCE_ID } from "../config/appFlavor";
 import { useI18n } from "../i18n/I18nProvider";
 
 export function HomeDiscoverySection({
   sources,
   sourcePreferences,
+  activeSourceId,
   onOpenCatalog,
   onManage,
 }) {
@@ -18,6 +21,15 @@ export function HomeDiscoverySection({
   const meta = enabledSources.length
     ? t("home.discoveryHint")
     : t("home.noEnabledSources");
+
+  useEffect(() => {
+    if (!enabledSources.length) return undefined;
+    const sourceId = enabledSources.some((source) => source.id === activeSourceId)
+      ? activeSourceId
+      : (enabledSources[0]?.id || DEFAULT_SOURCE_ID);
+    void prefetchCatalog(sourceId);
+    return undefined;
+  }, [enabledSources, activeSourceId]);
 
   return (
     <section className="home-discovery" aria-label={t("home.discoveryAria")}>
@@ -37,6 +49,12 @@ export function HomeDiscoverySection({
           sources={enabledSources}
           sourcePreferences={sourcePreferences}
           onClick={onOpenCatalog}
+          onPointerDown={() => {
+            const sourceId = enabledSources.some((source) => source.id === activeSourceId)
+              ? activeSourceId
+              : (enabledSources[0]?.id || DEFAULT_SOURCE_ID);
+            void prefetchCatalog(sourceId);
+          }}
           ariaLabel={t("home.openEnabledCatalog")}
         />
       ) : (

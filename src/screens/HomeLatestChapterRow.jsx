@@ -10,7 +10,7 @@ import { useI18n } from "../i18n/I18nProvider";
 import { isCatalogChapterBlocked } from "../lib/media/chapterLock";
 import { UnlockCountdown } from "../components/media/UnlockCountdown";
 
-export function HomeLatestChapterRow({ entry, onClick, onPrefetch }) {
+export function HomeLatestChapterRow({ entry, onClick, onPrefetch, lazyCover = false }) {
   const { t } = useI18n();
   const chapter = entry.latestChapter;
   const timeLabel = formatChapterPublishedLabel(entry.publishedAt);
@@ -37,6 +37,7 @@ export function HomeLatestChapterRow({ entry, onClick, onPrefetch }) {
           sourceId={entry.item.sourceId}
           novel={entry.mediaType === "novel"}
           video={isVideoMediaType(entry.mediaType)}
+          lazy={lazyCover}
         />
         {entry.isNew && <span className="home-latest-row__badge">{t("common.new")}</span>}
       </span>

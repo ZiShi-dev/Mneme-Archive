@@ -4,17 +4,30 @@ import { fetchHtmlViaFlareSolverr } from "../../../server/lib/flareSolverr.js";
 import { getFlareSolverrConfig } from "../../../server/lib/flareSolverrConfig.js";
 import { configureSourceNativeFetch } from "../../../server/lib/nativeFetchBridge.js";
 import { t } from "../../i18n/runtime.js";
-import { fetchNativeHtmlWithCache, clearNativeHtmlCache } from "./nativeHtmlCache.js";
+import { getMeteredNetworkLimits } from "./dataSaver.js";
+import { fetchNativeHtmlWithCache } from "./nativeHtmlCache.js";
 
 export { WEBVIEW_SOURCE_IDS, usesWebViewSource, usesFlareDirectSource, shouldDeferCatalogFilters } from "./webViewSources.js";
 export { clearNativeHtmlCache, invalidateNativeHtmlCache, normalizeNativeHtmlUrl } from "./nativeHtmlCache.js";
 
 /** Hôtes avec challenge CF réel → Flare d’abord. Les autres (WebView) passent par le natif. */
 const FLARE_FIRST_HOST_RE = /(?:^|\.)(?:mangalik\.net|novelsparadise\.site)$/i;
+/** CDN chapitre / jaquette : HTTP + Referer suffit, pas de plugin base64. */
+const MANGALIK_CDN_HOST_RE = /(?:^|\.)(?:tempsolo\.mangalik\.net|io\.mangalik\.net)$/i;
 
 function prefersFlareFirst(url = "") {
   try {
-    return FLARE_FIRST_HOST_RE.test(new URL(url).hostname);
+    const host = new URL(url).hostname;
+    if (MANGALIK_CDN_HOST_RE.test(host)) return false;
+    return FLARE_FIRST_HOST_RE.test(host);
+  } catch {
+    return false;
+  }
+}
+
+export function isMangaLikCdnImage(url = "") {
+  try {
+    return MANGALIK_CDN_HOST_RE.test(new URL(url).hostname);
   } catch {
     return false;
   }
@@ -29,15 +42,23 @@ function decodeBase64(base64) {
   return bytes;
 }
 
-const MAX_HTML_FETCH_CONCURRENCY = 4;
-const MAX_IMAGE_FETCH_CONCURRENCY = 5;
+const WIFI_HTML_FETCH_CONCURRENCY = 4;
+const WIFI_IMAGE_FETCH_CONCURRENCY = 6;
 let activeHtmlFetches = 0;
 let activeImageFetches = 0;
 const pendingHtmlResolvers = [];
 const pendingImageResolvers = [];
 
+function htmlFetchConcurrency() {
+  return getMeteredNetworkLimits().htmlFetchConcurrency || WIFI_HTML_FETCH_CONCURRENCY;
+}
+
+function imageFetchConcurrency() {
+  return getMeteredNetworkLimits().imageFetchConcurrency || WIFI_IMAGE_FETCH_CONCURRENCY;
+}
+
 function pumpHtmlQueue() {
-  while (activeHtmlFetches < MAX_HTML_FETCH_CONCURRENCY && pendingHtmlResolvers.length) {
+  while (activeHtmlFetches < htmlFetchConcurrency() && pendingHtmlResolvers.length) {
     const next = pendingHtmlResolvers.shift();
     if (next) next();
   }
@@ -54,7 +75,7 @@ function queueHtmlFetch(run) {
           pumpHtmlQueue();
         });
     };
-    if (activeHtmlFetches < MAX_HTML_FETCH_CONCURRENCY) {
+    if (activeHtmlFetches < htmlFetchConcurrency()) {
       start();
       return;
     }
@@ -63,7 +84,7 @@ function queueHtmlFetch(run) {
 }
 
 function pumpImageQueue() {
-  while (activeImageFetches < MAX_IMAGE_FETCH_CONCURRENCY && pendingImageResolvers.length) {
+  while (activeImageFetches < imageFetchConcurrency() && pendingImageResolvers.length) {
     const next = pendingImageResolvers.shift();
     if (next) next();
   }
@@ -80,7 +101,7 @@ function queueImageFetch(run) {
           pumpImageQueue();
         });
     };
-    if (activeImageFetches < MAX_IMAGE_FETCH_CONCURRENCY) {
+    if (activeImageFetches < imageFetchConcurrency()) {
       start();
       return;
     }
@@ -166,6 +187,10 @@ async function createCloudflareNativeFetchers() {
       }
     }),
     fetchImage: async (url) => queueImageFetch(async () => {
+      if (isMangaLikCdnImage(url)) {
+        const { fetchProxiedImage } = await import("../../../server/lib/httpUtils.js");
+        return fetchProxiedImage(url, "https://mangalik.net/", "MangaLik");
+      }
       const toPayload = (result) => {
         if (!result?.base64) throw new Error(t("errors.loadImage"));
         return {
@@ -202,7 +227,6 @@ export async function initMangalikNative() {
 export async function cancelCloudflarePending() {
   if (!Capacitor.isNativePlatform()) return;
   pendingHtmlResolvers.length = 0;
-  clearNativeHtmlCache();
   try {
     const { MangalikHtmlFetcher } = await import("../../plugins/mangalikHtmlFetcher.js");
     await MangalikHtmlFetcher.cancelPending();

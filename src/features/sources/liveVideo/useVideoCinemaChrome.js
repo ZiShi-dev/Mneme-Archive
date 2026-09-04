@@ -19,7 +19,7 @@ export function useVideoCinemaChrome({
   const [nativeFullscreen, setNativeFullscreen] = useState(false);
   const [immersiveMode, setImmersiveMode] = useState(false);
   const [phoneLandscape, setPhoneLandscape] = useState(false);
-  const [chromeVisible, setChromeVisible] = useState(true);
+  const [chromeVisible, setChromeVisible] = useState(() => !netflixMode);
 
   const fullscreenRootRef = useRef(null);
   const chromeHideTimerRef = useRef(0);
@@ -46,11 +46,11 @@ export function useVideoCinemaChrome({
   }, []);
 
   const activateCinemaMode = useCallback(() => {
-    setChromeVisible(true);
+    setChromeVisible(!netflixMode);
     setImmersiveMode(true);
     setIsFullscreen(true);
     syncCinemaDom(true);
-  }, [syncCinemaDom]);
+  }, [netflixMode, syncCinemaDom]);
 
   const clearChromeHideTimer = useCallback(() => {
     if (chromeHideTimerRef.current) {
@@ -93,7 +93,7 @@ export function useVideoCinemaChrome({
     const getFullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
     const onEnter = () => {
       const nativeActive = Boolean(getFullscreenElement());
-      setChromeVisible(true);
+      setChromeVisible(!netflixMode);
       setImmersiveMode(true);
       setIsFullscreen(true);
       setNativeFullscreen(nativeActive);
@@ -111,7 +111,7 @@ export function useVideoCinemaChrome({
       plyrInstance.off("enterfullscreen", onEnter);
       plyrInstance.off("exitfullscreen", onExit);
     };
-  }, [plyrInstance, syncCinemaDom]);
+  }, [netflixMode, plyrInstance, syncCinemaDom]);
 
   useEffect(() => {
     if (!isChromebookApp) return undefined;
@@ -162,24 +162,24 @@ export function useVideoCinemaChrome({
     if (embedMode && !isVideoImmersive) return undefined;
     if (!playing && !isVideoImmersive) {
       clearChromeHideTimer();
-      setChromeVisible(true);
+      if (!netflixMode) setChromeVisible(true);
       return undefined;
     }
     if (chromeVisible) scheduleChromeHide();
     return clearChromeHideTimer;
-  }, [chromeVisible, clearChromeHideTimer, embedMode, isVideoImmersive, playback, playing, scheduleChromeHide]);
+  }, [chromeVisible, clearChromeHideTimer, embedMode, isVideoImmersive, netflixMode, playback, playing, scheduleChromeHide]);
 
   useEffect(() => {
-    if (!videoImmersive) return undefined;
+    if (!videoImmersive || netflixMode) return undefined;
     revealChrome({ autoHide: true });
     return undefined;
-  }, [playback?.url, revealChrome, videoImmersive]);
+  }, [netflixMode, playback?.url, revealChrome, videoImmersive]);
 
   useEffect(() => {
-    if (!cinemaMode) return undefined;
+    if (!cinemaMode || netflixMode) return undefined;
     revealChrome({ autoHide: true });
     return undefined;
-  }, [cinemaMode, revealChrome]);
+  }, [cinemaMode, netflixMode, revealChrome]);
 
   useEffect(() => {
     if (!isVideoImmersive) return undefined;
@@ -334,7 +334,7 @@ export function useVideoCinemaChrome({
 
     if (!root) return;
 
-    setChromeVisible(true);
+    setChromeVisible(!netflixMode);
     setImmersiveMode(true);
 
     try {
@@ -357,7 +357,7 @@ export function useVideoCinemaChrome({
 
     activateCinemaMode();
     lockLandscapeOrientation().catch(() => {});
-  }, [activateCinemaMode, cinemaMode, immersiveMode, isFullscreen, plyrInstanceRef]);
+  }, [activateCinemaMode, cinemaMode, immersiveMode, isFullscreen, netflixMode, plyrInstanceRef]);
 
   const handleChromeInteractionStart = useCallback(() => {
     chromeInteractingRef.current = true;
@@ -374,7 +374,7 @@ export function useVideoCinemaChrome({
   }, [clearChromeHideTimer, isVideoImmersive, playing, scheduleChromeHide]);
 
   const resetChromeOnChapterChange = useCallback(() => {
-    setChromeVisible(true);
+    setChromeVisible(!netflixMode);
     if (!netflixMode) {
       setImmersiveMode(false);
     }

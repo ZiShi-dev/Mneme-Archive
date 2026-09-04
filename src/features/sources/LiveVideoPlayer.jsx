@@ -27,6 +27,7 @@ import { useVideoCinemaChrome } from "./liveVideo/useVideoCinemaChrome";
 import { VideoStageSkeleton } from "../../components/ui/ContentSkeleton";
 import { VideoEpisodePlaylist } from "./liveVideo/VideoEpisodePlaylist";
 import { VideoSubtitleOverlay } from "./liveVideo/VideoSubtitleOverlay";
+import { VideoEpisodeToolbar } from "./liveVideo/VideoEpisodeToolbar";
 import { VideoServerSheet } from "./liveVideo/VideoServerSheet";
 import { VideoServerPickerButton } from "./liveVideo/VideoServerPickerButton";
 import { VideoEpisodeHeader } from "./liveVideo/VideoEpisodeHeader";
@@ -754,9 +755,26 @@ export function LiveVideoPlayer({
     />
   ) : null;
 
-  const showPlaybackOverlay = playback && (!useNetflixLayout || !embedMode);
+  const showNavDock = useNetflixLayout && Boolean(playback && data);
+  const showTheaterOverlay = Boolean(playback && (!useNetflixLayout || isTheaterFullscreen));
+  const showDockProgress = showNavDock && !isTheaterFullscreen;
 
-  const playbackOverlay = showPlaybackOverlay ? (
+  const dockToolbarProps = showNavDock ? {
+    visible: Boolean(showServerPicker || previousChapter || nextChapter),
+    embedMode,
+    unitLabel: presentation.headerUnit,
+    controlsProps: {
+      ...playbackControlProps,
+      showServerPicker,
+      previousChapter,
+      nextChapter,
+      onPrevious: () => changeChapter(previousChapter),
+      onNext: () => changeChapter(nextChapter),
+      onOpenServers: openServers,
+    },
+  } : null;
+
+  const playbackOverlay = showTheaterOverlay ? (
     <div
       className={`live-video-chrome live-video-chrome--controls${controlsChromeVisible ? " is-visible" : ""}`}
       {...chromeInteractionHandlers}
@@ -774,8 +792,9 @@ export function LiveVideoPlayer({
   const immersiveRoot = (
       <div
         ref={bindImmersiveRoot}
-        className={`live-video-immersive-root${videoEdgeToEdge ? " is-video-fill" : (cinemaMode ? " is-cinema" : "")}${isTheaterFullscreen ? " is-theater-fullscreen" : ""}${useNetflixLayout ? " is-netflix has-episode-header" : ""}${embedMode ? " is-embed" : ""}${cssFullscreen || isTheaterFullscreen ? " plyr--fullscreen-fallback" : ""}${chromeVisible ? " is-chrome-visible" : " is-chrome-hidden"}`}
+        className={`live-video-immersive-root${videoEdgeToEdge ? " is-video-fill" : (cinemaMode ? " is-cinema" : "")}${isTheaterFullscreen ? " is-theater-fullscreen" : ""}${useNetflixLayout ? " is-netflix has-episode-header" : ""}${showNavDock ? " has-episode-toolbar has-nav-dock" : ""}${embedMode ? " is-embed" : ""}${cssFullscreen || isTheaterFullscreen ? " plyr--fullscreen-fallback" : ""}${chromeVisible ? " is-chrome-visible" : " is-chrome-hidden"}`}
         onPointerMove={(event) => {
+          if (useNetflixLayout) return;
           if (isVideoImmersive) {
             revealChrome();
             return;
@@ -783,6 +802,12 @@ export function LiveVideoPlayer({
           if (event.pointerType === "mouse") revealChrome();
         }}
         onPointerDown={(event) => {
+          if (useNetflixLayout) {
+            if (event.target.closest(".live-video-chrome, .video-episode-header, .video-episode-toolbar, .video-watch-dock, .reader-playback, .live-video-cinema-back, .live-video-servers, .plyr__controls, .plyr__menu")) return;
+            if (!event.target.closest(".live-video-stage, .live-video-player, .live-video-player-wrap, .plyr-hls-player, video, .live-video-embed")) return;
+            chromeAtGestureStartRef.current = chromeVisible;
+            return;
+          }
           if (isVideoImmersive) {
             if (event.target.closest(".live-video-chrome, .video-episode-header, .video-episode-toolbar, .reader-playback, .live-video-cinema-back, .live-video-servers, .plyr__controls, .plyr__menu")) return;
             if (!event.target.closest(".live-video-stage, .live-video-player, .live-video-player-wrap, .plyr-hls-player, video")) return;
@@ -889,8 +914,23 @@ export function LiveVideoPlayer({
             <span>{t("reader.playback.secondsShort", { n: SKIP_SECONDS })}</span>
           </div>
         )}
-        {playbackOverlay}
+        {showTheaterOverlay ? playbackOverlay : null}
         </div>
+        {showDockProgress ? (
+          <div className="video-watch-dock">
+            <div
+              className={`live-video-chrome live-video-chrome--controls${controlsChromeVisible ? " is-visible" : ""}`}
+              {...chromeInteractionHandlers}
+            >
+              <VideoPlaybackControls
+                {...playbackControlProps}
+                progressOnly
+                className="reader-playback--overlay reader-playback--netflix"
+              />
+            </div>
+            {dockToolbarProps ? <VideoEpisodeToolbar {...dockToolbarProps} /> : null}
+          </div>
+        ) : null}
       </div>
   );
 

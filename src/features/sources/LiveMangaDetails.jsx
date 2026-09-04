@@ -220,7 +220,7 @@ export function LiveMangaDetails({
   const profile = getSourceProfile(sourceId);
   const [item, setItem] = useState(() => seed);
   const [status, setStatus] = useState(() => (
-    detailsHasImmediateChapters(seed, peekSourceDetails(sourceId, seed.url)) ? "ready" : "loading"
+    detailsHasImmediateChapters(seed, peekSourceDetails(sourceId, seed.url, seed)) ? "ready" : "loading"
   ));
   const [error, setError] = useState("");
   const [summaryExpanded, setSummaryExpanded] = useState(false);
@@ -249,8 +249,8 @@ export function LiveMangaDetails({
 
   const loadDetails = useCallback(async () => {
     const generation = ++loadGeneration.current;
-    const cached = peekSourceDetails(sourceId, seed.url);
-    if (cached) {
+      const cached = peekSourceDetails(sourceId, seed.url, seed);
+      if (cached) {
       setItem({
         ...seed,
         ...cached,
@@ -265,7 +265,7 @@ export function LiveMangaDetails({
     }
     setError("");
     try {
-      const data = await fetchSourceDetails(sourceId, seed.url);
+      const data = await fetchSourceDetails(sourceId, seed.url, seed);
       if (generation !== loadGeneration.current) return;
       setItem({
         ...seed,

@@ -39,16 +39,16 @@ input:focus, input:focus-visible { outline: 0; box-shadow: none; }
 .app-shell--dark .update-card,
 .app-shell--dark .settings-group,
 .app-shell--dark .global-search { box-shadow: 0 10px 28px rgba(0,0,0,.14); }
-.phone-frame { width: min(100%, 430px); min-height: calc(100vh - 64px); background-color: var(--paper); background-image: linear-gradient(90deg, rgba(54,86,60,.018) 1px, transparent 1px), linear-gradient(rgba(54,86,60,.018) 1px, transparent 1px); background-size: 18px 18px; position: relative; box-shadow: var(--shadow); border: 1px solid rgba(189,192,186,.8); overflow: hidden; }
+.phone-frame { width: min(100%, var(--app-frame-max, 430px)); min-height: calc(100vh - 64px); min-height: calc(100dvh - 64px); background-color: var(--paper); background-image: linear-gradient(90deg, rgba(54,86,60,.018) 1px, transparent 1px), linear-gradient(rgba(54,86,60,.018) 1px, transparent 1px); background-size: 18px 18px; position: relative; box-shadow: var(--shadow); border: 1px solid rgba(189,192,186,.8); overflow: hidden; }
 .desktop-note { width: 280px; position: sticky; top: 140px; padding-top: 24px; }
 .desktop-note__mark { display: block; margin-bottom: 18px; border-radius: 18px; }
 .desktop-note span { color: var(--stamp); font: 700 11px/1 "Zen Kaku Gothic New"; letter-spacing: .18em; }
 .desktop-note h2 { font: 400 34px/1.1 "Dela Gothic One"; margin: 14px 0 12px; }
 .desktop-note p { color: var(--muted); line-height: 1.65; }
 
-.screen { min-height: 100vh; padding-bottom: var(--screen-bottom-padding); }
+.screen { min-height: 100vh; padding-top: var(--screen-top-padding, 0px); padding-bottom: var(--screen-bottom-padding); }
 .screen--details { padding-bottom: max(20px, var(--safe-bottom)); }
-.page-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 28px var(--page-header-padding-x) 16px; }
+.page-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; box-sizing: border-box; width: 100%; padding: 28px var(--page-header-padding-x) 16px; }
 .page-header__title { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
 .page-header__title > .icon-button { flex: 0 0 auto; align-self: center; }
 .page-header:not(.page-header--brand) .page-header__copy {
@@ -66,7 +66,7 @@ input:focus, input:focus-visible { outline: 0; box-shadow: none; }
 .header-actions { display: flex; gap: 8px; flex-shrink: 0; }
 .icon-button { border: 1px solid var(--line); background: var(--white); width: 40px; height: 40px; display: grid; place-items: center; border-radius: 13px; cursor: pointer; position: relative; }
 .icon-button.has-dot::after { content: ""; width: 7px; height: 7px; position: absolute; right: 8px; top: 8px; border-radius: 1px; transform: rotate(4deg); background: var(--stamp); border: 2px solid var(--white); }
-.content { padding: var(--content-padding-top) var(--content-padding-x) var(--content-padding-bottom); }
+.content { box-sizing: border-box; width: 100%; padding: var(--content-padding-top) var(--content-padding-x) var(--content-padding-bottom); }
 
 .hero-card {
   min-height: 244px;
@@ -561,7 +561,8 @@ button.source-overview-row { color: inherit; cursor: pointer; }
   padding: 0 12px 10px;
 }
 .search-hero__types.la-chip-bar--segmented .la-chip {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .search-scope {
   width: 100%;

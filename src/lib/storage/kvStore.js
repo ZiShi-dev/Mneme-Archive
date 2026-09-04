@@ -81,6 +81,8 @@ const BOOT_PRIORITY_KEYS = [
   "living-archive:ink-mode",
   "living-archive:reader-preferences",
   "living-archive:follow-preferences",
+  "living-archive:catalog-state",
+  "living-archive:catalog-snapshots",
 ];
 
 async function loadNativeCriticalKeys() {

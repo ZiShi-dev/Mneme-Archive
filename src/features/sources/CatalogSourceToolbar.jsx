@@ -1,6 +1,7 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, Globe2, Search, Settings2 } from "lucide-react";
 import { getSourceLanguageLabels, getSourceProfile } from "../../config/sources";
+import { prefetchCatalog } from "./sourceApi";
 import { useI18n } from "../../i18n/I18nProvider";
 import { AccessibleSearchField } from "../../components/ui/AccessibleSearchField";
 import { ChipFilterBar, ChipFilterButton } from "../../components/ui/ChipFilterBar";
@@ -131,6 +132,9 @@ export function CatalogSourceToolbar({ sources, activeSourceId, onSetActiveSourc
                 className={`catalog-source-toolbar__chip${isActive ? " active" : ""}${disabled ? " disabled" : ""}`}
                 disabled={disabled}
                 aria-pressed={isActive}
+                onPointerDown={() => {
+                  if (!disabled && entry.id !== activeSource?.id) void prefetchCatalog(entry.id);
+                }}
                 onClick={() => (compactMode ? openPicker() : onSetActiveSource(entry.id))}
               >
                 <SourceLogo sourceId={entry.id} />

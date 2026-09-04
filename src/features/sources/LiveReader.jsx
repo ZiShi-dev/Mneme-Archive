@@ -171,7 +171,7 @@ export function LiveReader({
   useEffect(() => {
     let active = true;
     setChaptersLoading(true);
-    fetchSourceDetails(sourceId, manga.url).then((details) => {
+    fetchSourceDetails(sourceId, manga.url, manga).then((details) => {
       if (active && details.chapters?.length) {
         setChapters(normalizeChapterList(details.chapters));
       }

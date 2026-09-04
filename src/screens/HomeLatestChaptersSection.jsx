@@ -8,6 +8,7 @@ import { useHomeLatestChapters } from "../hooks/useHomeLatestChapters";
 import { useI18n } from "../i18n/I18nProvider";
 import { HomeLatestChapterRow } from "./HomeLatestChapterRow";
 import { isCatalogChapterBlocked } from "../lib/media/chapterLock";
+import { getReaderImageBudget } from "../lib/platform/dataSaver.js";
 import { liveReaderPrefetchOptions, prefetchLiveTitle } from "./homeActions";
 
 const HOME_PREVIEW_LIMIT = 6;
@@ -104,6 +105,7 @@ export function HomeLatestChaptersSection({
   }, [entries, scope]);
 
   const hiddenCount = Math.max(0, visibleEntries.total - visibleEntries.items.length);
+  const coverBudget = getReaderImageBudget(settings);
   const metaLine = buildMetaLine({
     t,
     trackedCount,
@@ -184,10 +186,11 @@ export function HomeLatestChaptersSection({
       ) : visibleEntries.items.length ? (
         <>
           <div className={`home-latest-panel__feed${loading ? " is-refreshing" : ""}`}>
-            {visibleEntries.items.map((entry) => (
+            {visibleEntries.items.map((entry, index) => (
               <HomeLatestChapterRow
                 key={`${entry.item.sourceId}:${entry.item.url}:${entry.latestChapter.url}`}
                 entry={entry}
+                lazyCover={index >= coverBudget.catalogLazyCoverFrom}
                 onClick={() => openEntry(entry)}
                 onPrefetch={() => prefetchLiveTitle(entry.item, entry.latestChapter)}
               />

@@ -115,6 +115,14 @@ test("fetchNativeHtmlWithCache reuses in-flight fetch", async () => {
   clearNativeHtmlCache();
 });
 
+test("isMangaLikCdnImage accepts chapter CDN hosts and rejects the apex site", async () => {
+  const { isMangaLikCdnImage } = await import("../lib/platform/mangalikNative.js");
+  assert.equal(isMangaLikCdnImage("https://tempsolo.mangalik.net/manga/arb5/data/x/image-01.jpg"), true);
+  assert.equal(isMangaLikCdnImage("https://io.mangalik.net/wp-content/uploads/cover.jpg"), true);
+  assert.equal(isMangaLikCdnImage("https://mangalik.net/manga/sample-title/12/"), false);
+  assert.equal(isMangaLikCdnImage("https://evil.example/manga/x.jpg"), false);
+});
+
 test("webViewSources marks native catalog sources", async () => {
   const { WEBVIEW_SOURCE_IDS, FLARE_DIRECT_SOURCE_IDS, shouldDeferCatalogFilters } = await import("../lib/platform/webViewSources.js");
   assert.deepEqual(WEBVIEW_SOURCE_IDS, ["azorafly", "galaxynovels", "novelphoenix"]);

@@ -398,3 +398,208 @@
     border-top: 1px solid color-mix(in srgb, var(--border, var(--line)) 80%, transparent);
   }
 }
+
+/* Web : cadre fluide centré, la scène (Yozakura / Galaxie) reste en fond */
+.app-shell:not(.app-shell--desktop) {
+  justify-content: center;
+}
+
+.app-shell:not(.app-shell--desktop) .phone-frame {
+  width: min(100%, var(--app-frame-max, 430px));
+}
+
+@media (min-width: 821px) {
+  .app-shell:not(.app-shell--desktop):not(.native-app) {
+    align-items: stretch;
+    gap: 0;
+    padding: 0;
+  }
+
+  .app-shell:not(.app-shell--desktop):not(.native-app) .desktop-note {
+    display: none;
+  }
+
+  .app-shell:not(.app-shell--desktop):not(.native-app) .phone-frame {
+    width: 100%;
+    max-width: none;
+    min-height: 100dvh;
+    margin-inline: auto;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+
+.app-shell:not(.app-shell--desktop) .bottom-nav {
+  box-sizing: border-box;
+  left: 50%;
+  right: auto;
+  width: min(calc(100% - 24px), var(--content-max-width));
+  max-width: var(--content-max-width);
+  margin-inline: 0;
+  transform: translateX(-50%);
+}
+
+html.bottom-nav-hidden .app-shell:not(.app-shell--desktop) .bottom-nav {
+  transform: translate(-50%, calc(100% + var(--safe-bottom, 0px) + 28px));
+}
+
+@media (min-width: 1024px) and (min-height: 700px) {
+  .app-shell:not(.app-shell--desktop):not(.native-app) .bottom-nav {
+    top: max(12px, var(--safe-top));
+    bottom: auto;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+  }
+
+  html.bottom-nav-hidden .app-shell:not(.app-shell--desktop):not(.native-app) .bottom-nav {
+    transform: translate(-50%, calc(-100% - 28px));
+  }
+
+  .app-shell:not(.app-shell--desktop):has(.bottom-nav) .page-header {
+    padding-top: 14px;
+  }
+}
+
+/* Même colonne que l’accueil / favoris — historique inclus */
+.app-shell:not(.app-shell--desktop) .page-header,
+.app-shell:not(.app-shell--desktop) .content,
+.native-app .page-header,
+.native-app .content {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--content-max-width);
+  margin-inline: auto;
+}
+
+.app-shell:not(.app-shell--desktop) .screen--history .page-header,
+.app-shell:not(.app-shell--desktop) .screen--history .content.history-page,
+.native-app .screen--history .page-header,
+.native-app .screen--history .content.history-page {
+  max-width: var(--content-max-width);
+  margin-inline: auto;
+}
+
+/* Hero / pages manga / cinéma : plein cadre. Contenu texte : colonne fluide. */
+.app-shell:not(.app-shell--desktop) .live-details-hero,
+.app-shell:not(.app-shell--desktop) .live-reader-pages,
+.app-shell:not(.app-shell--desktop) .live-video-immersive-root,
+.native-app .live-details-hero,
+.native-app .live-reader-pages,
+.native-app .live-video-immersive-root {
+  max-width: none;
+  margin-inline: 0;
+}
+
+.app-shell:not(.app-shell--desktop) .screen--live-details .details-content,
+.app-shell:not(.app-shell--desktop) .screen--details .details-content,
+.native-app .screen--live-details .details-content,
+.native-app .screen--details .details-content {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--details-max-width);
+  margin-inline: auto;
+}
+
+.app-shell:not(.app-shell--desktop) .screen--live-details .details-hero__nav,
+.app-shell:not(.app-shell--desktop) .screen--live-details .live-details-hero__content,
+.app-shell:not(.app-shell--desktop) .screen--live-details .live-details-hero__head,
+.app-shell:not(.app-shell--desktop) .screen--live-details .live-details-hero__dock,
+.app-shell:not(.app-shell--desktop) .screen--details .details-hero__nav,
+.app-shell:not(.app-shell--desktop) .screen--details .details-hero__content,
+.native-app .screen--live-details .details-hero__nav,
+.native-app .screen--live-details .live-details-hero__content,
+.native-app .screen--live-details .live-details-hero__head,
+.native-app .screen--live-details .live-details-hero__dock,
+.native-app .screen--details .details-hero__nav,
+.native-app .screen--details .details-hero__content {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--details-max-width);
+  margin-inline: auto;
+}
+
+@media (min-width: 821px) {
+  .app-shell:not(.app-shell--desktop):not(.native-app) .phone-frame:has(.screen--live-details),
+  .app-shell:not(.app-shell--desktop):not(.native-app) .phone-frame:has(.live-reader) {
+    height: 100dvh;
+    max-height: 100dvh;
+  }
+}
+
+@media (max-width: 359px) {
+  .app-shell:not(.app-shell--desktop) .screen--live-details .details-content,
+  .native-app .screen--live-details .details-content {
+    padding-inline: 14px;
+  }
+
+  .app-shell:not(.app-shell--desktop) .screen--live-details .chapter-tools,
+  .native-app .screen--live-details .chapter-tools {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 768px) {
+  .app-shell:not(.app-shell--desktop) .screen--live-details .details-content:has(> .details-sidebar):has(> .details-chapters),
+  .native-app .screen--live-details .details-content:has(> .details-sidebar):has(> .details-chapters) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-shell:not(.app-shell--desktop) .screen--live-details .details-content:has(> .details-sidebar):has(> .details-chapters),
+  .native-app .screen--live-details .details-content:has(> .details-sidebar):has(> .details-chapters) {
+    grid-template-columns: minmax(260px, 0.85fr) minmax(0, 1.15fr);
+    align-items: start;
+    gap: 22px 28px;
+  }
+
+  .app-shell:not(.app-shell--desktop) .screen--live-details .details-content > .details-sidebar,
+  .native-app .screen--live-details .details-content > .details-sidebar {
+    position: sticky;
+    top: 12px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .app-shell:not(.app-shell--desktop) .screen--live-details .live-details-hero,
+  .native-app .screen--live-details .live-details-hero {
+    padding-bottom: 14px;
+  }
+
+  .app-shell:not(.app-shell--desktop) .live-details-hero__content,
+  .native-app .live-details-hero__content {
+    margin-top: 12px;
+    gap: 12px;
+  }
+
+  .app-shell:not(.app-shell--desktop) .live-reader:not(.live-reader--video) .reader-header,
+  .native-app .live-reader:not(.live-reader--video) .reader-header {
+    --reader-header-height: 44px;
+  }
+}
+
+@media (max-width: 767px) {
+  .app-shell:not(.app-shell--desktop) .screen--live-details.screen--details-cinematic-anime .live-details-hero__dock,
+  .app-shell:not(.app-shell--desktop) .screen--live-details.screen--details-cinematic-series .live-details-hero__dock,
+  .native-app .screen--live-details.screen--details-cinematic-anime .live-details-hero__dock,
+  .native-app .screen--live-details.screen--details-cinematic-series .live-details-hero__dock {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) and (max-width: 1024px) {
+  .app-shell:not(.app-shell--desktop) .history-hero {
+    grid-template-columns: 40px minmax(0, 1fr) minmax(0, 1.2fr);
+    grid-template-areas: "icon copy stats";
+    align-items: center;
+  }
+
+  .app-shell:not(.app-shell--desktop) .history-hero__stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

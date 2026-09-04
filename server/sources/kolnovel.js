@@ -5,9 +5,12 @@ import { responseJson } from "../lib/responseJson.js";
 import {
   applyRecentChapterFields,
   catalogNeedsRecentEnrich,
+  CATALOG_RECENT_LIMIT,
   enrichCatalogItems,
+  normalizeRecentChapters,
   recentChaptersFromList,
 } from "../lib/catalogChapters.js";
+import { catalogEnrichFromSearchParams } from "../lib/catalogEnrichPolicy.js";
 import { normalizeChapterList } from "../lib/chapterOrdering.js";
 import { enrichSourceDetails } from "../lib/detailEnrichment.js";
 import {
@@ -153,6 +156,30 @@ function parseCatalogLatestChapterNumber(article = "") {
   return "";
 }
 
+/** Chapitres cliquables depuis le HTML catalogue (évite N×fetch série). */
+export function parseCatalogChaptersFromArticle(article = "") {
+  const chapters = [];
+  const seen = new Set();
+  for (const match of article.matchAll(/class="[^"]*nchapter[^"]*"[^>]*>[\s\S]*?<a[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
+    const href = decodeHtml(match[1]);
+    if (/\/pdf\/?$/i.test(href)) continue;
+    let url;
+    try {
+      url = new URL(href, DEFAULT_BASE_URL).toString();
+    } catch {
+      continue;
+    }
+    if (seen.has(url)) continue;
+    seen.add(url);
+    const label = textOnly(match[2]);
+    const number = extractKolnovelChapterNumber(label, href);
+    if (!number) continue;
+    chapters.push({ number, name: label || number, url });
+    if (chapters.length >= CATALOG_RECENT_LIMIT) break;
+  }
+  return normalizeRecentChapters(chapters, CATALOG_RECENT_LIMIT, { sourceId: SOURCE_ID });
+}
+
 function parseCatalogGenres(article = "") {
   const genres = [];
   const seen = new Set();
@@ -216,6 +243,8 @@ function mapCatalogItem(rawTitle, href, cover, article = "") {
   const { title, altTitle } = resolveParadiseTitles(rawTitle, alter || excerptTitle);
   const genres = parseCatalogGenres(article);
   const latestChapterNumber = parseCatalogLatestChapterNumber(article);
+  const recentChapters = parseCatalogChaptersFromArticle(article);
+  const latest = recentChapters[0];
   return {
     id: slug,
     title,
@@ -228,9 +257,9 @@ function mapCatalogItem(rawTitle, href, cover, article = "") {
     mediaTypeLabel: "رواية",
     categories: genres,
     genres,
-    latestChapter: latestChapterNumber || "—",
-    latestChapterUrl: null,
-    recentChapters: [],
+    latestChapter: latest?.number || latestChapterNumber || "—",
+    latestChapterUrl: latest?.url || null,
+    recentChapters,
   };
 }
 
@@ -363,6 +392,7 @@ export async function fetchKolnovelCatalogPage(ctx, fetchHtml, {
   genre = "",
   tag = "",
   status = "",
+  enrich = true,
 } = {}) {
   const offset = (page - 1) * KOLNOVEL_CATALOG_PAGE_SIZE;
   const upstreamPage = Math.floor(offset / UPSTREAM_CATALOG_PAGE_SIZE) + 1;
@@ -405,7 +435,9 @@ export async function fetchKolnovelCatalogPage(ctx, fetchHtml, {
     nextUpstream += 1;
   }
 
-  await enrichKolnovelCatalog(items, fetchHtml);
+  if (enrich) {
+    await enrichKolnovelCatalog(items, fetchHtml);
+  }
 
   return {
     items,
@@ -460,12 +492,14 @@ export async function handleKolnovelRequest(requestUrl) {
     const order = requestUrl.searchParams.get("order")?.trim() || "latest";
     const genre = assertKolnovelFilterSlug(requestUrl.searchParams.get("genre"), "تصنيف");
     const tag = assertKolnovelFilterSlug(requestUrl.searchParams.get("tag"), "وسم");
+    const enrich = catalogEnrichFromSearchParams(requestUrl.searchParams);
     const payload = await fetchKolnovelCatalogPage(ctx, fetchKolnovelHtmlBound, {
       page,
       order,
       genre,
       tag,
       status: requestUrl.searchParams.get("status") ?? "",
+      enrich,
     });
     return responseJson(200, payload);
   }
@@ -485,7 +519,9 @@ export async function handleKolnovelRequest(requestUrl) {
     let items = parseKolnovelCatalog(html);
     assertKolnovelCatalogHtml(target.toString(), html, items);
     items = items.slice(0, KOLNOVEL_CATALOG_PAGE_SIZE);
-    await enrichKolnovelCatalog(items, fetchKolnovelHtmlBound);
+    if (catalogEnrichFromSearchParams(requestUrl.searchParams)) {
+      await enrichKolnovelCatalog(items, fetchKolnovelHtmlBound);
+    }
     return responseJson(200, {
       items,
       page,

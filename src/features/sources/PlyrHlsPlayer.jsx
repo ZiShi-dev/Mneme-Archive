@@ -4,7 +4,7 @@ import Hls from "hls.js";
 import { Plyr } from "plyr-react";
 import "plyr-react/plyr.css";
 import { createSourceStreamLoader } from "../../lib/hls/sourceStreamLoader";
-import { createHlsPlayerConfig, prefersHighVideoQuality } from "../../lib/hls/hlsConfig";
+import { createHlsPlayerConfig, getVideoPreloadMode, prefersHighVideoQuality } from "../../lib/hls/hlsConfig";
 import { applyHlsStartLevel, applyPlyrHlsQualityMenu } from "../../lib/hls/playbackQuality";
 import { isChromebookApp } from "../../config/appFlavor";
 import { useI18n } from "../../i18n/I18nProvider";
@@ -273,7 +273,7 @@ export function PlyrHlsPlayer({
         source={null}
         options={plyrOptions}
         playsInline
-        preload="auto"
+        preload={getVideoPreloadMode()}
         poster={poster || undefined}
         crossOrigin="anonymous"
       />

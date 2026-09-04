@@ -334,6 +334,7 @@ html[dir="rtl"] .source-config-panel__header h2 { text-align: right; }
   .phone-frame {
     width: 100%;
     max-width: none;
+    --app-frame-max: 100%;
     min-height: 100vh;
     min-height: 100dvh;
     margin: 0;

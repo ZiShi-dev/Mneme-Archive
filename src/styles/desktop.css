@@ -1339,6 +1339,15 @@ html[dir="ltr"] .desktop-app .live-catalog {
   height: 44px;
 }
 
+.desktop-app .screen--history .settings-desktop-head,
+.desktop-app .screen--history-desktop .settings-desktop-head {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1440px;
+  margin-inline: auto;
+}
+
+.desktop-app .screen--history .content.history-page,
 .desktop-app .screen--history-desktop .content.history-page {
   max-width: 1440px;
   margin-inline: auto;
@@ -1499,6 +1508,10 @@ html[dir="ltr"] .desktop-app .live-catalog {
 .desktop-app .screen--history-desktop .history-row__aside {
   padding: 0 12px 12px;
   gap: 8px;
+}
+
+.desktop-app .screen--history-desktop .history-row__continue {
+  min-height: 40px;
 }
 
 .desktop-app .screen--history-desktop .history-row__details,

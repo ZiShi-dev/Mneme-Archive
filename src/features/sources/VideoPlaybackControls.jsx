@@ -83,14 +83,15 @@ export function VideoPlaybackControls({
   hideFullscreen = false,
   dockOnly = false,
   minimalOverlay = false,
+  progressOnly = false,
   className = "",
   compact = false,
 }) {
   const { t, dir } = useI18n();
   const resolvedUnitLabel = unitLabel || t("media.theEpisode");
-  const showChapterNav = Boolean(previousChapter || nextChapter) && !minimalOverlay;
-  const minimalMode = navOnly;
-  const showAuxTools = !navOnly && !minimalOverlay;
+  const showChapterNav = Boolean(previousChapter || nextChapter) && !minimalOverlay && !progressOnly;
+  const minimalMode = navOnly || progressOnly;
+  const showAuxTools = !navOnly && !minimalOverlay && !progressOnly;
   const showRemainingTime = netflixMode && minimalOverlay && duration > 0;
   const remainingTime = Math.max(0, duration - currentTime);
   const playbackClassName = [
@@ -101,6 +102,7 @@ export function VideoPlaybackControls({
     navOnly ? "reader-playback--nav-only" : "",
     netflixMode ? "reader-playback--netflix" : "",
     minimalOverlay ? "reader-playback--minimal" : "",
+    progressOnly ? "reader-playback--progress-only" : "",
     showServerPicker ? "reader-playback--has-server" : "",
     showChapterNav ? "" : "reader-playback--no-nav",
     className,
@@ -222,6 +224,45 @@ export function VideoPlaybackControls({
           </button>
         )}
       </>
+    );
+  }
+
+  if (progressOnly) {
+    return (
+      <section
+        className={playbackClassName}
+        dir={dir}
+        aria-label={t("reader.playback.watchProgress")}
+      >
+        <div className="reader-playback__timeline reader-playback__timeline--dock">
+          <Slider
+            className="reader-playback__slider"
+            dir="ltr"
+            aria-label={t("reader.playback.watchProgress")}
+            value={progress}
+            minValue={0}
+            maxValue={100}
+            onChange={onSeek}
+            onChangeEnd={onSeekEnd ?? onSeek}
+          >
+            <SliderTrack className="reader-playback__track">
+              {({ state }) => (
+                <>
+                  <span
+                    className="reader-playback__track-buffered"
+                    style={{ width: `${Math.max(0, Math.min(100, buffered))}%` }}
+                  />
+                  <span style={{ width: `${state.getThumbPercent(0) * 100}%` }} />
+                  <SliderThumb className="reader-playback__thumb" />
+                </>
+              )}
+            </SliderTrack>
+          </Slider>
+          <span className="reader-playback__time reader-playback__time--dock" aria-hidden="true">
+            {formatTime(currentTime)} / {formatTime(duration)}
+          </span>
+        </div>
+      </section>
     );
   }
 

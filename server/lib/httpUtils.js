@@ -3,6 +3,7 @@ import { requireFlareSolverrHtml, tryFlareSolverrHtml } from "./flareSolverr.js"
 
 export const responseCache = new Map();
 const MAX_CACHE_ENTRIES = 100;
+const htmlInFlight = new Map();
 
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -75,6 +76,10 @@ export function createCachedHtmlFetcher({
       touchCacheEntry(cacheKey, cached);
       return cached.html;
     }
+    const inflight = htmlInFlight.get(cacheKey);
+    if (inflight) return inflight;
+
+    const pending = (async () => {
     const variants = typeof getVariants === "function" ? getVariants(url) : [url];
     // Respecter l’ordre de getVariants (miroirs prioritaires) plutôt que forcer l’URL d’origine en tête.
     const targets = [...new Set((variants?.length ? variants : [url]))];
@@ -147,5 +152,13 @@ export function createCachedHtmlFetcher({
     }
     if (lastError && !lastStatus) throw lastError;
     throw new Error(buildError(lastStatus));
+    })();
+
+    htmlInFlight.set(cacheKey, pending);
+    try {
+      return await pending;
+    } finally {
+      htmlInFlight.delete(cacheKey);
+    }
   };
 }

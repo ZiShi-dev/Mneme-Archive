@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { PRELOAD_PAGES_MAX, PRELOAD_PAGES_MIN } from "../lib/settings/defaults";
+import { getReaderImageBudget } from "../lib/platform/dataSaver";
 import { refreshNetworkStatus } from "../lib/platform/networkStatus";
 import {
   canPreloadPages,
@@ -44,6 +45,17 @@ export function useReaderPagePreload({
         signal: abortController.signal,
       });
     };
+
+    const { eagerPreloadPages } = getReaderImageBudget();
+    if (canPreloadPages(options) && eagerPreloadPages > 0) {
+      preloadPagesAhead({
+        sourceId,
+        pages,
+        visibleIndex: -1,
+        count: Math.max(count, eagerPreloadPages),
+        signal: abortController.signal,
+      });
+    }
 
     const container = containerRef?.current;
     if (!container) {

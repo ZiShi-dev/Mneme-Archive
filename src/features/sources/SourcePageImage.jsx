@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ImageOff, RefreshCw } from "lucide-react";
 import { useI18n } from "../../i18n/I18nProvider";
-import { resolveSourceImageUrl } from "./sourceApi";
+import { getReaderImageBudget } from "../../lib/platform/dataSaver.js";
+import { peekResolvedImageUrl, resolveSourceImageUrl } from "./sourceApi";
 
 export function SourcePageImage({ sourceId, page, index, onSettled }) {
   const { t } = useI18n();
-  const [src, setSrc] = useState("");
-  const [status, setStatus] = useState("loading");
+  const peeked = peekResolvedImageUrl(sourceId, page.src) || "";
+  const [src, setSrc] = useState(peeked);
+  const [status, setStatus] = useState(peeked ? "ready" : "loading");
   const [retryCount, setRetryCount] = useState(0);
   const onSettledRef = useRef(onSettled);
   const pageNumber = index + 1;
@@ -17,6 +19,13 @@ export function SourcePageImage({ sourceId, page, index, onSettled }) {
 
   useEffect(() => {
     let active = true;
+    const immediate = peekResolvedImageUrl(sourceId, page.src) || "";
+    if (immediate) {
+      setSrc(immediate);
+      setStatus("ready");
+      return undefined;
+    }
+
     setStatus("loading");
     setSrc("");
 
@@ -66,14 +75,16 @@ export function SourcePageImage({ sourceId, page, index, onSettled }) {
     );
   }
 
+  const { initialWindow, highPriorityCount } = getReaderImageBudget();
+
   return (
     <img
       src={src}
       alt={page.alt || t("reader.page.alt", { n: pageNumber })}
       className="live-reader-pages__image"
-      loading="eager"
+      loading={index < initialWindow ? "eager" : "lazy"}
       decoding="async"
-      fetchpriority={index === 0 ? "high" : "auto"}
+      fetchpriority={index < highPriorityCount ? "high" : "auto"}
       referrerPolicy="no-referrer"
       onLoad={() => onSettledRef.current?.()}
       onError={() => {

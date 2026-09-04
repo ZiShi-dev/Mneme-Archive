@@ -8,7 +8,7 @@ function initialCoverUrl(sourceId, src) {
   return sourceId ? null : src;
 }
 
-export function useResolvedCoverUrl(sourceId, src) {
+export function useResolvedCoverUrl(sourceId, src, { enabled = true } = {}) {
   const [url, setUrl] = useState(() => initialCoverUrl(sourceId, src));
 
   useEffect(() => {
@@ -23,7 +23,10 @@ export function useResolvedCoverUrl(sourceId, src) {
 
     const peeked = peekResolvedImageUrl(sourceId, src);
     if (peeked) setUrl(peeked);
+    else if (!enabled) setUrl(null);
     else setUrl(null);
+
+    if (!enabled) return undefined;
 
     let active = true;
     resolveSourceImageUrl(sourceId, src)
@@ -34,7 +37,7 @@ export function useResolvedCoverUrl(sourceId, src) {
         if (active) setUrl((current) => current || peeked || src);
       });
     return () => { active = false; };
-  }, [sourceId, src]);
+  }, [sourceId, src, enabled]);
 
   return url;
 }
