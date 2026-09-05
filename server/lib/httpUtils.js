@@ -1,3 +1,4 @@
+import { publicFetch } from "./publicFetch.js";
 import { isCloudflareChallengeHtml } from "./cloudflareDetect.js";
 import { requireFlareSolverrHtml, tryFlareSolverrHtml } from "./flareSolverr.js";
 
@@ -19,7 +20,7 @@ export async function fetchWithRetries(url, options = {}, retries = 1) {
       const signal = userSignal && timeoutSignal
         ? AbortSignal.any([userSignal, timeoutSignal])
         : (timeoutSignal || userSignal);
-      return await fetch(url, signal ? { ...rest, signal } : rest);
+      return await publicFetch(url, signal ? { ...rest, signal } : rest);
     } catch (error) {
       lastError = error;
       if (attempt >= retries) throw error;
@@ -40,7 +41,7 @@ function touchCacheEntry(key, value) {
 }
 
 export async function fetchProxiedImage(target, referer, label) {
-  const response = await fetch(target, {
+  const response = await publicFetch(target, {
     headers: {
       accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
       referer,

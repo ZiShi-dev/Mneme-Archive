@@ -19,6 +19,7 @@ export default defineConfig({
         "favicon.png",
         "apple-touch-icon.png",
         "pwa/icon.svg",
+        "pwa/themes/**/*",
       ],
       manifest: {
         id: "./",

@@ -1,4 +1,5 @@
 import { handleSourceRequest } from "./clientSourceRequest.js";
+import { installPublicFetchTransport } from "./lib/publicFetchNode.js";
 import { createSecurityHeadersMiddleware } from "./lib/securityHeaders.js";
 import { createRateLimiter, shouldRateLimitSourceRequest } from "./lib/rateLimit.js";
 
@@ -24,11 +25,13 @@ function createSourcesAdapter() {
   return {
     name: "manga-sources-adapter",
     configureServer(server) {
+      installPublicFetchTransport();
       server.middlewares.use(securityHeaders);
       server.middlewares.use(rateLimitMiddleware);
       server.middlewares.use(handler);
     },
     configurePreviewServer(server) {
+      installPublicFetchTransport();
       server.middlewares.use(createSecurityHeadersMiddleware({ production: true }));
       server.middlewares.use(rateLimitMiddleware);
       server.middlewares.use(handler);

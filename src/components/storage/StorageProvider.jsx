@@ -1,10 +1,9 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { Capacitor } from "@capacitor/core";
-import { SplashScreen } from "@capacitor/splash-screen";
 import { initStorage, resetStorageInit } from "../../lib/storage/initStorage";
 import { t } from "../../i18n/runtime";
-import { AppMark } from "../brand/AppMark";
 import { getAppBrandText } from "../../lib/brand/appBrand";
+import { readBootAppearance } from "../../lib/theme/appearance";
+import { ThemedBootScreen } from "../boot/ThemedBootScreen";
 
 const StorageContext = createContext({ ready: false, error: null });
 
@@ -12,11 +11,7 @@ export function StorageProvider({ children }) {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState(null);
   const [bootAttempt, setBootAttempt] = useState(0);
-
-  useEffect(() => {
-    if (!Capacitor.isNativePlatform()) return;
-    SplashScreen.hide().catch(() => {});
-  }, []);
+  const bootAppearance = useMemo(() => readBootAppearance(), []);
 
   const retryBoot = useCallback(() => {
     resetStorageInit();
@@ -44,25 +39,22 @@ export function StorageProvider({ children }) {
 
   if (!ready) {
     return (
-      <div className="boot-screen" role="status" aria-live="polite">
-        <div className="boot-screen__inner">
-          <AppMark size={64} variant="dark" className="boot-screen__mark" decorative />
-          <p>{getAppBrandText(t).loading}</p>
-        </div>
-      </div>
+      <ThemedBootScreen
+        appearance={bootAppearance}
+        message={getAppBrandText(t).loading}
+      />
     );
   }
 
   if (error) {
     return (
-      <div className="boot-screen boot-screen--error" role="alert">
-        <div className="boot-screen__inner">
-          <p>{error}</p>
-          <button type="button" className="boot-screen__retry" onClick={retryBoot}>
-            {t("errors.retry")}
-          </button>
-        </div>
-      </div>
+      <ThemedBootScreen
+        appearance={bootAppearance}
+        message={error}
+        retryLabel={t("errors.retry")}
+        error
+        onRetry={retryBoot}
+      />
     );
   }
 

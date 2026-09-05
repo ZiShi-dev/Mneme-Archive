@@ -997,6 +997,7 @@ export const fr = {
       watchUnit: "Lecture de {unit}",
       watchProgress: "Progression de la lecture",
       hideViewControls: "Masquer les contrôles vidéo",
+      showViewControls: "Afficher les contrôles vidéo",
       skipBack: "Reculer de 10 secondes",
       skipForward: "Avancer de 10 secondes",
       pause: "Pause",

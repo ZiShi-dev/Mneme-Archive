@@ -1,4 +1,5 @@
 import { isCloudflareChallengeHtml } from "./cloudflareDetect.js";
+import { validatePublicDestination, publicFetch } from "./publicFetch.js";
 
 const DEFAULT_TIMEOUT_MS = 45_000;
 /** FlareSolverr / Chrome tient mal le parallèle → file globale (1 par défaut). */
@@ -295,7 +296,7 @@ function binaryToBase64(bytes) {
   return btoa(binary);
 }
 
-async function collectLocalFlareAssets(html, payload, { fetchImpl, pageUrl, userAgent }) {
+async function collectLocalFlareAssets(html, payload, { pageUrl, userAgent }) {
   const cookies = Array.isArray(payload?.solution?.cookies) ? payload.solution.cookies : [];
   const header = cookieHeader(cookies);
   if (!header) return [];
@@ -309,7 +310,7 @@ async function collectLocalFlareAssets(html, payload, { fetchImpl, pageUrl, user
   const assets = [];
   for (const imageUrl of extractChapterImageUrls(html, pageUrl)) {
     try {
-      const response = await fetchImpl(imageUrl, {
+      const response = await publicFetch(imageUrl, {
         headers: {
           accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
           cookie: header,
@@ -341,6 +342,7 @@ export async function fetchHtmlViaFlareSolverr(url, {
   includeAssets = false,
 } = {}) {
   if (!baseUrl) throw new Error("FlareSolverr non configuré");
+  await validatePublicDestination(url);
 
   return withFlareSlot(async () => {
     if (isFlareHostBlockCooldown(url)) {
@@ -368,6 +370,7 @@ export async function fetchHtmlViaFlareSolverr(url, {
       try {
         const timeoutSignal = AbortSignal.timeout(maxTimeout + 15_000);
         const response = await fetchImpl(endpoint, {
+          redirect: "error",
           method: "POST",
           headers,
           body: JSON.stringify(body),
@@ -391,7 +394,6 @@ export async function fetchHtmlViaFlareSolverr(url, {
         if (!includeAssets) return html;
         if (proxyMode) return inlineFlareAssets(html, payload.assets);
         const assets = await collectLocalFlareAssets(html, payload, {
-          fetchImpl,
           pageUrl: url,
           userAgent: payload?.solution?.userAgent,
         });
@@ -443,6 +445,7 @@ function base64ToUint8Array(base64 = "") {
 
 /** Image derrière Cloudflare (catalogue / couverture) via le proxy Night-Novel. */
 export async function fetchImageViaFlareSolverr(imageUrl) {
+  await validatePublicDestination(imageUrl);
   const { getFlareSolverrConfig } = await import("./flareSolverrConfig.js");
   const config = getFlareSolverrConfig();
   if (!config?.baseUrl) throw new Error("FlareSolverr non configuré");
@@ -456,6 +459,7 @@ export async function fetchImageViaFlareSolverr(imageUrl) {
     }
     const timeoutSignal = AbortSignal.timeout(DEFAULT_TIMEOUT_MS + 15_000);
     const response = await fetch(endpoint, {
+      redirect: "error",
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url: imageUrl }),

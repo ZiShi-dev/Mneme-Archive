@@ -1,3 +1,4 @@
+import { publicFetch } from "./publicFetch.js";
 const MEDIA_PAYLOAD_INFO = "dilar.media.payload.v1";
 const MEDIA_PAYLOAD_VERSION = 1;
 const CLIENT_TOKEN_HEADER = "X-Client-Token";
@@ -278,7 +279,7 @@ export async function enrollDilarClient(apiBaseUrl) {
   if (existing) return existing.token;
 
   if (!enrollPromise) {
-    enrollPromise = fetch(`${apiBaseUrl.replace(/\/+$/, "")}/enroll`, {
+    enrollPromise = publicFetch(`${apiBaseUrl.replace(/\/+$/, "")}/enroll`, {
       method: "POST",
       headers: { "Content-Type": "application/json", accept: "application/json" },
       body: JSON.stringify({}),

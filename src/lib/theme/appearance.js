@@ -1,3 +1,6 @@
+import { applyThemeIcons } from "./themeIcons.js";
+import { peekStorageString } from "../storage/peek.js";
+
 export const THEME_INK = "ink";
 export const THEME_PAPER = "paper";
 export const THEME_SAKURA = "sakura";
@@ -116,4 +119,20 @@ export function applyAppearance(themeId) {
   document.documentElement.dataset.theme = id;
   document.body.dataset.theme = id;
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content", THEME_META_COLOR[id]);
+  document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')?.setAttribute(
+    "content",
+    isDarkTheme(id) ? "black-translucent" : "default",
+  );
+  applyThemeIcons(id);
+}
+
+export function readBootAppearance() {
+  const appearanceRaw = peekStorageString("living-archive:appearance", "");
+  if (appearanceRaw) return normalizeThemeId(appearanceRaw);
+  try {
+    const inkMode = JSON.parse(peekStorageString("living-archive:ink-mode", "true"));
+    return normalizeThemeId(inkMode);
+  } catch {
+    return THEME_INK;
+  }
 }

@@ -1,3 +1,4 @@
+import { publicFetch } from "../lib/publicFetch.js";
 import { decodeHtml, mergeFilterGroups, textOnly } from "../lib/htmlUtils.js";
 import { createCachedHtmlFetcher, fetchProxiedImage } from "../lib/httpUtils.js";
 import { normalizeSearchQuery } from "../lib/queryLimits.js";
@@ -277,7 +278,7 @@ async function getCeneleAjax(params, ctx = DEFAULT_CTX) {
   for (const [key, value] of Object.entries(params)) {
     if (value) url.searchParams.set(key, value);
   }
-  const response = await fetch(url, {
+  const response = await publicFetch(url, {
     headers: {
       accept: "application/json, text/javascript, */*; q=0.01",
       referer: `${ctx.baseUrl}${CATALOG_PATH}`,
@@ -295,7 +296,7 @@ async function getCeneleAjax(params, ctx = DEFAULT_CTX) {
 
 async function postCeneleAjax(params, ctx = DEFAULT_CTX) {
   const body = new URLSearchParams(params);
-  const response = await fetch(ajaxUrl(ctx), {
+  const response = await publicFetch(ajaxUrl(ctx), {
     method: "POST",
     headers: {
       accept: "application/json, text/javascript, */*; q=0.01",

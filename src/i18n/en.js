@@ -1029,6 +1029,7 @@ export const en = {
       watchUnit: "Watching {unit}",
       watchProgress: "Watch progress",
       hideViewControls: "Hide video controls",
+      showViewControls: "Show video controls",
       skipBack: "Skip back 10 seconds",
       skipForward: "Skip forward 10 seconds",
       pause: "Pause",

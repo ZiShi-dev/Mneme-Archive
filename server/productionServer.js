@@ -1,4 +1,5 @@
 import http from "node:http";
+import { installPublicFetchTransport } from "./lib/publicFetchNode.js";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createReadStream, existsSync, statSync } from "node:fs";
@@ -39,6 +40,7 @@ function sendFile(res, filePath) {
 }
 
 export function startProductionServer(options = {}) {
+  installPublicFetchTransport();
   const root = options.root ?? defaultRoot;
   const port = options.port ?? defaultPort;
   const host = options.host ?? process.env.HOST ?? "127.0.0.1";

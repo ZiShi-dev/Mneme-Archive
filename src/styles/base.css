@@ -1455,32 +1455,108 @@ button.source-overview-row { color: inherit; cursor: pointer; }
 /* Reader layout lives in reader.css */
 
 .boot-screen {
+  position: relative;
   min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   place-items: center;
-  background: #090a12;
-  color: #f6f7f8;
+  overflow: hidden;
+  background: var(--boot-bg, #090a12);
+  color: var(--boot-fg, #f6f7f8);
+  transition: background-color 0.35s ease, color 0.35s ease;
+}
+
+.boot-screen__glow {
+  position: absolute;
+  inset: -20% -10% auto;
+  height: 58%;
+  opacity: 0.35;
+  pointer-events: none;
+  background: radial-gradient(ellipse 70% 45% at 50% 40%, color-mix(in srgb, var(--boot-star, #8b7cff) 28%, transparent), transparent 68%);
+  filter: blur(12px);
+}
+
+.boot-screen__stars {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.78;
+  background:
+    radial-gradient(circle at 12% 20%, color-mix(in srgb, var(--boot-star, #8b7cff) 62%, white) 0 1px, transparent 2px),
+    radial-gradient(circle at 34% 14%, color-mix(in srgb, var(--boot-star, #8b7cff) 48%, white) 0 1px, transparent 2px),
+    radial-gradient(circle at 56% 24%, color-mix(in srgb, var(--boot-star, #8b7cff) 42%, white) 0 1px, transparent 2px),
+    radial-gradient(circle at 74% 18%, color-mix(in srgb, var(--boot-star, #8b7cff) 40%, white) 0 1px, transparent 2px);
+  animation: boot-twinkle 4.8s ease-in-out infinite alternate;
+}
+
+@keyframes boot-twinkle {
+  0% { opacity: 0.5; }
+  100% { opacity: 0.92; }
 }
 
 .boot-screen__inner {
+  position: relative;
+  z-index: 1;
   display: grid;
-  gap: 12px;
+  gap: 14px;
   justify-items: center;
   text-align: center;
+  padding: 24px;
+}
+
+.boot-screen__mark-wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.boot-screen__mark-ring {
+  position: absolute;
+  width: 108px;
+  height: 108px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--boot-star, #8b7cff) 35%, transparent);
+  animation: boot-ring-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes boot-ring-pulse {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(0.94);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scale(1.04);
+  }
 }
 
 .boot-screen__mark {
-  width: 64px;
-  height: 64px;
+  width: 72px;
+  height: 72px;
   display: block;
-  border-radius: 16px;
-  object-fit: cover;
+  border-radius: 18px;
+  animation: boot-mark-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes boot-mark-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.76);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .boot-screen p {
   margin: 0;
-  color: #aab3ad;
+  color: var(--boot-muted, #aab3ad);
   font-size: 13px;
+}
+
+.boot-screen--light .boot-screen__stars {
+  opacity: 0.42;
 }
 
 .boot-screen--error p {

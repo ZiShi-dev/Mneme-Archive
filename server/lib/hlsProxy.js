@@ -1,3 +1,4 @@
+import { publicFetch } from "./publicFetch.js";
 export const AD_SEGMENT_PATTERN = /(?:\/ads?(?:\/|_|\.)|[_-]ad[_-]|\/ad\.|preroll|midroll|postroll|\/troll\/|\/pub(?:licite)?\/|doubleclick|googlesyndication|adsterra|popads|exoclick|outbrain|\/commercial\/|\/spot\/|fake\.m3u8|decoy)/i;
 
 export function isAdSegmentUrl(url = "") {
@@ -171,7 +172,7 @@ export async function fetchProxiedMediaBytes({
   const timer = setTimeout(() => controller.abort(), connectTimeoutMs);
   let response;
   try {
-    response = await fetch(target, {
+    response = await publicFetch(target, {
       method: method === "HEAD" ? "HEAD" : "GET",
       headers: upstreamHeaders,
       signal: controller.signal,
@@ -213,7 +214,7 @@ export async function fetchProxiedHlsResource({
   timeoutMs = 60_000,
   maxBytes = 0,
 }) {
-  const response = await fetch(target, {
+  const response = await publicFetch(target, {
     headers: {
       accept: "*/*",
       referer,
@@ -229,7 +230,7 @@ export async function fetchProxiedHlsResource({
 
   if (isM3u8Payload(contentType, bodyText)) {
     const sanitized = filterM3u8Ads(bodyText);
-    const rewritten = rewriteM3u8Playlist(sanitized, target, buildProxyUrl);
+    const rewritten = rewriteM3u8Playlist(sanitized, response.url || target, buildProxyUrl);
     return {
       kind: "stream",
       contentType: "application/vnd.apple.mpegurl",

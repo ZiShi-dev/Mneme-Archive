@@ -19,7 +19,6 @@ import {
   shouldSkipOnboarding,
 } from "../../lib/onboarding/constants";
 import { requestNotificationPermission } from "../../lib/notifications/pushNotifications";
-import { peekStorageString } from "../../lib/storage/peek";
 import { persistStorageString } from "../../lib/storage/kvStore";
 import { IMAGE_CACHE_DIR } from "../../lib/storage/constants";
 import {
@@ -27,26 +26,16 @@ import {
   applyAppearance,
   isDarkTheme,
   normalizeThemeId,
+  readBootAppearance,
   themeDefaultTypeface,
 } from "../../lib/theme/appearance";
 import { applyTypeface, FONT_SANS, normalizeTypefaceId, typefaceNameKey } from "../../lib/theme/typeface";
 import { OnboardingThemePicker } from "./OnboardingThemePicker";
 import { FontSelector } from "../../screens/FontSettingsPanel";
 import { TYPEFACES } from "../../lib/theme/typeface";
+import { ThemedBootScreen } from "../boot/ThemedBootScreen";
 
 const SPLASH_MS = 2400;
-
-function readBootAppearance() {
-  const appearanceRaw = peekStorageString("living-archive:appearance", "");
-  if (appearanceRaw) return normalizeThemeId(appearanceRaw);
-
-  try {
-    const inkMode = JSON.parse(peekStorageString("living-archive:ink-mode", "true"));
-    return normalizeThemeId(inkMode);
-  } catch {
-    return normalizeThemeId(true);
-  }
-}
 
 function buildOnboardingTheme(appearance) {
   const palette = resolveMnemeMarkPalette("auto", appearance);
@@ -124,7 +113,7 @@ function OnboardingSplash({ theme, onDone }) {
           <div className="onboarding__mark-ring" aria-hidden="true" />
           <AppMark
             size={96}
-            variant="dark"
+            variant="auto"
             appearance={theme.appearance}
             className="onboarding__mark"
             decorative
@@ -437,11 +426,10 @@ export function OnboardingGate({ children }) {
 
   if (!ready) {
     return (
-      <div className="boot-screen" role="status" aria-live="polite">
-        <div className="boot-screen__inner">
-          <p>{getAppBrandText(runtimeT).loading}</p>
-        </div>
-      </div>
+      <ThemedBootScreen
+        appearance={readBootAppearance()}
+        message={getAppBrandText(runtimeT).loading}
+      />
     );
   }
 

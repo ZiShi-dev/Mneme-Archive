@@ -2,9 +2,11 @@ import { Capacitor } from "@capacitor/core";
 import { isChromebookApp, LOCALE_STORAGE_KEY } from "./config/appFlavor.js";
 import { peekStorageString } from "./lib/storage/peek.js";
 import { markNativeAppShell } from "./lib/platform/nativeAppLayout.js";
+import { applyAppearance, readBootAppearance } from "./lib/theme/appearance.js";
 
 try {
   markNativeAppShell();
+  applyAppearance(readBootAppearance());
   if (isChromebookApp) {
     document.documentElement.classList.add("desktop-app");
     document.body?.classList.add("desktop-app");

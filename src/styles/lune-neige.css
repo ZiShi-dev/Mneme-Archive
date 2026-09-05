@@ -314,9 +314,9 @@
   pointer-events: none;
   background:
     linear-gradient(180deg,
-      rgba(5, 14, 24, 0.08) 0%,
-      rgba(5, 14, 24, 0.18) 48%,
-      rgba(5, 14, 24, 0.32) 100%);
+      rgba(5, 14, 24, 0.02) 0%,
+      rgba(5, 14, 24, 0.06) 42%,
+      rgba(5, 14, 24, 0.14) 100%);
 }
 
 [data-theme="lune-neige"] .moon-sea-water--stage::after {
@@ -325,7 +325,7 @@
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse at 50% 30%, rgba(5, 14, 24, 0.05), rgba(5, 14, 24, 0.28) 78%);
+    radial-gradient(ellipse at 50% 28%, rgba(5, 14, 24, 0.02), rgba(5, 14, 24, 0.12) 78%);
 }
 
 [data-theme="lune-neige"] .moon-sea-water__canvas {
@@ -360,6 +360,7 @@
 [data-theme="lune-neige"] .moon-snow-fall {
   overflow: hidden;
   pointer-events: none;
+  opacity: 0.48;
 }
 
 [data-theme="lune-neige"] .moon-snow-fall__layer {
@@ -457,17 +458,160 @@
 }
 
 body[data-theme="lune-neige"] {
-  background-color: #061018;
-  background-image:
-    linear-gradient(180deg, #0a1424 0%, #0d1a2e 38%, #123048 62%, #061018 100%);
+  background-color: #050a14;
+  background-image: none;
+}
+
+/* ── UI verre lunaire : laisser voir la mer et la lune ── */
+
+[data-theme="lune-neige"],
+.app-shell--lune-neige {
+  --lune-sea-ui-surface: rgba(16, 26, 40, 0.66);
+  --lune-sea-ui-surface-raised: rgba(20, 31, 46, 0.78);
+  --lune-sea-ui-surface-soft: rgba(12, 20, 32, 0.52);
+  --lune-sea-ui-border: color-mix(in srgb, #8eb4e8 30%, #2a3d58);
+  --lune-sea-ui-glow: rgba(214, 230, 255, 0.16);
+}
+
+[data-theme="lune-neige"] .page-header:not(.page-header--brand),
+.app-shell--lune-neige .page-header:not(.page-header--brand) {
+  position: relative;
+  isolation: isolate;
+}
+
+[data-theme="lune-neige"] .page-header:not(.page-header--brand)::before,
+.app-shell--lune-neige .page-header:not(.page-header--brand)::before {
+  content: "";
+  position: absolute;
+  inset: -8px 0 -12px;
+  pointer-events: none;
+  z-index: -1;
+  background: linear-gradient(
+    180deg,
+    rgba(5, 10, 20, 0.88) 0%,
+    rgba(5, 10, 20, 0.52) 58%,
+    rgba(5, 10, 20, 0.16) 84%,
+    transparent 100%
+  );
+}
+
+[data-theme="lune-neige"] .page-header:not(.page-header--brand) h1,
+[data-theme="lune-neige"] .page-header:not(.page-header--brand) .eyebrow,
+.app-shell--lune-neige .page-header:not(.page-header--brand) h1,
+.app-shell--lune-neige .page-header:not(.page-header--brand) .eyebrow {
+  color: #eef4ff;
+  text-shadow:
+    0 1px 0 rgba(5, 10, 20, 0.55),
+    0 2px 14px rgba(5, 10, 20, 0.72);
+}
+
+[data-theme="lune-neige"] .game-nav,
+.app-shell--lune-neige .game-nav {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(10, 18, 30, 0.72);
+  border-color: color-mix(in srgb, #8eb4e8 24%, #2a3d58);
+  box-shadow: 0 10px 30px rgba(2, 8, 20, 0.34);
+}
+
+[data-theme="lune-neige"] .bottom-nav,
+.app-shell--lune-neige .bottom-nav {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: color-mix(in srgb, rgba(10, 18, 30, 0.82) 90%, transparent);
+  border-color: color-mix(in srgb, #8eb4e8 22%, #2a3d58);
+}
+
+[data-theme="lune-neige"] .settings-profile,
+[data-theme="lune-neige"] .setting-row,
+[data-theme="lune-neige"] .settings-group,
+[data-theme="lune-neige"] .notification-row,
+.app-shell--lune-neige .settings-profile,
+.app-shell--lune-neige .setting-row,
+.app-shell--lune-neige .settings-group,
+.app-shell--lune-neige .notification-row {
+  background:
+    radial-gradient(ellipse at 100% 0%, var(--lune-sea-ui-glow), transparent 52%),
+    var(--lune-sea-ui-surface-raised);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--lune-sea-ui-border);
+  box-shadow:
+    0 10px 28px rgba(4, 10, 22, 0.28),
+    inset 0 1px 0 rgba(214, 230, 255, 0.08);
+}
+
+[data-theme="lune-neige"] .notify-sheet,
+.app-shell--lune-neige .notify-sheet {
+  background:
+    radial-gradient(ellipse at 14% 0%, rgba(142, 180, 232, 0.14), transparent 48%),
+    linear-gradient(180deg, rgba(20, 31, 46, 0.96) 0%, rgba(13, 21, 34, 0.98) 100%);
+  border-color: color-mix(in srgb, #8eb4e8 28%, #2a3d58);
+  color: #eef4ff;
+}
+
+[data-theme="lune-neige"] .notify-sheet-backdrop,
+[data-theme="lune-neige"] .reader-settings-backdrop,
+[data-theme="lune-neige"] .la-sheet-backdrop,
+.app-shell--lune-neige .notify-sheet-backdrop,
+.app-shell--lune-neige .reader-settings-backdrop,
+.app-shell--lune-neige .la-sheet-backdrop {
+  background: rgba(5, 10, 20, 0.42);
+}
+
+.app-shell--lune-neige.app-shell--dark .home-discovery,
+[data-theme="lune-neige"] .app-shell--dark .home-discovery,
+.app-shell--lune-neige.app-shell--dark .home-latest-panel,
+[data-theme="lune-neige"] .app-shell--dark .home-latest-panel,
+.app-shell--lune-neige.app-shell--dark .home-recent-panel,
+[data-theme="lune-neige"] .app-shell--dark .home-recent-panel,
+.app-shell--lune-neige.app-shell--dark .home-hero-panel:not(.home-hero-panel--filters-only),
+[data-theme="lune-neige"] .app-shell--dark .home-hero-panel:not(.home-hero-panel--filters-only) {
+  background: var(--lune-sea-ui-surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid color-mix(in srgb, #8eb4e8 18%, transparent);
+  box-shadow: 0 12px 32px rgba(2, 8, 20, 0.28);
+}
+
+.app-shell--lune-neige.app-shell--dark .home-discovery .home-discovery__scope,
+[data-theme="lune-neige"] .app-shell--dark .home-discovery .home-discovery__scope,
+.app-shell--lune-neige.app-shell--dark .home-latest-row,
+[data-theme="lune-neige"] .app-shell--dark .home-latest-row {
+  background: var(--lune-sea-ui-surface-soft);
+}
+
+.app-shell--lune-neige.app-shell--dark .home-latest-row--new,
+[data-theme="lune-neige"] .app-shell--dark .home-latest-row--new {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, #8eb4e8 14%, var(--lune-sea-ui-surface-soft)),
+    var(--lune-sea-ui-surface-soft)
+  );
+}
+
+[data-theme="lune-neige"] .catalog-row,
+[data-theme="lune-neige"] .library-card,
+[data-theme="lune-neige"] .live-manga-card,
+.app-shell--lune-neige .catalog-row,
+.app-shell--lune-neige .library-card,
+.app-shell--lune-neige .live-manga-card {
+  background:
+    radial-gradient(ellipse at 100% 0%, rgba(142, 180, 232, 0.08), transparent 48%),
+    var(--lune-sea-ui-surface-raised);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-color: color-mix(in srgb, #8eb4e8 18%, #2a3d58);
 }
 
 [data-theme="lune-neige"] .hero-card {
   background:
-  radial-gradient(ellipse at 88% 0%, rgba(214, 230, 255, 0.16), transparent 46%),
-  linear-gradient(150deg, #1a2840 0%, #243552 52%, #314868 100%);
-  border: 1px solid color-mix(in srgb, var(--frost) 28%, transparent);
-  box-shadow: 0 18px 42px rgba(4, 10, 22, 0.42);
+    radial-gradient(ellipse at 88% 0%, rgba(214, 230, 255, 0.18), transparent 46%),
+    linear-gradient(150deg, rgba(26, 40, 64, 0.84) 0%, rgba(36, 53, 82, 0.8) 52%, rgba(49, 72, 104, 0.76) 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid color-mix(in srgb, #8eb4e8 32%, transparent);
+  box-shadow: 0 18px 42px rgba(4, 10, 22, 0.36);
 }
 
 [data-theme="lune-neige"] .hero-card h2,

@@ -1,3 +1,4 @@
+import { publicFetch } from "../lib/publicFetch.js";
 import { textOnly } from "../lib/htmlUtils.js";
 import { fetchProxiedImage } from "../lib/httpUtils.js";
 import { normalizeSearchQuery } from "../lib/queryLimits.js";
@@ -60,7 +61,7 @@ const KIND_PRESETS = {
 let filtersCache = null;
 
 async function fetchRemote(url, { method = "GET", body = null, headers = {}, timeoutMs = 35_000 } = {}) {
-  const response = await fetch(url, {
+  const response = await publicFetch(url, {
     method,
     redirect: "follow",
     headers: { ...API_HEADERS, ...headers },

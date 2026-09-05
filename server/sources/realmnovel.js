@@ -1,3 +1,4 @@
+import { publicFetch } from "../lib/publicFetch.js";
 import { decodeHtml, textOnly } from "../lib/htmlUtils.js";
 import { createCachedHtmlFetcher, fetchProxiedImage } from "../lib/httpUtils.js";
 import { fetchSkyChapter, fetchSkyNovelChapters, SKY_APP_ONLY_CHAPTER_MESSAGE } from "../lib/skynovelApi.js";
@@ -41,7 +42,7 @@ async function fetchRealmJson(path, { searchParams = {}, baseUrl = DEFAULT_BASE_
   for (const [key, value] of Object.entries(searchParams)) {
     if (value) url.searchParams.set(key, value);
   }
-  const response = await fetch(url, {
+  const response = await publicFetch(url, {
     headers: {
       accept: "application/json",
       "accept-language": "ar,en;q=0.8",

@@ -124,16 +124,16 @@ function drawMoonPath(ctx, moonX, moonY, moonR, horizon, height, time) {
 
 function drawSea(ctx, width, height, time, variant) {
   const horizon = height * 0.28;
-  const moonX = width * 0.74;
-  const moonY = height * 0.12;
-  const moonR = Math.min(width, height) * (variant === "stage" ? 0.048 : 0.06);
+  const moonX = width * 0.78;
+  const moonY = height * 0.11;
+  const moonR = Math.min(width, height) * (variant === "stage" ? 0.052 : 0.064);
   const step = width > 900 ? 3 : 2;
 
   // Ciel nocturne
   const sky = ctx.createLinearGradient(0, 0, 0, horizon);
   sky.addColorStop(0, "#050a14");
-  sky.addColorStop(0.45, "#0a1528");
-  sky.addColorStop(0.85, "#122848");
+  sky.addColorStop(0.35, "#0a1528");
+  sky.addColorStop(0.72, "#123048");
   sky.addColorStop(1, "#1a3a5e");
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, width, horizon + 2);
@@ -290,7 +290,7 @@ function drawSea(ctx, width, height, time, variant) {
     Math.max(width, height) * 0.78,
   );
   vignette.addColorStop(0, "transparent");
-  vignette.addColorStop(1, "rgba(2, 6, 12, 0.45)");
+  vignette.addColorStop(1, "rgba(2, 6, 12, 0.22)");
   ctx.fillStyle = vignette;
   ctx.fillRect(0, 0, width, height);
 }

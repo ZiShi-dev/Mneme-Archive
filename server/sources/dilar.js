@@ -1,3 +1,4 @@
+import { publicFetch } from "../lib/publicFetch.js";
 import { fetchProxiedImage } from "../lib/httpUtils.js";
 import {
   buildDilarRequestHeaders,
@@ -35,7 +36,7 @@ async function fetchDilarJson(path, {
   if (unlockHeader) requestHeaders[UNLOCK_FREE_HEADER] = unlockHeader;
   if (body != null) requestHeaders["Content-Type"] = "application/json";
 
-  const response = await fetch(`${apiUrl}${path}`, {
+  const response = await publicFetch(`${apiUrl}${path}`, {
     method,
     redirect: "follow",
     headers: requestHeaders,

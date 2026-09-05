@@ -1,3 +1,4 @@
+import { publicFetch } from "../lib/publicFetch.js";
 import { decodeHtml, mergeFilterGroups, parseDetailTaxonomies, parseTaxonomyFilterLinks, textOnly } from "../lib/htmlUtils.js";
 import { createCachedHtmlFetcher, fetchProxiedImage } from "../lib/httpUtils.js";
 import { normalizeSearchQuery } from "../lib/queryLimits.js";
@@ -103,7 +104,7 @@ async function fetchGalaxyNovelApi(novelId, baseUrl = DEFAULT_BASE_URL) {
   const cacheKey = `${baseUrl}/wp-json/wor-reader-app/v1/novels/${novelId}`;
   const cached = galaxyNovelApiCache.get(cacheKey);
   if (cached && Date.now() - cached.at < GALAXY_JSON_TTL_MS) return cached.data;
-  const response = await fetch(cacheKey, {
+  const response = await publicFetch(cacheKey, {
     headers: GALAXY_JSON_HEADERS(baseUrl),
     signal: AbortSignal.timeout(12_000),
   });
@@ -343,7 +344,7 @@ async function fetchGalaxyChapterManifest(novelId, baseUrl = DEFAULT_BASE_URL) {
   const cacheKey = `${baseUrl}/wp-content/uploads/wor-reader-cache/chapters/manifest/novel-${novelId}.json`;
   const cached = galaxyManifestCache.get(cacheKey);
   if (cached && Date.now() - cached.at < GALAXY_INDEX_TTL_MS) return cached.data;
-  const response = await fetch(cacheKey, {
+  const response = await publicFetch(cacheKey, {
     headers: GALAXY_JSON_HEADERS(baseUrl),
     signal: AbortSignal.timeout(12_000),
   });
@@ -385,7 +386,7 @@ async function fetchGalaxyChapterIndex(novelId, rawIndexUrl = "", baseUrl = DEFA
   const cacheKey = url.toString();
   const cached = galaxyIndexCache.get(cacheKey);
   if (cached && Date.now() - cached.at < GALAXY_INDEX_TTL_MS) return cached.data;
-  const response = await fetch(cacheKey, { headers: GALAXY_JSON_HEADERS(baseUrl), signal: AbortSignal.timeout(25_000) });
+  const response = await publicFetch(cacheKey, { headers: GALAXY_JSON_HEADERS(baseUrl), signal: AbortSignal.timeout(25_000) });
   if (!response.ok) throw new Error(`فهرس فصول Galaxy Novels غير متاح (${response.status})`);
   const data = await response.json();
   galaxyIndexCache.set(cacheKey, { at: Date.now(), data });
@@ -401,7 +402,7 @@ async function fetchGalaxyChapterApi(rawApiUrl, baseUrl = DEFAULT_BASE_URL) {
   const cacheKey = url.toString();
   const cached = galaxyChapterApiCache.get(cacheKey);
   if (cached && Date.now() - cached.at < GALAXY_CHAPTER_API_TTL_MS) return cached.data;
-  const response = await fetch(cacheKey, { headers: GALAXY_JSON_HEADERS(baseUrl), signal: AbortSignal.timeout(25_000) });
+  const response = await publicFetch(cacheKey, { headers: GALAXY_JSON_HEADERS(baseUrl), signal: AbortSignal.timeout(25_000) });
   if (!response.ok) throw new Error(`واجهة فصل Galaxy Novels غير متاحة (${response.status})`);
   const data = await response.json();
   galaxyChapterApiCache.set(cacheKey, { at: Date.now(), data });

@@ -987,6 +987,7 @@ export const ar = {
       watchUnit: "مشاهدة {unit}",
       watchProgress: "تقدم المشاهدة",
       hideViewControls: "إخفاء أدوات المشاهدة",
+      showViewControls: "إظهار أدوات المشاهدة",
       skipBack: "رجوع 10 ثوانٍ",
       skipForward: "تقديم 10 ثوانٍ",
       pause: "إيقاف",

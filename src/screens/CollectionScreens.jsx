@@ -662,6 +662,7 @@ export function SearchScreen({ sources, sourcePreferences, openLiveManga, naviga
             placeholder={isChromebookApp ? t("search.placeholderVideo") : t("search.placeholder")}
             ariaLabel={t("search.aria")}
             autoFocus={!isChromebookApp}
+            busy={loading || isRefreshing}
           />
           {typeFilters.length > 1 && (
             <ChipFilterBar
@@ -738,7 +739,7 @@ export function SearchScreen({ sources, sourcePreferences, openLiveManga, naviga
                 <h2>{t("search.results")}</h2>
                 <p>{t("search.about", { query: normalizedQuery })}{mediaType !== "all" ? ` · ${contentTypes[mediaType]?.label}` : ""}{audioFilter !== "all" ? ` · ${t(`search.audio.${audioFilter === "VF" ? "vf" : "vostfr"}`)}` : ""}</p>
               </div>
-              <span className={`search-results-head__badge${isRefreshing ? " search-results-head__badge--refreshing" : ""}`}>
+              <span className={`search-results-head__badge${isRefreshing ? " search-results-head__badge--refreshing" : ""}`} aria-live="polite">
                 {loading && !results.length ? t("common.loading") : t("search.nResults", { count: results.length })}
               </span>
             </div>
@@ -761,7 +762,6 @@ export function SearchScreen({ sources, sourcePreferences, openLiveManga, naviga
             ) : results.length ? (
               <>
                 <SearchResultsList
-                  key={`${normalizedQuery}:${mediaType}`}
                   results={pagedResults}
                   onOpen={openLiveManga}
                   groupBySource={groupResultsBySource}

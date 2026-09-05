@@ -1,3 +1,4 @@
+import { publicFetch } from "../lib/publicFetch.js";
 import { decodeHtml, mergeFilterGroups, textOnly } from "../lib/htmlUtils.js";
 import { createCachedHtmlFetcher, fetchProxiedImage } from "../lib/httpUtils.js";
 import { fetchProxiedHlsResource, isAdSegmentUrl } from "../lib/hlsProxy.js";
@@ -72,7 +73,7 @@ function assertAnime4upSubtitleUrl(rawUrl = "") {
 }
 
 async function fetchProxiedSubtitle(target, referer = "") {
-  const response = await fetch(target, {
+  const response = await publicFetch(target, {
     headers: {
       accept: "text/vtt, text/plain, */*",
       referer,
@@ -729,7 +730,7 @@ async function fetchLatestEpisodesPage(page, baseUrl = DEFAULT_BASE_URL, fetchHt
       hasMore: catalogHasMore(html, page, HOME_PATH),
     };
   }
-  const response = await fetch(`${baseUrl}${HOME_PATH}?wa_latest_episodes_ajax=1&wa_latest_page=${page}`, {
+  const response = await publicFetch(`${baseUrl}${HOME_PATH}?wa_latest_episodes_ajax=1&wa_latest_page=${page}`, {
     headers: {
       accept: "application/json, text/javascript, */*; q=0.01",
       referer: `${baseUrl}${HOME_PATH}`,

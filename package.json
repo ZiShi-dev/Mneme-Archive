@@ -60,6 +60,7 @@
     "@sentry/react": "^9.47.1",
     "fdir": "^6.5.0",
     "hls.js": "^1.7.1",
+    "ipaddr.js": "^2.5.0",
     "lucide-react": "^0.468.0",
     "plyr": "^3.8.4",
     "plyr-react": "^6.0.0",
@@ -67,7 +68,8 @@
     "react-aria-components": "^1.20.0",
     "react-dom": "^18.3.1",
     "react-snowfall": "^2.4.0",
-    "subsrt": "^1.1.1"
+    "subsrt": "^1.1.1",
+    "undici": "^6.28.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
@@ -106,7 +108,7 @@
       "electron/preload.cjs",
       "public/pwa/icon-512.png",
       "package.json",
-      "!node_modules/**/*"
+      "!node_modules/!(undici|ipaddr.js)/**/*"
     ],
     "asar": true,
     "win": {

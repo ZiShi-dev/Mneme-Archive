@@ -1,3 +1,4 @@
+import { publicFetch } from "../lib/publicFetch.js";
 import { decodeHtml, mergeFilterGroups, parseDetailTaxonomies, parseTaxonomyFilterLinks, textOnly } from "../lib/htmlUtils.js";
 import { createCachedHtmlFetcher, fetchProxiedImage, responseCache } from "../lib/httpUtils.js";
 import { normalizeSearchQuery } from "../lib/queryLimits.js";
@@ -160,7 +161,7 @@ async function fetchAzoraJson(path, { searchParams = {}, referer = `${DEFAULT_BA
   const cached = azoraJsonCache.get(key);
   if (cached && Date.now() - cached.at < AZORA_JSON_TTL_MS) return cached.data;
 
-  const response = await fetch(key, {
+  const response = await publicFetch(key, {
     headers: {
       accept: "application/json",
       referer,

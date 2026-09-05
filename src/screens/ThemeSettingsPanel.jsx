@@ -2,6 +2,14 @@ import React, { memo, useCallback } from "react";
 
 import { Check, ChevronLeft, Moon, Snowflake, Sparkles, Sun } from "lucide-react";
 
+import { GalaxyThemePreview } from "../components/atmosphere/GalaxyAtmosphere";
+import {
+  InkThemePreview,
+  PaperThemePreview,
+  SakuraDayThemePreview,
+} from "../components/atmosphere/CoreThemePreviews";
+import { LuneNeigeThemePreview } from "../components/atmosphere/LuneNeigeThemePreview";
+import { YozakuraThemePreview } from "../components/atmosphere/YozakuraThemePreview";
 import { SakuraIcon } from "../components/atmosphere/SakuraIcon";
 
 import { SettingsSheet } from "../components/ui/SettingsSheet";
@@ -40,6 +48,22 @@ const THEME_OPTIONS = [
 
 ];
 
+const THEME_PREVIEW = {
+
+  [THEME_PAPER]: PaperThemePreview,
+
+  [THEME_SAKURA]: SakuraDayThemePreview,
+
+  [THEME_INK]: InkThemePreview,
+
+  [THEME_YOZAKURA]: YozakuraThemePreview,
+
+  [THEME_LUNE_NEIGE]: LuneNeigeThemePreview,
+
+  [THEME_GALAXIE]: GalaxyThemePreview,
+
+};
+
 
 
 function ThemeOptionIcon({ Icon }) {
@@ -53,6 +77,8 @@ function ThemeOptionIcon({ Icon }) {
 
 
 const ThemeGalleryOption = memo(function ThemeGalleryOption({ id, modifier, active, label, hint, onSelect }) {
+
+  const Preview = THEME_PREVIEW[id];
 
   return (
 
@@ -82,7 +108,11 @@ const ThemeGalleryOption = memo(function ThemeGalleryOption({ id, modifier, acti
 
       <div className="theme-selector__preview" aria-hidden="true">
 
-        <span className={`theme-selector__preview-placeholder theme-selector__preview-placeholder--${modifier}`} />
+        {Preview ? <Preview /> : (
+
+          <span className={`theme-selector__preview-placeholder theme-selector__preview-placeholder--${modifier}`} />
+
+        )}
 
       </div>
 
@@ -96,7 +126,7 @@ const ThemeGalleryOption = memo(function ThemeGalleryOption({ id, modifier, acti
 
         </span>
 
-        <Check className="theme-selector__check" size={16} aria-hidden="true" />
+        <Check className="theme-selector__check" size={15} aria-hidden="true" />
 
       </div>
 

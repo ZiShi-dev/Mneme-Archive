@@ -1,3 +1,4 @@
+import { publicFetch } from "./publicFetch.js";
 import { parseChapterDateString, enrichChapterDates as enrichServerChapterDates } from "./chapterDates.js";
 import { extractChapterNumber, normalizeChapterList } from "./chapterOrdering.js";
 import { textOnly } from "./htmlUtils.js";
@@ -32,7 +33,7 @@ export function parseMadaraChapters(html = "", { normalizeUrl = (url) => url } =
 }
 
 export async function fetchMadaraChapterListHtml(baseUrl, mangaId, refererUrl) {
-  const response = await fetch(`${baseUrl}/wp-admin/admin-ajax.php`, {
+  const response = await publicFetch(`${baseUrl}/wp-admin/admin-ajax.php`, {
     method: "POST",
     redirect: "follow",
     headers: {
