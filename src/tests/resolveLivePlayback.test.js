@@ -36,7 +36,7 @@ test("findNextPlaybackSourceIndex prefers the next HLS-capable server", () => {
     { url: "https://vidzy.cc/c", streamUrl: "https://cdn/c.m3u8" },
   ];
   assert.equal(findNextPlaybackSourceIndex(sources, 0), 2);
-  assert.equal(findNextPlaybackSourceIndex(sources, 2), -1);
+  assert.equal(findNextPlaybackSourceIndex(sources, 2), 0);
 });
 
 test("findNextPlaybackSourceIndex falls back to any next server", () => {
@@ -45,6 +45,16 @@ test("findNextPlaybackSourceIndex falls back to any next server", () => {
     { url: "https://uqload.net/b" },
   ];
   assert.equal(findNextPlaybackSourceIndex(sources, 0), 1);
+});
+
+test("findNextPlaybackSourceIndex skips failed servers and wraps around", () => {
+  const sources = [
+    { url: "https://uqload.net/a" },
+    { url: "https://uqload.net/b" },
+    { url: "https://vidzy.cc/c", streamUrl: "https://cdn/c.m3u8" },
+  ];
+  assert.equal(findNextPlaybackSourceIndex(sources, 1, new Set([2])), 0);
+  assert.equal(findNextPlaybackSourceIndex(sources, 1, new Set([0, 2])), -1);
 });
 
 test("isEmbedOnlyPlaybackSource detects servers without direct stream", () => {

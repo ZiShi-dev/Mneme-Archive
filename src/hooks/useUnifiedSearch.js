@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { filterItemsByAudioLanguage } from "../features/sources/audioLanguage";
 import {
+  buildSearchScopeKey,
   filterSearchResults,
   flattenSearchBatches,
   getEnabledSources,
   isUnifiedSearchQueryActive,
+  normalizeUnifiedSearchQuery,
   peekCachedSearchBatches,
   resolveUnifiedSearchDebounceMs,
   searchEnabledSources,
@@ -48,20 +50,57 @@ export function useUnifiedSearch({
   const abortRef = useRef(null);
   const prevQueryRef = useRef("");
   const resultsRef = useRef([]);
+  const pendingBatchesRef = useRef(null);
+  const rafRef = useRef(0);
+  const sourcesRef = useRef(sources);
+  const preferencesRef = useRef(sourcePreferences);
+  const audioFilterRef = useRef(audioFilter);
+  const batchesRef = useRef([]);
 
-  const normalizedQuery = query.trim();
+  sourcesRef.current = sources;
+  preferencesRef.current = sourcePreferences;
+  audioFilterRef.current = audioFilter;
+
+  const normalizedQuery = normalizeUnifiedSearchQuery(query);
   const enabledSources = useMemo(() => getEnabledSources(sources), [sources]);
-  const searchActive = isUnifiedSearchQueryActive(normalizedQuery) && enabledSources.length > 0;
+  const searchScopeKey = useMemo(
+    () => buildSearchScopeKey(sources, sourcePreferences, mediaType),
+    [mediaType, sourcePreferences, sources],
+  );
+  const searchActive = isUnifiedSearchQueryActive(normalizedQuery) && Boolean(searchScopeKey);
   const hasPartialErrors = searchErrors.length > 0 && results.length > 0;
 
   const applyBatches = useCallback((batches, activeQuery = normalizedQuery) => {
-    const next = applySearchBatches(batches, activeQuery, audioFilter);
-    setResults(next.results);
-    setSearchErrors(next.searchErrors);
+    batchesRef.current = batches;
+    const next = applySearchBatches(batches, activeQuery, audioFilterRef.current);
+    startTransition(() => {
+      setResults(next.results);
+      setSearchErrors(next.searchErrors);
+    });
     resultsRef.current = next.results;
     if (next.results.length) setLoading(false);
     return next;
-  }, [audioFilter, normalizedQuery]);
+  }, [normalizedQuery]);
+
+  const flushPendingBatches = useCallback(() => {
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = 0;
+    }
+    const pending = pendingBatchesRef.current;
+    pendingBatchesRef.current = null;
+    if (!pending) return;
+    applyBatches(pending.batches, pending.activeQuery);
+  }, [applyBatches]);
+
+  const scheduleApply = useCallback((batches, activeQuery = normalizedQuery) => {
+    pendingBatchesRef.current = { batches, activeQuery };
+    if (rafRef.current) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = 0;
+      flushPendingBatches();
+    });
+  }, [flushPendingBatches, normalizedQuery]);
 
   useEffect(() => {
     resultsRef.current = results;
@@ -70,8 +109,13 @@ export function useUnifiedSearch({
   useEffect(() => {
     requestIdRef.current += 1;
     abortRef.current?.abort();
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = 0;
+    }
+    pendingBatchesRef.current = null;
 
-    if (!isUnifiedSearchQueryActive(normalizedQuery)) {
+    if (!isUnifiedSearchQueryActive(normalizedQuery) || !searchScopeKey) {
       setResults([]);
       setSearchErrors([]);
       setFatalError("");
@@ -79,20 +123,12 @@ export function useUnifiedSearch({
       setIsRefreshing(false);
       prevQueryRef.current = "";
       resultsRef.current = [];
+      batchesRef.current = [];
       return undefined;
     }
 
-    if (!enabledSources.length) {
-      setResults([]);
-      setSearchErrors([]);
-      setFatalError("");
-      setLoading(false);
-      setIsRefreshing(false);
-      prevQueryRef.current = "";
-      resultsRef.current = [];
-      return undefined;
-    }
-
+    const latestSources = sourcesRef.current;
+    const latestPreferences = preferencesRef.current;
     const previousQuery = prevQueryRef.current;
     const isQueryExtension = previousQuery
       && normalizedQuery.startsWith(previousQuery)
@@ -111,8 +147,8 @@ export function useUnifiedSearch({
     }
 
     const cachedBatches = peekCachedSearchBatches({
-      sources,
-      sourcePreferences,
+      sources: latestSources,
+      sourcePreferences: latestPreferences,
       query: normalizedQuery,
       mediaType,
     });
@@ -138,12 +174,12 @@ export function useUnifiedSearch({
       const mergeAndApply = (batches) => {
         if (requestId !== requestIdRef.current) return;
         if (controller.signal.aborted) return;
-        applyBatches(batches);
+        scheduleApply(batches, normalizedQuery);
       };
 
       searchEnabledSources({
-        sources,
-        sourcePreferences,
+        sources: latestSources,
+        sourcePreferences: latestPreferences,
         query: normalizedQuery,
         mediaType,
         signal: controller.signal,
@@ -151,6 +187,7 @@ export function useUnifiedSearch({
       })
         .then((batches) => {
           mergeAndApply(batches);
+          flushPendingBatches();
           if (requestId === requestIdRef.current) {
             prevQueryRef.current = normalizedQuery;
           }
@@ -174,16 +211,25 @@ export function useUnifiedSearch({
     return () => {
       clearTimeout(timer);
       abortRef.current?.abort();
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = 0;
+      }
     };
   }, [
     applyBatches,
-    audioFilter,
-    enabledSources.length,
     mediaType,
     normalizedQuery,
-    sourcePreferences,
-    sources,
+    scheduleApply,
+    flushPendingBatches,
+    searchScopeKey,
   ]);
+
+  useEffect(() => {
+    if (!batchesRef.current.length) return undefined;
+    applyBatches(batchesRef.current);
+    return undefined;
+  }, [audioFilter, applyBatches]);
 
   const showTotalFailure = searchActive && !loading && !isRefreshing && !results.length && searchErrors.length > 0 && !fatalError;
 

@@ -84,12 +84,13 @@ export function VideoPlaybackControls({
   dockOnly = false,
   minimalOverlay = false,
   progressOnly = false,
+  forceChapterNav = false,
   className = "",
   compact = false,
 }) {
   const { t, dir } = useI18n();
   const resolvedUnitLabel = unitLabel || t("media.theEpisode");
-  const showChapterNav = Boolean(previousChapter || nextChapter) && !minimalOverlay && !progressOnly;
+  const showChapterNav = (forceChapterNav || Boolean(previousChapter || nextChapter)) && !minimalOverlay && !progressOnly;
   const minimalMode = navOnly || progressOnly;
   const showAuxTools = !navOnly && !minimalOverlay && !progressOnly;
   const showRemainingTime = netflixMode && minimalOverlay && duration > 0;

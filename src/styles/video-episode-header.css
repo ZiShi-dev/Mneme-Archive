@@ -28,16 +28,44 @@
     transparent 100%
   );
   border: 0;
+  opacity: 0;
+  visibility: hidden;
   pointer-events: none;
+  transform: translateY(-8px);
+  transition: opacity 0.28s ease, transform 0.28s ease, visibility 0.28s ease;
+}
+
+.video-episode-header.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+}
+
+.live-video-embed-tapcatch {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
 }
 
 html.app-immersive-fullscreen .video-episode-header {
   padding-top: max(8px, calc(var(--safe-top, 0px) + 6px));
 }
 
-.video-episode-header__back,
-.video-episode-header__identity {
+.video-episode-header.is-visible .video-episode-header__back,
+.video-episode-header.is-visible .video-episode-header__identity {
   pointer-events: auto;
+}
+
+.video-episode-header:not(.is-visible) .video-episode-header__back,
+.video-episode-header:not(.is-visible) .video-episode-header__identity {
+  pointer-events: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .video-episode-header__back {

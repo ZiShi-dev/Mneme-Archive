@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import {
   isAllowedEmbedUrl,
   resolveEmbedAllow,
@@ -6,6 +6,8 @@ import {
   resolveEmbedReferrerPolicy,
 } from "../../lib/video/embedHosts";
 import { useI18n } from "../../i18n/I18nProvider";
+
+const EMBED_LOAD_TIMEOUT_MS = 22_000;
 
 export function EmbedPlayerFrame({
   src,
@@ -16,10 +18,23 @@ export function EmbedPlayerFrame({
   const { t } = useI18n();
   const allowed = Boolean(src) && isAllowedEmbedUrl(src);
   const sandbox = resolveEmbedIframeSandbox(src);
+  const onBlockedRef = useRef(onBlocked);
+  const loadedRef = useRef(false);
+  onBlockedRef.current = onBlocked;
 
   useEffect(() => {
-    if (!allowed) onBlocked?.();
-  }, [allowed, onBlocked, src]);
+    loadedRef.current = false;
+    if (!allowed) {
+      onBlockedRef.current?.();
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      if (!loadedRef.current) onBlockedRef.current?.();
+    }, EMBED_LOAD_TIMEOUT_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [allowed, src]);
 
   if (!allowed) {
     return (
@@ -37,8 +52,12 @@ export function EmbedPlayerFrame({
       className={className}
       {...(sandbox ? { sandbox } : {})}
       allow={resolveEmbedAllow(src)}
+      allowFullScreen
       referrerPolicy={resolveEmbedReferrerPolicy(src)}
       loading="eager"
+      onLoad={() => {
+        loadedRef.current = true;
+      }}
     />
   );
 }

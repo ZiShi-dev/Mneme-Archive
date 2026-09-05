@@ -3,6 +3,7 @@ import { Capacitor } from "@capacitor/core";
 import { lockLandscapeOrientation, unlockOrientation } from "../../../lib/video/orientationLock";
 import { isChromebookApp } from "../../../config/appFlavor";
 import { installEmbedPopupGuards } from "../../../lib/video/embedHosts";
+import { getDocumentFullscreenElement, isFullscreenWithinRoot } from "../../../lib/video/fullscreenTarget";
 import { setNativeImmersive } from "../../../lib/video/nativeImmersive";
 import { CHROME_IDLE_MS, FULLSCREEN_CHROME_IDLE_MS, NETFLIX_CHROME_IDLE_MS, CHROME_INTERACTION_END_MS } from "./constants";
 
@@ -90,9 +91,8 @@ export function useVideoCinemaChrome({
 
   useEffect(() => {
     if (!plyrInstance) return undefined;
-    const getFullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
     const onEnter = () => {
-      const nativeActive = Boolean(getFullscreenElement());
+      const nativeActive = Boolean(getDocumentFullscreenElement());
       setChromeVisible(!netflixMode);
       setImmersiveMode(true);
       setIsFullscreen(true);
@@ -186,7 +186,7 @@ export function useVideoCinemaChrome({
     const root = fullscreenRootRef.current;
     if (!root) return undefined;
 
-    const chromeSelector = ".plyr__controls, .plyr__menu, .live-video-chrome, .reader-playback";
+    const chromeSelector = ".plyr__controls, .plyr__menu, .live-video-chrome, .video-episode-header, .video-episode-toolbar, .video-watch-dock, .reader-playback";
     const onPointerOver = (event) => {
       if (!event.target.closest(chromeSelector)) return;
       chromeInteractingRef.current = true;
@@ -234,11 +234,11 @@ export function useVideoCinemaChrome({
   }, []);
 
   useEffect(() => {
-    const getFullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
-
     const onFullscreenChange = () => {
       const root = fullscreenRootRef.current;
-      const nativeActive = Boolean(root && getFullscreenElement() === root);
+      const fullscreenElement = getDocumentFullscreenElement();
+      const nativeActive = isFullscreenWithinRoot(root, fullscreenElement);
+      const iframeFullscreen = Boolean(nativeActive && root && fullscreenElement !== root);
       const fallbackActive = Boolean(
         root?.classList.contains("plyr--fullscreen-fallback")
         || root?.querySelector(".plyr--fullscreen-fallback, .plyr--fullscreen-active"),
@@ -247,6 +247,7 @@ export function useVideoCinemaChrome({
       setNativeFullscreen(nativeActive);
       setIsFullscreen(active);
       if (nativeActive) syncCinemaDom(false);
+      if (iframeFullscreen) setChromeVisible(false);
       if (!active && !plyrInstanceRef.current?.fullscreen?.active) setImmersiveMode(false);
       else setImmersiveMode(true);
     };
@@ -270,11 +271,10 @@ export function useVideoCinemaChrome({
       plyr.fullscreen.exit();
     }
 
-    const getFullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
     const root = fullscreenRootRef.current;
     syncCinemaDom(false);
 
-    if (root && getFullscreenElement() === root) {
+    if (isFullscreenWithinRoot(root)) {
       if (document.exitFullscreen) await document.exitFullscreen();
       else if (document.webkitExitFullscreen) await document.webkitExitFullscreen();
     }
@@ -287,22 +287,21 @@ export function useVideoCinemaChrome({
   async function requestNativeFullscreen(videoRef) {
     const root = fullscreenRootRef.current;
     const plyr = plyrInstanceRef.current;
-    const getFullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
 
     if (plyr?.fullscreen?.enabled) {
       plyr.fullscreen.enter();
-      if (getFullscreenElement() || plyr.fullscreen?.active) return true;
+      if (getDocumentFullscreenElement() || plyr.fullscreen?.active) return true;
     }
 
     if (!root) return false;
 
     if (root.requestFullscreen) {
       await root.requestFullscreen();
-      return Boolean(getFullscreenElement());
+      return Boolean(getDocumentFullscreenElement());
     }
     if (root.webkitRequestFullscreen) {
       await root.webkitRequestFullscreen();
-      return Boolean(getFullscreenElement());
+      return Boolean(getDocumentFullscreenElement());
     }
 
     const video = videoRef?.current;
@@ -315,12 +314,11 @@ export function useVideoCinemaChrome({
   }
 
   const requestFullscreen = useCallback(async (videoRef) => {
-    const getFullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
     const root = fullscreenRootRef.current;
     const plyr = plyrInstanceRef.current;
     const fullscreenActive = Boolean(
       cinemaMode
-      || getFullscreenElement()
+      || isFullscreenWithinRoot(root)
       || immersiveMode
       || isFullscreen
       || plyr?.fullscreen?.active
@@ -341,7 +339,7 @@ export function useVideoCinemaChrome({
       const ok = await requestNativeFullscreen(videoRef);
       if (ok) {
         setIsFullscreen(true);
-        setNativeFullscreen(Boolean(getFullscreenElement()));
+        setNativeFullscreen(isFullscreenWithinRoot(root));
         lockLandscapeOrientation().catch(() => {});
         return;
       }

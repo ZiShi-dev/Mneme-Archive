@@ -7,18 +7,21 @@ export function VideoEpisodeToolbar({
   embedMode = false,
   unitLabel,
   controlsProps,
+  ...chromeHandlers
 }) {
   const { t, dir } = useI18n();
   const resolvedUnitLabel = unitLabel || t("media.theEpisode");
 
-  if (!visible || !controlsProps) return null;
+  if (!controlsProps) return null;
 
   return (
     <section
-      className="video-episode-toolbar"
+      className={`video-episode-toolbar${visible ? " is-visible" : ""}`}
       dir={dir}
+      aria-hidden={visible ? undefined : "true"}
       aria-label={t("reader.playback.watchUnit", { unit: resolvedUnitLabel })}
       data-video-fixed-dock="true"
+      {...chromeHandlers}
     >
       <div className="video-episode-toolbar__surface">
         <div className="video-episode-toolbar__inner">

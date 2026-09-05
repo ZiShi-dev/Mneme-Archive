@@ -38,6 +38,7 @@ import { scrollAppToElement } from "../../lib/platform/scrollRoot";
 import { cancelCloudflarePending } from "../../lib/platform/mangalikNative.js";
 import { allowsSpeculativePrefetch, getReaderImageBudget } from "../../lib/platform/dataSaver.js";
 import { useAppPullRefreshHandler } from "../../hooks/useAppPullRefreshHandler";
+import { resolveUnifiedSearchDebounceMs } from "../../lib/unifiedSearch";
 
 import { CatalogCarouselNav } from "./CatalogCarouselNav";
 import { CatalogLoadingToast } from "./CatalogLoadingToast";
@@ -105,8 +106,6 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
     void refreshCatalogRef.current({ notify: true });
   }, []);
   useAppPullRefreshHandler(handleAppPullRefresh);
-
-  const SEARCH_DEBOUNCE_MS = 275;
 
   useEffect(() => () => {
     mountedRef.current = false;
@@ -676,7 +675,7 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
       }
       queryTimer.current = setTimeout(() => {
         void refreshCatalog({ kind: selectedKind, filter: selectedFilter, catalogQuery: value, page: 1 });
-      }, SEARCH_DEBOUNCE_MS);
+      }, resolveUnifiedSearchDebounceMs(value, { cacheReady: Boolean(cachedSearch?.items?.length) }));
       return;
     }
 

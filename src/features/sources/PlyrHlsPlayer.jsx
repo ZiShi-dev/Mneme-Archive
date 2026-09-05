@@ -13,10 +13,11 @@ const LOAD_TIMEOUT_MS = 45_000;
 
 const PLYR_FULLSCREEN_CONTAINER = ".live-video-immersive-root";
 
-function getPlyrOptions(t) {
+function getPlyrOptions(t, customChrome = false) {
+  const nativeChrome = isChromebookApp && !customChrome;
   return {
     autoplay: false,
-    clickToPlay: isChromebookApp,
+    clickToPlay: nativeChrome,
     hideControls: true,
     resetOnEnd: false,
     keyboard: { focused: true, global: false },
@@ -26,10 +27,10 @@ function getPlyrOptions(t) {
     fullscreen: {
       enabled: true,
       fallback: Capacitor.isNativePlatform() ? "force" : true,
-      iosNative: !isChromebookApp,
+      iosNative: !nativeChrome,
       container: PLYR_FULLSCREEN_CONTAINER,
     },
-    controls: isChromebookApp ? [
+    controls: nativeChrome ? [
       "play-large",
       "play",
       "progress",
@@ -84,14 +85,15 @@ export function PlyrHlsPlayer({
   loadingLabel,
   videoRef,
   className = "",
+  customChrome = false,
   onError,
   onReady,
   onPlyrInstance,
 }) {
   const { t } = useI18n();
   const plyrOptions = useMemo(
-    () => getPlyrOptions(t),
-    [t, src],
+    () => getPlyrOptions(t, customChrome),
+    [t, src, customChrome],
   );
   const resolvedLoadingLabel = loadingLabel || t("reader.stream.loading");
   const plyrApiRef = useRef(null);

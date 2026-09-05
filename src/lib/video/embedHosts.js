@@ -11,6 +11,7 @@ export const EMBED_IFRAME_SANDBOX = [
   "allow-same-origin",
   "allow-presentation",
   "allow-forms",
+  "allow-fullscreen",
 ].join(" ");
 
 export function isProxiedSourceEmbedUrl(url = "") {

@@ -13,6 +13,8 @@ import {
   searchItemMatchesMediaType,
   sourceSupportsMediaType,
   UNIFIED_RESULT_LIMIT,
+  buildSearchScopeKey,
+  normalizeUnifiedSearchQuery,
 } from "../lib/unifiedSearch.js";
 
 const mockSources = [
@@ -220,9 +222,10 @@ test("peekCachedSearchBatches returns cached remote results without network", as
 
 test("resolveUnifiedSearchDebounceMs skips wait when cache is ready", () => {
   assert.equal(resolveUnifiedSearchDebounceMs("na", { cacheReady: true }), 0);
-  assert.equal(resolveUnifiedSearchDebounceMs("na", { cacheReady: false }), 200);
-  assert.equal(resolveUnifiedSearchDebounceMs("nar", { cacheReady: false }), 150);
-  assert.equal(resolveUnifiedSearchDebounceMs("naruto", { cacheReady: false }), 120);
+  assert.equal(resolveUnifiedSearchDebounceMs("na", { cacheReady: false }), 280);
+  assert.equal(resolveUnifiedSearchDebounceMs("nar", { cacheReady: false }), 200);
+  assert.equal(resolveUnifiedSearchDebounceMs("naru", { cacheReady: false }), 160);
+  assert.equal(resolveUnifiedSearchDebounceMs("naruto", { cacheReady: false }), 90);
 });
 
 test("filterSearchResults narrows visible items while typing", () => {
@@ -234,4 +237,58 @@ test("filterSearchResults narrows visible items while typing", () => {
   const filtered = filterSearchResults(items, "naruto");
   assert.equal(filtered.length, 2);
   assert.ok(filtered.every((item) => item.title.toLowerCase().includes("naruto")));
+});
+
+test("normalizeUnifiedSearchQuery trims and caps length", () => {
+  assert.equal(normalizeUnifiedSearchQuery("  naruto  "), "naruto");
+  assert.equal(normalizeUnifiedSearchQuery("x".repeat(250)).length, 200);
+});
+
+test("buildSearchScopeKey ignores source list identity and disabled sources", () => {
+  const left = buildSearchScopeKey(
+    [{ id: "mangalik", enabled: true }, { id: "wiflix", enabled: false }],
+    { mangalik: { mode: "full" } },
+    "all",
+  );
+  const right = buildSearchScopeKey(
+    [{ id: "wiflix", enabled: false }, { id: "mangalik", enabled: true }],
+    { mangalik: { mode: "full" } },
+    "all",
+  );
+  assert.equal(left, right);
+  assert.equal(left.includes("wiflix"), false);
+});
+
+test("searchEnabledSources reuses an in-flight request for the same source and query", async () => {
+  resetUnifiedSearchCache();
+  let calls = 0;
+  let release;
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+
+  const searchSourceImpl = async () => {
+    calls += 1;
+    await gate;
+    return { items: [makeItem("Naruto", "https://mangalik.net/naruto")] };
+  };
+
+  const first = searchEnabledSources({
+    sources: [{ id: "mangalik", enabled: true }],
+    query: "naruto",
+    deferVariants: false,
+    searchSourceImpl,
+  });
+  const second = searchEnabledSources({
+    sources: [{ id: "mangalik", enabled: true }],
+    query: "naruto",
+    deferVariants: false,
+    searchSourceImpl,
+  });
+
+  release();
+  const [left, right] = await Promise.all([first, second]);
+  assert.equal(calls, 1);
+  assert.equal(left[0].items[0].title, "Naruto");
+  assert.equal(right[0].items[0].title, "Naruto");
 });

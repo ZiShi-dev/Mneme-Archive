@@ -44,6 +44,7 @@ export function useVideoChapterSession({
   }));
   const [hlsRetryKey, setHlsRetryKey] = useState(0);
   const [embedFallbackIndexes, setEmbedFallbackIndexes] = useState(() => new Set());
+  const [failedSourceIndexes, setFailedSourceIndexes] = useState(() => new Set());
 
   const orderedSources = useMemo(
     () => sortPlaybackSources(data?.sources?.length ? data.sources : []),
@@ -60,9 +61,11 @@ export function useVideoChapterSession({
   const orderedSourcesRef = useRef(orderedSources);
   const activeSourceIndexRef = useRef(activeSourceIndex);
   const embedFallbackIndexesRef = useRef(embedFallbackIndexes);
+  const failedSourceIndexesRef = useRef(failedSourceIndexes);
   orderedSourcesRef.current = orderedSources;
   activeSourceIndexRef.current = activeSourceIndex;
   embedFallbackIndexesRef.current = embedFallbackIndexes;
+  failedSourceIndexesRef.current = failedSourceIndexes;
 
   const preferDriveEmbed = useMemo(() => {
     if (Capacitor.isNativePlatform()) return true;
@@ -70,38 +73,51 @@ export function useVideoChapterSession({
     return window.matchMedia("(max-width: 900px)").matches;
   }, []);
 
+  const switchToSource = useCallback((nextIndex) => {
+    setActiveSourceIndex(nextIndex);
+    setHlsRetryKey((value) => value + 1);
+  }, []);
+
   const handleHlsError = useCallback(() => {
     const sources = orderedSourcesRef.current;
+    if (!sources.length) {
+      pushToast({ type: "error", message: t("reader.stream.playFailed") });
+      return;
+    }
+
     const index = activeSourceIndexRef.current;
     const current = sources[index];
+    const failed = failedSourceIndexesRef.current;
 
-    if (isDriveMkvStreamSource(current)) {
+    if (isDriveMkvStreamSource(current) && !failed.has(index)) {
       const embedIndex = findDriveEmbedSourceIndex(sources);
-      if (embedIndex >= 0 && embedIndex !== index) {
+      if (embedIndex >= 0 && embedIndex !== index && !failed.has(embedIndex)) {
         pushToast({ type: "info", message: t("reader.stream.switchingServer") });
-        setActiveSourceIndex(embedIndex);
-        setHlsRetryKey((value) => value + 1);
+        switchToSource(embedIndex);
         return;
       }
     }
 
     if (current?.streamUrl && current?.url && !embedFallbackIndexesRef.current.has(index)) {
-      pushToast({ type: "info", message: t("reader.stream.switchingServer") });
       setEmbedFallbackIndexes((value) => new Set(value).add(index));
       setHlsRetryKey((value) => value + 1);
       return;
     }
 
-    const nextIndex = findNextPlaybackSourceIndex(sources, index);
+    const exhausted = new Set(failed);
+    exhausted.add(index);
+    failedSourceIndexesRef.current = exhausted;
+    setFailedSourceIndexes(exhausted);
+
+    const nextIndex = findNextPlaybackSourceIndex(sources, index, exhausted);
     if (nextIndex >= 0) {
       pushToast({ type: "info", message: t("reader.stream.switchingServer") });
-      setActiveSourceIndex(nextIndex);
-      setHlsRetryKey((value) => value + 1);
+      switchToSource(nextIndex);
       return;
     }
 
     pushToast({ type: "error", message: t("reader.stream.playFailed") });
-  }, [pushToast, t]);
+  }, [pushToast, switchToSource, t]);
 
   const playback = useMemo(
     () => resolveLivePlayback({
@@ -170,6 +186,8 @@ export function useVideoChapterSession({
     setError("");
     setHlsRetryKey(0);
     setEmbedFallbackIndexes(new Set());
+    setFailedSourceIndexes(new Set());
+    failedSourceIndexesRef.current = new Set();
     onChapterLoadStart?.();
 
     const applyResult = (result) => {
@@ -219,6 +237,8 @@ export function useVideoChapterSession({
   const selectSource = useCallback((index) => {
     setActiveSourceIndex(index);
     setEmbedFallbackIndexes(new Set());
+    setFailedSourceIndexes(new Set());
+    failedSourceIndexesRef.current = new Set();
     setHlsRetryKey((value) => value + 1);
   }, []);
 

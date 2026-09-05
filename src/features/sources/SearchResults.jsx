@@ -14,7 +14,12 @@ export const COLLECTION_PAGE_SIZE = 12;
 export const COLLECTION_DESKTOP_PAGE_SIZE = 24;
 const SEARCH_GROUP_PREVIEW_SIZE = 3;
 
-export function SearchResultRow({ item, onOpen, showSource = true }) {
+export const SearchResultRow = React.memo(function SearchResultRow({
+  item,
+  onOpen,
+  showSource = true,
+  lazyCover = true,
+}) {
   const type = getItemType(item);
   const typeLabel = contentTypes[type]?.singular || contentTypes.manga.singular;
   const subtitle = item.altTitle || item.subtitle;
@@ -30,6 +35,8 @@ export function SearchResultRow({ item, onOpen, showSource = true }) {
             sourceId={item.sourceId}
             video={isVideoMediaType(type)}
             contain={usesContainCover(item.sourceId)}
+            lazy={lazyCover}
+            priority={!lazyCover}
           />
           <span className={`search-result-row__type search-result-row__type--${type}`}>{typeLabel}</span>
           {item.audioLabel ? <CoverAudioBadge label={item.audioLabel} /> : null}
@@ -48,7 +55,7 @@ export function SearchResultRow({ item, onOpen, showSource = true }) {
       </button>
     </article>
   );
-}
+});
 
 function groupSearchResults(results) {
   const groups = new Map();
@@ -142,12 +149,13 @@ export function SearchResultsList({ results, onOpen, groupBySource = false }) {
               </header>
             )}
             <div className="search-results__list">
-              {visibleItems.map((item) => (
+              {visibleItems.map((item, index) => (
                 <SearchResultRow
                   key={item.key}
                   item={item}
                   onOpen={onOpen}
                   showSource={!groupBySource}
+                  lazyCover={index > 2}
                 />
               ))}
             </div>

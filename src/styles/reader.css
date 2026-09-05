@@ -1637,8 +1637,8 @@ html.app-immersive-fullscreen[data-system-bars-visible="true"] .live-reader--vid
   justify-content: center;
 }
 
-.live-video-immersive-root.is-netflix.has-episode-toolbar .reader-playback--overlay .reader-playback__chapter,
-.live-video-immersive-root.is-netflix.has-episode-toolbar .reader-playback--overlay .reader-playback__server-picker {
+.live-video-immersive-root.is-netflix.has-episode-toolbar:not(.is-theater-fullscreen):not(.plyr--fullscreen-fallback) .reader-playback--overlay .reader-playback__chapter,
+.live-video-immersive-root.is-netflix.has-episode-toolbar:not(.is-theater-fullscreen):not(.plyr--fullscreen-fallback) .reader-playback--overlay .reader-playback__server-picker {
   display: none !important;
 }
 

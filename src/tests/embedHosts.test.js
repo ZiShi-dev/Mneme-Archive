@@ -60,3 +60,8 @@ test("resolveEmbedIframeSandbox skips sandbox for hosts that reject it", () => {
   assert.equal(resolveEmbedIframeSandbox("https://drive.google.com/file/d/abc/preview"), undefined);
   assert.equal(resolveEmbedIframeSandbox("https://vkvideo.ru/video_ext.php?oid=1"), EMBED_IFRAME_SANDBOX);
 });
+
+test("EMBED_IFRAME_SANDBOX allows the host player to enter fullscreen", () => {
+  assert.match(EMBED_IFRAME_SANDBOX, /\ballow-fullscreen\b/);
+});
+

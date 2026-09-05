@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, Bookmark, Check, Clapperboard, ExternalLink, RefreshCw, RotateCcw, RotateCw, Wifi } from "lucide-react";
-import { burstSakuraFrom } from "../../lib/sakura/burst";
+import { Clapperboard, RotateCcw, RotateCw, Wifi } from "lucide-react";
 import { unlockOrientation } from "../../lib/video/orientationLock";
 import { useToast } from "../../components/ui/ToastProvider";
 import { getSourceProfile, resolveSourceId } from "../../config/sources";
@@ -20,17 +19,15 @@ import {
   SINGLE_TAP_DELAY_MS,
   SKIP_ZONE_RATIO,
   DOUBLE_TAP_MS,
-  VIDEO_COMPLETE_THRESHOLD,
 } from "./liveVideo/constants";
 import { useVideoChapterSession } from "./liveVideo/useVideoChapterSession";
 import { useVideoCinemaChrome } from "./liveVideo/useVideoCinemaChrome";
 import { VideoStageSkeleton } from "../../components/ui/ContentSkeleton";
 import { VideoEpisodePlaylist } from "./liveVideo/VideoEpisodePlaylist";
 import { VideoSubtitleOverlay } from "./liveVideo/VideoSubtitleOverlay";
-import { VideoEpisodeToolbar } from "./liveVideo/VideoEpisodeToolbar";
 import { VideoServerSheet } from "./liveVideo/VideoServerSheet";
-import { VideoServerPickerButton } from "./liveVideo/VideoServerPickerButton";
 import { VideoEpisodeHeader } from "./liveVideo/VideoEpisodeHeader";
+import { VideoEpisodeToolbar } from "./liveVideo/VideoEpisodeToolbar";
 import { useFetchedSubtitles } from "./liveVideo/useFetchedSubtitles";
 
 export function LiveVideoPlayer({
@@ -143,7 +140,7 @@ export function LiveVideoPlayer({
     playing,
     plyrInstance,
     plyrInstanceRef,
-    netflixMode: !isChromebookApp,
+    netflixMode: true,
   });
 
   useEffect(() => {
@@ -175,15 +172,6 @@ export function LiveVideoPlayer({
     if (video.readyState >= 1) applySavedPosition();
     return () => video.removeEventListener("loadedmetadata", applySavedPosition);
   }, [activeChapter.url, playback?.mode, playback?.url, sourceId]);
-
-  const markComplete = useCallback(() => {
-    if (completedRef.current) return;
-    completedRef.current = true;
-    setProgress(100);
-    setChapterProgress(sourceId, activeChapter.url, 100);
-    onSaveProgress?.(manga, activeChapter, 100, { completed: true });
-    pushToast({ type: "success", message: presentation.completeToast });
-  }, [activeChapter, manga, onSaveProgress, presentation.completeToast, pushToast, sourceId]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -584,27 +572,15 @@ export function LiveVideoPlayer({
     }
   }
 
+  const isMovie = presentation.type === "movie";
   const episodeLabel = formatVideoChapterNavLabel(activeChapter, presentation.headerUnit);
+  const headerEpisodeLabel = isMovie ? (manga.title || episodeLabel) : episodeLabel;
+  const headerSeriesTitle = isMovie ? (profile.name || "") : manga.title;
 
+  const useNetflixLayout = true;
   const watchDesktopLayout = isChromebookApp;
-  const useNetflixLayout = !watchDesktopLayout;
   const isTheaterFullscreen = useNetflixLayout && Boolean(immersiveMode || isFullscreen || cssFullscreen);
   const videoEdgeToEdge = (useNetflixLayout && Boolean(playback)) || isTheaterFullscreen;
-
-  const markCompleteAction = playback && progress < VIDEO_COMPLETE_THRESHOLD ? (
-    <button
-      type="button"
-      className={`live-video-mark-complete${watchDesktopLayout ? " live-video-mark-complete--meta" : ""}`}
-      onClick={markComplete}
-    >
-      <Check size={13} aria-hidden="true" />
-      {presentation.type === "movie" ? t("reader.stream.markMovieComplete") : t("reader.stream.markEpisodeComplete")}
-    </button>
-  ) : null;
-
-  const showStandaloneMarkComplete = Boolean(
-    markCompleteAction && watchDesktopLayout,
-  );
   const controlsChromeVisible = chromeVisible;
 
   const serverLabels = useMemo(
@@ -741,38 +717,40 @@ export function LiveVideoPlayer({
   const overlayControlProps = {
     ...playbackControlProps,
     minimalOverlay: useNetflixLayout && !embedMode,
-    previousChapter: useNetflixLayout ? null : previousChapter,
-    nextChapter: useNetflixLayout ? null : nextChapter,
-    showServerPicker: useNetflixLayout ? false : showServerPicker,
+    previousChapter: useNetflixLayout && !isTheaterFullscreen ? null : previousChapter,
+    nextChapter: useNetflixLayout && !isTheaterFullscreen ? null : nextChapter,
+    showServerPicker: useNetflixLayout && !isTheaterFullscreen ? false : showServerPicker,
   };
 
-  const videoEpisodeHeader = useNetflixLayout && !isTheaterFullscreen ? (
+  const videoEpisodeHeader = useNetflixLayout ? (
     <VideoEpisodeHeader
-      episodeLabel={episodeLabel}
-      seriesTitle={manga.title}
+      visible={controlsChromeVisible}
+      episodeLabel={headerEpisodeLabel}
+      seriesTitle={headerSeriesTitle}
       onBack={onBack}
       onOpenDetails={onOpenDetails}
+      {...chromeInteractionHandlers}
     />
   ) : null;
 
+  const showEpisodeToolbar = useNetflixLayout && Boolean(playback && data) && (showServerPicker || chapters.length > 1);
   const showNavDock = useNetflixLayout && Boolean(playback && data);
   const showTheaterOverlay = Boolean(playback && (!useNetflixLayout || isTheaterFullscreen));
-  const showDockProgress = showNavDock && !isTheaterFullscreen;
+  const showDockProgress = showNavDock && !isTheaterFullscreen && !embedMode;
 
-  const dockToolbarProps = showNavDock ? {
-    visible: Boolean(showServerPicker || previousChapter || nextChapter),
-    embedMode,
-    unitLabel: presentation.headerUnit,
-    controlsProps: {
-      ...playbackControlProps,
-      showServerPicker,
-      previousChapter,
-      nextChapter,
-      onPrevious: () => changeChapter(previousChapter),
-      onNext: () => changeChapter(nextChapter),
-      onOpenServers: openServers,
-    },
-  } : null;
+  const videoEpisodeToolbar = showEpisodeToolbar && !isTheaterFullscreen ? (
+    <VideoEpisodeToolbar
+      visible={controlsChromeVisible}
+      embedMode={embedMode}
+      unitLabel={presentation.headerUnit}
+      controlsProps={{
+        ...playbackControlProps,
+        forceChapterNav: !isMovie && chapters.length > 1,
+        showServerPicker,
+      }}
+      {...chromeInteractionHandlers}
+    />
+  ) : null;
 
   const playbackOverlay = showTheaterOverlay ? (
     <div
@@ -781,7 +759,7 @@ export function LiveVideoPlayer({
     >
       <VideoPlaybackControls
         {...overlayControlProps}
-        navOnly={!useNetflixLayout && embedMode}
+        navOnly={embedMode}
         className={useNetflixLayout || cinemaMode ? "reader-playback--overlay reader-playback--netflix" : "reader-playback--docked"}
         showClose={!useNetflixLayout && !embedMode && !usePlyrPlayer}
         compact={useNetflixLayout || cinemaMode || phoneLandscape}
@@ -792,7 +770,7 @@ export function LiveVideoPlayer({
   const immersiveRoot = (
       <div
         ref={bindImmersiveRoot}
-        className={`live-video-immersive-root${videoEdgeToEdge ? " is-video-fill" : (cinemaMode ? " is-cinema" : "")}${isTheaterFullscreen ? " is-theater-fullscreen" : ""}${useNetflixLayout ? " is-netflix has-episode-header" : ""}${showNavDock ? " has-episode-toolbar has-nav-dock" : ""}${embedMode ? " is-embed" : ""}${cssFullscreen || isTheaterFullscreen ? " plyr--fullscreen-fallback" : ""}${chromeVisible ? " is-chrome-visible" : " is-chrome-hidden"}`}
+        className={`live-video-immersive-root${videoEdgeToEdge ? " is-video-fill" : (cinemaMode ? " is-cinema" : "")}${isTheaterFullscreen ? " is-theater-fullscreen" : ""}${useNetflixLayout ? " is-netflix has-episode-header" : ""}${showEpisodeToolbar ? " has-episode-toolbar" : ""}${showNavDock ? " has-nav-dock" : ""}${embedMode ? " is-embed" : ""}${cssFullscreen || isTheaterFullscreen ? " plyr--fullscreen-fallback" : ""}${chromeVisible ? " is-chrome-visible" : " is-chrome-hidden"}`}
         onPointerMove={(event) => {
           if (useNetflixLayout) return;
           if (isVideoImmersive) {
@@ -851,6 +829,7 @@ export function LiveVideoPlayer({
                   poster={manga.cover}
                   subtitles={[]}
                   subtitlesEnabled={false}
+                  customChrome={useNetflixLayout}
                   loadingLabel={presentation.loadingContent}
                   onError={handleHlsError}
                   onReady={handleHlsReady}
@@ -877,6 +856,14 @@ export function LiveVideoPlayer({
                   title={data.title || episodeLabel}
                   onBlocked={handleHlsError}
                 />
+                {!controlsChromeVisible ? (
+                  <button
+                    type="button"
+                    className="live-video-embed-tapcatch"
+                    aria-label={t("reader.playback.showViewControls")}
+                    onClick={() => revealChrome({ autoHide: true })}
+                  />
+                ) : null}
               </div>
             ) : (
               <div className="live-video-player-frame live-video-player-frame--native">
@@ -916,6 +903,7 @@ export function LiveVideoPlayer({
         )}
         {showTheaterOverlay ? playbackOverlay : null}
         </div>
+        {videoEpisodeToolbar}
         {showDockProgress ? (
           <div className="video-watch-dock">
             <div
@@ -924,11 +912,13 @@ export function LiveVideoPlayer({
             >
               <VideoPlaybackControls
                 {...playbackControlProps}
+                previousChapter={null}
+                nextChapter={null}
+                showServerPicker={false}
                 progressOnly
                 className="reader-playback--overlay reader-playback--netflix"
               />
             </div>
-            {dockToolbarProps ? <VideoEpisodeToolbar {...dockToolbarProps} /> : null}
           </div>
         ) : null}
       </div>
@@ -937,74 +927,22 @@ export function LiveVideoPlayer({
   return (
     <div className={`reader live-reader live-reader--video reader--theme-night${isChromebookApp ? " live-reader--desktop live-reader--watch" : ""}${videoEdgeToEdge ? " live-reader--video-fill" : ""}${(cinemaMode && watchDesktopLayout) || isTheaterFullscreen ? " live-reader--cinema" : ""}${isTheaterFullscreen ? " live-reader--immersive-lock" : ""}`} dir={dir}>
       {watchDesktopLayout ? (
-        <>
-          <header className="video-watch-header" dir={dir}>
-            <button type="button" className="video-watch-header__back" onClick={onBack} aria-label={t("reader.header.back")}>
-              <ArrowRight size={18} className="video-watch-header__back-icon" aria-hidden="true" />
-            </button>
-            <button type="button" className="video-watch-header__title" onClick={onOpenDetails} dir={dir}>
-              <strong dir="ltr">{manga.title}</strong>
-              <span dir="ltr">{profile.name}</span>
-            </button>
-            <div className="video-watch-header__actions">
-              <button
-                type="button"
-                className={`video-watch-header__action${isFavorite ? " active" : ""}`}
-                onClick={(event) => {
-                  if (!isFavorite) burstSakuraFrom(event.currentTarget);
-                  onToggleFavorite();
-                }}
-                aria-label={isFavorite ? t("reader.header.removeFavorite") : t("reader.header.addFavorite")}
-                aria-pressed={isFavorite}
-              >
-                <Bookmark size={17} fill={isFavorite ? "currentColor" : "none"} />
-              </button>
-              <a
-                className="video-watch-header__action"
-                href={activeChapter.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={t("reader.header.openInSource", { unit: presentation.headerUnit })}
-              >
-                <ExternalLink size={17} />
-              </a>
-            </div>
-          </header>
-          <div className={`video-watch-layout${showEpisodePlaylist ? " video-watch-layout--series" : ""}`}>
-            <div className="video-watch-main">
-              {immersiveRoot}
-              {showServerPicker ? (
-                <div className="video-watch-servers">
-                  <VideoServerPickerButton label={activeServerLabel} onClick={openServers} />
-                </div>
-              ) : null}
-              <div className="video-watch-meta">
-                <h1 className="video-watch-meta__episode" dir="auto">{episodeLabel}</h1>
-                <button type="button" className="video-watch-meta__series" onClick={onOpenDetails} dir="auto">
-                  {manga.title}
-                </button>
-                <div className="video-watch-meta__facts">
-                  <span>{profile.name}</span>
-                  {progress > 0 ? <span>{Math.round(progress)}%</span> : null}
-                </div>
-                {showStandaloneMarkComplete ? markCompleteAction : null}
-              </div>
-            </div>
-            {showEpisodePlaylist ? (
-              <VideoEpisodePlaylist
-                chapters={chapters}
-                activeChapter={activeChapter}
-                sourceId={sourceId}
-                presentation={presentation}
-                onSelectChapter={changeChapter}
-              />
-            ) : null}
+        <div className={`video-watch-layout${showEpisodePlaylist ? " video-watch-layout--series" : ""}`}>
+          <div className="video-watch-main">
+            {immersiveRoot}
           </div>
-        </>
+          {showEpisodePlaylist ? (
+            <VideoEpisodePlaylist
+              chapters={chapters}
+              activeChapter={activeChapter}
+              sourceId={sourceId}
+              presentation={presentation}
+              onSelectChapter={changeChapter}
+            />
+          ) : null}
+        </div>
       ) : (
-        <>
-          {immersiveRoot}
-        </>
+        immersiveRoot
       )}
       {serverSheet}
     </div>

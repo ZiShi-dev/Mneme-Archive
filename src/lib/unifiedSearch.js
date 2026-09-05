@@ -1,6 +1,7 @@
 import { getSourceProfile, initialSourcePreferences } from "../config/sources.js";
 import { t } from "../i18n/runtime.js";
 import { getItemType } from "../features/sources/contentTypes.js";
+import { MAX_SEARCH_QUERY_LENGTH } from "../../server/lib/queryLimits.js";
 import {
   pickTypoFallbackQueries,
   rankSearchResults,
@@ -18,16 +19,17 @@ async function resolveSearchSourceImpl(searchSourceImpl) {
   return defaultSearchSourceImpl;
 }
 
-const SEARCH_CACHE_TTL_MS = 90_000;
-const SEARCH_CACHE_MAX = 80;
+const SEARCH_CACHE_TTL_MS = 120_000;
+const SEARCH_CACHE_MAX = 120;
 const MAX_VARIANTS_PER_SOURCE = 2;
 const MAX_SOURCES_FOR_VARIANTS = 2;
 const MIN_PRIMARY_RESULTS = 1;
 const PER_SOURCE_LIMIT = 12;
 export const UNIFIED_RESULT_LIMIT = 36;
 export const MIN_UNIFIED_SEARCH_QUERY_LENGTH = 2;
-export const UNIFIED_SEARCH_DEBOUNCE_MS = 150;
-export const UNIFIED_SEARCH_DEBOUNCE_SHORT_MS = 200;
+export const UNIFIED_SEARCH_DEBOUNCE_MS = 160;
+export const UNIFIED_SEARCH_DEBOUNCE_SHORT_MS = 280;
+export const UNIFIED_SEARCH_DEBOUNCE_FAST_MS = 90;
 
 export function sourceSupportsMediaType(sourceId, mediaType = "all") {
   if (!mediaType || mediaType === "all") return true;
@@ -41,31 +43,47 @@ export function searchItemMatchesMediaType(item, mediaType = "all") {
 }
 
 const searchCache = new Map();
+const searchInFlight = new Map();
+
+export function normalizeUnifiedSearchQuery(query = "") {
+  return String(query ?? "").trim().slice(0, MAX_SEARCH_QUERY_LENGTH);
+}
 
 function cacheKey(sourceId, query) {
-  return `${sourceId}:${query.trim().toLowerCase()}`;
+  return `${sourceId}:${normalizeUnifiedSearchQuery(query).toLowerCase()}`;
+}
+
+function touchSearchCache(key, entry) {
+  searchCache.delete(key);
+  searchCache.set(key, entry);
 }
 
 function readSearchCache(sourceId, query) {
-  const entry = searchCache.get(cacheKey(sourceId, query));
+  const key = cacheKey(sourceId, query);
+  const entry = searchCache.get(key);
   if (!entry) return null;
   if (Date.now() - entry.at > SEARCH_CACHE_TTL_MS) {
-    searchCache.delete(cacheKey(sourceId, query));
+    searchCache.delete(key);
     return null;
   }
+  touchSearchCache(key, entry);
   return entry.data;
 }
 
 function writeSearchCache(sourceId, query, data) {
-  if (searchCache.size >= SEARCH_CACHE_MAX) {
+  const key = cacheKey(sourceId, query);
+  if (searchCache.has(key)) {
+    searchCache.delete(key);
+  } else if (searchCache.size >= SEARCH_CACHE_MAX) {
     const oldestKey = searchCache.keys().next().value;
     if (oldestKey) searchCache.delete(oldestKey);
   }
-  searchCache.set(cacheKey(sourceId, query), { at: Date.now(), data });
+  searchCache.set(key, { at: Date.now(), data });
 }
 
 export function resetUnifiedSearchCache() {
   searchCache.clear();
+  searchInFlight.clear();
 }
 
 function assertNotAborted(signal) {
@@ -78,12 +96,54 @@ function assertNotAborted(signal) {
 
 async function fetchSourceSearch(sourceId, query, { signal, searchSourceImpl } = {}) {
   assertNotAborted(signal);
-  const cached = readSearchCache(sourceId, query);
-  if (cached) return cached;
-  const search = await resolveSearchSourceImpl(searchSourceImpl);
-  const data = await search(sourceId, query, { signal });
-  writeSearchCache(sourceId, query, data);
-  return data;
+
+  const key = cacheKey(sourceId, query);
+
+  while (true) {
+    const cached = readSearchCache(sourceId, query);
+    if (cached) return cached;
+
+    const existing = searchInFlight.get(key);
+    if (existing) {
+      try {
+        const data = await existing;
+        assertNotAborted(signal);
+        return data;
+      } catch (error) {
+        if (error?.name !== "AbortError") throw error;
+        assertNotAborted(signal);
+        continue;
+      }
+    }
+
+    let settle;
+    const pending = new Promise((resolve, reject) => {
+      settle = { resolve, reject };
+    });
+    searchInFlight.set(key, pending);
+
+    void (async () => {
+      try {
+        const search = await resolveSearchSourceImpl(searchSourceImpl);
+        const data = await search(sourceId, query, { signal });
+        writeSearchCache(sourceId, query, data);
+        settle.resolve(data);
+      } catch (error) {
+        settle.reject(error);
+      } finally {
+        if (searchInFlight.get(key) === pending) searchInFlight.delete(key);
+      }
+    })();
+
+    try {
+      const data = await pending;
+      assertNotAborted(signal);
+      return data;
+    } catch (error) {
+      if (error?.name !== "AbortError") throw error;
+      assertNotAborted(signal);
+    }
+  }
 }
 
 function matchesQuery(item, query) {
@@ -118,15 +178,29 @@ export function getEnabledSources(sources = []) {
 }
 
 export function isUnifiedSearchQueryActive(query = "") {
-  return query.trim().length >= MIN_UNIFIED_SEARCH_QUERY_LENGTH;
+  return normalizeUnifiedSearchQuery(query).length >= MIN_UNIFIED_SEARCH_QUERY_LENGTH;
 }
 
 export function resolveUnifiedSearchDebounceMs(query = "", { cacheReady = false } = {}) {
   if (cacheReady) return 0;
-  const length = query.trim().length;
-  if (length >= 5) return 120;
-  if (length >= 3) return UNIFIED_SEARCH_DEBOUNCE_MS;
+  const length = normalizeUnifiedSearchQuery(query).length;
+  if (length >= 6) return UNIFIED_SEARCH_DEBOUNCE_FAST_MS;
+  if (length >= 4) return UNIFIED_SEARCH_DEBOUNCE_MS;
+  if (length >= 3) return 200;
   return UNIFIED_SEARCH_DEBOUNCE_SHORT_MS;
+}
+
+export function buildSearchScopeKey(sources = [], sourcePreferences = {}, mediaType = "all") {
+  return getEnabledSources(sources)
+    .filter((source) => sourceSupportsMediaType(source.id, mediaType))
+    .map((source) => {
+      const preference = sourcePreferences[source.id];
+      const selected = preference?.mode === "selected";
+      const count = selected ? (preference.selectedItems?.length || 0) : 0;
+      return `${source.id}:${selected ? "s" : "f"}:${count}`;
+    })
+    .sort()
+    .join("|");
 }
 
 export function filterSearchResults(items = [], query = "") {
@@ -196,7 +270,7 @@ export function peekCachedSearchBatches({
   query,
   mediaType = "all",
 } = {}) {
-  const trimmed = query.trim();
+  const trimmed = normalizeUnifiedSearchQuery(query);
   if (!isUnifiedSearchQueryActive(trimmed)) return [];
 
   const enabledSources = getEnabledSources(sources).filter((source) => sourceSupportsMediaType(source.id, mediaType));
@@ -262,7 +336,7 @@ export async function searchEnabledSources({
   onBatch,
   deferVariants = Boolean(onBatch),
 } = {}) {
-  const trimmed = query.trim();
+  const trimmed = normalizeUnifiedSearchQuery(query);
   const normalized = trimmed.toLowerCase();
   if (normalized.length < MIN_UNIFIED_SEARCH_QUERY_LENGTH) return [];
 
