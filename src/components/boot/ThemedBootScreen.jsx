@@ -27,10 +27,7 @@ export function ThemedBootScreen({
 
   useEffect(() => {
     applyAppearance(themeId);
-    const frame = window.requestAnimationFrame(() => {
-      void hideNativeSplash();
-    });
-    return () => window.cancelAnimationFrame(frame);
+    void hideNativeSplash();
   }, [themeId]);
 
   return (

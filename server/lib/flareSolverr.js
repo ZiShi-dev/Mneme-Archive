@@ -46,7 +46,11 @@ function isCloudflareIpBlockedMessage(message = "") {
     .test(String(message || ""));
 }
 
-const FLARE_IP_BLOCK_COOLDOWN_MS = process.env.NODE_ENV === "test" ? 0 : 5 * 60 * 1000;
+const FLARE_IP_BLOCK_COOLDOWN_MS = (
+  typeof process !== "undefined"
+  && process.env
+  && process.env.NODE_ENV === "test"
+) ? 0 : 5 * 60 * 1000;
 const hostBlockCooldownUntil = new Map();
 
 function hostKeyFromUrl(rawUrl = "") {

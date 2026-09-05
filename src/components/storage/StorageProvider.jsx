@@ -1,4 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { Capacitor } from "@capacitor/core";
+import { SplashScreen } from "@capacitor/splash-screen";
 import { initStorage, resetStorageInit } from "../../lib/storage/initStorage";
 import { t } from "../../i18n/runtime";
 import { getAppBrandText } from "../../lib/brand/appBrand";
@@ -6,6 +8,15 @@ import { readBootAppearance } from "../../lib/theme/appearance";
 import { ThemedBootScreen } from "../boot/ThemedBootScreen";
 
 const StorageContext = createContext({ ready: false, error: null });
+
+async function hideNativeSplash() {
+  if (!Capacitor.isNativePlatform()) return;
+  try {
+    await SplashScreen.hide();
+  } catch {
+    // Plugin optionnel.
+  }
+}
 
 export function StorageProvider({ children }) {
   const [ready, setReady] = useState(false);
@@ -24,12 +35,16 @@ export function StorageProvider({ children }) {
     let active = true;
     initStorage()
       .then(() => {
-        if (active) setReady(true);
+        if (active) {
+          setReady(true);
+          void hideNativeSplash();
+        }
       })
       .catch((reason) => {
         if (active) {
           setError(reason instanceof Error ? reason.message : t("app.storageError"));
           setReady(true);
+          void hideNativeSplash();
         }
       });
     return () => { active = false; };

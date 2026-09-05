@@ -1,4 +1,4 @@
-import { normalizeThemeId, THEME_INK } from "./appearance.js";
+import { normalizeThemeId, THEME_INK } from "./themeIds.js";
 
 function upsertLink(rel, href, type = "image/png") {
   const selector = rel === "icon"

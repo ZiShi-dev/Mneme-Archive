@@ -1532,10 +1532,11 @@ button.source-overview-row { color: inherit; cursor: pointer; }
 
 .boot-screen__mark {
   width: 72px;
+  opacity: 1;
   height: 72px;
   display: block;
   border-radius: 18px;
-  animation: boot-mark-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: boot-mark-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 @keyframes boot-mark-in {
@@ -1546,6 +1547,15 @@ button.source-overview-row { color: inherit; cursor: pointer; }
   100% {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boot-screen__mark,
+  .boot-screen__mark-ring,
+  .boot-screen__stars {
+    animation: none;
+    opacity: 1;
   }
 }
 

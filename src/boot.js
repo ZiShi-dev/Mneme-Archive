@@ -6,7 +6,9 @@ import { applyAppearance, readBootAppearance } from "./lib/theme/appearance.js";
 
 try {
   markNativeAppShell();
-  applyAppearance(readBootAppearance());
+  if (typeof document !== "undefined" && document.body) {
+    applyAppearance(readBootAppearance());
+  }
   if (isChromebookApp) {
     document.documentElement.classList.add("desktop-app");
     document.body?.classList.add("desktop-app");

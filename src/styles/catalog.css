@@ -1473,6 +1473,10 @@
 .details-chapters {
   padding: 4px 0 0;
 }
+
+.details-sidebar + .details-chapters {
+  margin-top: 28px;
+}
 .details-related .details-section-heading > svg { color: var(--film); }
 .details-related__scroller {
   display: flex;
@@ -1621,12 +1625,33 @@
 }
 .details-taxonomy-chip--category { border-color: color-mix(in srgb, var(--brand) 28%, var(--line)); background: color-mix(in srgb, var(--brand) 8%, var(--paper)); color: var(--ink); }
 .details-taxonomies__toggle { min-height: 28px; margin: 0; padding: 0 8px; border: 0; background: transparent; color: var(--brand); display: inline-flex; align-items: center; font: 600 11px/1 var(--font-sans); cursor: pointer; }
-.chapter-tools { margin-bottom: 12px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; position: relative; z-index: 1; }
+.chapter-tools { margin-bottom: 12px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; position: relative; z-index: 2; }
+.screen--live-details .chapter-tools .chapter-search {
+  height: 44px;
+  min-width: 0;
+  padding: 0 11px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--muted);
+  box-shadow: none;
+}
+.screen--live-details .chapter-tools .chapter-search input {
+  color: var(--ink);
+  font: 400 13px/1.4 "Alexandria";
+}
+.screen--live-details .chapter-tools .chapter-search .accessible-search__icon {
+  width: 18px;
+  height: 18px;
+  color: var(--brand);
+}
 .chapter-search { height: 44px; min-width: 0; padding: 0 11px; border-radius: 12px; }
 .chapter-search input { font: 400 13px/1.4 "Alexandria"; }
 .chapter-search .accessible-search__icon { width: 18px; height: 18px; }
-.chapter-order { min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); color: var(--muted); display: flex; align-items: center; justify-content: center; gap: 6px; font: 600 11px/1 "Alexandria"; white-space: nowrap; cursor: pointer; touch-action: manipulation; transition: border-color var(--motion-standard), color var(--motion-standard); }
+.chapter-order { min-height: 44px; min-width: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); color: var(--muted); display: flex; align-items: center; justify-content: center; gap: 6px; font: 600 11px/1 "Alexandria"; white-space: nowrap; cursor: pointer; touch-action: manipulation; transition: border-color var(--motion-standard), color var(--motion-standard), background var(--motion-standard); }
+.chapter-order--asc { color: var(--brand); border-color: color-mix(in srgb, var(--brand) 40%, var(--line)); background: color-mix(in srgb, var(--brand) 8%, var(--paper)); }
 .chapter-order:hover { border-color: var(--brand); color: var(--brand); }
+.chapter-order__label { overflow: hidden; text-overflow: ellipsis; }
 .live-chapter-list { max-height: none; overflow: visible; padding-bottom: 8px; }
 .details-chapters .chapter-row { min-height: 52px; padding: 8px 0; align-items: center; }
 .details-chapters .chapter-row:hover { background: color-mix(in srgb, var(--brand) 5%, transparent); }
@@ -1749,8 +1774,8 @@
 .chapter-pagination strong { color: var(--ink); font: 600 11px/1 "Unbounded"; }
 @media (max-width: 380px) {
   .details-about, .details-taxonomies, .details-chapters, .details-related { padding: 0; }
-  .chapter-tools { grid-template-columns: 1fr; }
-  .chapter-order { min-height: 38px; }
+  .chapter-order { min-height: 40px; min-width: 40px; padding: 0 10px; }
+  .chapter-order__label { display: none; }
   .details-chapters .chapter-row { gap: 6px; }
   .details-chapters .chapter-number {
     width: 32px;

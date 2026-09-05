@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useDeferredValue, useMemo, useRef, useState } from "react";
+import { Capacitor } from "@capacitor/core";
 import { ArrowRight, Bell, BellRing, Bookmark, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ExternalLink, Languages, RefreshCw, Wifi } from "lucide-react";
 import { useToast } from "../../components/ui/ToastProvider";
 import { getSourceProfile, resolveSourceId } from "../../config/sources";
 import { isChromebookApp, isNotifiableMediaType, PREFERRED_AUDIO_LANGUAGE } from "../../config/appFlavor";
 import { runAppPullRefresh } from "../../lib/platform/appRefresh";
-import { fetchSourceDetails, fetchSourceChapter, formatSourceError, peekSourceDetails, peekSourceChapter } from "./sourceApi";
+import { fetchSourceDetails, fetchSourceChapter, formatSourceError, peekSourceDetails, peekSourceChapter, peekSourceChapterIncludingStale, prefetchSourceChapter } from "./sourceApi";
 import { normalizeChapterList, chapterSortKey } from "../../../server/lib/chapterOrdering.js";
 import { DetailsActionHub } from "./DetailsActionHub";
 import { DetailsCinematicHero } from "./details/DetailsCinematicHero";
@@ -51,6 +52,7 @@ import { PullToRefreshIndicator } from "../../components/ui/PullToRefreshIndicat
 import { usePullToRefresh } from "../../hooks/usePullToRefresh";
 import { isNativeMobileApp } from "../../lib/platform/nativeAppLayout";
 import { liveReaderPrefetchOptions, prefetchReaderChapter } from "../../lib/reading/readerChapterCache.js";
+import { chapterMatchesQuery } from "../../lib/reading/chapterListQuery.js";
 
 const chapterPageSize = 20;
 const GALAXY_AUTHOR_CHAPTER_FILTER_SLUGS = new Set(["netherils-brilliance"]);
@@ -326,10 +328,10 @@ export function LiveMangaDetails({
     if (!values.length && item.author) return [item.author];
     return values;
   }, [chapters, item.author, item.id]);
+  const deferredChapterQuery = useDeferredValue(chapterQuery);
   const filteredChapters = useMemo(() => {
-    const normalized = chapterQuery.trim().toLowerCase();
-    const matches = normalized
-      ? chapters.filter((chapter) => `${chapter.number || ""} ${chapter.name || ""}`.toLowerCase().includes(normalized))
+    const matches = deferredChapterQuery.trim()
+      ? chapters.filter((chapter) => chapterMatchesQuery(chapter, deferredChapterQuery))
       : chapters;
     const byAuthor = chapterAuthor
       ? matches.filter((chapter) => (chapter.author || item.author || "") === chapterAuthor)
@@ -340,7 +342,7 @@ export function LiveMangaDetails({
       return String(b.url || "").localeCompare(String(a.url || ""), undefined, { numeric: true });
     });
     return chapterOrder === "desc" ? sorted : sorted.slice().reverse();
-  }, [chapterAuthor, chapterOrder, chapterQuery, chapters, item.author]);
+  }, [chapterAuthor, chapterOrder, deferredChapterQuery, chapters, item.author]);
 
   useEffect(() => setChapterPage(1), [chapterAuthor, chapterOrder, chapterQuery]);
   useEffect(() => {
@@ -465,25 +467,69 @@ export function LiveMangaDetails({
   }, [isVideo]);
 
   useEffect(() => {
-    const target = continueChapter || firstChapter;
-    if (!target?.url) return undefined;
-    const resolved = resolveChapter(target);
-    const opts = chapterFetchOptions(resolved);
-    if (peekSourceChapter(sourceId, resolved.url, opts)) return undefined;
+    if (!isVideo || !Capacitor.isNativePlatform()) return undefined;
     let cancelled = false;
-    const timer = window.setTimeout(() => {
-      if (!cancelled) fetchSourceChapter(sourceId, resolved.url, opts).catch(() => {});
-    }, 280);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [audioLanguage, continueChapter?.url, firstChapter?.url, sourceId]);
+    void (async () => {
+      const { initCloudflareNative } = await import("../../lib/platform/mangalikNative.js");
+      if (!cancelled) await initCloudflareNative();
+    })();
+    return () => { cancelled = true; };
+  }, [isVideo]);
+
+  const prefetchChapterUrls = useMemo(() => {
+    const seen = new Set();
+    const urls = [];
+    for (const chapter of [continueChapter, firstChapter, ...pagedChapters.slice(0, 8)]) {
+      if (chapter?.url && !seen.has(chapter.url)) {
+        seen.add(chapter.url);
+        urls.push(chapter.url);
+      }
+    }
+    return urls;
+  }, [continueChapter?.url, firstChapter?.url, pagedChapters]);
+
+  useEffect(() => {
+    if (!isVideo || status !== "ready" || !prefetchChapterUrls.length) return undefined;
+    const seen = new Set();
+    for (const chapter of [continueChapter, firstChapter, ...pagedChapters.slice(0, 8)]) {
+      if (!chapter?.url || seen.has(chapter.url)) continue;
+      seen.add(chapter.url);
+      const resolved = resolveChapter(chapter);
+      if (isAzoraChapterBlocked(sourceId, resolved) || resolved.locked) continue;
+      const opts = chapterFetchOptions(resolved);
+      if (peekSourceChapter(sourceId, resolved.url, opts)) continue;
+      prefetchSourceChapter(sourceId, resolved.url, opts);
+    }
+    return undefined;
+  }, [isVideo, status, sourceId, audioLanguage, prefetchChapterUrls]);
 
   function prefetchChapter(chapter) {
     const resolved = resolveChapter(chapter);
     if (isAzoraChapterBlocked(sourceId, resolved) || resolved.locked) return;
-    prefetchReaderChapter(sourceId, resolved, { ...item, preferredAudioLanguage: audioLanguage }, chapterFetchOptions(resolved));
+    const opts = chapterFetchOptions(resolved);
+    if (isVideo) {
+      prefetchSourceChapter(sourceId, resolved.url, { ...opts, force: true });
+      return;
+    }
+    prefetchReaderChapter(sourceId, resolved, { ...item, preferredAudioLanguage: audioLanguage }, opts);
+  }
+
+  function applyServerPickerResult(requestId, resolved, result) {
+    if (serverPickerRequest.current !== requestId) return;
+    const sources = playbackSourcesFromChapterData(result);
+    if (!sources.length) {
+      setServerPicker(null);
+      openLiveReader({ ...item, preferredAudioLanguage: audioLanguage }, resolved, {
+        prefetchData: { ...result, url: resolved.url },
+      });
+      return;
+    }
+    setServerPicker({
+      chapter: resolved,
+      loading: false,
+      sources,
+      data: result,
+    });
   }
 
   function openChapter(chapter) {
@@ -505,38 +551,29 @@ export function LiveMangaDetails({
     const requestId = serverPickerRequest.current + 1;
     serverPickerRequest.current = requestId;
     const opts = chapterFetchOptions(resolved);
-    const cached = peekSourceChapter(sourceId, resolved.url, opts);
-    const cachedSources = playbackSourcesFromChapterData(cached);
-    if (cachedSources.length) {
+    const fresh = peekSourceChapter(sourceId, resolved.url, opts);
+    const initial = fresh || peekSourceChapterIncludingStale(sourceId, resolved.url, opts);
+    const sources = playbackSourcesFromChapterData(initial);
+
+    if (sources.length) {
       setServerPicker({
         chapter: resolved,
         loading: false,
-        sources: cachedSources,
-        data: cached,
+        sources,
+        data: initial,
       });
+      if (!fresh) {
+        fetchSourceChapter(sourceId, resolved.url, opts)
+          .then((result) => applyServerPickerResult(requestId, resolved, result))
+          .catch(() => {});
+      }
       return;
     }
 
     setServerPicker({ chapter: resolved, loading: true, sources: [], data: null });
 
     fetchSourceChapter(sourceId, resolved.url, opts)
-      .then((result) => {
-        if (serverPickerRequest.current !== requestId) return;
-        const sources = playbackSourcesFromChapterData(result);
-        if (!sources.length) {
-          setServerPicker(null);
-          openLiveReader({ ...item, preferredAudioLanguage: audioLanguage }, resolved, {
-            prefetchData: { ...result, url: resolved.url },
-          });
-          return;
-        }
-        setServerPicker({
-          chapter: resolved,
-          loading: false,
-          sources,
-          data: result,
-        });
-      })
+      .then((result) => applyServerPickerResult(requestId, resolved, result))
       .catch((reason) => {
         if (serverPickerRequest.current !== requestId) return;
         setServerPicker(null);

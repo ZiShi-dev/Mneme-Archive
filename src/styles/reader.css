@@ -3768,6 +3768,25 @@ html[dir="rtl"] .reader-playback__actions--menu-only .reader-playback__menu-pane
   font: 500 13px/1.5 "Alexandria", sans-serif;
 }
 
+.video-server-sheet__chip--skeleton {
+  pointer-events: none;
+  border-color: rgba(255, 255, 255, 0.08);
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  background-size: 200% 100%;
+  animation: video-server-sheet-skeleton 1.15s ease-in-out infinite;
+  min-height: 44px;
+}
+
+@keyframes video-server-sheet-skeleton {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
 .video-watch-servers {
   padding: 10px 16px 0;
 }

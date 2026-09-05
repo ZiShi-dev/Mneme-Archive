@@ -127,6 +127,11 @@
   padding-top: 0;
 }
 
+.screen--live-details.screen--details-cinematic-anime .details-sidebar + .details-chapters,
+.screen--live-details.screen--details-cinematic-series .details-sidebar + .details-chapters {
+  margin-top: 32px;
+}
+
 .screen--live-details.screen--details-cinematic-anime .details-section-heading h2,
 .screen--live-details.screen--details-cinematic-series .details-section-heading h2 {
   font-size: 17px;
@@ -246,14 +251,6 @@
   .screen--live-details.screen--details-cinematic-anime .live-details-hero--cinematic:not(.live-details-hero--reading):not(.live-details-hero--standalone-video) .live-details-hero__head .live-details-hero__title,
   .screen--live-details.screen--details-cinematic-series .live-details-hero--cinematic:not(.live-details-hero--reading):not(.live-details-hero--standalone-video) .live-details-hero__head .live-details-hero__title {
     font-size: clamp(17px, 4.8vw, 22px);
-  }
-
-  .screen--live-details .chapter-tools {
-    grid-template-columns: 1fr;
-  }
-
-  .screen--live-details .chapter-order span {
-    display: none;
   }
 }
 

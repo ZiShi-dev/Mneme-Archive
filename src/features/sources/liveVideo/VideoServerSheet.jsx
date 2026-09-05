@@ -47,9 +47,19 @@ export function VideoServerSheet({
 
           <div className="reader-settings__body video-server-sheet__body">
             {loading ? (
-              <p className="video-server-sheet__loading" role="status">
-                {t("reader.stream.loading")}
-              </p>
+              <div
+                className="video-server-sheet__chips video-server-sheet__chips--loading"
+                role="status"
+                aria-label={t("reader.stream.loading")}
+              >
+                {Array.from({ length: 4 }, (_, index) => (
+                  <div
+                    key={index}
+                    className="video-server-sheet__chip video-server-sheet__chip--skeleton"
+                    aria-hidden="true"
+                  />
+                ))}
+              </div>
             ) : (
               <div className="video-server-sheet__chips" role="list">
                 {serverLabels.map((label, index) => {

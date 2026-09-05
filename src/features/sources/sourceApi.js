@@ -158,6 +158,7 @@ export const CATALOG_CACHE_TTL_MS = 5 * 60_000;
 const CATALOG_STALE_TTL_MS = 10 * 60_000;
 const DETAILS_CACHE_TTL_MS = 180_000;
 const CHAPTER_CACHE_TTL_MS = 300_000;
+const CHAPTER_STALE_TTL_MS = 15 * 60_000;
 
 function readJsonCache(path, ttlMs, { staleMs = 0 } = {}) {
   const entry = jsonResponseCache.get(path);
@@ -429,12 +430,32 @@ export function peekSourceChapter(sourceId, url, options = "") {
   return peekSourceRequest(buildChapterPath(sourceId, url, opts), CHAPTER_CACHE_TTL_MS);
 }
 
+export function peekSourceChapterIncludingStale(sourceId, url, options = "") {
+  const opts = typeof options === "string" ? { contentApi: options } : (options || {});
+  const path = buildChapterPath(sourceId, url, opts);
+  return readJsonCache(path, CHAPTER_CACHE_TTL_MS, { staleMs: CHAPTER_STALE_TTL_MS });
+}
+
+export function prefetchSourceChapter(sourceId, url, options = "") {
+  if (!sourceId || !url) return Promise.resolve(null);
+  const opts = typeof options === "string" ? { contentApi: options } : (options || {});
+  if (opts.force !== true && !allowsSpeculativePrefetch()) return Promise.resolve(null);
+  const fetchOpts = { contentApi: opts.contentApi, language: opts.language };
+  if (peekSourceChapter(sourceId, url, fetchOpts)) {
+    return Promise.resolve(peekSourceChapter(sourceId, url, fetchOpts));
+  }
+  return fetchSourceChapter(sourceId, url, fetchOpts).catch(() => null);
+}
+
 export async function fetchSourceChapter(sourceId, url, options = "") {
   const opts = typeof options === "string" ? { contentApi: options } : (options || {});
   if (isNative() && CLOUDFLARE_NATIVE_SOURCE_IDS.has(sourceId)) {
     await ensureCloudflareNative();
   }
-  return requestJson(buildChapterPath(sourceId, url, opts), t("errors.loadChapter"), { ttlMs: CHAPTER_CACHE_TTL_MS });
+  return requestJson(buildChapterPath(sourceId, url, opts), t("errors.loadChapter"), {
+    ttlMs: CHAPTER_CACHE_TTL_MS,
+    staleMs: CHAPTER_STALE_TTL_MS,
+  });
 }
 
 export function sourceImageUrl(sourceId, url) {

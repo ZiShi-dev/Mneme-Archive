@@ -6,17 +6,12 @@ import { SheetPortal } from "../../components/ui/SheetPortal";
 import { useI18n } from "../../i18n/I18nProvider";
 import { getChapterProgress, isChapterInProgress, isChapterRead } from "../../lib/storage/chapterProgress";
 import { chapterSortKey } from "../../../server/lib/chapterOrdering.js";
+import { chapterMatchesQuery } from "../../lib/reading/chapterListQuery.js";
 import { getMediaPresentation } from "./mediaPresentation";
 import { UnlockCountdown } from "../../components/media/UnlockCountdown";
 import { resolveBookmarkType } from "./contentTypes";
 
 const PAGE_SIZE = 40;
-
-function chapterMatchesQuery(chapter, query) {
-  if (!query) return true;
-  const haystack = `${chapter.number || ""} ${chapter.name || ""}`.toLowerCase();
-  return haystack.includes(query);
-}
 
 function isSameChapter(left, right) {
   if (!left || !right) return false;

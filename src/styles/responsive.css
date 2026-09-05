@@ -533,11 +533,6 @@ html.bottom-nav-hidden .app-shell:not(.app-shell--desktop) .bottom-nav {
   .native-app .screen--live-details .details-content {
     padding-inline: 14px;
   }
-
-  .app-shell:not(.app-shell--desktop) .screen--live-details .chapter-tools,
-  .native-app .screen--live-details .chapter-tools {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (min-width: 768px) {

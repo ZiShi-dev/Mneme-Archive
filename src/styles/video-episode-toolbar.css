@@ -5,6 +5,10 @@
   --video-episode-toolbar-gap: 0px;
   --video-episode-toolbar-pad-block: 8px;
   --video-episode-toolbar-control-height: 46px;
+  --video-bottom-safe: max(34px, var(--app-safe-area-bottom, env(safe-area-inset-bottom, 0px)));
+  --video-episode-toolbar-block-height: calc(
+    var(--video-episode-toolbar-pad-block) * 2 + var(--video-episode-toolbar-control-height)
+  );
 }
 
 .video-watch-dock {
@@ -22,7 +26,32 @@
 }
 
 .live-video-immersive-root.is-netflix.has-episode-toolbar .video-watch-dock {
-  bottom: calc(58px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--video-episode-toolbar-block-height) + var(--video-bottom-safe));
+}
+
+.live-video-immersive-root.is-netflix.has-nav-dock .video-episode-toolbar,
+.live-video-immersive-root.is-netflix.has-nav-dock .video-watch-dock {
+  position: relative;
+  inset: auto;
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+.live-video-immersive-root.is-netflix.has-nav-dock .video-watch-dock {
+  order: 2;
+  padding-bottom: var(--video-bottom-safe);
+  background: linear-gradient(to top, rgba(6, 7, 12, 0.96), rgba(6, 7, 12, 0.88));
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.live-video-immersive-root.is-netflix.has-nav-dock .video-episode-toolbar {
+  order: 1;
+  background: rgba(6, 7, 12, 0.94);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.live-video-immersive-root.is-netflix.has-nav-dock .video-episode-toolbar__surface {
+  padding-bottom: var(--video-episode-toolbar-pad-block);
 }
 
 .video-watch-dock > * {
@@ -65,7 +94,7 @@
   padding:
     var(--video-episode-toolbar-pad-block)
     max(12px, var(--safe-right, env(safe-area-inset-right, 0px)))
-    max(var(--video-episode-toolbar-pad-block), env(safe-area-inset-bottom, 0px))
+    var(--video-episode-toolbar-pad-block)
     max(12px, var(--safe-left, env(safe-area-inset-left, 0px)));
 }
 
@@ -237,7 +266,7 @@
   max-height: 160px;
   opacity: 1;
   pointer-events: auto;
-  padding-top: 8px;
+  padding: 8px 10px 4px;
 }
 
 .video-watch-dock .live-video-chrome--controls .reader-playback {

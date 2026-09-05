@@ -150,7 +150,7 @@ export function DetailsChapterSection({
         <ChapterListSkeleton count={8} label={presentation.loadingList} />
       ) : (
         <>
-          {chapters.length > 8 && (
+          {chapters.length > 3 && (
             <div className="chapter-tools">
               <AccessibleSearchField
                 className="global-search chapter-search"
@@ -159,9 +159,14 @@ export function DetailsChapterSection({
                 placeholder={presentation.searchPlaceholder}
                 ariaLabel={t("details.searchInUnits", { units: presentation.units })}
               />
-              <button className="chapter-order" onClick={onChapterOrderToggle} type="button">
-                <ArrowUpDown size={16} />
-                <span>{chapterOrder === "desc" ? t("details.newestFirst") : t("details.oldestFirst")}</span>
+              <button
+                className={`chapter-order${chapterOrder === "asc" ? " chapter-order--asc" : ""}`}
+                onClick={onChapterOrderToggle}
+                type="button"
+                aria-label={chapterOrder === "desc" ? t("details.newestFirst") : t("details.oldestFirst")}
+              >
+                <ArrowUpDown size={16} aria-hidden="true" />
+                <span className="chapter-order__label">{chapterOrder === "desc" ? t("details.newestFirst") : t("details.oldestFirst")}</span>
               </button>
             </div>
           )}

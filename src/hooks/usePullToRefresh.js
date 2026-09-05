@@ -50,6 +50,7 @@ export function usePullToRefresh({
 
     const onTouchStart = (event) => {
       if (refreshingRef.current || event.touches.length !== 1) return;
+      if (event.target?.closest?.("input, textarea, button, select, a, [role='search'], .chapter-tools, .accessible-search")) return;
       if (el.scrollTop > 1) return;
       startYRef.current = event.touches[0].clientY;
       startXRef.current = event.touches[0].clientX;

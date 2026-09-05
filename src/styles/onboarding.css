@@ -349,7 +349,8 @@
 .onboarding__mark {
   width: 96px;
   height: 96px;
-  animation: onboarding-mark-in 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+  opacity: 1;
+  animation: onboarding-mark-in 1.1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .onboarding__mark-ring {
@@ -380,6 +381,14 @@
   50% {
     opacity: 0.75;
     transform: scale(1.04);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding__mark,
+  .onboarding__mark-ring {
+    animation: none;
+    opacity: 1;
   }
 }
 

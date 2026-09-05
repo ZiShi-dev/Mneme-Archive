@@ -14,7 +14,7 @@ export default defineConfig({
     mangaSourcesPlugin(),
     VitePWA({
       registerType: "autoUpdate",
-      injectRegister: "auto",
+      injectRegister: false,
       includeAssets: [
         "favicon.png",
         "apple-touch-icon.png",
