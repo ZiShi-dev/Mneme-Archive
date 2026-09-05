@@ -126,7 +126,10 @@ body[data-theme="paper"] {
 }
 
 body[data-theme="lune-neige"] {
-  background: #050a14;
+  background-color: #050a14;
+  background-image:
+    radial-gradient(ellipse at 72% 8%, color-mix(in srgb, var(--brand, #6eb0d8) 12%, transparent), transparent 42%),
+    radial-gradient(ellipse at 18% 92%, color-mix(in srgb, var(--sea-deep, #5a8fb8) 10%, transparent), transparent 48%);
 }
 
 /* ── Theme sheet gallery (cartes ancrées, lisibles) ── */
@@ -144,6 +147,18 @@ body[data-theme="lune-neige"] {
     linear-gradient(180deg, #1d1a24 0%, var(--theme-sheet-surface) 100%);
   border-top: 1px solid var(--theme-sheet-line);
   box-shadow: 0 -10px 42px rgba(0, 0, 0, 0.42);
+}
+
+.notify-sheet.theme-sheet--gallery.theme-sheet--nuit {
+  background:
+    radial-gradient(ellipse at 50% 0%, color-mix(in srgb, #a78bfa 16%, transparent), transparent 58%),
+    linear-gradient(180deg, #0a0a0a 0%, #000000 100%);
+}
+
+.notify-sheet.theme-sheet--gallery.theme-sheet--nuit .notify-sheet__done {
+  background: linear-gradient(135deg, #a78bfa, #c4b5fd);
+  color: #000000;
+  border-color: color-mix(in srgb, #c4b5fd 40%, transparent);
 }
 
 .notify-sheet.theme-sheet--gallery.theme-sheet--ink {
@@ -206,6 +221,7 @@ body[data-theme="lune-neige"] {
 }
 
 .notify-sheet.theme-sheet--gallery.theme-sheet--ink header,
+.notify-sheet.theme-sheet--gallery.theme-sheet--nuit header,
 .notify-sheet.theme-sheet--gallery.theme-sheet--paper header,
 .notify-sheet.theme-sheet--gallery.theme-sheet--sakura header,
 .notify-sheet.theme-sheet--gallery.theme-sheet--yozakura header,
@@ -254,9 +270,9 @@ body[data-theme="lune-neige"] {
 }
 
 .notify-sheet.theme-sheet--gallery.theme-sheet--lune-neige .notify-sheet__done {
-  background: linear-gradient(135deg, #8eb4e8, #c8daf5);
+  background: linear-gradient(135deg, var(--brand, #6eb0d8), var(--brand-warm, #9ecae8));
   color: #0d1522;
-  border-color: color-mix(in srgb, #c8daf5 40%, transparent);
+  border-color: color-mix(in srgb, var(--sea-foam, #b8d8f0) 40%, transparent);
 }
 
 .notify-sheet.theme-sheet--gallery.theme-sheet--galaxie .notify-sheet__done {
@@ -302,6 +318,7 @@ body[data-theme="lune-neige"] {
 }
 
 .notify-sheet.theme-sheet--gallery.theme-sheet--ink .theme-selector__skeleton-line,
+.notify-sheet.theme-sheet--gallery.theme-sheet--nuit .theme-selector__skeleton-line,
 .notify-sheet.theme-sheet--gallery.theme-sheet--yozakura .theme-selector__skeleton-line,
 .notify-sheet.theme-sheet--gallery.theme-sheet--lune-neige .theme-selector__skeleton-line,
 .notify-sheet.theme-sheet--gallery.theme-sheet--galaxie .theme-selector__skeleton-line {

@@ -10,6 +10,7 @@ import { useAppPreferences } from "./hooks/useAppPreferences";
 import { useChapterFollow } from "./hooks/useChapterFollow";
 import { useRealtimeFollowSync } from "./hooks/useRealtimeFollowSync";
 import { useBackgroundFollowTask } from "./hooks/useBackgroundFollowTask";
+import { useBackgroundDownloadResume } from "./hooks/useBackgroundDownloadResume";
 import { usePullToRefresh } from "./hooks/usePullToRefresh";
 import { DEFAULT_APP_SETTINGS } from "./lib/settings/defaults";
 import { normalizeSettings } from "./lib/settings/normalizeSettings";
@@ -38,7 +39,7 @@ import { usePwaInstall } from "./hooks/usePwaInstall";
 import { useAppPullRefreshHandler } from "./hooks/useAppPullRefreshHandler";
 import { runAppPullRefresh } from "./lib/platform/appRefresh";
 import { getAppBrandText } from "./lib/brand/appBrand";
-import { LiveReader } from "./features/sources/LiveReader";
+import { ThemedBootScreen } from "./components/boot/ThemedBootScreen";
 import { NovelReaderSkeleton, ReaderPagesSkeleton, VideoStageSkeleton } from "./components/ui/ContentSkeleton";
 
 const LiveVideoPlayer = lazy(() => import("./features/sources/LiveVideoPlayer").then((module) => ({ default: module.LiveVideoPlayer })));
@@ -69,13 +70,13 @@ function ReaderSuspenseFallback({ manga }) {
 
 function FeatureSuspense({ children, fallback }) {
   const { t } = useI18n();
+  const { appearance } = useAppPreferences();
   return (
     <Suspense fallback={fallback || (
-      <div className="boot-screen" role="status">
-        <div className="boot-screen__inner">
-          <p>{getAppBrandText(t).loading}</p>
-        </div>
-      </div>
+      <ThemedBootScreen
+        appearance={appearance}
+        message={getAppBrandText(t).loading}
+      />
     )}
     >
       {children}
@@ -161,6 +162,7 @@ export function App() {
   });
 
   useBackgroundFollowTask(settings);
+  useBackgroundDownloadResume();
 
   const showMainBottomNav = !isOverlayOpen
     && screen !== "source-management"
@@ -269,7 +271,7 @@ export function App() {
   );
 
   return (
-    <div className={`app-shell ${darkMode ? "app-shell--dark" : ""} ${hasAtmosphereEffect(appearance) ? `app-shell--${appearance}` : ""} ${desktopLayout ? "app-shell--desktop" : ""}`} dir={dir}>
+    <div className={`app-shell app-shell--${appearance} ${darkMode ? "app-shell--dark" : ""} ${desktopLayout ? "app-shell--desktop" : ""}`} dir={dir}>
       <ShellStageAtmosphere appearance={appearance} enabled={useShellStageAtmosphere} />
       {desktopLayout ? (
         <div className="desktop-shell">

@@ -1,20 +1,26 @@
-/* Nuit — noir pur (#000), accents violet, sans atmosphère animée */
+/* Nuit — noir pur (#000), accent violet réservé aux CTA, chrome en gris */
 
 html[data-theme="nuit"],
 html[data-theme="nuit"] .app-shell,
 html[data-theme="nuit"] .app-shell.app-shell--dark,
 [data-theme="nuit"],
-[data-theme="nuit"] .app-shell {
-  --brand: #a78bfa;
-  --brand-warm: #ffb36b;
+[data-theme="nuit"] .app-shell,
+.app-shell--nuit {
+  --nuit-accent: #a78bfa;
+  --nuit-accent-warm: #c4b5fd;
+  --nuit-icon: #b3b3b3;
+  --nuit-icon-active: #e8e8e8;
+  --nuit-icon-muted: #737373;
+  --brand: var(--nuit-accent);
+  --brand-warm: var(--nuit-accent-warm);
   --bg: #000000;
-  --surface: #0a0a0a;
-  --surface-raised: #121212;
+  --surface: #000000;
+  --surface-raised: #0a0a0a;
   --text: #f5f5f5;
   --text-muted: #a3a3a3;
-  --border: #242424;
+  --border: #2a2a2a;
   --success: #63d39b;
-  --manga: #e77b89;
+  --manga: #e89ab8;
   --novel: #d8b56a;
   --anime: #8b7fd6;
   --film: #c4b5fd;
@@ -24,62 +30,1124 @@ html[data-theme="nuit"] .app-shell.app-shell--dark,
   --paper: var(--bg);
   --white: var(--surface);
   --outer: #000000;
-  --outside: var(--surface-raised);
+  --outside: #0a0a0a;
   --line: var(--border);
-  --green: var(--brand);
-  --green-dark: var(--surface-raised);
-  --green-bright: var(--brand);
-  --green-soft: #161616;
-  --stamp: var(--brand-warm);
+  --green: var(--nuit-accent);
+  --green-dark: #0a0a0a;
+  --green-bright: var(--nuit-accent);
+  --green-soft: #121212;
+  --stamp: var(--nuit-accent-warm);
   --favorite: var(--manga);
-  --indigo: var(--brand);
-  --gold: var(--brand-warm);
+  --indigo: var(--nuit-icon-muted);
+  --gold: var(--nuit-accent-warm);
   --moon-white: var(--text);
-  --shadow: 0 22px 64px rgba(0, 0, 0, .45);
-  --cta: var(--brand);
+  --shadow: 0 22px 64px rgba(0, 0, 0, .5);
+  --cta: var(--nuit-accent);
   --cta-text: #000000;
-  --sakura: var(--brand);
-  --nadeshiko: var(--brand);
-  --kobai: var(--brand);
-  --boot-star: #a78bfa;
-  --onboarding-star: #a78bfa;
-  --bottom-nav-bg: color-mix(in srgb, var(--surface) 92%, transparent);
-  --bottom-nav-border: color-mix(in srgb, var(--line) 55%, transparent);
-  --bottom-nav-shadow: 0 -12px 36px rgba(0, 0, 0, .4);
-  --bottom-nav-inactive: color-mix(in srgb, var(--text-muted) 88%, var(--text));
-  --bottom-nav-active-bg: color-mix(in srgb, var(--brand) 22%, var(--surface));
-  --bottom-nav-focus-ring: color-mix(in srgb, var(--brand) 45%, transparent);
-  --bottom-nav-halo: color-mix(in srgb, var(--brand) 70%, var(--surface));
-  --bottom-nav-halo-glow: color-mix(in srgb, var(--brand) 32%, transparent);
-  --bottom-nav-active: var(--brand);
+  --sakura: var(--nuit-accent);
+  --nadeshiko: var(--nuit-accent);
+  --kobai: var(--nuit-accent);
+  --home-latest-accent: var(--nuit-icon-muted);
+  --home-recent-accent: var(--nuit-icon-muted);
+  --boot-star: var(--nuit-accent);
+  --onboarding-star: var(--nuit-accent);
+  --onboarding-bg: #000000;
+  --onboarding-fg: #f5f5f5;
+  --bottom-nav-bg: #000000;
+  --bottom-nav-border: #1a1a1a;
+  --bottom-nav-shadow: 0 -12px 36px rgba(0, 0, 0, .5);
+  --bottom-nav-inactive: var(--nuit-icon-muted);
+  --bottom-nav-active-bg: color-mix(in srgb, var(--nuit-icon-active) 10%, #000000);
+  --bottom-nav-focus-ring: color-mix(in srgb, var(--nuit-icon-active) 24%, transparent);
+  --bottom-nav-halo: color-mix(in srgb, var(--nuit-icon-active) 45%, #000000);
+  --bottom-nav-halo-glow: color-mix(in srgb, var(--nuit-icon-muted) 16%, transparent);
+  --bottom-nav-active: var(--nuit-icon-active);
+  --chrome-frame-border: #1a1a1a;
+  --chrome-icon-bg: #0a0a0a;
+  --chrome-icon-color: var(--nuit-icon);
+  --chrome-icon-border: #242424;
+  --chrome-icon-hover: #333333;
+  --chrome-icon-dot: var(--nuit-icon-muted);
+  --chrome-decor: color-mix(in srgb, var(--nuit-icon-muted) 22%, transparent);
+  --chrome-card-bg: #000000;
+  --chrome-card-border: #1a1a1a;
+  --chrome-glass-bg: #0a0a0a;
+  --chrome-glass-border: #242424;
+  --chrome-glass-color: var(--nuit-icon-active);
+  --chrome-button-shadow: color-mix(in srgb, var(--nuit-accent) 28%, transparent);
+  --theme-icon-accent: var(--nuit-icon);
+  --theme-icon-surface: #0a0a0a;
+  --nuit-ui-surface: #000000;
+  --nuit-ui-surface-raised: #0a0a0a;
+  --nuit-ui-border: #1a1a1a;
+  --nuit-chip-surface: #0a0a0a;
+  --nuit-chip-track-border: #2a2a2a;
+  --nuit-chip-active-bg: #141414;
+  --nuit-chip-active-border: #333333;
 }
 
 body[data-theme="nuit"] {
   background-color: #000000;
 }
 
-[data-theme="nuit"] .phone-frame {
+[data-theme="nuit"] .phone-frame,
+html[data-theme="nuit"] .phone-frame,
+.app-shell--nuit .phone-frame {
   background-color: #000000;
   background-image: none;
-  border-color: color-mix(in srgb, var(--line) 70%, transparent);
+  border-color: var(--chrome-frame-border);
+  box-shadow: 0 22px 64px rgba(0, 0, 0, .55);
 }
 
-[data-theme="nuit"] .primary-button,
-[data-theme="nuit"] .button--primary,
-[data-theme="nuit"] .details-hub__primary,
-[data-theme="nuit"] .filter-pill.active {
+.app-shell--nuit,
+html[data-theme="nuit"] .app-shell {
+  background-color: #000000;
+}
+
+.app-shell--nuit .screen,
+[data-theme="nuit"] .screen {
+  background-color: #000000;
+}
+
+[data-theme="nuit"], .app-shell--nuit .primary-button,
+[data-theme="nuit"], .app-shell--nuit .button--primary,
+[data-theme="nuit"], .app-shell--nuit .details-hub__primary,
+[data-theme="nuit"], .app-shell--nuit .notify-sheet__done {
   background: linear-gradient(
     135deg,
-    color-mix(in srgb, var(--brand) 94%, white),
-    color-mix(in srgb, var(--brand) 72%, #1a1030)
+    color-mix(in srgb, var(--nuit-accent) 94%, white),
+    color-mix(in srgb, var(--nuit-accent) 72%, #1a1030)
+  );
+  color: var(--cta-text);
+  border-color: color-mix(in srgb, var(--nuit-accent) 42%, transparent);
+}
+
+[data-theme="nuit"], .app-shell--nuit .filter-pill.active,
+[data-theme="nuit"], .app-shell--nuit .catalog-filter-track > button.active {
+  background: var(--nuit-chip-active-bg);
+  border-color: var(--nuit-chip-active-border);
+  color: var(--nuit-icon-active);
+}
+
+[data-theme="nuit"], .app-shell--nuit .filter-pill.active > svg,
+[data-theme="nuit"], .app-shell--nuit .catalog-filter-track > button.active > svg {
+  color: var(--nuit-icon);
+}
+
+[data-theme="nuit"], .app-shell--nuit .la-chip-bar--segmented .la-chip-bar__label {
+  color: var(--nuit-icon-muted);
+}
+
+[data-theme="nuit"], .app-shell--nuit .la-chip-bar--segmented .la-chip:not(.active) {
+  color: var(--nuit-icon-muted);
+  border-color: transparent;
+  background: transparent;
+}
+
+[data-theme="nuit"], .app-shell--nuit .la-chip-bar--segmented .la-chip.active {
+  border-color: var(--nuit-chip-active-border);
+  background: var(--nuit-chip-active-bg);
+  color: var(--nuit-icon-active);
+  box-shadow: none;
+}
+
+[data-theme="nuit"], .app-shell--nuit .la-chip-bar--segmented .la-chip.active > svg,
+[data-theme="nuit"], .app-shell--nuit .la-chip-bar--segmented .la-chip.active small {
+  color: var(--nuit-icon);
+  opacity: 1;
+}
+
+[data-theme="nuit"], .app-shell--nuit .la-chip.active {
+  border-color: var(--nuit-chip-active-border);
+  background: var(--nuit-chip-active-bg);
+  color: var(--nuit-icon-active);
+  box-shadow: none;
+}
+
+[data-theme="nuit"], .app-shell--nuit .toggle--on {
+  background: color-mix(in srgb, var(--nuit-accent) 82%, #000);
+}
+
+[data-theme="nuit"], .app-shell--nuit .progress span,
+[data-theme="nuit"], .app-shell--nuit .catalog-pagination__trail i {
+  background: var(--nuit-icon-muted);
+}
+
+[data-theme="nuit"], .app-shell--nuit .hero-card .progress span {
+  background: linear-gradient(90deg, var(--nuit-icon-muted), var(--nuit-icon));
+}
+
+[data-theme="nuit"], .app-shell--nuit .hero-card {
+  background: linear-gradient(155deg, #000000 0%, #0a0a0a 52%, #111111 100%);
+  border: 1px solid var(--nuit-ui-border);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.48);
+}
+
+[data-theme="nuit"], .app-shell--nuit .hero-card::before,
+[data-theme="nuit"], .app-shell--nuit .hero-card::after {
+  border-color: color-mix(in srgb, var(--nuit-icon-muted) 18%, transparent) transparent transparent transparent;
+}
+
+[data-theme="nuit"], .app-shell--nuit .hero-card .progress::after {
+  background: color-mix(in srgb, var(--nuit-icon-muted) 40%, transparent);
+}
+
+[data-theme="nuit"], .app-shell--nuit .hero-card h2,
+[data-theme="nuit"], .app-shell--nuit .hero-card p,
+[data-theme="nuit"], .app-shell--nuit .hero-card .pill--light,
+[data-theme="nuit"], .app-shell--nuit .content .hero-card__time,
+[data-theme="nuit"], .app-shell--nuit .content .hero-card__subtitle,
+[data-theme="nuit"], .app-shell--nuit .content .hero-card__chapter-name,
+[data-theme="nuit"], .app-shell--nuit .content .hero-card__progress-label,
+[data-theme="nuit"], .app-shell--nuit .content .hero-card__source {
+  color: rgba(245, 245, 245, 0.94);
+}
+
+[data-theme="nuit"], .app-shell--nuit .content .hero-card__pill {
+  border-color: #2a2a2a;
+  background: #0a0a0a;
+  color: var(--nuit-icon-active);
+}
+
+[data-theme="nuit"], .app-shell--nuit .content .hero-card__pill > svg {
+  color: var(--nuit-icon);
+}
+
+[data-theme="nuit"], .app-shell--nuit .icon-button,
+[data-theme="nuit"], .app-shell--nuit .page-header .icon-button,
+[data-theme="nuit"], .app-shell--nuit .screen--home .header-actions .icon-button {
+  background: var(--chrome-icon-bg);
+  border-color: var(--chrome-icon-border);
+  color: var(--nuit-icon);
+}
+
+[data-theme="nuit"], .app-shell--nuit .icon-button:hover,
+[data-theme="nuit"], .app-shell--nuit .icon-button:focus-visible,
+[data-theme="nuit"], .app-shell--nuit .page-header .icon-button:hover,
+[data-theme="nuit"], .app-shell--nuit .screen--home .header-actions .icon-button:hover {
+  color: var(--nuit-icon-active);
+  border-color: #333333;
+  box-shadow: none;
+}
+
+[data-theme="nuit"], .app-shell--nuit .icon-button--glass {
+  background: var(--chrome-glass-bg);
+  border-color: var(--chrome-glass-border);
+  color: var(--chrome-glass-color);
+}
+
+[data-theme="nuit"], .app-shell--nuit :is(
+  .settings-group,
+  .notification-row,
+  .update-card,
+  .source-directory-card,
+  .catalog-row,
+  .library-card,
+  .live-manga-card,
+  .global-search,
+  .catalog-search,
+  .search-result-row,
+  .favorites-hero,
+  .history-hero,
+  .history-controls,
+  .history-row,
+  .home-discovery,
+  .home-latest-panel,
+  .home-recent-panel,
+  .home-hero-panel:not(.home-hero-panel--filters-only),
+  .settings-profile,
+  .setting-row
+) {
+  background: var(--nuit-ui-surface);
+  border-color: var(--nuit-ui-border);
+}
+
+[data-theme="nuit"], .app-shell--nuit .home-discovery .home-discovery__scope,
+[data-theme="nuit"], .app-shell--nuit .home-latest-row,
+[data-theme="nuit"], .app-shell--nuit .home-hero-panel__track,
+[data-theme="nuit"], .app-shell--nuit .la-chip-bar--segmented .la-chip-bar__chips {
+  background: var(--nuit-chip-surface);
+  border-color: var(--nuit-chip-track-border);
+}
+
+[data-theme="nuit"], .app-shell--nuit .notify-sheet,
+[data-theme="nuit"], .app-shell--nuit .la-sheet,
+[data-theme="nuit"], .app-shell--nuit .follow-sheet,
+[data-theme="nuit"], .app-shell--nuit .catalog-filter-picker,
+[data-theme="nuit"], .app-shell--nuit .catalog-source-picker,
+[data-theme="nuit"], .app-shell--nuit .management-source-picker,
+[data-theme="nuit"], .app-shell--nuit .reader-settings,
+[data-theme="nuit"], .app-shell--nuit .source-config-modal,
+[data-theme="nuit"], .app-shell--nuit .modal,
+[data-theme="nuit"], .app-shell--nuit .confirm-dialog {
+  background: #000000;
+  border-color: #1a1a1a;
+  color: var(--text);
+}
+
+[data-theme="nuit"], .app-shell--nuit .notify-sheet-backdrop,
+[data-theme="nuit"], .app-shell--nuit .la-sheet-backdrop,
+[data-theme="nuit"], .app-shell--nuit .follow-sheet-backdrop,
+[data-theme="nuit"], .app-shell--nuit .catalog-filter-picker-backdrop,
+[data-theme="nuit"], .app-shell--nuit .catalog-source-picker-backdrop,
+[data-theme="nuit"], .app-shell--nuit .management-source-picker-backdrop,
+[data-theme="nuit"], .app-shell--nuit .reader-settings-backdrop,
+[data-theme="nuit"], .app-shell--nuit .source-config-backdrop,
+[data-theme="nuit"], .app-shell--nuit .modal-backdrop {
+  background: rgba(0, 0, 0, 0.72);
+}
+
+[data-theme="nuit"], .app-shell--nuit .source-logo {
+  background: linear-gradient(145deg, #3a3a3a, #1a1a1a);
+  color: var(--nuit-icon-active);
+  box-shadow: inset 0 0 0 1px #2a2a2a;
+}
+
+/* Boutons secondaires (pas le violet CTA) */
+.app-shell--nuit.app-shell--dark .button--dark,
+[data-theme="nuit"] .app-shell--dark .button--dark {
+  background: #141414;
+  border: 1px solid #333333;
+  color: var(--nuit-icon-active);
+  box-shadow: none;
+}
+
+.app-shell--nuit.app-shell--dark .button--dark:hover,
+[data-theme="nuit"] .app-shell--dark .button--dark:hover {
+  background: #1a1a1a;
+  border-color: #404040;
+  color: #f5f5f5;
+}
+
+.app-shell--nuit.app-shell--dark .button--dark > svg,
+[data-theme="nuit"] .app-shell--dark .button--dark > svg {
+  color: var(--nuit-icon);
+}
+
+[data-theme="nuit"], .app-shell--nuit .bottom-nav {
+  background: var(--bottom-nav-bg);
+  border-color: var(--bottom-nav-border);
+}
+
+[data-theme="nuit"], .app-shell--nuit .bottom-nav__tab,
+[data-theme="nuit"], .app-shell--nuit .bottom-nav button {
+  color: var(--nuit-icon-muted);
+}
+
+[data-theme="nuit"], .app-shell--nuit .bottom-nav__tab.is-active,
+[data-theme="nuit"], .app-shell--nuit .bottom-nav__tab.active,
+[data-theme="nuit"], .app-shell--nuit .bottom-nav button.active {
+  color: var(--nuit-icon-active);
+}
+
+[data-theme="nuit"], .app-shell--nuit .bottom-nav__tab.is-active::before,
+[data-theme="nuit"], .app-shell--nuit .bottom-nav__tab.active::before,
+[data-theme="nuit"], .app-shell--nuit .bottom-nav button.active::before {
+  background: color-mix(in srgb, var(--nuit-icon-active) 8%, #000000);
+  box-shadow: none;
+}
+
+[data-theme="nuit"], .app-shell--nuit .bottom-nav__tab.is-active > svg,
+[data-theme="nuit"], .app-shell--nuit .bottom-nav__tab.active > svg,
+[data-theme="nuit"], .app-shell--nuit .bottom-nav button.active > svg,
+[data-theme="nuit"], .app-shell--nuit .bottom-nav__tab.is-active .bottom-nav__icon-wrap > svg,
+[data-theme="nuit"], .app-shell--nuit .bottom-nav__tab.active .bottom-nav__icon-wrap > svg,
+[data-theme="nuit"], .app-shell--nuit .bottom-nav button.active .bottom-nav__icon-wrap > svg {
+  color: var(--nuit-icon-active);
+  filter: none;
+}
+
+[data-theme="nuit"], .app-shell--nuit .bottom-nav__tab:not(.is-active):not(.active) > svg,
+[data-theme="nuit"], .app-shell--nuit .bottom-nav button:not(.active) > svg,
+[data-theme="nuit"], .app-shell--nuit .bottom-nav__tab:not(.is-active):not(.active) .bottom-nav__icon-wrap > svg,
+[data-theme="nuit"], .app-shell--nuit .bottom-nav button:not(.active) .bottom-nav__icon-wrap > svg {
+  color: var(--nuit-icon-muted);
+}
+
+[data-theme="nuit"], .app-shell--nuit .bottom-nav__tab:not(.is-active):not(.active):hover,
+[data-theme="nuit"], .app-shell--nuit .bottom-nav button:not(.active):hover {
+  color: var(--nuit-icon);
+}
+
+/* ── Accueil : icônes & accents en gris ── */
+
+[data-theme="nuit"], .app-shell--nuit .screen--home :is(
+  .home-latest-panel__icon,
+  .home-recent-panel__icon,
+  .home-latest-panel__refresh,
+  .home-discovery__manage,
+  .home-discovery__scope .search-scope__chevron,
+  .home-hero-panel__filters .filter-pill,
+  .home-hero-panel .la-chip,
+  .content .hero-card__pill > svg
+) {
+  color: var(--nuit-icon);
+}
+
+[data-theme="nuit"], .app-shell--nuit .screen--home :is(
+  .home-latest-panel__icon,
+  .home-recent-panel__icon
+) {
+  background: #0a0a0a;
+  border: 1px solid #242424;
+}
+
+[data-theme="nuit"], .app-shell--nuit .screen--home .home-latest-panel__refresh,
+[data-theme="nuit"], .app-shell--nuit .screen--home .home-discovery__manage {
+  background: transparent;
+}
+
+[data-theme="nuit"], .app-shell--nuit .screen--home .home-latest-panel__refresh:hover,
+[data-theme="nuit"], .app-shell--nuit .screen--home .home-discovery__manage:hover {
+  color: var(--nuit-icon-active);
+  background: #111111;
+}
+
+[data-theme="nuit"], .app-shell--nuit .screen--home .home-discovery__scope:hover {
+  background: #0a0a0a;
+}
+
+[data-theme="nuit"], .app-shell--nuit .screen--home .home-latest-row--new {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--nuit-icon-muted) 10%, transparent),
+    color-mix(in srgb, #0a0a0a 80%, transparent)
   );
 }
 
-[data-theme="nuit"] .toggle--on {
-  background: color-mix(in srgb, var(--brand) 82%, #000);
+[data-theme="nuit"], .app-shell--nuit .screen--home .home-latest-panel__badge,
+[data-theme="nuit"], .app-shell--nuit .screen--home .home-latest-row__badge,
+[data-theme="nuit"], .app-shell--nuit .screen--home .home-latest-row__new-dot {
+  background: var(--nuit-icon-muted);
+  color: #000000;
 }
 
-[data-theme="nuit"] .progress span,
-[data-theme="nuit"] .catalog-pagination__trail i {
-  background: var(--brand);
+[data-theme="nuit"], .app-shell--nuit .screen--home .content .hero-card__pill {
+  border-color: #2a2a2a;
+  background: #0a0a0a;
+  color: var(--nuit-icon-active);
+}
+
+[data-theme="nuit"], .app-shell--nuit .screen--home .content .hero-card__chapter-badge {
+  border-color: #2a2a2a;
+  background: #0a0a0a;
+  color: var(--nuit-icon);
+}
+
+[data-theme="nuit"], .app-shell--nuit .screen--home .home-recent-panel__empty.la-empty > svg {
+  color: var(--nuit-icon-muted);
+}
+
+/* ── Accueil : neutraliser tous les accents violet ── */
+
+.app-shell--nuit .screen--home .content .hero-card__glow,
+[data-theme="nuit"] .screen--home .content .hero-card__glow {
+  background:
+    radial-gradient(90% 80% at 100% 0%, color-mix(in srgb, var(--nuit-icon-muted) 7%, transparent), transparent 62%),
+    radial-gradient(70% 60% at 0% 100%, color-mix(in srgb, var(--nuit-icon-muted) 4%, transparent), transparent 58%);
+}
+
+.app-shell--nuit.app-shell--dark .screen--home .content .hero-card__pill,
+[data-theme="nuit"] .screen--home .content .hero-card__pill {
+  border-color: #2a2a2a;
+  background: #0a0a0a;
+  color: var(--nuit-icon-active);
+}
+
+.app-shell--nuit.app-shell--dark .screen--home .content .hero-card__pill > svg,
+[data-theme="nuit"] .screen--home .content .hero-card__pill > svg {
+  color: var(--nuit-icon);
+}
+
+.app-shell--nuit .screen--home .content .hero-card--continue:focus-visible,
+[data-theme="nuit"] .screen--home .content .hero-card--continue:focus-visible {
+  outline-color: color-mix(in srgb, var(--nuit-icon-muted) 55%, transparent);
+}
+
+.app-shell--nuit .screen--home .home-discovery .search-scope__avatar .source-logo,
+[data-theme="nuit"] .screen--home .home-discovery .search-scope__avatar .source-logo,
+.app-shell--nuit .screen--home .content .hero-card__source-logo,
+[data-theme="nuit"] .screen--home .content .hero-card__source-logo {
+  background: linear-gradient(145deg, #3a3a3a, #1a1a1a);
+  color: var(--nuit-icon-active);
+}
+
+.app-shell--nuit .screen--home .home-discovery .search-scope__more,
+[data-theme="nuit"] .screen--home .home-discovery .search-scope__more {
+  background: #141414;
+  border-color: #2a2a2a;
+  color: var(--nuit-icon-muted);
+}
+
+.app-shell--nuit .screen--home .la-chip,
+[data-theme="nuit"] .screen--home .la-chip {
+  color: var(--nuit-icon-muted);
+}
+
+.app-shell--nuit .screen--home .la-chip > svg,
+[data-theme="nuit"] .screen--home .la-chip > svg {
+  color: var(--nuit-icon-muted);
+  opacity: 1;
+}
+
+.app-shell--nuit .screen--home .home-hero-panel__filters.la-chip-bar--segmented .la-chip-bar__chips,
+[data-theme="nuit"] .screen--home .home-hero-panel__filters.la-chip-bar--segmented .la-chip-bar__chips {
+  border-color: #2a2a2a;
+  background: #0a0a0a;
+}
+
+.app-shell--nuit .screen--home .page-header:not(.page-header--brand) .eyebrow,
+[data-theme="nuit"] .screen--home .page-header:not(.page-header--brand) .eyebrow {
+  color: var(--nuit-icon-muted);
+}
+
+.app-shell--nuit .screen--home .app-brand-name__accent,
+[data-theme="nuit"] .screen--home .app-brand-name__accent {
+  color: var(--nuit-icon);
+}
+
+[data-theme="nuit"], .app-shell--nuit .setting-row__icon,
+[data-theme="nuit"], .app-shell--nuit .preload-sheet__toggle-icon,
+[data-theme="nuit"], .app-shell--nuit .preload-sheet__wifi-icon,
+[data-theme="nuit"], .app-shell--nuit .notification-icon,
+[data-theme="nuit"], .app-shell--nuit .accessible-search__icon {
+  color: var(--nuit-icon);
+  background: #0a0a0a;
+  border: 1px solid #242424;
+}
+
+[data-theme="nuit"], .app-shell--nuit .accessible-search:focus-within {
+  border-color: #333333;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--nuit-icon-muted) 14%, transparent);
+}
+
+[data-theme="nuit"], .app-shell--nuit .la-chip.active > svg,
+[data-theme="nuit"], .app-shell--nuit .source-type-filter__chip.active > svg {
+  color: var(--nuit-icon);
+}
+
+[data-theme="nuit"], .app-shell--nuit .page-header:not(.page-header--brand) h1,
+[data-theme="nuit"], .app-shell--nuit .page-header:not(.page-header--brand) .eyebrow {
+  color: var(--text);
+}
+
+[data-theme="nuit"], .app-shell--nuit .page-header:not(.page-header--brand) .eyebrow {
+  color: var(--text-muted);
+}
+
+[data-theme="nuit"], .app-shell--nuit .app-toast {
+  background: var(--nuit-ui-surface-raised);
+  border-color: var(--nuit-ui-border);
+}
+
+[data-theme="nuit"], .app-shell--nuit .theme-sheet--nuit {
+  border-color: color-mix(in srgb, var(--brand) 30%, #1a1a1a);
+  background: linear-gradient(180deg, #0a0a0a 0%, #000000 100%);
+}
+
+[data-theme="nuit"], .app-shell--nuit .theme-sheet--nuit header h2,
+[data-theme="nuit"], .app-shell--nuit .theme-sheet--nuit header small {
+  color: var(--text);
+}
+
+/* ── Page اكتشاف (catalogue) : chrome en gris ── */
+
+.app-shell--nuit .screen--discover,
+[data-theme="nuit"] .screen--discover {
+  background-color: #000000;
+}
+
+.app-shell--nuit .screen--discover .page-header:not(.page-header--brand) .eyebrow,
+[data-theme="nuit"] .screen--discover .page-header:not(.page-header--brand) .eyebrow {
+  color: var(--nuit-icon-muted);
+}
+
+.app-shell--nuit .screen--discover .catalog-source-toolbar__chip.active,
+[data-theme="nuit"] .screen--discover .catalog-source-toolbar__chip.active {
+  border-color: #333333;
+  background: #141414;
+  color: var(--nuit-icon-active);
+}
+
+.app-shell--nuit .screen--discover .catalog-source-toolbar__chip.active > span,
+[data-theme="nuit"] .screen--discover .catalog-source-toolbar__chip.active > span {
+  color: var(--nuit-icon-active);
+}
+
+.app-shell--nuit .screen--discover .catalog-source-toolbar__chip .source-logo,
+[data-theme="nuit"] .screen--discover .catalog-source-toolbar__chip .source-logo {
+  background: linear-gradient(145deg, #3a3a3a, #1a1a1a);
+  color: var(--nuit-icon-active);
+}
+
+.app-shell--nuit .screen--discover .catalog-source-toolbar__more,
+[data-theme="nuit"] .screen--discover .catalog-source-toolbar__more {
+  border-color: #2a2a2a;
+  color: var(--nuit-icon-muted);
+}
+
+.app-shell--nuit .screen--discover .catalog-source-toolbar__settings,
+[data-theme="nuit"] .screen--discover .catalog-source-toolbar__settings {
+  color: var(--nuit-icon);
+}
+
+.app-shell--nuit .screen--discover .catalog-search,
+[data-theme="nuit"] .screen--discover .catalog-search {
+  border-color: #2a2a2a;
+  background: #0a0a0a;
+}
+
+.app-shell--nuit .screen--discover .catalog-search:focus-within,
+[data-theme="nuit"] .screen--discover .catalog-search:focus-within {
+  border-color: #333333;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--nuit-icon-muted) 14%, transparent);
+}
+
+.app-shell--nuit .screen--discover .catalog-search__icon,
+[data-theme="nuit"] .screen--discover .catalog-search__icon {
+  color: var(--nuit-icon);
+  background: #141414;
+}
+
+.app-shell--nuit .screen--discover .catalog-search__clear,
+[data-theme="nuit"] .screen--discover .catalog-search__clear {
+  color: var(--nuit-icon-muted);
+  background: #141414;
+}
+
+.app-shell--nuit .screen--discover .catalog-search__clear:hover,
+[data-theme="nuit"] .screen--discover .catalog-search__clear:hover {
+  color: var(--nuit-icon-active);
+  background: #1a1a1a;
+}
+
+.app-shell--nuit .screen--discover .catalog-search__source,
+[data-theme="nuit"] .screen--discover .catalog-search__source {
+  color: var(--nuit-icon);
+  border-color: var(--nuit-chip-active-border);
+  background: var(--nuit-chip-active-bg);
+}
+
+.app-shell--nuit .screen--discover .catalog-filters-skeleton,
+[data-theme="nuit"] .screen--discover .catalog-filters-skeleton {
+  border-color: #2a2a2a;
+  background: #0a0a0a;
+  box-shadow: none;
+}
+
+.app-shell--nuit .screen--discover .catalog-filters-skeleton__icon,
+[data-theme="nuit"] .screen--discover .catalog-filters-skeleton__icon {
+  color: var(--nuit-icon);
+  background: #141414;
+}
+
+.app-shell--nuit .screen--discover .catalog-filters-skeleton__chip,
+[data-theme="nuit"] .screen--discover .catalog-filters-skeleton__chip {
+  border-color: #2a2a2a;
+  background: linear-gradient(90deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%);
+}
+
+.app-shell--nuit .screen--discover .catalog-taxonomy-filters .la-chip-bar__label,
+[data-theme="nuit"] .screen--discover .catalog-taxonomy-filters .la-chip-bar__label {
+  color: var(--nuit-icon-muted);
+}
+
+.app-shell--nuit .screen--discover .catalog-taxonomy-filters,
+[data-theme="nuit"] .screen--discover .catalog-taxonomy-filters {
+  border-color: #2a2a2a;
+  background: #000000;
+}
+
+.app-shell--nuit .screen--discover .catalog-taxonomy-filters .la-chip,
+[data-theme="nuit"] .screen--discover .catalog-taxonomy-filters .la-chip {
+  color: var(--nuit-icon-muted);
+}
+
+.app-shell--nuit .screen--discover .catalog-taxonomy-filters .la-chip--bordered,
+[data-theme="nuit"] .screen--discover .catalog-taxonomy-filters .la-chip--bordered {
+  border-color: #2a2a2a;
+  background: #0a0a0a;
+  color: var(--nuit-icon-muted);
+}
+
+.app-shell--nuit .screen--discover .catalog-taxonomy-filters .la-chip--bordered:not(:disabled):hover,
+[data-theme="nuit"] .screen--discover .catalog-taxonomy-filters .la-chip--bordered:not(:disabled):hover {
+  border-color: #333333;
+  background: #141414;
+  color: var(--nuit-icon);
+}
+
+.app-shell--nuit .screen--discover .catalog-taxonomy-filters .la-chip--bordered:not(:disabled):hover > svg,
+.app-shell--nuit .screen--discover .catalog-taxonomy-filters .la-chip--picker:not(:disabled):hover .la-chip__chevron,
+[data-theme="nuit"] .screen--discover .catalog-taxonomy-filters .la-chip--bordered:not(:disabled):hover > svg,
+[data-theme="nuit"] .screen--discover .catalog-taxonomy-filters .la-chip--picker:not(:disabled):hover .la-chip__chevron {
+  color: var(--nuit-icon);
+  opacity: 1;
+}
+
+.app-shell--nuit .screen--discover .catalog-taxonomy-filters .la-chip--picker small,
+[data-theme="nuit"] .screen--discover .catalog-taxonomy-filters .la-chip--picker small {
+  background: #141414;
+  color: var(--nuit-icon-muted);
+}
+
+.app-shell--nuit .screen--discover .catalog-taxonomy-filters .la-chip > svg,
+[data-theme="nuit"] .screen--discover .catalog-taxonomy-filters .la-chip > svg {
+  color: var(--nuit-icon-muted);
+  opacity: 1;
+}
+
+.app-shell--nuit .screen--discover .catalog-taxonomy-filters .la-chip.active,
+.app-shell--nuit .screen--discover .catalog-taxonomy-filters .la-chip-bar--segmented .la-chip.active,
+.app-shell--nuit .screen--discover .catalog-taxonomy-filters .la-chip--picker.active,
+[data-theme="nuit"] .screen--discover .catalog-taxonomy-filters .la-chip.active,
+[data-theme="nuit"] .screen--discover .catalog-taxonomy-filters .la-chip-bar--segmented .la-chip.active,
+[data-theme="nuit"] .screen--discover .catalog-taxonomy-filters .la-chip--picker.active {
+  border-color: #333333;
+  background: #141414;
+  color: var(--nuit-icon-active);
+  box-shadow: none;
+}
+
+.app-shell--nuit .screen--discover .catalog-taxonomy-filters .la-chip.active > svg,
+.app-shell--nuit .screen--discover .catalog-taxonomy-filters .la-chip.active small,
+.app-shell--nuit .screen--discover .catalog-taxonomy-filters .la-chip--picker > svg:first-of-type,
+[data-theme="nuit"] .screen--discover .catalog-taxonomy-filters .la-chip.active > svg,
+[data-theme="nuit"] .screen--discover .catalog-taxonomy-filters .la-chip.active small,
+[data-theme="nuit"] .screen--discover .catalog-taxonomy-filters .la-chip--picker > svg:first-of-type {
+  color: var(--nuit-icon);
+  opacity: 1;
+}
+
+.app-shell--nuit .screen--discover .catalog-taxonomy-filters .la-chip-bar__clear,
+[data-theme="nuit"] .screen--discover .catalog-taxonomy-filters .la-chip-bar__clear {
+  color: var(--nuit-icon-muted);
+}
+
+.app-shell--nuit .screen--discover .catalog-taxonomy-filters .la-chip-bar__clear:hover,
+[data-theme="nuit"] .screen--discover .catalog-taxonomy-filters .la-chip-bar__clear:hover {
+  border-color: var(--nuit-chip-active-border);
+  color: var(--nuit-icon);
+}
+
+.app-shell--nuit .screen--discover .catalog-filters__head > span svg,
+.app-shell--nuit .screen--discover .catalog-filters__head > button,
+[data-theme="nuit"] .screen--discover .catalog-filters__head > span svg,
+[data-theme="nuit"] .screen--discover .catalog-filters__head > button {
+  color: var(--nuit-icon);
+}
+
+.app-shell--nuit .screen--discover .catalog-filter-tabs > button.active,
+[data-theme="nuit"] .screen--discover .catalog-filter-tabs > button.active {
+  background: #141414;
+  color: var(--nuit-icon-active);
+  box-shadow: none;
+}
+
+.app-shell--nuit .screen--discover .catalog-filter-selection,
+[data-theme="nuit"] .screen--discover .catalog-filter-selection {
+  background: #0a0a0a;
+  color: var(--nuit-icon-muted);
+}
+
+.app-shell--nuit .screen--discover .catalog-filter-selection svg,
+.app-shell--nuit .screen--discover .catalog-filter-selection strong,
+[data-theme="nuit"] .screen--discover .catalog-filter-selection svg,
+[data-theme="nuit"] .screen--discover .catalog-filter-selection strong {
+  color: var(--nuit-icon);
+}
+
+.app-shell--nuit .screen--discover .live-manga-card__chapters svg,
+.app-shell--nuit .screen--discover .live-manga-card__chapters i,
+[data-theme="nuit"] .screen--discover .live-manga-card__chapters svg,
+[data-theme="nuit"] .screen--discover .live-manga-card__chapters i {
+  color: var(--nuit-icon);
+  background: #141414;
+}
+
+.app-shell--nuit .screen--discover .live-manga-card__chapters > button:hover:not(:disabled),
+[data-theme="nuit"] .screen--discover .live-manga-card__chapters > button:hover:not(:disabled) {
+  border-color: #333333;
+  background: #141414;
+}
+
+.app-shell--nuit .screen--discover .media-type-badge,
+.app-shell--nuit .screen--discover .media-type-badge--novel,
+.app-shell--nuit .screen--discover .media-type-badge--anime,
+.app-shell--nuit .screen--discover .media-type-badge--movie,
+.app-shell--nuit .screen--discover .media-type-badge--series,
+[data-theme="nuit"] .screen--discover .media-type-badge,
+[data-theme="nuit"] .screen--discover .media-type-badge--novel,
+[data-theme="nuit"] .screen--discover .media-type-badge--anime,
+[data-theme="nuit"] .screen--discover .media-type-badge--movie,
+[data-theme="nuit"] .screen--discover .media-type-badge--series {
+  color: var(--nuit-icon);
+  border-color: #333333;
+  background: #141414;
+}
+
+.app-shell--nuit .screen--discover .catalog-pagination,
+[data-theme="nuit"] .screen--discover .catalog-pagination {
+  background: #000000;
+  border-color: #1a1a1a;
+}
+
+.app-shell--nuit .screen--discover .catalog-pagination > div:nth-child(2) strong,
+[data-theme="nuit"] .screen--discover .catalog-pagination > div:nth-child(2) strong {
+  color: var(--nuit-icon-active);
+}
+
+.app-shell--nuit .screen--discover .catalog-pagination__trail::after,
+[data-theme="nuit"] .screen--discover .catalog-pagination__trail::after {
+  background: color-mix(in srgb, var(--nuit-icon-muted) 40%, transparent);
+}
+
+.app-shell--nuit .screen--discover .catalog-pagination .button--dark,
+.app-shell--nuit .screen--discover .catalog-pagination .button,
+[data-theme="nuit"] .screen--discover .catalog-pagination .button--dark,
+[data-theme="nuit"] .screen--discover .catalog-pagination .button {
+  background: #141414;
+  border: 1px solid #333333;
+  color: var(--nuit-icon-active);
+  box-shadow: none;
+}
+
+.app-shell--nuit .screen--discover .catalog-loading-toast svg,
+.app-shell--nuit .screen--discover .empty-state > svg,
+.app-shell--nuit .screen--discover .live-error > svg,
+[data-theme="nuit"] .screen--discover .catalog-loading-toast svg,
+[data-theme="nuit"] .screen--discover .empty-state > svg,
+[data-theme="nuit"] .screen--discover .live-error > svg {
+  color: var(--nuit-icon);
+}
+
+.app-shell--nuit .screen--discover .catalog-source-picker__badge,
+.app-shell--nuit .screen--discover .catalog-filter-picker__badge,
+[data-theme="nuit"] .screen--discover .catalog-source-picker__badge,
+[data-theme="nuit"] .screen--discover .catalog-filter-picker__badge {
+  color: var(--nuit-icon);
+  background: #141414;
+  border: 1px solid #2a2a2a;
+}
+
+.app-shell--nuit .screen--discover .catalog-source-picker__option.active strong,
+.app-shell--nuit .screen--discover .catalog-source-picker__option.active svg,
+[data-theme="nuit"] .screen--discover .catalog-source-picker__option.active strong,
+[data-theme="nuit"] .screen--discover .catalog-source-picker__option.active svg {
+  color: var(--nuit-icon-active);
+}
+
+.app-shell--nuit .screen--discover .catalog-source-picker__option.active,
+[data-theme="nuit"] .screen--discover .catalog-source-picker__option.active {
+  border-color: #333333;
+  background: #141414;
+}
+
+/* ── Popups & feuilles : chrome gris (CTA violet conservé) ── */
+
+.app-shell--nuit :is(
+  .notify-sheet,
+  .la-sheet,
+  .follow-sheet,
+  .catalog-filter-picker,
+  .catalog-source-picker,
+  .management-source-picker,
+  .reader-settings,
+  .source-config-modal,
+  .modal,
+  .confirm-dialog
+) header,
+.app-shell--nuit :is(
+  .notify-sheet,
+  .la-sheet,
+  .follow-sheet,
+  .catalog-filter-picker,
+  .catalog-source-picker,
+  .management-source-picker,
+  .reader-settings,
+  .source-config-modal
+) footer,
+[data-theme="nuit"] :is(
+  .notify-sheet,
+  .la-sheet,
+  .follow-sheet,
+  .catalog-filter-picker,
+  .catalog-source-picker,
+  .management-source-picker,
+  .reader-settings,
+  .source-config-modal,
+  .modal,
+  .confirm-dialog
+) header,
+[data-theme="nuit"] :is(
+  .notify-sheet,
+  .la-sheet,
+  .follow-sheet,
+  .catalog-filter-picker,
+  .catalog-source-picker,
+  .management-source-picker,
+  .reader-settings,
+  .source-config-modal
+) footer {
+  border-color: #1a1a1a;
+  background: #000000;
+}
+
+.app-shell--nuit .sheet-close,
+.app-shell--nuit .notify-sheet header .sheet-close,
+.app-shell--nuit .follow-sheet header .sheet-close,
+.app-shell--nuit .reader-settings > header .sheet-close,
+.app-shell--nuit .source-config-modal__bar .sheet-close,
+[data-theme="nuit"] .sheet-close,
+[data-theme="nuit"] .notify-sheet header .sheet-close,
+[data-theme="nuit"] .follow-sheet header .sheet-close,
+[data-theme="nuit"] .reader-settings > header .sheet-close,
+[data-theme="nuit"] .source-config-modal__bar .sheet-close {
+  color: var(--nuit-icon);
+  background: #141414;
+  border-color: #2a2a2a;
+}
+
+.app-shell--nuit :is(
+  .notify-sheet__label svg,
+  .notify-sheet__row svg,
+  .preload-sheet__toggle-icon,
+  .preload-sheet__wifi-icon,
+  .catalog-filter-picker__badge svg,
+  .catalog-source-picker__badge svg,
+  .management-source-picker__badge svg,
+  .catalog-filter-picker__tabs > button svg,
+  .modal__icon,
+  .confirm-dialog__icon,
+  .follow-sheet__body svg,
+  .reader-settings__label svg,
+  .reader-settings__section-title svg,
+  .source-config-panel__header svg,
+  .manga-picker__views > button svg,
+  .manga-picker__pagination > button svg
+),
+[data-theme="nuit"] :is(
+  .notify-sheet__label svg,
+  .notify-sheet__row svg,
+  .preload-sheet__toggle-icon,
+  .preload-sheet__wifi-icon,
+  .catalog-filter-picker__badge svg,
+  .catalog-source-picker__badge svg,
+  .management-source-picker__badge svg,
+  .catalog-filter-picker__tabs > button svg,
+  .modal__icon,
+  .confirm-dialog__icon,
+  .follow-sheet__body svg,
+  .reader-settings__label svg,
+  .reader-settings__section-title svg,
+  .source-config-panel__header svg,
+  .manga-picker__views > button svg,
+  .manga-picker__pagination > button svg
+) {
+  color: var(--nuit-icon);
+}
+
+.app-shell--nuit :is(
+  .catalog-filter-picker__badge,
+  .catalog-source-picker__badge,
+  .management-source-picker__badge,
+  .modal__icon,
+  .confirm-dialog__icon:not(.confirm-dialog__icon--danger)
+),
+[data-theme="nuit"] :is(
+  .catalog-filter-picker__badge,
+  .catalog-source-picker__badge,
+  .management-source-picker__badge,
+  .modal__icon,
+  .confirm-dialog__icon:not(.confirm-dialog__icon--danger)
+) {
+  background: #141414;
+  border: 1px solid #2a2a2a;
+}
+
+.app-shell--nuit .notify-sheet__chips button.active,
+.app-shell--nuit .notify-sheet__tools button:not(.notify-sheet__tools-primary),
+.app-shell--nuit .preload-sheet__panel .la-chip.active,
+.app-shell--nuit .catalog-filter-picker__tabs > button.active,
+.app-shell--nuit .catalog-filter-picker__option.active,
+.app-shell--nuit .catalog-source-picker__option.active,
+.app-shell--nuit .management-source-picker__option.active,
+.app-shell--nuit .manga-picker__views > button.active,
+.app-shell--nuit .follow-sheet .la-chip.active,
+.app-shell--nuit .reader-settings__chips > button.active,
+.app-shell--nuit .source-tabs button.active,
+[data-theme="nuit"] .notify-sheet__chips button.active,
+[data-theme="nuit"] .notify-sheet__tools button:not(.notify-sheet__tools-primary),
+[data-theme="nuit"] .preload-sheet__panel .la-chip.active,
+[data-theme="nuit"] .catalog-filter-picker__tabs > button.active,
+[data-theme="nuit"] .catalog-filter-picker__option.active,
+[data-theme="nuit"] .catalog-source-picker__option.active,
+[data-theme="nuit"] .management-source-picker__option.active,
+[data-theme="nuit"] .manga-picker__views > button.active,
+[data-theme="nuit"] .follow-sheet .la-chip.active,
+[data-theme="nuit"] .reader-settings__chips > button.active,
+[data-theme="nuit"] .source-tabs button.active {
+  border-color: #333333;
+  background: #141414;
+  color: var(--nuit-icon-active);
+  box-shadow: none;
+}
+
+.app-shell--nuit .notify-sheet__chips button.active,
+.app-shell--nuit .catalog-filter-picker__tabs > button.active small,
+.app-shell--nuit .catalog-source-picker__option.active strong,
+.app-shell--nuit .catalog-source-picker__option.active svg,
+.app-shell--nuit .catalog-filter-picker__option.active span,
+.app-shell--nuit .management-source-picker__option.active strong,
+.app-shell--nuit .manga-picker__views > button.active,
+.app-shell--nuit .follow-sheet .la-chip.active > svg,
+[data-theme="nuit"] .notify-sheet__chips button.active,
+[data-theme="nuit"] .catalog-filter-picker__tabs > button.active small,
+[data-theme="nuit"] .catalog-source-picker__option.active strong,
+[data-theme="nuit"] .catalog-source-picker__option.active svg,
+[data-theme="nuit"] .catalog-filter-picker__option.active span,
+[data-theme="nuit"] .management-source-picker__option.active strong,
+[data-theme="nuit"] .manga-picker__views > button.active,
+[data-theme="nuit"] .follow-sheet .la-chip.active > svg {
+  color: var(--nuit-icon-active);
+}
+
+.app-shell--nuit .notify-sheet__tools button,
+[data-theme="nuit"] .notify-sheet__tools button {
+  border-color: #2a2a2a;
+  background: #0a0a0a;
+  color: var(--nuit-icon);
+}
+
+.app-shell--nuit .notify-sheet__switch--on,
+.app-shell--nuit .mini-toggle.active,
+[data-theme="nuit"] .notify-sheet__switch--on,
+[data-theme="nuit"] .mini-toggle.active {
+  background: var(--nuit-icon-muted);
+}
+
+.app-shell--nuit .notify-sheet__row,
+.app-shell--nuit .preload-sheet__toggle,
+.app-shell--nuit .preload-sheet__wifi,
+.app-shell--nuit .preload-sheet__panel,
+.app-shell--nuit .catalog-filter-picker__option,
+.app-shell--nuit .catalog-source-picker__option,
+.app-shell--nuit .management-source-picker__option,
+.app-shell--nuit .follow-sheet__card,
+.app-shell--nuit .reader-settings__preview,
+.app-shell--nuit .source-config-panel,
+[data-theme="nuit"] .notify-sheet__row,
+[data-theme="nuit"] .preload-sheet__toggle,
+[data-theme="nuit"] .preload-sheet__wifi,
+[data-theme="nuit"] .preload-sheet__panel,
+[data-theme="nuit"] .catalog-filter-picker__option,
+[data-theme="nuit"] .catalog-source-picker__option,
+[data-theme="nuit"] .management-source-picker__option,
+[data-theme="nuit"] .follow-sheet__card,
+[data-theme="nuit"] .reader-settings__preview,
+[data-theme="nuit"] .source-config-panel {
+  border-color: #2a2a2a;
+  background: #0a0a0a;
+}
+
+.app-shell--nuit .catalog-filter-picker__option:not(.active):hover,
+.app-shell--nuit .catalog-source-picker__option:not(.active):hover,
+.app-shell--nuit .management-source-picker__option:not(.active):hover,
+[data-theme="nuit"] .catalog-filter-picker__option:not(.active):hover,
+[data-theme="nuit"] .catalog-source-picker__option:not(.active):hover,
+[data-theme="nuit"] .management-source-picker__option:not(.active):hover {
+  border-color: #333333;
+  background: #111111;
+}
+
+.app-shell--nuit .manga-picker__results > button,
+.app-shell--nuit .manga-picker__results > button > i,
+[data-theme="nuit"] .manga-picker__results > button,
+[data-theme="nuit"] .manga-picker__results > button > i {
+  border-color: #2a2a2a;
+  background: #0a0a0a;
+  color: var(--nuit-icon);
+}
+
+.app-shell--nuit .manga-picker__results > button.selected,
+[data-theme="nuit"] .manga-picker__results > button.selected {
+  border-color: #333333;
+  background: #141414;
+}
+
+.app-shell--nuit .manga-picker__results > button.selected > i,
+[data-theme="nuit"] .manga-picker__results > button.selected > i {
+  background: #2a2a2a;
+  color: var(--nuit-icon-active);
+}
+
+.app-shell--nuit .source-config-modal__footer > button:not(.button--primary),
+.app-shell--nuit .follow-sheet__disable,
+.app-shell--nuit .preload-sheet__done,
+.app-shell--nuit .confirm-dialog__cancel,
+.app-shell--nuit .reader-settings > footer > button:not(.reader-settings__done):not(.button--primary),
+[data-theme="nuit"] .source-config-modal__footer > button:not(.button--primary),
+[data-theme="nuit"] .follow-sheet__disable,
+[data-theme="nuit"] .preload-sheet__done,
+[data-theme="nuit"] .confirm-dialog__cancel,
+[data-theme="nuit"] .reader-settings > footer > button:not(.reader-settings__done):not(.button--primary) {
+  background: #141414;
+  border: 1px solid #333333;
+  color: var(--nuit-icon-active);
+  box-shadow: none;
+}
+
+.app-shell--nuit .follow-sheet__save,
+.app-shell--nuit .reader-settings__done,
+[data-theme="nuit"] .follow-sheet__save,
+[data-theme="nuit"] .reader-settings__done {
+  background: #141414;
+  border: 1px solid #333333;
+  color: var(--nuit-icon-active);
+}
+
+.app-shell--nuit .catalog-source-picker__filter .la-chip.active,
+.app-shell--nuit .management-source-picker__filter .la-chip.active,
+.app-shell--nuit .management-source-picker__tabs .la-chip.active,
+[data-theme="nuit"] .catalog-source-picker__filter .la-chip.active,
+[data-theme="nuit"] .management-source-picker__filter .la-chip.active,
+[data-theme="nuit"] .management-source-picker__tabs .la-chip.active {
+  border-color: #333333;
+  background: #141414;
+  color: var(--nuit-icon-active);
+}
+
+.app-shell--nuit .catalog-source-picker__filter .la-chip.active > svg,
+.app-shell--nuit .management-source-picker__filter .la-chip.active > svg,
+[data-theme="nuit"] .catalog-source-picker__filter .la-chip.active > svg,
+[data-theme="nuit"] .management-source-picker__filter .la-chip.active > svg {
+  color: var(--nuit-icon);
+}
+
+.app-shell--nuit .notify-sheet .source-logo,
+.app-shell--nuit .catalog-source-picker .source-logo,
+.app-shell--nuit .management-source-picker .source-logo,
+.app-shell--nuit .source-config-panel .source-logo,
+[data-theme="nuit"] .notify-sheet .source-logo,
+[data-theme="nuit"] .catalog-source-picker .source-logo,
+[data-theme="nuit"] .management-source-picker .source-logo,
+[data-theme="nuit"] .source-config-panel .source-logo {
+  background: linear-gradient(145deg, #3a3a3a, #1a1a1a);
+  color: var(--nuit-icon-active);
+}
+
+.app-shell--nuit .accessible-search:focus-within,
+[data-theme="nuit"] .accessible-search:focus-within {
+  border-color: #333333;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--nuit-icon-muted) 14%, transparent);
+}
+
+.app-shell--nuit .catalog-filter-picker__search .accessible-search__icon,
+.app-shell--nuit .catalog-source-picker__search .accessible-search__icon,
+.app-shell--nuit .management-source-picker .accessible-search__icon,
+[data-theme="nuit"] .catalog-filter-picker__search .accessible-search__icon,
+[data-theme="nuit"] .catalog-source-picker__search .accessible-search__icon,
+[data-theme="nuit"] .management-source-picker .accessible-search__icon {
+  color: var(--nuit-icon);
+  background: #141414;
 }

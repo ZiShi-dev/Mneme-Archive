@@ -1,0 +1,290 @@
+/* Cadres & icônes — couleurs pilotées par --chrome-* / --theme-icon-* */
+
+.phone-frame {
+  border-color: var(--chrome-frame-border, var(--line));
+}
+
+.icon-button {
+  background: var(--chrome-icon-bg, var(--white));
+  border-color: var(--chrome-icon-border, var(--line));
+  color: var(--chrome-icon-color, var(--theme-icon-accent, var(--ink)));
+}
+
+.icon-button svg,
+.icon-button > svg {
+  color: currentColor;
+}
+
+.icon-button:hover,
+.icon-button:focus-visible {
+  border-color: var(--chrome-icon-hover, color-mix(in srgb, var(--brand) 55%, var(--line)));
+}
+
+.icon-button.has-dot::after {
+  background: var(--chrome-icon-dot, var(--stamp));
+  border-color: var(--chrome-icon-bg, var(--white));
+}
+
+.icon-button--glass {
+  background: var(--chrome-glass-bg, rgba(255, 255, 255, 0.13));
+  border-color: var(--chrome-glass-border, rgba(255, 255, 255, 0.15));
+  color: var(--chrome-glass-color, #fff);
+  backdrop-filter: blur(9px);
+  -webkit-backdrop-filter: blur(9px);
+}
+
+.hero-card::before,
+.hero-card::after {
+  border-color: var(--chrome-decor, color-mix(in srgb, var(--brand) 32%, transparent)) transparent transparent transparent;
+}
+
+.hero-card .progress::after {
+  background: var(--chrome-decor, color-mix(in srgb, var(--brand) 55%, transparent));
+}
+
+:is(
+  .settings-group,
+  .notification-row,
+  .update-card,
+  .stat-row,
+  .source-directory-card,
+  .catalog-row,
+  .library-card,
+  .live-manga-card,
+  .global-search,
+  .catalog-search,
+  .search-result-row,
+  .search-result-skeleton,
+  .favorites-hero,
+  .history-hero,
+  .history-controls,
+  .history-row,
+  .bookmarks-controls,
+  .source-strip,
+  .weekly-card,
+  .source-management__intro,
+  .la-panel
+) {
+  background: var(--chrome-card-bg, var(--white));
+  border-color: var(--chrome-card-border, var(--line));
+}
+
+.button--primary,
+.button--dark {
+  color: var(--cta-text, #090a12);
+  box-shadow: 0 10px 28px var(--chrome-button-shadow, color-mix(in srgb, var(--brand) 18%, transparent));
+}
+
+.catalog-filter-track > button.active,
+.filter-pill.active,
+.source-switcher > button.active {
+  color: var(--cta-text, #fff);
+}
+
+.catalog-filter-picker__badge,
+.management-source-picker__badge,
+.catalog-source-picker__badge {
+  background: color-mix(in srgb, var(--brand) 10%, var(--chrome-card-bg, var(--surface, var(--outside))));
+  color: var(--brand);
+  border: 1px solid color-mix(in srgb, var(--brand) 18%, var(--chrome-card-border, var(--line)));
+}
+
+.page-header .icon-button,
+.screen--home .header-actions .icon-button {
+  color: var(--chrome-icon-color, var(--theme-icon-accent, var(--ink)));
+}
+
+.bottom-nav__item svg {
+  color: currentColor;
+}
+
+.bottom-nav__item.is-active svg {
+  color: var(--bottom-nav-active, var(--brand));
+}
+
+/* ── Icônes teintées par thème (tous sauf Nuit #000) ── */
+
+html:not([data-theme="nuit"]) :is(
+  .setting-row__icon,
+  .preload-sheet__toggle-icon,
+  .preload-sheet__wifi-icon,
+  .notification-icon,
+  .accessible-search__icon,
+  .search-hint svg,
+  .bookmark-sort svg,
+  .catalog-filters__head > span svg,
+  .catalog-genres__heading > div svg,
+  .la-panel__eyebrow svg,
+  .management-source-picker__badge svg,
+  .catalog-filter-picker__badge svg,
+  .catalog-source-picker__badge svg,
+  .details-section-heading > svg,
+  .details-latest-chapter > svg,
+  .reader-playback__chapter > svg,
+  .live-manga-card__chapters svg,
+  .source-switcher > button > svg,
+  .catalog-source-toolbar__chip.active > span,
+  .add-managed-source > svg,
+  .central-management-link > svg:first-child
+) {
+  color: var(--theme-icon-accent, var(--brand));
+}
+
+html:not([data-theme="nuit"]) :is(
+  .setting-row__icon,
+  .preload-sheet__toggle-icon,
+  .preload-sheet__wifi-icon,
+  .notification-icon
+) {
+  background: var(--theme-icon-surface, color-mix(in srgb, var(--brand) 10%, var(--paper)));
+}
+
+html:not([data-theme="nuit"]) .la-chip.active > svg,
+html:not([data-theme="nuit"]) .source-type-filter__chip.active > svg,
+html:not([data-theme="nuit"]) .catalog-filter-bar__chips > button.active > svg,
+html:not([data-theme="nuit"]) .bookmarks-controls__types .la-chip.active > svg {
+  color: var(--theme-icon-accent, var(--brand));
+  opacity: 1;
+}
+
+html:not([data-theme="nuit"]) .empty-state--bookmarks > svg {
+  color: var(--favorite, var(--theme-icon-accent, var(--brand)));
+}
+
+html:not([data-theme="nuit"]) .details-related .details-section-heading > svg {
+  color: var(--film, var(--theme-icon-accent, var(--brand)));
+}
+
+html:not([data-theme="nuit"]) .details-taxonomies .details-section-heading > svg {
+  color: var(--brand-warm, var(--theme-icon-accent, var(--brand)));
+}
+
+/* ── Nuit : icônes & chrome en gris (violet réservé aux CTA) ── */
+
+html[data-theme="nuit"], .app-shell--nuit :is(
+  .setting-row__icon,
+  .preload-sheet__toggle-icon,
+  .preload-sheet__wifi-icon,
+  .notification-icon,
+  .accessible-search__icon,
+  .search-hint svg,
+  .bookmark-sort svg,
+  .catalog-filters__head > span svg,
+  .la-chip.active > svg,
+  .source-type-filter__chip.active > svg,
+  .icon-button,
+  .page-header .icon-button,
+  .screen--home .header-actions .icon-button,
+  .details-section-heading > svg,
+  .details-latest-chapter > svg,
+  .live-manga-card__chapters svg,
+  .empty-state--bookmarks > svg,
+  .home-latest-panel__icon,
+  .home-recent-panel__icon,
+  .home-discovery__manage,
+  .home-latest-panel__refresh,
+  .add-managed-source > svg,
+  .central-management-link > svg:first-child
+) {
+  color: var(--nuit-icon, #b3b3b3);
+}
+
+html[data-theme="nuit"], .app-shell--nuit :is(
+  .setting-row__icon,
+  .preload-sheet__toggle-icon,
+  .preload-sheet__wifi-icon,
+  .notification-icon
+) {
+  background: #0a0a0a;
+  border: 1px solid #242424;
+}
+
+html[data-theme="nuit"], .app-shell--nuit .notification-icon {
+  color: var(--nuit-icon-muted, #737373);
+}
+
+html[data-theme="nuit"], .app-shell--nuit .icon-button--glass {
+  color: var(--nuit-icon, #b3b3b3);
+  background: #0a0a0a;
+  border-color: #242424;
+}
+
+html[data-theme="nuit"], .app-shell--nuit .bottom-nav__tab.is-active,
+html[data-theme="nuit"], .app-shell--nuit .bottom-nav__tab.active,
+html[data-theme="nuit"], .app-shell--nuit .bottom-nav button.active {
+  color: var(--nuit-icon-active, #e8e8e8);
+}
+
+html[data-theme="nuit"], .app-shell--nuit .bottom-nav__tab.is-active > svg,
+html[data-theme="nuit"], .app-shell--nuit .bottom-nav__tab.active > svg,
+html[data-theme="nuit"], .app-shell--nuit .bottom-nav button.active > svg,
+html[data-theme="nuit"], .app-shell--nuit .bottom-nav__tab.is-active .bottom-nav__icon-wrap > svg,
+html[data-theme="nuit"], .app-shell--nuit .bottom-nav__tab.active .bottom-nav__icon-wrap > svg,
+html[data-theme="nuit"], .app-shell--nuit .bottom-nav button.active .bottom-nav__icon-wrap > svg {
+  color: var(--nuit-icon-active, #e8e8e8);
+}
+
+html[data-theme="nuit"], .app-shell--nuit .bottom-nav__tab:not(.is-active):not(.active) > svg,
+html[data-theme="nuit"], .app-shell--nuit .bottom-nav button:not(.active) > svg,
+html[data-theme="nuit"], .app-shell--nuit .bottom-nav__tab:not(.is-active):not(.active) .bottom-nav__icon-wrap > svg,
+html[data-theme="nuit"], .app-shell--nuit .bottom-nav button:not(.active) .bottom-nav__icon-wrap > svg {
+  color: var(--nuit-icon-muted, #737373);
+}
+
+html[data-theme="nuit"], .app-shell--nuit .bottom-nav__tab.is-active::before,
+html[data-theme="nuit"], .app-shell--nuit .bottom-nav__tab.active::before,
+html[data-theme="nuit"], .app-shell--nuit .bottom-nav button.active::before {
+  background: color-mix(in srgb, var(--nuit-icon-active, #e8e8e8) 8%, #000000);
+  box-shadow: none;
+}
+
+html[data-theme="nuit"], .app-shell--nuit .details-latest-chapter > svg {
+  background: #0a0a0a;
+  border: 1px solid #242424;
+  color: var(--nuit-icon, #b3b3b3);
+}
+
+html[data-theme="nuit"], .app-shell--nuit .content .hero-card__pill > svg {
+  color: var(--nuit-icon, #b3b3b3);
+}
+
+/* ── Lune-Neige : icônes lune / mer (éviter teinte Encre violette) ── */
+
+html[data-theme="lune-neige"] :is(
+  .setting-row__icon,
+  .preload-sheet__toggle-icon,
+  .preload-sheet__wifi-icon,
+  .notification-icon,
+  .accessible-search__icon,
+  .page-header .icon-button,
+  .screen--home .header-actions .icon-button,
+  .icon-button:not(.icon-button--glass)
+) {
+  color: var(--sea-foam, #b8d8f0);
+}
+
+html[data-theme="lune-neige"] :is(
+  .setting-row__icon,
+  .preload-sheet__toggle-icon,
+  .preload-sheet__wifi-icon,
+  .notification-icon
+) {
+  background: color-mix(in srgb, var(--sea-deep, #5a8fb8) 20%, var(--surface-raised, #1b2940));
+  border: 1px solid color-mix(in srgb, var(--sea-foam, #b8d8f0) 22%, var(--border, #2a3d58));
+}
+
+html[data-theme="lune-neige"] .bottom-nav__tab.is-active > svg,
+html[data-theme="lune-neige"] .bottom-nav__tab.active > svg,
+html[data-theme="lune-neige"] .bottom-nav button.active > svg,
+html[data-theme="lune-neige"] .bottom-nav__tab.is-active .bottom-nav__icon-wrap > svg,
+html[data-theme="lune-neige"] .bottom-nav__tab.active .bottom-nav__icon-wrap > svg,
+html[data-theme="lune-neige"] .bottom-nav button.active .bottom-nav__icon-wrap > svg {
+  color: var(--moon-glow, #d6e8ff);
+}
+
+html[data-theme="lune-neige"] .bottom-nav__tab.is-active::before,
+html[data-theme="lune-neige"] .bottom-nav__tab.active::before,
+html[data-theme="lune-neige"] .bottom-nav button.active::before {
+  background: color-mix(in srgb, var(--sea-deep, #5a8fb8) 30%, transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--brand, #6eb0d8) 20%, transparent);
+}

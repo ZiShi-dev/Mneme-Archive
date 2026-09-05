@@ -71,6 +71,9 @@ if (Capacitor.isNativePlatform() && !isChromebookApp) {
   import("./lib/updates/backgroundFollowTask").catch(() => {
     // Plugin arrière-plan optionnel selon l'appareil.
   });
+  import("./lib/downloads/backgroundDownloadTask").catch(() => {
+    // Téléchargements hors ligne en arrière-plan.
+  });
 }
 
 try {

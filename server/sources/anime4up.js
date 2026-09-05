@@ -13,7 +13,7 @@ import {
 } from "../lib/catalogChapters.js";
 import { enrichSourceDetails } from "../lib/detailEnrichment.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
-import { catalogEnrichFromCatalogParams } from "../lib/catalogEnrichPolicy.js";
+import { catalogEnrichFromCatalogParams, catalogEnrichFromSearchParams } from "../lib/catalogEnrichPolicy.js";
 
 const DEFAULT_BASE_URL = "https://4h.b9p2m6c.shop";
 const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
@@ -973,6 +973,7 @@ export async function handleAnime4upRequest(requestUrl) {
   if (requestUrl.pathname.endsWith("/search")) {
     const { query, valid } = normalizeSearchQuery(requestUrl.searchParams.get("q"));
     if (!valid) return responseJson(200, { items: [] });
+    const enrich = catalogEnrichFromSearchParams(requestUrl.searchParams);
     const page = Math.min(Math.max(Number(requestUrl.searchParams.get("page")) || 1, 1), 1000);
     const filterPath = requestUrl.searchParams.get("filterPath")?.trim() || "";
     if (isAnime4upCatalogScopedSearchPath(filterPath)) {
@@ -980,7 +981,7 @@ export async function handleAnime4upRequest(requestUrl) {
       const payload = await fetchAnime4upCatalogPage(ctx, fetchAnime4upHtml, {
         page,
         filterPath: catalogPath,
-        enrich: false,
+        enrich,
       });
       const items = payload.items.filter((item) => (
         `${item.title} ${item.altTitle || ""}`.toLocaleLowerCase("ar").includes(query.toLocaleLowerCase("ar"))
@@ -995,6 +996,7 @@ export async function handleAnime4upRequest(requestUrl) {
     const html = await fetchAnime4upHtml(`${ctx.baseUrl}/?s=${encodeURIComponent(query)}`);
     let items = parseAnime4upCatalog(canonicalAnime4upHtml(html, ctx.baseUrl));
     items = items.slice(0, ANIME4UP_CATALOG_PAGE_SIZE);
+    if (enrich) await enrichAnime4upCatalog(items, fetchAnime4upHtml);
     return responseJson(200, { items, page: 1, hasMore: false });
   }
 

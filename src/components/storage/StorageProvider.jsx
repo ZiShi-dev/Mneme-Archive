@@ -5,7 +5,6 @@ import { initStorage, resetStorageInit } from "../../lib/storage/initStorage";
 import { t } from "../../i18n/runtime";
 import { getAppBrandText } from "../../lib/brand/appBrand";
 import { applyAppearance, readBootAppearance } from "../../lib/theme/appearance";
-import { syncNativeChrome } from "../../lib/theme/nativeChrome";
 import { ThemedBootScreen } from "../boot/ThemedBootScreen";
 
 const StorageContext = createContext({ ready: false, error: null });
@@ -39,7 +38,6 @@ export function StorageProvider({ children }) {
         if (!active) return;
         const appearance = readBootAppearance();
         applyAppearance(appearance);
-        void syncNativeChrome(appearance);
         setBootAppearance(appearance);
         setReady(true);
         void hideNativeSplash();

@@ -2,7 +2,13 @@ import React from "react";
 import { BookOpen, Clapperboard, Lock, Play } from "lucide-react";
 import { t } from "../../i18n/runtime";
 import { RemoteCover } from "./RemoteCover";
-import { usesContainCover, usesWideCover, isStandaloneVideoCatalogItem } from "./coverDisplay";
+import {
+  usesContainCover,
+  usesWideCover,
+  isStandaloneVideoCatalogItem,
+  canShowCatalogWatchAction,
+  openCatalogWatch,
+} from "./coverDisplay";
 import { getItemType, contentTypes } from "./contentTypes";
 import { getMediaPresentation, isVideoMediaType } from "./mediaPresentation";
 import { formatChapterPublishedLabel } from "../../lib/media/chapterTiming";
@@ -35,10 +41,14 @@ function resolveCatalogChapters(item) {
   if (item.latestChapter && item.latestChapter !== "—" && item.latestChapterUrl) {
     return [{ number: item.latestChapter, name: item.latestChapter, url: item.latestChapterUrl }];
   }
+  if (item.latestChapter && item.latestChapter !== "—" && item.url) {
+    return [{ number: item.latestChapter, name: item.latestChapter, url: item.url }];
+  }
   return [];
 }
 
-function emptyChaptersMessage(item, profile, presentation) {
+function emptyChaptersMessage(item, profile, presentation, mediaType, recentChapters = []) {
+  if (canShowCatalogWatchAction(item, mediaType, recentChapters)) return "";
   const isNovel = item.mediaType === "novel"
     || (profile?.contentTypes?.length === 1 && profile.contentTypes[0] === "novel");
   if (isNovel) return t("sources.noChaptersNovel");
@@ -144,11 +154,12 @@ export function CatalogCard({ item, profile, onOpenDetails, onOpenChapter, onPre
             );
           })}
         </div>
-      ) : standaloneVideo && item.url ? (
+      ) : canShowCatalogWatchAction(item, mediaType, recentChapters) ? (
         <div className="live-manga-card__chapters">
           <button
             type="button"
-            onClick={() => onOpenChapter(item, { url: item.url, name: item.title, number: "1" })}
+            onPointerDown={prefetchDetails}
+            onClick={() => openCatalogWatch({ item, mediaType, onOpenDetails, onOpenChapter })}
             aria-label={`${presentation.watchLatest} — ${item.title}`}
           >
             <i>{presentation.watchLatest}</i>
@@ -162,9 +173,9 @@ export function CatalogCard({ item, profile, onOpenDetails, onOpenChapter, onPre
           <span>{t("sources.chapterCount", { count: item.chapterCount })}</span>
         </div>
       ) : (
-        <div className="live-manga-card__no-chapters" role="status" aria-label={emptyChaptersMessage(item, profile, presentation)}>
+        <div className="live-manga-card__no-chapters" role="status" aria-label={emptyChaptersMessage(item, profile, presentation, mediaType, recentChapters)}>
           <UnitIcon size={12} aria-hidden="true" />
-          <span>{emptyChaptersMessage(item, profile, presentation)}</span>
+          <span>{emptyChaptersMessage(item, profile, presentation, mediaType, recentChapters)}</span>
         </div>
       )}
     </article>

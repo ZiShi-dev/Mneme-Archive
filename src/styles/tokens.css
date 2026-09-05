@@ -96,6 +96,23 @@
   --ume: var(--stamp);
   --sumi: var(--text);
   --sumi-muted: var(--text-muted);
+
+  --chrome-frame-border: color-mix(in srgb, var(--line) 88%, transparent);
+  --chrome-icon-bg: var(--white);
+  --chrome-icon-color: var(--ink);
+  --chrome-icon-border: var(--line);
+  --chrome-icon-hover: color-mix(in srgb, var(--brand) 55%, var(--line));
+  --chrome-icon-dot: var(--stamp);
+  --chrome-decor: color-mix(in srgb, var(--brand) 32%, transparent);
+  --chrome-card-bg: var(--white);
+  --chrome-card-border: var(--line);
+  --chrome-glass-bg: color-mix(in srgb, var(--white) 72%, transparent);
+  --chrome-glass-border: color-mix(in srgb, var(--line) 80%, transparent);
+  --chrome-glass-color: var(--ink);
+  --chrome-button-shadow: color-mix(in srgb, var(--brand) 18%, transparent);
+  --theme-icon-accent: var(--brand);
+  --theme-icon-surface: color-mix(in srgb, var(--brand) 10%, var(--paper));
+  --chrome-icon-color: var(--brand);
 }
 
 html[dir="ltr"] {
@@ -103,8 +120,9 @@ html[dir="ltr"] {
   --font-display: "Instrument Sans", "Manrope", sans-serif;
 }
 
-/* Encre */
-html:not([data-theme="nuit"]) .app-shell--dark,
+/* Encre — ne pas cibler tous les .app-shell--dark (sinon écrase lune-neige, galaxie, etc.) */
+html[data-theme="ink"] .app-shell--dark,
+html:not([data-theme]) .app-shell--dark,
 [data-theme="ink"],
 [data-theme="ink"] .app-shell {
   --brand: #8b7cff;
@@ -159,6 +177,14 @@ html:not([data-theme="nuit"]) .app-shell--dark,
   --bottom-nav-halo: color-mix(in srgb, var(--brand) 75%, var(--surface));
   --bottom-nav-halo-glow: color-mix(in srgb, var(--brand) 40%, transparent);
   --bottom-nav-active: var(--brand);
+  --chrome-decor: color-mix(in srgb, var(--brand) 34%, transparent);
+  --chrome-glass-bg: rgba(255, 255, 255, 0.1);
+  --chrome-glass-border: rgba(255, 255, 255, 0.14);
+  --chrome-glass-color: var(--text);
+  --chrome-icon-color: var(--brand);
+  --chrome-icon-hover: color-mix(in srgb, var(--brand) 58%, var(--line));
+  --theme-icon-accent: var(--brand);
+  --theme-icon-surface: color-mix(in srgb, var(--brand) 12%, var(--surface));
 }
 
 /* Sakura · Usuzakura (jour) */
@@ -226,6 +252,17 @@ html:not([data-theme="nuit"]) .app-shell--dark,
   --bottom-nav-halo: color-mix(in srgb, var(--kobai) 62%, var(--usuzakura));
   --bottom-nav-halo-glow: color-mix(in srgb, var(--sakura) 38%, transparent);
   --bottom-nav-active: var(--kobai);
+  --chrome-decor: color-mix(in srgb, var(--kobai) 30%, transparent);
+  --chrome-icon-dot: var(--kobai);
+  --chrome-glass-bg: color-mix(in srgb, var(--washi) 88%, transparent);
+  --chrome-glass-border: color-mix(in srgb, var(--sakura) 28%, var(--line));
+  --chrome-glass-color: var(--ume);
+  --theme-icon-accent: var(--kobai);
+  --theme-icon-surface: color-mix(in srgb, var(--kobai) 12%, var(--washi));
+  --chrome-icon-color: var(--kobai);
+  --chrome-icon-bg: var(--washi);
+  --chrome-icon-border: color-mix(in srgb, var(--kobai) 22%, var(--border));
+  --chrome-icon-hover: color-mix(in srgb, var(--kobai) 42%, var(--border));
 }
 
 /* Yozakura 夜桜 (nuit sakura) */
@@ -293,18 +330,34 @@ html:not([data-theme="nuit"]) .app-shell--dark,
   --bottom-nav-halo: color-mix(in srgb, var(--sakura) 72%, var(--washi));
   --bottom-nav-halo-glow: color-mix(in srgb, var(--kobai) 42%, transparent);
   --bottom-nav-active: var(--sakura);
+  --chrome-icon-bg: var(--surface-raised);
+  --chrome-icon-color: var(--sakura);
+  --chrome-icon-border: color-mix(in srgb, var(--sakura) 28%, var(--border));
+  --chrome-icon-hover: color-mix(in srgb, var(--kobai) 48%, var(--border));
+  --chrome-icon-dot: var(--kobai);
+  --chrome-decor: color-mix(in srgb, var(--sakura) 32%, transparent);
+  --chrome-card-bg: var(--surface);
+  --chrome-card-border: color-mix(in srgb, var(--sakura) 22%, var(--border));
+  --chrome-glass-bg: color-mix(in srgb, var(--surface-raised) 82%, transparent);
+  --chrome-glass-border: color-mix(in srgb, var(--sakura) 24%, var(--border));
+  --chrome-glass-color: var(--text);
+  --chrome-button-shadow: color-mix(in srgb, var(--kobai) 24%, transparent);
+  --theme-icon-accent: var(--sakura);
+  --theme-icon-surface: color-mix(in srgb, var(--sakura) 14%, var(--surface));
 }
 
 /* Lune Mer · mer au clair de lune */
 [data-theme="lune-neige"],
 [data-theme="lune-neige"] .app-shell,
 .app-shell--lune-neige {
-  --moon-glow: #DDD6FE;
-  --frost: #A78BFA;
+  --moon-glow: #D6E8FF;
+  --sea-foam: #B8D8F0;
+  --frost: #8EB4E8;
+  --sea-deep: #5A8FB8;
   --star-mist: #121C2B;
 
-  --brand: #A78BFA;
-  --brand-warm: #C4B5FD;
+  --brand: #6EB0D8;
+  --brand-warm: #9ECAE8;
   --bg: #0D1522;
   --surface: #141F2E;
   --surface-raised: #1B2940;
@@ -314,8 +367,8 @@ html:not([data-theme="nuit"]) .app-shell--dark,
   --success: #7EAE9A;
   --manga: #E8A8BA;
   --novel: #D4B896;
-  --anime: #A78BFA;
-  --film: #B8A8E8;
+  --anime: #6EB0D8;
+  --film: #88B8DC;
   --danger: #E89AA8;
 
   --ink: var(--text);
@@ -336,18 +389,36 @@ html:not([data-theme="nuit"]) .app-shell--dark,
   --gold: var(--brand-warm);
   --moon-white: var(--text);
   --shadow: 0 22px 54px rgba(2, 8, 20, 0.42);
-  --cta: #C4B5FD;
+  --cta: #9ECAE8;
   --cta-text: #0D1522;
   --radius-control: 14px;
   --bottom-nav-bg: color-mix(in srgb, var(--surface) 90%, transparent);
   --bottom-nav-border: color-mix(in srgb, var(--border) 58%, transparent);
   --bottom-nav-shadow: 0 -14px 42px color-mix(in srgb, var(--star-mist) 55%, transparent);
   --bottom-nav-inactive: color-mix(in srgb, var(--text-muted) 88%, var(--text));
-  --bottom-nav-active-bg: color-mix(in srgb, var(--frost) 20%, var(--surface));
-  --bottom-nav-focus-ring: color-mix(in srgb, var(--frost) 45%, transparent);
-  --bottom-nav-halo: color-mix(in srgb, var(--moon-glow) 55%, var(--frost));
-  --bottom-nav-halo-glow: color-mix(in srgb, var(--frost) 40%, transparent);
+  --bottom-nav-active-bg: color-mix(in srgb, var(--brand) 20%, var(--surface));
+  --bottom-nav-focus-ring: color-mix(in srgb, var(--brand) 42%, transparent);
+  --bottom-nav-halo: color-mix(in srgb, var(--moon-glow) 58%, var(--brand));
+  --bottom-nav-halo-glow: color-mix(in srgb, var(--brand) 36%, transparent);
   --bottom-nav-active: var(--moon-glow);
+  --boot-star: #8EB4E8;
+  --onboarding-star: #6EB0D8;
+  --onboarding-bg: #0D1522;
+  --onboarding-fg: #EEF4FF;
+  --chrome-icon-bg: var(--surface-raised);
+  --chrome-icon-color: var(--brand);
+  --chrome-icon-border: color-mix(in srgb, var(--brand) 28%, var(--border));
+  --chrome-icon-hover: color-mix(in srgb, var(--sea-foam) 44%, var(--border));
+  --chrome-icon-dot: var(--sea-foam);
+  --chrome-decor: color-mix(in srgb, var(--brand) 34%, transparent);
+  --chrome-card-bg: var(--surface);
+  --chrome-card-border: color-mix(in srgb, var(--brand) 22%, var(--border));
+  --chrome-glass-bg: color-mix(in srgb, var(--surface) 78%, transparent);
+  --chrome-glass-border: color-mix(in srgb, var(--brand) 24%, var(--border));
+  --chrome-glass-color: var(--text);
+  --chrome-button-shadow: color-mix(in srgb, var(--brand) 24%, transparent);
+  --theme-icon-accent: var(--sea-foam);
+  --theme-icon-surface: color-mix(in srgb, var(--sea-deep) 18%, var(--surface));
 }
 
 /* Galaxie · cosmos réaliste */
@@ -404,11 +475,26 @@ html:not([data-theme="nuit"]) .app-shell--dark,
   --bottom-nav-halo: color-mix(in srgb, var(--nova) 55%, var(--nebula));
   --bottom-nav-halo-glow: color-mix(in srgb, var(--nebula) 40%, transparent);
   --bottom-nav-active: var(--nova);
+  --chrome-icon-bg: var(--surface-raised);
+  --chrome-icon-color: var(--nova);
+  --chrome-icon-border: color-mix(in srgb, var(--nebula) 26%, var(--border));
+  --chrome-icon-hover: color-mix(in srgb, var(--nova) 44%, var(--border));
+  --chrome-decor: color-mix(in srgb, var(--nebula) 34%, transparent);
+  --chrome-card-bg: var(--surface);
+  --chrome-card-border: color-mix(in srgb, var(--nebula) 20%, var(--border));
+  --chrome-glass-bg: color-mix(in srgb, var(--surface) 78%, transparent);
+  --chrome-glass-border: color-mix(in srgb, var(--nova) 22%, var(--border));
+  --chrome-glass-color: var(--text);
+  --theme-icon-accent: var(--nova);
+  --theme-icon-surface: color-mix(in srgb, var(--nebula) 14%, var(--surface));
 }
 
 /* Papier */
 [data-theme="paper"],
 [data-theme="paper"] .app-shell {
+  --theme-icon-accent: var(--brand);
+  --theme-icon-surface: color-mix(in srgb, var(--brand) 10%, var(--surface));
+  --chrome-icon-color: var(--brand);
   --bottom-nav-bg: color-mix(in srgb, var(--surface) 90%, transparent);
   --bottom-nav-border: color-mix(in srgb, var(--line) 70%, transparent);
   --bottom-nav-shadow: 0 -10px 36px color-mix(in srgb, var(--ink) 7%, transparent);

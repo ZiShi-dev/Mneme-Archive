@@ -95,7 +95,9 @@ export async function downloadMangaChapter(item, chapter, { onStoreUpdate } = {}
       throw new Error("not_manga");
     }
 
-    await cacheMangaPages(item.sourceId, result.pages, downloadId, async (progress) => {
+    const payload = { ...result, kind: "manga", url: chapter.url };
+
+    await cacheMangaPages(item.sourceId, payload.pages, downloadId, async (progress) => {
       store = await readDownloadsStore();
       store = upsertDownloadChapter(store, buildItemMeta(item), chapter, {
         status: "downloading",
@@ -105,7 +107,6 @@ export async function downloadMangaChapter(item, chapter, { onStoreUpdate } = {}
       onStoreUpdate?.(store);
     });
 
-    const payload = { ...result, url: chapter.url };
     const sizeBytes = estimateChapterBytes(payload);
     await saveOfflineChapter(cacheKey, downloadId, payload);
 
@@ -141,15 +142,20 @@ export async function downloadAllMangaChapters(item, chapters, { onProgress, onS
 
   const queue = chapters.filter((chapter) => isDownloadableMangaChapter(item.sourceId, chapter));
   let completed = 0;
+  let failed = 0;
 
   try {
     for (const chapter of queue) {
       if (controller.cancelled) break;
-      await downloadMangaChapter(item, chapter, { onStoreUpdate });
-      completed += 1;
-      onProgress?.({ completed, total: queue.length, chapter });
+      try {
+        await downloadMangaChapter(item, chapter, { onStoreUpdate });
+        completed += 1;
+      } catch {
+        failed += 1;
+      }
+      onProgress?.({ completed, failed, total: queue.length, chapter });
     }
-    return { completed, total: queue.length, cancelled: controller.cancelled };
+    return { completed, failed, total: queue.length, cancelled: controller.cancelled };
   } finally {
     activeBatches.delete(batchId);
   }

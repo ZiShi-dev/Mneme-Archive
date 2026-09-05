@@ -82,6 +82,38 @@
   text-align: center;
 }
 
+.novel-download-sheet__background {
+  display: grid;
+  gap: 8px;
+}
+
+.novel-download-sheet__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.novel-download-sheet__control {
+  flex: 1 1 auto;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--muted);
+  font: 600 12px/1.2 var(--font-sans, "Alexandria");
+  cursor: pointer;
+}
+
+.novel-download-sheet__control--primary {
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--ink) 20%, var(--line));
+}
+
+.novel-download-sheet__control--danger {
+  color: color-mix(in srgb, #c44 85%, var(--ink));
+}
+
 .novel-download-sheet__action {
   min-height: 58px;
   padding: 12px 14px;

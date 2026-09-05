@@ -1,5 +1,12 @@
 import { buildChapterFetchOptions } from "../reading/readerChapterCache.js";
 import { sha256Hex } from "../storage/security.js";
+import {
+  isOfflineChapter,
+  isOfflineMangaChapter,
+  isOfflineNovelChapter,
+} from "./chapterPayloadKinds.js";
+
+export { isOfflineChapter, isOfflineMangaChapter, isOfflineNovelChapter } from "./chapterPayloadKinds.js";
 
 const IDB_NAME = "living_archive_offline";
 const IDB_STORE = "chapters";
@@ -30,18 +37,6 @@ export async function buildOfflineChapterKey(sourceId, chapterUrl, options = {})
 
 export function estimateChapterBytes(data) {
   return new TextEncoder().encode(JSON.stringify(data || {})).byteLength;
-}
-
-export function isOfflineNovelChapter(data) {
-  return data?.kind === "novel" && Array.isArray(data.paragraphs) && data.paragraphs.length > 0;
-}
-
-export function isOfflineMangaChapter(data) {
-  return data?.kind === "manga" && Array.isArray(data.pages) && data.pages.length > 0;
-}
-
-export function isOfflineChapter(data) {
-  return isOfflineNovelChapter(data) || isOfflineMangaChapter(data);
 }
 
 export async function saveOfflineChapter(cacheKey, downloadId, payload) {

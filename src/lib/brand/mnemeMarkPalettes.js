@@ -24,12 +24,12 @@ export const MNEME_MARK_PALETTES = {
   [THEME_NUIT]: {
     canvas: "#000000",
     disk: "#0a0a0a",
-    glyph: "#4B5168",
-    glyphSoft: "#353A4E",
-    ring: "#5A6178",
-    node: "#727A92",
-    star: "#F5F5F5",
-    starGlow: "#a78bfa",
+    glyph: "#6b6b6b",
+    glyphSoft: "#4a4a4a",
+    ring: "#737373",
+    node: "#8a8a8a",
+    star: "#e8e8e8",
+    starGlow: "#737373",
   },
   [THEME_PAPER]: {
     canvas: "#F3F0EA",

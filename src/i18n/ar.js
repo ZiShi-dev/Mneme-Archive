@@ -710,6 +710,12 @@ export const ar = {
     cleared: "تم حذف جميع التنزيلات",
     clearAllTitle: "حذف جميع التنزيلات؟",
     clearAllBody: "سيتم حذف كل المحتوى دون اتصال من هذا الجهاز.",
+    backgroundStarted: "بدأ التنزيل في الخلفية",
+    backgroundProgress: "{done}/{total} في الخلفية",
+    backgroundPaused: "{done}/{total} متوقف",
+    pauseBackground: "إيقاف مؤقت",
+    resumeBackground: "استئناف",
+    cancelBackground: "إلغاء التنزيل",
     status: {
       queued: "في الانتظار",
       downloading: "قيد التنزيل",

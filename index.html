@@ -26,6 +26,15 @@
           "lune-neige": "#0D1522",
           galaxie: "#07061A",
         };
+        var THEME_TEXT = {
+          ink: "#f6f7f8",
+          nuit: "#f5f5f5",
+          paper: "#171218",
+          sakura: "#171218",
+          yozakura: "#f6f7f8",
+          "lune-neige": "#f6f7f8",
+          galaxie: "#f6f7f8",
+        };
         function readThemeId() {
           try {
             var appearance = localStorage.getItem("living-archive:appearance");
@@ -39,16 +48,24 @@
         }
         var themeId = readThemeId();
         var background = THEME_COLORS[themeId] || THEME_COLORS.ink;
+        var textColor = THEME_TEXT[themeId] || THEME_TEXT.ink;
         var dark = themeId !== "paper" && themeId !== "sakura";
         document.documentElement.style.setProperty("--boot-shell-bg", background);
+        document.documentElement.style.setProperty("--boot-text-color", textColor);
         document.documentElement.dataset.theme = themeId;
         document.documentElement.style.background = background;
+        document.documentElement.style.color = textColor;
         document.documentElement.style.colorScheme = dark ? "dark" : "light";
+        if (document.body) {
+          document.body.dataset.theme = themeId;
+          document.body.style.background = background;
+          document.body.style.color = textColor;
+        }
         var themeMeta = document.querySelector('meta[name="theme-color"]');
         if (themeMeta) themeMeta.setAttribute("content", background);
       })();
     </script>
-    <style>html,body,#root{margin:0;min-height:100%;background:var(--boot-shell-bg,#090A12);color:#f6f7f8}</style>
+    <style>html,body,#root{margin:0;min-height:100%;background:var(--boot-shell-bg,#090A12);color:var(--boot-text-color,#f6f7f8)}</style>
   </head>
   <body>
     <div id="root"></div>
@@ -60,7 +77,7 @@
           root.textContent = "";
           var box = document.createElement("div");
           box.setAttribute("role", "alert");
-          box.style.cssText = "color:#f6f7f8;font:14px/1.45 system-ui,sans-serif;padding:24px;white-space:pre-wrap";
+          box.style.cssText = "color:var(--boot-text-color,#f6f7f8);font:14px/1.45 system-ui,sans-serif;padding:24px;white-space:pre-wrap";
           box.textContent = message || "Erreur de démarrage";
           root.appendChild(box);
         }

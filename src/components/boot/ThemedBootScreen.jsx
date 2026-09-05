@@ -3,7 +3,7 @@ import { Capacitor } from "@capacitor/core";
 import { SplashScreen } from "@capacitor/splash-screen";
 import { AppMark } from "../brand/AppMark";
 import { resolveMnemeMarkPalette } from "../../lib/brand/mnemeMarkPalettes.js";
-import { applyAppearance, isDarkTheme, readBootAppearance } from "../../lib/theme/appearance";
+import { applyAppearance, isDarkTheme, readBootAppearance, themeTextColor } from "../../lib/theme/appearance";
 
 async function hideNativeSplash() {
   if (!Capacitor.isNativePlatform()) return;
@@ -23,7 +23,8 @@ export function ThemedBootScreen({
 }) {
   const themeId = appearance ?? readBootAppearance();
   const palette = resolveMnemeMarkPalette("auto", themeId);
-  const dark = isDarkTheme(themeId);
+  const textColor = themeTextColor(themeId);
+  const mutedColor = isDarkTheme(themeId) ? "#aab3c4" : "#656575";
 
   useEffect(() => {
     applyAppearance(themeId);
@@ -32,14 +33,14 @@ export function ThemedBootScreen({
 
   return (
     <div
-      className={`boot-screen${error ? " boot-screen--error" : ""}${dark ? "" : " boot-screen--light"}`}
+      className={`boot-screen${error ? " boot-screen--error" : ""}${isDarkTheme(themeId) ? "" : " boot-screen--light"}`}
       style={{
         "--boot-bg": palette.canvas,
-        "--boot-fg": dark ? "#f6f7f8" : "#171218",
-        "--boot-muted": dark ? "#aab3c4" : "#656575",
+        "--boot-fg": textColor,
+        "--boot-muted": mutedColor,
         "--boot-star": palette.starGlow,
         background: palette.canvas,
-        color: dark ? "#f6f7f8" : "#171218",
+        color: textColor,
       }}
       role={error ? "alert" : "status"}
       aria-live="polite"

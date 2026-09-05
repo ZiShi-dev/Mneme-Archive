@@ -719,6 +719,12 @@ export const fr = {
     cleared: "Tous les téléchargements ont été supprimés",
     clearAllTitle: "Supprimer tous les téléchargements ?",
     clearAllBody: "Tous les contenus hors ligne seront supprimés de cet appareil.",
+    backgroundStarted: "Téléchargement lancé en arrière-plan",
+    backgroundProgress: "{done}/{total} en arrière-plan",
+    backgroundPaused: "{done}/{total} en pause",
+    pauseBackground: "Mettre en pause",
+    resumeBackground: "Reprendre",
+    cancelBackground: "Annuler le téléchargement",
     status: {
       queued: "En attente",
       downloading: "En cours",

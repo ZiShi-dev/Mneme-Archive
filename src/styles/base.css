@@ -39,7 +39,7 @@ input:focus, input:focus-visible { outline: 0; box-shadow: none; }
 .app-shell--dark .update-card,
 .app-shell--dark .settings-group,
 .app-shell--dark .global-search { box-shadow: 0 10px 28px rgba(0,0,0,.14); }
-.phone-frame { width: min(100%, var(--app-frame-max, 430px)); min-height: calc(100vh - 64px); min-height: calc(100dvh - 64px); background-color: var(--paper); background-image: linear-gradient(90deg, rgba(54,86,60,.018) 1px, transparent 1px), linear-gradient(rgba(54,86,60,.018) 1px, transparent 1px); background-size: 18px 18px; position: relative; box-shadow: var(--shadow); border: 1px solid rgba(189,192,186,.8); overflow: hidden; }
+.phone-frame { width: min(100%, var(--app-frame-max, 430px)); min-height: calc(100vh - 64px); min-height: calc(100dvh - 64px); background-color: var(--paper); background-image: linear-gradient(90deg, rgba(54,86,60,.018) 1px, transparent 1px), linear-gradient(rgba(54,86,60,.018) 1px, transparent 1px); background-size: 18px 18px; position: relative; box-shadow: var(--shadow); border: 1px solid var(--chrome-frame-border, color-mix(in srgb, var(--line) 88%, transparent)); overflow: hidden; }
 .desktop-note { width: 280px; position: sticky; top: 140px; padding-top: 24px; }
 .desktop-note__mark { display: block; margin-bottom: 18px; border-radius: 18px; }
 .desktop-note span { color: var(--stamp); font: 700 11px/1 "Zen Kaku Gothic New"; letter-spacing: .18em; }
@@ -1380,7 +1380,7 @@ button.source-overview-row { color: inherit; cursor: pointer; }
 .details-hero__actions { display: flex; align-items: center; gap: 7px; }
 .details-favorite.active { color: #ff9a9a; background: rgba(163,94,71,.3); }
 .details-follow.active { color: #c8d4ff; background: rgba(64,53,76,.42); }
-.icon-button--glass { background: rgba(255,255,255,.13); border-color: rgba(255,255,255,.15); color: white; backdrop-filter: blur(9px); }
+.icon-button--glass { background: var(--chrome-glass-bg, rgba(255,255,255,.13)); border-color: var(--chrome-glass-border, rgba(255,255,255,.15)); color: var(--chrome-glass-color, white); backdrop-filter: blur(9px); }
 .details-hero__content { display: flex; flex-direction: row; align-items: flex-end; gap: 20px; margin-top: 30px; position: relative; z-index: 2; }
 [dir="rtl"] .details-hero__content { flex-direction: row-reverse; }
 .details-hero__meta { flex: 1; min-width: 0; text-align: start; }

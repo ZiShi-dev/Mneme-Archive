@@ -73,6 +73,47 @@ test("handleMangalikRequest search filters genre catalog locally", async () => {
   }
 });
 
+test("handleMangalikRequest search enriches latest chapter when enrich=1", async () => {
+  const { handleMangalikRequest } = await import("../sources/mangalik.js");
+  const { configureSourceNativeFetch, clearSourceNativeFetch } = await import("../lib/nativeFetchBridge.js");
+  const title = "Demi-Gods and Semi-Devils";
+  configureSourceNativeFetch({
+    fetchHtml: async (url) => {
+      const target = String(url);
+      if (target.includes("wp-json")) {
+        return JSON.stringify([{
+          slug: "demi-gods-and-semi-devils",
+          title: { rendered: title },
+          link: "https://mangalik.net/manga/demi-gods-and-semi-devils/",
+        }]);
+      }
+      if (target.includes("/manga/demi-gods-and-semi-devils/")) {
+        return `
+          <div class="post-title"><h1>${title}</h1></div>
+          <div id="manga-chapters-holder" data-id="42"></div>
+          <ul class="main version-chap">
+            <li class="wp-manga-chapter"><a href="https://mangalik.net/manga/demi-gods-and-semi-devils/chapter-12/">الفصل 12</a></li>
+            <li class="wp-manga-chapter"><a href="https://mangalik.net/manga/demi-gods-and-semi-devils/chapter-11/">الفصل 11</a></li>
+          </ul>
+        `;
+      }
+      return "[]";
+    },
+  });
+  try {
+    const response = await handleMangalikRequest(
+      new URL("http://localhost/api/sources/mangalik/search?q=demi&enrich=1"),
+    );
+    assert.equal(response.status, 200);
+    assert.equal(response.body.items.length, 1);
+    assert.equal(response.body.items[0].latestChapter, "12");
+    assert.match(response.body.items[0].latestChapterUrl, /chapter-12/);
+    assert.equal(response.body.items[0].recentChapters[0]?.number, "12");
+  } finally {
+    clearSourceNativeFetch();
+  }
+});
+
 test("handleMangalikRequest search merges parallel wp-json endpoints", async () => {
   const { handleMangalikRequest } = await import("../sources/mangalik.js");
   const { configureSourceNativeFetch, clearSourceNativeFetch } = await import("../lib/nativeFetchBridge.js");

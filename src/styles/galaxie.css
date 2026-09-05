@@ -105,6 +105,26 @@ body[data-theme="galaxie"] {
   box-shadow: 0 18px 42px rgba(0, 0, 16, 0.45);
 }
 
+[data-theme="galaxie"] .icon-button,
+.app-shell--galaxie .icon-button,
+[data-theme="galaxie"] .screen--home .header-actions .icon-button {
+  background: var(--chrome-icon-bg);
+  border-color: var(--chrome-icon-border);
+  color: var(--chrome-icon-color);
+}
+
+[data-theme="galaxie"] .icon-button--glass,
+.app-shell--galaxie .icon-button--glass {
+  background: var(--chrome-glass-bg);
+  border-color: var(--chrome-glass-border);
+  color: var(--chrome-glass-color);
+}
+
+[data-theme="galaxie"] .phone-frame,
+.app-shell--galaxie .phone-frame {
+  border-color: var(--chrome-card-border);
+}
+
 /* Preview carte */
 .galaxy-preview {
   position: absolute;

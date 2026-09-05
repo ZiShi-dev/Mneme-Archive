@@ -398,7 +398,7 @@ svg { stroke-width: 1.75; }
 .app-shell:not(.app-shell--dark) .details-hero {
   color: var(--ink);
 }
-.app-shell:not(.app-shell--dark) .icon-button--glass { color: var(--ink); background: rgba(255,252,247,.72); border-color: var(--line); }
+.app-shell:not(.app-shell--dark) .icon-button--glass { color: var(--chrome-glass-color, var(--ink)); background: var(--chrome-glass-bg, rgba(255,252,247,.72)); border-color: var(--chrome-glass-border, var(--line)); }
 
 .phone-frame {
   background-color: var(--paper);

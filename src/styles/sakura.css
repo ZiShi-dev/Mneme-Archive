@@ -609,6 +609,23 @@
   background: rgba(23, 18, 24, .48);
 }
 
+[data-theme="sakura"] .icon-button,
+[data-theme="sakura"] .screen--home .header-actions .icon-button {
+  background: var(--chrome-icon-bg, var(--washi));
+  border-color: var(--chrome-icon-border);
+  color: var(--chrome-icon-color, var(--ume));
+}
+
+[data-theme="sakura"] .icon-button--glass {
+  background: var(--chrome-glass-bg);
+  border-color: var(--chrome-glass-border);
+  color: var(--chrome-glass-color);
+}
+
+[data-theme="sakura"] .phone-frame {
+  border-color: color-mix(in srgb, var(--sakura) 24%, var(--line));
+}
+
 [data-theme="sakura"] .icon-button.has-dot::after,
 [data-theme="yozakura"] .icon-button.has-dot::after {
   background: var(--kobai);

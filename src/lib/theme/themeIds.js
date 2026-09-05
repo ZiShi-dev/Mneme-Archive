@@ -26,6 +26,21 @@ export const THEME_META_COLOR = {
   [THEME_GALAXIE]: "#07061A",
 };
 
+export const THEME_TEXT_COLOR = {
+  [THEME_INK]: "#f6f7f8",
+  [THEME_NUIT]: "#f5f5f5",
+  [THEME_PAPER]: "#171218",
+  [THEME_SAKURA]: "#171218",
+  [THEME_YOZAKURA]: "#f6f7f8",
+  [THEME_LUNE_NEIGE]: "#f6f7f8",
+  [THEME_GALAXIE]: "#f6f7f8",
+};
+
+export function themeTextColor(themeId) {
+  const id = normalizeThemeId(themeId);
+  return THEME_TEXT_COLOR[id] || THEME_TEXT_COLOR[THEME_INK];
+}
+
 export function normalizeThemeId(value) {
   if (
     value === THEME_INK

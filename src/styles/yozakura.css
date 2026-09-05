@@ -369,6 +369,27 @@ html.native-app .app-shell--yozakura .phone-frame {
   color: #f8f2f6;
 }
 
+[data-theme="yozakura"] .icon-button,
+.app-shell--yozakura .icon-button,
+[data-theme="yozakura"] .screen--home .header-actions .icon-button,
+.app-shell--yozakura .screen--home .header-actions .icon-button {
+  background: var(--chrome-icon-bg, var(--yozakura-ui-surface-raised));
+  border-color: var(--chrome-icon-border);
+  color: var(--chrome-icon-color, var(--sakura));
+}
+
+[data-theme="yozakura"] .icon-button--glass,
+.app-shell--yozakura .icon-button--glass {
+  background: var(--chrome-glass-bg);
+  border-color: var(--chrome-glass-border);
+  color: var(--chrome-glass-color);
+}
+
+[data-theme="yozakura"] .phone-frame,
+.app-shell--yozakura .phone-frame {
+  border-color: var(--chrome-card-border);
+}
+
 [data-theme="yozakura"] .bottom-nav,
 .app-shell--yozakura .bottom-nav {
   backdrop-filter: none;

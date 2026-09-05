@@ -32,6 +32,10 @@ export function NovelDownloadSheet({
   onDownloadRange,
   busy = false,
   progress = null,
+  backgroundProgress = null,
+  onPauseBackground,
+  onResumeBackground,
+  onCancelBackground,
   chapterLabel = "",
   chapterEstimate = null,
   allEstimate = null,
@@ -106,6 +110,8 @@ export function NovelDownloadSheet({
     && rangeFromChapter
     && rangeToChapter
     && Boolean(rangeEstimate?.pendingCount);
+  const isBackgroundPaused = backgroundProgress?.status === "paused";
+  const isBackgroundRunning = backgroundProgress?.status === "running";
 
   return (
     <SheetPortal>
@@ -131,7 +137,50 @@ export function NovelDownloadSheet({
             <SheetCloseButton onClick={onClose} label={t("common.close")} />
           </header>
           <div className="notify-sheet__body novel-download-sheet__body">
-            {progress ? (
+            {backgroundProgress ? (
+              <div className="novel-download-sheet__background" role="status">
+                <p className="novel-download-sheet__progress">
+                  {isBackgroundPaused
+                    ? t("downloads.backgroundPaused", {
+                      done: backgroundProgress.completed,
+                      total: backgroundProgress.total,
+                    })
+                    : t("downloads.backgroundProgress", {
+                      done: backgroundProgress.completed,
+                      total: backgroundProgress.total,
+                    })}
+                </p>
+                <div className="novel-download-sheet__controls">
+                  {isBackgroundPaused && onResumeBackground ? (
+                    <button
+                      type="button"
+                      className="novel-download-sheet__control novel-download-sheet__control--primary"
+                      onClick={onResumeBackground}
+                    >
+                      {t("downloads.resumeBackground")}
+                    </button>
+                  ) : null}
+                  {isBackgroundRunning && onPauseBackground ? (
+                    <button
+                      type="button"
+                      className="novel-download-sheet__control"
+                      onClick={onPauseBackground}
+                    >
+                      {t("downloads.pauseBackground")}
+                    </button>
+                  ) : null}
+                  {onCancelBackground ? (
+                    <button
+                      type="button"
+                      className="novel-download-sheet__control novel-download-sheet__control--danger"
+                      onClick={onCancelBackground}
+                    >
+                      {t("downloads.cancelBackground")}
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ) : progress ? (
               <p className="novel-download-sheet__progress" role="status">
                 {t(`downloads.${mediaKey}.batchProgress`, { done: progress.completed, total: progress.total })}
               </p>

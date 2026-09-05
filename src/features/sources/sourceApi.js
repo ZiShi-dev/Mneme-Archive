@@ -249,7 +249,7 @@ export function buildSearchPath(sourceId, query, {
   if (page > 1) params.set("page", String(page));
   appendCatalogQueryFilters(params, sourceId, { genre, tag, tagPath, filterPath, queryParam, queryValue });
   appendSourceQueryParams(params, sourceId);
-  params.set("enrich", "0");
+  params.set("enrich", "1");
   return `${sourcePath(sourceId, "search")}?${params}`;
 }
 

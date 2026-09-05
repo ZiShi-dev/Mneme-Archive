@@ -81,6 +81,12 @@ test("hasAtmosphereEffect covers animated themes only", async () => {
   assert.equal(hasAtmosphereEffect(THEME_GALAXIE), true);
 });
 
+test("themeTextColor follows light and dark palettes", async () => {
+  const { themeTextColor, THEME_PAPER, THEME_NUIT } = await import("../lib/theme/appearance.js");
+  assert.equal(themeTextColor(THEME_PAPER), "#171218");
+  assert.equal(themeTextColor(THEME_NUIT), "#f5f5f5");
+});
+
 test("themeDefaultTypeface pairs each theme with a readable preset", () => {
   assert.equal(themeDefaultTypeface(THEME_INK), "sans");
   assert.equal(themeDefaultTypeface(THEME_NUIT), "sans");

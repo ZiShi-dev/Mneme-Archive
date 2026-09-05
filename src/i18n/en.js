@@ -719,6 +719,12 @@ export const en = {
     cleared: "All downloads were removed",
     clearAllTitle: "Delete all downloads?",
     clearAllBody: "All offline content will be removed from this device.",
+    backgroundStarted: "Download started in the background",
+    backgroundProgress: "{done}/{total} in background",
+    backgroundPaused: "{done}/{total} paused",
+    pauseBackground: "Pause",
+    resumeBackground: "Resume",
+    cancelBackground: "Cancel download",
     status: {
       queued: "Queued",
       downloading: "Downloading",

@@ -118,6 +118,34 @@ export async function showChapterUpdateNotifications(events = []) {
   return notifications.filter((entry) => !entry.groupSummary).length;
 }
 
+export async function showBackgroundDownloadCompleteNotification(item = {}) {
+  if (!isNativeNotificationsAvailable()) return false;
+  const permission = await getNotificationPermissionStatus();
+  if (!permission.granted) return false;
+  await initNativeNotifications();
+  const mediaType = String(item.mediaType || "manga");
+  const bodyKey = mediaType === "novel" ? "downloads.novel.allSaved" : "downloads.manga.allSaved";
+  await LocalNotifications.schedule({
+    notifications: [{
+      id: hashNotificationId(`download-complete:${item.url || item.title || Date.now()}`),
+      title: item.title || t("app.name"),
+      body: t(bodyKey),
+      channelId: CHAPTER_NOTIFICATION_CHANNEL,
+      smallIcon: "ic_stat_notify",
+      schedule: immediateSchedule(),
+      sound: "default",
+      autoCancel: true,
+      extra: {
+        kind: "download-complete",
+        sourceId: item.sourceId,
+        url: item.url,
+        mediaType,
+      },
+    }],
+  });
+  return true;
+}
+
 export async function sendTestNotification() {
   if (!isNativeNotificationsAvailable()) {
     return { ok: false, reason: "web" };

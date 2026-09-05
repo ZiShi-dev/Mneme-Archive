@@ -108,15 +108,20 @@ export async function downloadAllNovelChapters(item, chapters, { onProgress, onS
 
   const queue = chapters.filter((chapter) => isDownloadableNovelChapter(item.sourceId, chapter));
   let completed = 0;
+  let failed = 0;
 
   try {
     for (const chapter of queue) {
       if (controller.cancelled) break;
-      await downloadNovelChapter(item, chapter, { onStoreUpdate });
-      completed += 1;
-      onProgress?.({ completed, total: queue.length, chapter });
+      try {
+        await downloadNovelChapter(item, chapter, { onStoreUpdate });
+        completed += 1;
+      } catch {
+        failed += 1;
+      }
+      onProgress?.({ completed, failed, total: queue.length, chapter });
     }
-    return { completed, total: queue.length, cancelled: controller.cancelled };
+    return { completed, failed, total: queue.length, cancelled: controller.cancelled };
   } finally {
     activeBatches.delete(batchId);
   }

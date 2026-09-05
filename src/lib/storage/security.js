@@ -28,6 +28,7 @@ const EXACT_KEYS = new Set([
   "living-archive:catalog-state",
   "living-archive:catalog-snapshots",
   "living-archive:offline-downloads",
+  "living-archive:download-queue",
   "living-archive:reader-preferences",
   "cromebook:nav-collapsed",
   "cromebook:locale",

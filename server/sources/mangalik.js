@@ -2,8 +2,9 @@ import { decodeHtml, parseDetailTaxonomies, textOnly } from "../lib/htmlUtils.js
 import { createCachedHtmlFetcher, fetchProxiedImage, responseCache } from "../lib/httpUtils.js";
 import { normalizeSearchQuery } from "../lib/queryLimits.js";
 import { responseJson } from "../lib/responseJson.js";
-import { applyRecentChapterFields, normalizeRecentChapters } from "../lib/catalogChapters.js";
-import { parseMadaraChapters, resolveMadaraChapters } from "../lib/madaraChapters.js";
+import { applyRecentChapterFields, catalogNeedsRecentEnrich, enrichCatalogItems, normalizeRecentChapters, recentChaptersFromList } from "../lib/catalogChapters.js";
+import { catalogEnrichFromCatalogParams, catalogEnrichFromSearchParams } from "../lib/catalogEnrichPolicy.js";
+import { parseMadaraChapters, resolveMadaraChapters, extractMadaraMangaId, fetchMadaraChapterListHtml } from "../lib/madaraChapters.js";
 import { enrichSourceDetails } from "../lib/detailEnrichment.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
 import { configureSourceNativeFetch, fetchNativeHtml, fetchNativeImage, hasNativeHtmlFetcher, invalidateNativeHtmlCacheSafe } from "../lib/nativeFetchBridge.js";
@@ -15,6 +16,82 @@ const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
 export const MANGALIK_CATALOG_PAGE_SIZE = 24;
 /** Estimation Madara : nombre de cartes par page HTML du site. */
 const UPSTREAM_CATALOG_PAGE_SIZE = 20;
+const MANGALIK_SERIES_CHAPTERS_CACHE_TTL_MS = 5 * 60_000;
+const mangalikSeriesChaptersCache = new Map();
+
+function normalizeMangalikChapterUrl(rawUrl) {
+  return String(rawUrl || "").replace(/^https?:\/\/www\./i, "https://");
+}
+
+function parseCatalogChaptersFromBlock(block = "") {
+  return normalizeRecentChapters([...block.matchAll(/<span[^>]*class=["'][^"']*chapter[^"']*["'][^>]*>[\s\S]*?<a[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)].map((entry) => {
+    const name = textOnly(entry[2]).replace(/^(?:Chapter|الفصل)\s*/i, "");
+    return { url: entry[1], name, number: name };
+  }));
+}
+
+function buildMangalikCatalogItem(ctx, { slug, title, cover, url, chapters = [] }) {
+  const normalizedUrl = url || (slug ? `${ctx.baseUrl}/manga/${slug}/` : "");
+  if (!title || !normalizedUrl) return null;
+  return applyRecentChapterFields({
+    id: slug || new URL(normalizedUrl).pathname.split("/").filter(Boolean).pop(),
+    title,
+    url: normalizedUrl,
+    cover: cover || "",
+    source: "MangaLik",
+    sourceId: "mangalik",
+    mediaType: "manga",
+    mediaTypeLabel: "مانغا",
+  }, chapters);
+}
+
+async function fetchMangalikRecentChapters(item, html, fetchHtml, ctx) {
+  const normalizeUrl = normalizeMangalikChapterUrl;
+  let chapterList = parseMadaraChapters(html, { normalizeUrl });
+  if (chapterList.length) return chapterList;
+
+  const ajaxGetUrl = `${String(item.url).replace(/\/+$/, "")}/ajax/chapters/`;
+  if (typeof fetchHtml === "function") {
+    try {
+      const ajaxHtml = await fetchHtml(ajaxGetUrl);
+      chapterList = parseMadaraChapters(ajaxHtml, { normalizeUrl });
+      if (chapterList.length) return chapterList;
+    } catch {
+      // Repli admin-ajax ci-dessous.
+    }
+  }
+
+  const mangaId = extractMadaraMangaId(html);
+  if (mangaId && ctx?.baseUrl) {
+    try {
+      const ajaxHtml = await fetchMadaraChapterListHtml(ctx.baseUrl, mangaId, item.url);
+      chapterList = parseMadaraChapters(ajaxHtml, { normalizeUrl });
+      if (chapterList.length) return chapterList;
+    } catch {
+      // Pas de chapitres disponibles sur la carte.
+    }
+  }
+
+  return chapterList;
+}
+
+async function enrichMangalikCatalogItems(items, fetchHtml, ctx) {
+  return enrichCatalogItems(items, {
+    concurrency: 3,
+    needsEnrich: (item) => catalogNeedsRecentEnrich(item, 1),
+    enrichItem: async (item) => {
+      const cached = mangalikSeriesChaptersCache.get(item.url);
+      if (cached && Date.now() - cached.at < MANGALIK_SERIES_CHAPTERS_CACHE_TTL_MS) {
+        return cached.chapters;
+      }
+      const html = await resolveHtml(item.url, fetchHtml);
+      const chapterList = await fetchMangalikRecentChapters(item, html, fetchHtml, ctx);
+      const chapters = recentChaptersFromList(chapterList, undefined, { sourceId: "mangalik" });
+      mangalikSeriesChaptersCache.set(item.url, { at: Date.now(), chapters });
+      return chapters;
+    },
+  });
+}
 
 export function configureMangalikNativeFetch(options) {
   configureSourceNativeFetch(options);
@@ -250,21 +327,10 @@ function parseCatalog(html, ctx = DEFAULT_CTX) {
       ?? block.match(/<img[^>]*>/i)?.[0]
       ?? "";
     const cover = imageTag.match(/(?:src|data-src)=["']\s*([^"']+)/i)?.[1]?.trim() ?? "";
-    const chapters = normalizeRecentChapters([...block.matchAll(/<span[^>]*class=["'][^"']*chapter[^"']*["'][^>]*>[\s\S]*?<a[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)].map((entry) => {
-      const name = textOnly(entry[2]).replace(/^(?:Chapter|الفصل)\s*/i, "");
-      return { url: entry[1], name, number: name };
-    }));
+    const chapters = parseCatalogChaptersFromBlock(block);
     seen.add(normalizedUrl);
-    results.push(applyRecentChapterFields({
-      id: new URL(normalizedUrl).pathname.split("/").filter(Boolean).pop(),
-      title,
-      url: normalizedUrl,
-      cover,
-      source: "MangaLik",
-      sourceId: "mangalik",
-      mediaType: "manga",
-      mediaTypeLabel: "مانغا",
-    }, chapters));
+    const item = buildMangalikCatalogItem(ctx, { slug, title, cover, url: normalizedUrl, chapters });
+    if (item) results.push(item);
   });
   return results;
 }
@@ -355,23 +421,12 @@ async function fetchMangaTagSitemap(baseUrl, fetchHtml) {
   return [];
 }
 
-function pushMangalikSearchResult(results, seen, ctx, { slug, title, cover, url }) {
+function pushMangalikSearchResult(results, seen, ctx, { slug, title, cover, url, chapters = [] }) {
   const normalizedUrl = url || (slug ? `${ctx.baseUrl}/manga/${slug}/` : "");
   if (!title || !normalizedUrl || seen.has(normalizedUrl)) return;
   seen.add(normalizedUrl);
-  results.push({
-    id: slug || new URL(normalizedUrl).pathname.split("/").filter(Boolean).pop(),
-    title,
-    url: normalizedUrl,
-    cover: cover || "",
-    latestChapter: "—",
-    latestChapterUrl: null,
-    recentChapters: [],
-    source: "MangaLik",
-    sourceId: "mangalik",
-    mediaType: "manga",
-    mediaTypeLabel: "مانغا",
-  });
+  const item = buildMangalikCatalogItem(ctx, { slug, title, cover, url: normalizedUrl, chapters });
+  if (item) results.push(item);
 }
 
 function parseSearchTabResults(html, ctx = DEFAULT_CTX) {
@@ -394,7 +449,8 @@ function parseSearchTabResults(html, ctx = DEFAULT_CTX) {
       ?? block.match(/<img[^>]*>/i)?.[0]
       ?? "";
     const cover = imageTag.match(/(?:src|data-src)=["']\s*([^"']+)/i)?.[1]?.trim() ?? "";
-    pushMangalikSearchResult(results, seen, ctx, { slug, title, cover });
+    const chapters = parseCatalogChaptersFromBlock(block);
+    pushMangalikSearchResult(results, seen, ctx, { slug, title, cover, chapters });
   });
   return results;
 }
@@ -426,10 +482,12 @@ function parseSearchWrapResults(html, ctx = DEFAULT_CTX) {
   return results;
 }
 
-async function searchMangalikGlobal(query, ctx, fetchHtml) {
+async function searchMangalikGlobal(query, ctx, fetchHtml, { enrich = false } = {}) {
   const jsonItems = await fetchMangalikSearchJson(ctx.baseUrl, query, fetchHtml, ctx);
   if (jsonItems.length) {
-    return { items: jsonItems.slice(0, 40), page: 1, hasMore: false };
+    const items = jsonItems.slice(0, 40);
+    if (enrich) await enrichMangalikCatalogItems(items, fetchHtml, ctx);
+    return { items, page: 1, hasMore: false };
   }
 
   const searchUrls = [
@@ -440,6 +498,7 @@ async function searchMangalikGlobal(query, ctx, fetchHtml) {
       const html = await resolveSearchHtml(searchUrl, fetchHtml);
       const items = parseSearch(html, ctx);
       if (items.length) {
+        if (enrich) await enrichMangalikCatalogItems(items, fetchHtml, ctx);
         return { items: items.slice(0, 40), page: 1, hasMore: false };
       }
     } catch {
@@ -473,7 +532,7 @@ function appendUniqueCatalogItems(pool, seen, batch = []) {
   return added;
 }
 
-export async function fetchMangalikCatalogPage(ctx, fetchHtml, { page = 1, genre = "", tag = "", tagPath = "tag" } = {}) {
+export async function fetchMangalikCatalogPage(ctx, fetchHtml, { page = 1, genre = "", tag = "", tagPath = "tag", enrich = true } = {}) {
   const { baseUrl } = ctx;
   const basePath = genre
     ? `/manga-genre/${encodeURIComponent(genre)}`
@@ -519,6 +578,10 @@ export async function fetchMangalikCatalogPage(ctx, fetchHtml, { page = 1, genre
     nextUpstream += 1;
   }
 
+  if (enrich) {
+    await enrichMangalikCatalogItems(items, fetchHtml, ctx);
+  }
+
   return {
     items,
     page,
@@ -529,7 +592,7 @@ export async function fetchMangalikCatalogPage(ctx, fetchHtml, { page = 1, genre
   };
 }
 
-async function searchMangalikCatalog(query, ctx, fetchHtml, { genre = "", tag = "", tagPath = "tag", page = 1 } = {}) {
+async function searchMangalikCatalog(query, ctx, fetchHtml, { genre = "", tag = "", tagPath = "tag", page = 1, enrich = false } = {}) {
   if (genre || tag) {
     const { baseUrl } = ctx;
     const basePath = genre ? `/manga-genre/${encodeURIComponent(genre)}` : `/${tagPath}/${encodeURIComponent(tag)}`;
@@ -539,6 +602,7 @@ async function searchMangalikCatalog(query, ctx, fetchHtml, { genre = "", tag = 
     const items = parseCatalog(html, ctx).filter((item) => (
       `${item.title || ""} ${item.altTitle || ""}`.toLocaleLowerCase("ar").includes(needle)
     ));
+    if (enrich) await enrichMangalikCatalogItems(items, fetchHtml, ctx);
     const nextPath = `${basePath}/page/${page + 1}/`;
     return {
       items,
@@ -547,7 +611,7 @@ async function searchMangalikCatalog(query, ctx, fetchHtml, { genre = "", tag = 
     };
   }
 
-  return searchMangalikGlobal(query, ctx, fetchHtml);
+  return searchMangalikGlobal(query, ctx, fetchHtml, { enrich });
 }
 
 async function fetchMangalikSearchJson(baseUrl, query, fetchHtml, ctx = DEFAULT_CTX) {
@@ -643,7 +707,7 @@ export function parseChapter(html, url) {
   for (const tag of html.matchAll(/<img[^>]*class=["'][^"']*(?:wp-manga-chapter-img|chapter-image)[^"']*["'][^>]*>/gi)) {
     push(chapterImageFromTag(tag[0]), tag[0].match(/alt=["']([^"']*)["']/i)?.[1] ?? "");
   }
-  if (pages.length) return { title, url, pages };
+  if (pages.length) return { title, url, kind: "manga", pages };
 
   const readerBlock = html.match(/<div[^>]*class=["'][^"']*\breading-content\b(?![^"']*-wrap)[^"']*["'][^>]*>([\s\S]*?)<\/div>/i)?.[1]
     ?? html.match(/<div[^>]*class=["'][^"']*\bpage-break\b[^"']*["'][^>]*>[\s\S]*$/i)?.[0]
@@ -656,7 +720,7 @@ export function parseChapter(html, url) {
     if (!src || !/(?:tempsolo\.|\/manga\/|\/wp-content\/uploads\/)/i.test(src)) continue;
     push(src, tag[0].match(/alt=["']([^"']*)["']/i)?.[1] ?? "");
   }
-  return { title, url, pages };
+  return { title, url, kind: "manga", pages };
 }
 
 async function resolveMangaDetails(url, ctx, fetchHtml) {
@@ -689,7 +753,8 @@ export async function handleMangalikRequest(requestUrl) {
     if (tag && !/^[\p{L}\p{N}+_-]+$/u.test(tag)) throw new Error("وسم MangaLik غير صالح");
     if (!/^[a-z0-9/-]+$/i.test(tagPath) || tagPath.includes("..") || tagPath.startsWith("/") || tagPath.endsWith("/")) throw new Error("مسار وسم MangaLik غير صالح");
     if (genre && tag) throw new Error("اختر تصنيفًا أو وسمًا واحدًا");
-    return responseJson(200, await fetchMangalikCatalogPage(ctx, fetchHtml, { page, genre, tag, tagPath }));
+    const enrich = catalogEnrichFromCatalogParams(requestUrl.searchParams);
+    return responseJson(200, await fetchMangalikCatalogPage(ctx, fetchHtml, { page, genre, tag, tagPath, enrich }));
   }
   if (requestUrl.pathname.endsWith("/filters")) {
     const html = await resolveHtml(`${baseUrl}/manga/`, fetchHtml);
@@ -726,7 +791,8 @@ export async function handleMangalikRequest(requestUrl) {
     const tagPath = requestUrl.searchParams.get("tagPath")?.trim() || "tag";
     if (genre && !/^[\p{L}\p{N}+_-]+$/u.test(genre)) throw new Error("تصنيف MangaLik غير صالح");
     if (tag && !/^[\p{L}\p{N}+_-]+$/u.test(tag)) throw new Error("وسم MangaLik غير صالح");
-    const payload = await searchMangalikCatalog(query, ctx, fetchHtml, { genre, tag, tagPath, page });
+    const enrich = catalogEnrichFromSearchParams(requestUrl.searchParams);
+    const payload = await searchMangalikCatalog(query, ctx, fetchHtml, { genre, tag, tagPath, page, enrich });
     return responseJson(200, payload);
   }
   if (requestUrl.pathname.endsWith("/manga")) {

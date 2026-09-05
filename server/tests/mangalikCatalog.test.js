@@ -38,6 +38,21 @@ const CARD = `
 </div>
 `;
 
+const CARD_WITH_CHAPTER = `
+<div class="page-item-detail manga">
+  <div class="post-title"><a href="https://mangalik.net/manga/sample-title/">Sample Title</a></div>
+  <img class="img-responsive" src="https://io.mangalik.net/wp-content/uploads/sample.jpg" alt="Sample Title">
+  <span class="chapter-item"><a href="https://mangalik.net/manga/sample-title/chapter-8/">الفصل 8</a></span>
+</div>
+`;
+
+test("parseMangalikCatalog reads chapter links on cards", () => {
+  const items = parseMangalikCatalog(CARD_WITH_CHAPTER);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].latestChapter, "8");
+  assert.match(items[0].latestChapterUrl, /chapter-8/);
+});
+
 test("parseMangalikCatalog reads current Madara cards", () => {
   const items = parseMangalikCatalog(CARD);
   assert.equal(items.length, 1);

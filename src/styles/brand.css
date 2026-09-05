@@ -76,8 +76,18 @@
 }
 
 [data-theme="ink"] .app-brand-name__accent,
-.app-shell--dark .app-brand-name__accent {
+.app-shell--dark:not(.app-shell--nuit) .app-brand-name__accent {
   color: color-mix(in srgb, var(--brand) 82%, white);
+}
+
+[data-theme="nuit"] .app-brand-name__accent,
+.app-shell--nuit .app-brand-name__accent {
+  color: var(--nuit-icon, #b3b3b3);
+}
+
+[data-theme="nuit"] .app-brand-name__lead,
+.app-shell--nuit .app-brand-name__lead {
+  color: var(--text, #f5f5f5);
 }
 
 [data-theme="sakura"] .app-brand-name__accent,

@@ -1,4 +1,5 @@
 import { applyThemeIcons } from "./themeIcons.js";
+import { syncNativeChrome } from "./nativeChrome.js";
 import { peekStorageString } from "../storage/peek.js";
 import { isKvStoreReady, kvGetStringSync, kvHasSync } from "../storage/kvStore.js";
 import {
@@ -11,8 +12,10 @@ import {
   THEME_GALAXIE,
   THEME_IDS,
   THEME_META_COLOR,
+  THEME_TEXT_COLOR,
   normalizeThemeId,
   isDarkTheme,
+  themeTextColor,
 } from "./themeIds.js";
 
 export {
@@ -25,8 +28,10 @@ export {
   THEME_GALAXIE,
   THEME_IDS,
   THEME_META_COLOR,
+  THEME_TEXT_COLOR,
   normalizeThemeId,
   isDarkTheme,
+  themeTextColor,
 };
 
 const THEME_DEFAULT_TYPEFACE = {
@@ -98,14 +103,16 @@ export function applyAppearance(themeId) {
   if (typeof document === "undefined") return;
   const id = normalizeThemeId(themeId);
   const background = THEME_META_COLOR[id] || THEME_META_COLOR[THEME_INK];
+  const textColor = themeTextColor(id);
   document.documentElement.style.colorScheme = isDarkTheme(id) ? "dark" : "light";
   document.documentElement.style.setProperty("--boot-shell-bg", background);
+  document.documentElement.style.setProperty("--boot-text-color", textColor);
   document.documentElement.style.backgroundColor = background;
   document.documentElement.dataset.theme = id;
   if (document.body) {
     document.body.dataset.theme = id;
     document.body.style.backgroundColor = background;
-    document.body.style.color = isDarkTheme(id) ? "#f6f7f8" : "#171218";
+    document.body.style.color = textColor;
   }
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content", background);
   document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')?.setAttribute(
@@ -113,6 +120,7 @@ export function applyAppearance(themeId) {
     isDarkTheme(id) ? "black-translucent" : "default",
   );
   applyThemeIcons(id);
+  void syncNativeChrome(id, background);
 }
 
 function readAppearanceFromLocalStorage() {

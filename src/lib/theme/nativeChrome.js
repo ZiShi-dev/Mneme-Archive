@@ -1,6 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 import { StatusBar, Style } from "@capacitor/status-bar";
-import { isDarkTheme, normalizeThemeId, THEME_META_COLOR } from "./appearance.js";
+import { isDarkTheme, normalizeThemeId, THEME_META_COLOR } from "./themeIds.js";
 import { resolveMnemeMarkPalette } from "../brand/mnemeMarkPalettes.js";
 
 export async function syncNativeChrome(themeId, backgroundColor) {

@@ -680,6 +680,15 @@ export function LiveMangaDetails({
     [downloadableChapters],
   );
 
+  useEffect(() => {
+    if (!downloadSheetOpen) return;
+    void novelDownloads.loadBackgroundProgressForItem(downloadMangaItem);
+  }, [
+    downloadSheetOpen,
+    downloadMangaItem,
+    novelDownloads.loadBackgroundProgressForItem,
+  ]);
+
   function buildRangeSummary(chapters) {
     const sorted = sortChaptersAsc(chapters);
     if (!sorted.length) return "";
@@ -718,11 +727,8 @@ export function LiveMangaDetails({
     setDownloadConfirm(null);
     try {
       if (mode === "all" || mode === "range") {
-        await novelDownloads.downloadAll(downloadMangaItem, chapters);
-        pushToast({
-          type: "success",
-          message: mode === "range" ? t(`downloads.${downloadMediaKey}.rangeSaved`) : t(`downloads.${downloadMediaKey}.allSaved`),
-        });
+        await novelDownloads.downloadAllInBackground(downloadMangaItem, chapters);
+        pushToast({ type: "info", message: t("downloads.backgroundStarted") });
         setDownloadSheetOpen(false);
       } else {
         await novelDownloads.downloadChapter(downloadMangaItem, chapters[0]);
@@ -1012,8 +1018,15 @@ export function LiveMangaDetails({
         onDownloadChapter={handleDownloadCurrentChapter}
         onDownloadAll={handleDownloadAllChapters}
         onDownloadRange={handleDownloadRange}
-        busy={novelDownloads.busy}
+        busy={
+          novelDownloads.busy
+          || novelDownloads.getBackgroundProgressForItem(downloadMangaItem)?.status === "running"
+        }
         progress={novelDownloads.batchProgress}
+        backgroundProgress={novelDownloads.getBackgroundProgressForItem(downloadMangaItem)}
+        onPauseBackground={() => novelDownloads.pauseBackgroundDownloadForItem(downloadMangaItem)}
+        onResumeBackground={() => novelDownloads.resumeBackgroundDownloadForItem(downloadMangaItem)}
+        onCancelBackground={() => novelDownloads.cancelBackgroundDownloadForItem(downloadMangaItem)}
         chapterLabel={downloadTargetChapter ? resolveChapter(downloadTargetChapter).name || resolveChapter(downloadTargetChapter).number : ""}
         chapterEstimate={chapterDownloadEstimate}
         allEstimate={allDownloadEstimate}

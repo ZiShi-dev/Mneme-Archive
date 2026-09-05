@@ -3,7 +3,8 @@ import { decodeHtml, mergeFilterGroups, parseDetailTaxonomies, parseTaxonomyFilt
 import { createCachedHtmlFetcher, fetchProxiedImage, responseCache } from "../lib/httpUtils.js";
 import { normalizeSearchQuery } from "../lib/queryLimits.js";
 import { responseJson } from "../lib/responseJson.js";
-import { applyRecentChapterFields, normalizeRecentChapters } from "../lib/catalogChapters.js";
+import { applyRecentChapterFields, catalogNeedsRecentEnrich, enrichCatalogItems, normalizeRecentChapters, recentChaptersFromList } from "../lib/catalogChapters.js";
+import { catalogEnrichFromCatalogParams, catalogEnrichFromSearchParams } from "../lib/catalogEnrichPolicy.js";
 import { enrichSourceDetails } from "../lib/detailEnrichment.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
 import { filterNovelParagraphs } from "../lib/novelChapterText.js";
@@ -682,7 +683,22 @@ async function fetchAzoraFilters(ctx, fetchAzoraHtml) {
   return data;
 }
 
-async function fetchAzoraCatalogPage(ctx, fetchAzoraHtml, { page = 1, genre = "" } = {}) {
+async function enrichAzoraCatalogItems(items, fetchAzoraHtml, ctx) {
+  return enrichCatalogItems(items, {
+    concurrency: 3,
+    needsEnrich: (item) => catalogNeedsRecentEnrich(item, 1),
+    enrichItem: async (item) => {
+      const html = await resolveAzoraHtml(item.url, fetchAzoraHtml);
+      const slug = azoraSlugFromUrl(item.url);
+      const postId = extractAzoraPostId(html, slug);
+      let chapters = await fetchAzoraChapterList(postId, slug);
+      if (!chapters.length) chapters = parseAzoraChaptersFromHtml(html, slug);
+      return recentChaptersFromList(chapters, undefined, { sourceId: "azorafly" });
+    },
+  });
+}
+
+async function fetchAzoraCatalogPage(ctx, fetchAzoraHtml, { page = 1, genre = "", enrich = true } = {}) {
   const genreQuery = genre ? `&genres=${encodeURIComponent(`+${genre}`)}` : "";
   const offset = (page - 1) * APP_PAGE_SIZE;
   const upstreamPage = Math.floor(offset / UPSTREAM_PAGE_SIZE) + 1;
@@ -702,6 +718,9 @@ async function fetchAzoraCatalogPage(ctx, fetchAzoraHtml, { page = 1, genre = ""
   }
 
   const items = pool.slice(start, start + APP_PAGE_SIZE);
+  if (enrich) {
+    await enrichAzoraCatalogItems(items, fetchAzoraHtml, ctx);
+  }
   return {
     items,
     page,
@@ -725,16 +744,18 @@ export async function handleAzoraRequest(requestUrl) {
     const page = Math.min(Math.max(Number(requestUrl.searchParams.get("page")) || 1, 1), 1000);
     const genre = requestUrl.searchParams.get("genre")?.trim() ?? "";
     if (genre && !/^\d+$/.test(genre)) throw new Error("تصنيف AzoraFly غير صالح");
-    return responseJson(200, await fetchAzoraCatalogPage(ctx, fetchAzoraHtml, { page, genre }));
+    const enrich = catalogEnrichFromCatalogParams(requestUrl.searchParams);
+    return responseJson(200, await fetchAzoraCatalogPage(ctx, fetchAzoraHtml, { page, genre, enrich }));
   }
   if (requestUrl.pathname.endsWith("/search")) {
     const { query, valid } = normalizeSearchQuery(requestUrl.searchParams.get("q"));
     if (!valid) return responseJson(200, { items: [] });
     const genre = requestUrl.searchParams.get("genre")?.trim() ?? "";
     if (genre && !/^\d+$/.test(genre)) throw new Error("تصنيف AzoraFly غير صالح");
+    const enrich = catalogEnrichFromSearchParams(requestUrl.searchParams);
     if (genre) {
       const page = Math.min(Math.max(Number(requestUrl.searchParams.get("page")) || 1, 1), 1000);
-      const payload = await fetchAzoraCatalogPage(ctx, fetchAzoraHtml, { page, genre });
+      const payload = await fetchAzoraCatalogPage(ctx, fetchAzoraHtml, { page, genre, enrich });
       const needle = query.toLocaleLowerCase("ar");
       const items = payload.items.filter((item) => (
         `${item.title || ""} ${item.altTitle || ""}`.toLocaleLowerCase("ar").includes(needle)
@@ -752,7 +773,9 @@ export async function handleAzoraRequest(requestUrl) {
       `${ctx.baseUrl}/series/?searchTerm=${encodeURIComponent(query)}${genreQuery}`,
       fetchAzoraHtml,
     );
-    return responseJson(200, { items: parseAzoraCatalog(html).slice(0, 40) });
+    const items = parseAzoraCatalog(html).slice(0, 40);
+    if (enrich) await enrichAzoraCatalogItems(items, fetchAzoraHtml, ctx);
+    return responseJson(200, { items });
   }
   if (requestUrl.pathname.endsWith("/manga")) {
     const target = assertAzoraUrl(requestUrl.searchParams.get("url") ?? "", false, ctx);
