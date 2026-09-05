@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import sharp from "sharp";
 import { renderMnemeMarkSvgForTheme } from "./render-mneme-mark-svg.mjs";
-import { THEME_INK } from "../src/lib/theme/appearance.js";
+import { THEME_INK } from "../src/lib/theme/themeIds.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const resDir = path.join(root, "android", "app", "src", "main", "res");

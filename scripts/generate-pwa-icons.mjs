@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import sharp from "sharp";
 import { renderMnemeMarkSvgForTheme } from "./render-mneme-mark-svg.mjs";
-import { THEME_IDS, THEME_INK, THEME_META_COLOR } from "../src/lib/theme/appearance.js";
+import { THEME_IDS, THEME_INK, THEME_META_COLOR } from "../src/lib/theme/themeIds.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const publicDir = path.join(root, "public");

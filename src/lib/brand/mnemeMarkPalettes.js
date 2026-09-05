@@ -8,7 +8,7 @@ import {
   THEME_GALAXIE,
   isDarkTheme,
   normalizeThemeId,
-} from "../theme/appearance.js";
+} from "../theme/themeIds.js";
 
 export const MNEME_MARK_PALETTES = {
   [THEME_INK]: {

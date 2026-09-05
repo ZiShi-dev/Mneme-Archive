@@ -1,6 +1,6 @@
 import { MNEME_MARK_PALETTES } from "../src/lib/brand/mnemeMarkPalettes.js";
 import { compassRosePath, sparklePath } from "../src/components/brand/mnemeMarkGeometry.js";
-import { THEME_INK } from "../src/lib/theme/appearance.js";
+import { THEME_INK } from "../src/lib/theme/themeIds.js";
 
 function renderMnemeMarkSvg(palette, size = 512) {
   const cx = 256;

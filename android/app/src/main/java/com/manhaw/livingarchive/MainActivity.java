@@ -135,12 +135,11 @@ public class MainActivity extends BridgeActivity {
         int buttonNavPx = (int) (40f * density + 0.5f);
         int navBottom = windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
         int gestureBottom = windowInsets.getInsets(WindowInsetsCompat.Type.systemGestures()).bottom;
-        int tappableBottom = windowInsets.getInsets(WindowInsetsCompat.Type.tappableElements()).bottom;
 
         if (navBottom >= buttonNavPx) {
             return "buttons";
         }
-        if (tappableBottom > gestureBottom + (int) (8f * density + 0.5f) && navBottom > gestureBottom) {
+        if (navBottom > gestureBottom + (int) (8f * density + 0.5f)) {
             return "buttons";
         }
         return "gesture";
