@@ -54,7 +54,7 @@ import { isNativeMobileApp } from "../../lib/platform/nativeAppLayout";
 import { liveReaderPrefetchOptions, prefetchReaderChapter } from "../../lib/reading/readerChapterCache.js";
 import { chapterMatchesQuery } from "../../lib/reading/chapterListQuery.js";
 import { useNovelDownloads } from "../../lib/downloads/useNovelDownloads.js";
-import { estimateNovelDownloadBatch } from "../../lib/downloads/estimateNovelDownloadSizeWithCache.js";
+import { estimateDownloadBatch } from "../../lib/downloads/chapterDownloadService.js";
 import { chapterRangeOptionLabel, sortChaptersAsc } from "../../lib/downloads/chapterDownloadRange.js";
 import {
   getNotificationPermissionStatus,
@@ -375,6 +375,8 @@ export function LiveMangaDetails({
   const presentation = getMediaPresentation(mediaType);
   const isNovel = presentation.isNovel;
   const isVideo = presentation.isVideo;
+  const supportsOfflineDownload = !isVideo;
+  const downloadMediaKey = isNovel ? "novel" : "manga";
   const resolvedChapterPageSize = resolveVideoDetailsChapterPageSize(sourceId, mediaType, chapterPageSize);
   const totalChapterPages = Math.max(1, Math.ceil(filteredChapters.length / resolvedChapterPageSize));
   const pagedChapters = filteredChapters.slice((chapterPage - 1) * resolvedChapterPageSize, chapterPage * resolvedChapterPageSize);
@@ -627,7 +629,7 @@ export function LiveMangaDetails({
         continueChapter={continueChapter}
         onOpenChapter={openChapter}
       />
-      {isNovel && chapters.length > 0 && (
+      {supportsOfflineDownload && chapters.length > 0 && (
         <button
           type="button"
           className="details-hub__download"
@@ -635,7 +637,7 @@ export function LiveMangaDetails({
           onClick={() => setDownloadSheetOpen(true)}
         >
           <Download size={16} aria-hidden="true" />
-          <span>{t("downloads.novel.openSheet")}</span>
+          <span>{t(`downloads.${downloadMediaKey}.openSheet`)}</span>
         </button>
       )}
     </>
@@ -646,27 +648,32 @@ export function LiveMangaDetails({
     () => filteredChapters.filter((chapter) => !isAzoraChapterBlocked(sourceId, chapter) && !chapter.locked),
     [filteredChapters, sourceId],
   );
-  const downloadMangaItem = useMemo(() => ({ ...item, sourceId, url: item.url }), [item, sourceId]);
+  const downloadMangaItem = useMemo(() => ({
+    ...item,
+    sourceId,
+    url: item.url,
+    mediaType: isNovel ? "novel" : "manga",
+  }), [item, isNovel, sourceId]);
 
   const chapterDownloadEstimate = useMemo(() => {
-    if (!isNovel || !downloadTargetChapter) return null;
-    return estimateNovelDownloadBatch(
+    if (!supportsOfflineDownload || !downloadTargetChapter) return null;
+    return estimateDownloadBatch(
       sourceId,
       [resolveChapter(downloadTargetChapter)],
       downloadMangaItem,
       novelDownloads.rawDownloads,
     );
-  }, [downloadMangaItem, downloadTargetChapter, isNovel, novelDownloads.rawDownloads, sourceId]);
+  }, [downloadMangaItem, downloadTargetChapter, novelDownloads.rawDownloads, sourceId, supportsOfflineDownload]);
 
   const allDownloadEstimate = useMemo(() => {
-    if (!isNovel || !downloadableChapters.length) return null;
-    return estimateNovelDownloadBatch(
+    if (!supportsOfflineDownload || !downloadableChapters.length) return null;
+    return estimateDownloadBatch(
       sourceId,
       downloadableChapters.map((chapter) => resolveChapter(chapter)),
       downloadMangaItem,
       novelDownloads.rawDownloads,
     );
-  }, [downloadMangaItem, downloadableChapters, isNovel, novelDownloads.rawDownloads, sourceId]);
+  }, [downloadMangaItem, downloadableChapters, novelDownloads.rawDownloads, sourceId, supportsOfflineDownload]);
 
   const resolvedDownloadableChapters = useMemo(
     () => downloadableChapters.map((chapter) => resolveChapter(chapter)),
@@ -678,7 +685,7 @@ export function LiveMangaDetails({
     if (!sorted.length) return "";
     const from = chapterRangeOptionLabel(sorted[0]);
     const to = chapterRangeOptionLabel(sorted[sorted.length - 1]);
-    return t("downloads.novel.confirmRangeSummary", {
+    return t(`downloads.${downloadMediaKey}.confirmRangeSummary`, {
       from,
       to,
       count: chapters.length,
@@ -687,14 +694,14 @@ export function LiveMangaDetails({
 
   function requestDownloadConfirm(chapters, mode = "chapter") {
     const resolved = chapters.map((chapter) => resolveChapter(chapter));
-    const estimate = estimateNovelDownloadBatch(
+    const estimate = estimateDownloadBatch(
       sourceId,
       resolved,
       downloadMangaItem,
       novelDownloads.rawDownloads,
     );
     if (estimate.pendingCount === 0) {
-      pushToast({ type: "info", message: t("downloads.novel.confirmAlreadySaved") });
+      pushToast({ type: "info", message: t(`downloads.${downloadMediaKey}.confirmAlreadySaved`) });
       return;
     }
     setDownloadConfirm({
@@ -714,16 +721,16 @@ export function LiveMangaDetails({
         await novelDownloads.downloadAll(downloadMangaItem, chapters);
         pushToast({
           type: "success",
-          message: mode === "range" ? t("downloads.novel.rangeSaved") : t("downloads.novel.allSaved"),
+          message: mode === "range" ? t(`downloads.${downloadMediaKey}.rangeSaved`) : t(`downloads.${downloadMediaKey}.allSaved`),
         });
         setDownloadSheetOpen(false);
       } else {
         await novelDownloads.downloadChapter(downloadMangaItem, chapters[0]);
-        pushToast({ type: "success", message: t("downloads.novel.chapterSaved") });
+        pushToast({ type: "success", message: t(`downloads.${downloadMediaKey}.chapterSaved`) });
         if (mode === "sheet-chapter") setDownloadSheetOpen(false);
       }
     } catch {
-      pushToast({ type: "error", message: t("downloads.novel.failed") });
+      pushToast({ type: "error", message: t(`downloads.${downloadMediaKey}.failed`) });
     }
   }
 
@@ -989,8 +996,9 @@ export function LiveMangaDetails({
             audioLanguage={audioLanguage}
             onOpenChapter={openChapter}
             onPrefetchChapter={prefetchChapter}
-            onDownloadChapter={isNovel ? handleDownloadListedChapter : undefined}
-            downloadedChapterUrls={isNovel ? novelDownloads.rawDownloads : null}
+            onDownloadChapter={supportsOfflineDownload ? handleDownloadListedChapter : undefined}
+            downloadedChapterUrls={supportsOfflineDownload ? novelDownloads.rawDownloads : null}
+            downloadMediaKey={downloadMediaKey}
             seriesUrl={item.url}
             chapterReadEntries={chapterReadEntries}
           />
@@ -1000,6 +1008,7 @@ export function LiveMangaDetails({
       <NovelDownloadSheet
         open={downloadSheetOpen}
         onClose={() => setDownloadSheetOpen(false)}
+        mediaKey={downloadMediaKey}
         onDownloadChapter={handleDownloadCurrentChapter}
         onDownloadAll={handleDownloadAllChapters}
         onDownloadRange={handleDownloadRange}
@@ -1016,6 +1025,7 @@ export function LiveMangaDetails({
       />
       <NovelDownloadConfirmDialog
         open={Boolean(downloadConfirm)}
+        mediaKey={downloadMediaKey}
         mode={downloadConfirm?.mode === "all"
           ? "all"
           : downloadConfirm?.mode === "range"

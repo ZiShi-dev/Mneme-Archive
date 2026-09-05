@@ -1731,7 +1731,7 @@ html.native-app[data-nav-mode="buttons"] .screen--home .page-header {
 html.native-app {
   --bottom-nav-height: 64px;
   --bottom-nav-bg: color-mix(in srgb, var(--surface, var(--paper)) 92%, transparent);
-  --screen-bottom-padding: calc(var(--bottom-nav-height) + var(--nav-offset-bottom) + var(--nav-inner-bottom) + 12px);
+  --screen-bottom-padding: calc(var(--bottom-nav-height) + var(--nav-inner-bottom) + 10px);
 }
 
 html.native-app.bottom-nav-hidden .bottom-nav {
@@ -1739,15 +1739,7 @@ html.native-app.bottom-nav-hidden .bottom-nav {
 }
 
 html.native-app[data-nav-mode="buttons"]::after {
-  content: "";
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: var(--safe-bottom, 0px);
-  background: var(--paper);
-  pointer-events: none;
-  z-index: 20;
+  content: none;
 }
 
 .native-app .bottom-nav {
@@ -1760,7 +1752,7 @@ html.native-app[data-nav-mode="buttons"]::after {
   margin: 0;
   transform: translateX(-50%);
   box-sizing: border-box;
-  padding: 5px 6px var(--nav-inner-bottom, max(8px, calc(var(--safe-bottom, 0px) + 6px)));
+  padding: 5px 6px var(--nav-inner-bottom, max(8px, calc(var(--safe-bottom, 0px) + 4px)));
   min-height: var(--bottom-nav-height);
   border-radius: 22px;
   border: 1px solid var(--bottom-nav-border);

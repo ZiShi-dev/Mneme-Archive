@@ -116,7 +116,7 @@ export function NotificationCenterScreen({
   });
 
   return (
-    <div className={`screen${isChromebookApp ? " screen--notify-desktop" : ""}`}>
+    <div className={`screen screen--notify${isChromebookApp ? " screen--notify-desktop" : ""}`}>
       {isChromebookApp ? (
         <header className="settings-desktop-head">
           <span className="eyebrow">{t("notify.centerEyebrow")}</span>
@@ -139,7 +139,7 @@ export function NotificationCenterScreen({
           <span className="notify-center-hero__icon" aria-hidden="true">
             {notificationsActive ? <BellRing size={16} /> : <Bell size={16} />}
           </span>
-          <div>
+          <div className="notify-center-hero__copy">
             <strong>{t(heroTitleKey)}</strong>
             <span>
               {t("notify.nFollowed", { count: followedItems.length })}
@@ -150,29 +150,31 @@ export function NotificationCenterScreen({
                 : ""}
             </span>
           </div>
-          <button
-            type="button"
-            className="notify-center-hero__feed"
-            onClick={async () => {
-              const result = await chapterFollow.syncFollowed({ silent: false });
-              if (result.events?.length) {
-                pushToast({ type: "success", message: t("notify.newFound", { count: result.events.length }) });
-                return;
-              }
-              if (result.errors?.length) {
-                pushToast({ type: "error", message: result.errors[0]?.message || t("notify.checkFailed") });
-                return;
-              }
-              pushToast({ type: "info", message: t("notify.noNewYet") });
-            }}
-            disabled={!notificationsActive || chapterFollow.syncing}
-          >
-            {chapterFollow.syncing ? t("notify.checking") : t("notify.checkNow")}
-          </button>
-          <button type="button" className="notify-center-hero__feed" onClick={() => navigate("updates")}>
-            {t("updates.title")}
-            <ArrowRight size={14} />
-          </button>
+          <div className="notify-center-hero__actions">
+            <button
+              type="button"
+              className="notify-center-hero__feed"
+              onClick={async () => {
+                const result = await chapterFollow.syncFollowed({ silent: false });
+                if (result.events?.length) {
+                  pushToast({ type: "success", message: t("notify.newFound", { count: result.events.length }) });
+                  return;
+                }
+                if (result.errors?.length) {
+                  pushToast({ type: "error", message: result.errors[0]?.message || t("notify.checkFailed") });
+                  return;
+                }
+                pushToast({ type: "info", message: t("notify.noNewYet") });
+              }}
+              disabled={!notificationsActive || chapterFollow.syncing}
+            >
+              {chapterFollow.syncing ? t("notify.checking") : t("notify.checkNow")}
+            </button>
+            <button type="button" className="notify-center-hero__feed" onClick={() => navigate("updates")}>
+              {t("updates.title")}
+              <ArrowRight size={14} />
+            </button>
+          </div>
         </section>
 
         <h2 className="settings-group-title">{t("notify.general")}</h2>

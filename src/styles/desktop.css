@@ -563,6 +563,28 @@ body.desktop-app {
   padding: 24px 36px 8px;
 }
 
+@media (min-width: 900px) {
+  .desktop-app .page-header:not(.page-header--brand) {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .desktop-app .page-header:not(.page-header--brand) .page-header__copy {
+    order: 1;
+    flex: 1 1 auto;
+    width: auto;
+  }
+
+  .desktop-app .page-header:not(.page-header--brand) .page-header__bar {
+    order: 2;
+    width: auto;
+    flex: 0 0 auto;
+    min-height: 0;
+  }
+}
+
 .desktop-app .content {
   box-sizing: border-box;
   width: 100%;
@@ -1260,6 +1282,19 @@ html[dir="ltr"] .desktop-app .live-catalog {
   margin-bottom: 20px;
   padding: 18px 20px;
   border-radius: 22px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "icon copy actions";
+  align-items: center;
+  gap: 14px;
+}
+
+.desktop-app .screen--notify-desktop .notify-center-hero__actions {
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+}
+
+.desktop-app .screen--notify-desktop .notify-center-hero__feed {
+  flex: 0 1 auto;
 }
 
 .desktop-app .screen--notify-desktop .notify-center-hero__icon {

@@ -928,9 +928,13 @@
 }
 
 .notify-center-hero {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "icon copy"
+    "actions actions";
+  align-items: start;
+  gap: 8px 10px;
   margin-bottom: 14px;
   padding: 12px 13px;
   border: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
@@ -940,6 +944,7 @@
 }
 
 .notify-center-hero__icon {
+  grid-area: icon;
   width: 34px;
   height: 34px;
   flex: 0 0 34px;
@@ -950,8 +955,8 @@
   background: color-mix(in srgb, var(--indigo) 8%, var(--white));
 }
 
-.notify-center-hero > div {
-  flex: 1;
+.notify-center-hero__copy {
+  grid-area: copy;
   min-width: 0;
   display: grid;
   gap: 2px;
@@ -964,6 +969,15 @@
 .notify-center-hero span {
   color: var(--muted);
   font: 400 12px/1.5 var(--font-sans, "Alexandria");
+  overflow-wrap: anywhere;
+}
+
+.notify-center-hero__actions {
+  grid-area: actions;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
 }
 
 .notify-center-hero__feed {
@@ -972,12 +986,17 @@
   color: var(--indigo);
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
   min-height: 34px;
   padding: 0 12px;
   border-radius: 999px;
   font: 600 12px/1.25 var(--font-sans, "Alexandria");
   cursor: pointer;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  white-space: nowrap;
 }
 
 .notify-center-global__chips {
@@ -998,6 +1017,8 @@
   background: color-mix(in srgb, var(--outside) 42%, transparent);
   color: var(--muted);
   font: 500 11px/1.35 var(--font-sans, "Alexandria");
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .notify-center-global__chips > span svg {

@@ -10,22 +10,23 @@ import {
   sliceChaptersInRange,
   sortChaptersAsc,
 } from "../../../lib/downloads/chapterDownloadRange.js";
-import { estimateNovelDownloadBatch } from "../../../lib/downloads/estimateNovelDownloadSizeWithCache.js";
+import { estimateDownloadBatch } from "../../../lib/downloads/chapterDownloadService.js";
 import { formatBytes, formatDataUsage } from "../../../lib/downloads/formatBytes";
 
-function formatEstimateHint(estimate, locale, t) {
+function formatEstimateHint(estimate, locale, t, mediaKey = "novel") {
   if (!estimate || estimate.pendingCount === 0) {
-    return t("downloads.novel.confirmAlreadySaved");
+    return t(`downloads.${mediaKey}.confirmAlreadySaved`);
   }
   const storage = formatBytes(estimate.storageBytes, locale);
   const data = formatDataUsage(estimate.dataBytes, locale);
-  const approx = estimate.precise ? "" : ` · ${t("downloads.novel.confirmApproximate")}`;
-  return t("downloads.novel.sheetSizeHint", { storage, data }) + approx;
+  const approx = estimate.precise ? "" : ` · ${t(`downloads.${mediaKey}.confirmApproximate`)}`;
+  return t(`downloads.${mediaKey}.sheetSizeHint`, { storage, data }) + approx;
 }
 
 export function NovelDownloadSheet({
   open,
   onClose,
+  mediaKey = "novel",
   onDownloadChapter,
   onDownloadAll,
   onDownloadRange,
@@ -73,17 +74,17 @@ export function NovelDownloadSheet({
     const toValue = rangeToNumber.trim();
     if (!fromValue && !toValue) return "";
     if (fromValue && !rangeFromChapter) {
-      return t("downloads.novel.rangeFromMissing", { number: fromValue });
+      return t(`downloads.${mediaKey}.rangeFromMissing`, { number: fromValue });
     }
     if (toValue && !rangeToChapter) {
-      return t("downloads.novel.rangeToMissing", { number: toValue });
+      return t(`downloads.${mediaKey}.rangeToMissing`, { number: toValue });
     }
     return "";
   }, [rangeFromChapter, rangeFromNumber, rangeToChapter, rangeToNumber, t]);
 
   const rangeEstimate = useMemo(() => {
     if (!selectedRangeChapters.length || !sourceId || !downloadItem) return null;
-    return estimateNovelDownloadBatch(
+    return estimateDownloadBatch(
       sourceId,
       selectedRangeChapters,
       downloadItem,
@@ -93,13 +94,13 @@ export function NovelDownloadSheet({
 
   if (!open) return null;
 
-  const chapterHint = formatEstimateHint(chapterEstimate, locale, t);
+  const chapterHint = formatEstimateHint(chapterEstimate, locale, t, mediaKey);
   const allHint = allEstimate?.pendingCount
-    ? formatEstimateHint(allEstimate, locale, t)
-    : t("downloads.novel.downloadAllHint");
+    ? formatEstimateHint(allEstimate, locale, t, mediaKey)
+    : t(`downloads.${mediaKey}.downloadAllHint`);
   const rangeHint = rangeError
     ? rangeError
-    : formatEstimateHint(rangeEstimate, locale, t);
+    : formatEstimateHint(rangeEstimate, locale, t, mediaKey);
   const canDownloadRange = !busy
     && !rangeError
     && rangeFromChapter
@@ -124,15 +125,15 @@ export function NovelDownloadSheet({
         >
           <header>
             <div>
-              <small>{t("downloads.novel.sheetEyebrow")}</small>
-              <h2 id="novel-download-sheet-title">{t("downloads.novel.sheetTitle")}</h2>
+              <small>{t(`downloads.${mediaKey}.sheetEyebrow`)}</small>
+              <h2 id="novel-download-sheet-title">{t(`downloads.${mediaKey}.sheetTitle`)}</h2>
             </div>
             <SheetCloseButton onClick={onClose} label={t("common.close")} />
           </header>
           <div className="notify-sheet__body novel-download-sheet__body">
             {progress ? (
               <p className="novel-download-sheet__progress" role="status">
-                {t("downloads.novel.batchProgress", { done: progress.completed, total: progress.total })}
+                {t(`downloads.${mediaKey}.batchProgress`, { done: progress.completed, total: progress.total })}
               </p>
             ) : null}
             <button
@@ -143,7 +144,7 @@ export function NovelDownloadSheet({
             >
               <Download size={18} aria-hidden="true" />
               <span>
-                <strong>{t("downloads.novel.downloadChapter")}</strong>
+                <strong>{t(`downloads.${mediaKey}.downloadChapter`)}</strong>
                 {chapterLabel ? <small>{chapterLabel}</small> : null}
                 <small>{chapterHint}</small>
               </span>
@@ -153,32 +154,32 @@ export function NovelDownloadSheet({
               <div className="novel-download-sheet__range">
                 <div className="novel-download-sheet__range-head">
                   <ListOrdered size={17} aria-hidden="true" />
-                  <strong>{t("downloads.novel.rangeTitle")}</strong>
+                  <strong>{t(`downloads.${mediaKey}.rangeTitle`)}</strong>
                 </div>
                 <div className="novel-download-sheet__range-fields">
                   <label className="novel-download-sheet__range-field">
-                    <span>{t("downloads.novel.rangeFrom")}</span>
+                    <span>{t(`downloads.${mediaKey}.rangeFrom`)}</span>
                     <input
                       type="text"
                       inputMode="decimal"
                       value={rangeFromNumber}
                       onChange={(event) => setRangeFromNumber(event.target.value)}
                       disabled={busy}
-                      placeholder={t("downloads.novel.rangeNumberPlaceholder")}
-                      aria-label={t("downloads.novel.rangeFrom")}
+                      placeholder={t(`downloads.${mediaKey}.rangeNumberPlaceholder`)}
+                      aria-label={t(`downloads.${mediaKey}.rangeFrom`)}
                       aria-invalid={Boolean(rangeFromNumber.trim() && !rangeFromChapter)}
                     />
                   </label>
                   <label className="novel-download-sheet__range-field">
-                    <span>{t("downloads.novel.rangeTo")}</span>
+                    <span>{t(`downloads.${mediaKey}.rangeTo`)}</span>
                     <input
                       type="text"
                       inputMode="decimal"
                       value={rangeToNumber}
                       onChange={(event) => setRangeToNumber(event.target.value)}
                       disabled={busy}
-                      placeholder={t("downloads.novel.rangeNumberPlaceholder")}
-                      aria-label={t("downloads.novel.rangeTo")}
+                      placeholder={t(`downloads.${mediaKey}.rangeNumberPlaceholder`)}
+                      aria-label={t(`downloads.${mediaKey}.rangeTo`)}
                       aria-invalid={Boolean(rangeToNumber.trim() && !rangeToChapter)}
                     />
                   </label>
@@ -187,11 +188,11 @@ export function NovelDownloadSheet({
                   {rangeError
                     ? rangeError
                     : selectedRangeChapters.length
-                      ? t("downloads.novel.rangeSelected", { count: selectedRangeChapters.length })
+                      ? t(`downloads.${mediaKey}.rangeSelected`, { count: selectedRangeChapters.length })
                         + (rangeFromChapter && rangeToChapter
                           ? ` · ${chapterRangeOptionLabel(rangeFromChapter)} → ${chapterRangeOptionLabel(rangeToChapter)}`
                           : "")
-                      : t("downloads.novel.rangeEnterNumbers")}
+                      : t(`downloads.${mediaKey}.rangeEnterNumbers`)}
                 </p>
                 <button
                   type="button"
@@ -201,7 +202,7 @@ export function NovelDownloadSheet({
                 >
                   <ListOrdered size={18} aria-hidden="true" />
                   <span>
-                    <strong>{t("downloads.novel.downloadRange")}</strong>
+                    <strong>{t(`downloads.${mediaKey}.downloadRange`)}</strong>
                     <small>{rangeHint}</small>
                   </span>
                 </button>
@@ -216,7 +217,7 @@ export function NovelDownloadSheet({
             >
               <Layers size={18} aria-hidden="true" />
               <span>
-                <strong>{t("downloads.novel.downloadAll")}</strong>
+                <strong>{t(`downloads.${mediaKey}.downloadAll`)}</strong>
                 <small>{allHint}</small>
               </span>
             </button>

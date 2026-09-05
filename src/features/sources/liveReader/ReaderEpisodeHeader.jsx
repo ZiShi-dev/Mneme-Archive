@@ -17,6 +17,7 @@ export function ReaderEpisodeHeader({
   onDownload,
   chapterDownloaded = false,
   chapterDownloading = false,
+  downloadMediaKey = "novel",
 }) {
   const { t, dir } = useI18n();
 
@@ -55,7 +56,7 @@ export function ReaderEpisodeHeader({
           className={`reader-episode-header__action${chapterDownloaded ? " is-downloaded" : ""}`}
           onClick={onDownload}
           disabled={!onDownload || chapterDownloading}
-          aria-label={chapterDownloaded ? t("downloads.novel.alreadySaved") : t("downloads.novel.downloadChapter")}
+          aria-label={chapterDownloaded ? t(`downloads.${downloadMediaKey}.alreadySaved`) : t(`downloads.${downloadMediaKey}.downloadChapter`)}
         >
           <Download size={15} aria-hidden="true" />
         </button>

@@ -25,6 +25,13 @@ CREATE TABLE IF NOT EXISTS image_cache (
 );
 
 CREATE INDEX IF NOT EXISTS idx_image_cache_fetched ON image_cache(fetched_at);
+
+CREATE TABLE IF NOT EXISTS image_cache_pins (
+  cache_key TEXT PRIMARY KEY NOT NULL,
+  download_id TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_image_cache_pins_download ON image_cache_pins(download_id);
 `;
 
 const DB_OPEN_TIMEOUT_MS = 12000;

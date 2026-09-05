@@ -8,6 +8,7 @@ import { formatBytes, formatDataUsage } from "../../../lib/downloads/formatBytes
 export function NovelDownloadConfirmDialog({
   open,
   mode = "chapter",
+  mediaKey = "novel",
   estimate,
   rangeSummary = "",
   onConfirm,
@@ -27,10 +28,10 @@ export function NovelDownloadConfirmDialog({
   if (!open || !estimate) return null;
 
   const title = mode === "all"
-    ? t("downloads.novel.confirmTitleAll")
+    ? t(`downloads.${mediaKey}.confirmTitleAll`)
     : mode === "range"
-      ? t("downloads.novel.confirmTitleRange")
-      : t("downloads.novel.confirmTitleChapter");
+      ? t(`downloads.${mediaKey}.confirmTitleRange`)
+      : t(`downloads.${mediaKey}.confirmTitleChapter`);
 
   return (
     <SheetPortal>
@@ -56,25 +57,25 @@ export function NovelDownloadConfirmDialog({
               <p className="novel-download-confirm__summary">
                 {mode === "range" && rangeSummary
                   ? rangeSummary
-                  : t("downloads.novel.confirmChapters", { count: estimate.pendingCount })}
+                  : t(`downloads.${mediaKey}.confirmChapters`, { count: estimate.pendingCount })}
               </p>
             ) : null}
             <div className="novel-download-confirm__row">
               <HardDrive size={16} aria-hidden="true" />
               <span className="novel-download-confirm__row-copy">
-                <span className="novel-download-confirm__row-label">{t("downloads.novel.confirmStorageLabel")}</span>
+                <span className="novel-download-confirm__row-label">{t(`downloads.${mediaKey}.confirmStorageLabel`)}</span>
                 <strong className="novel-download-confirm__row-value">{formatBytes(estimate.storageBytes, locale)}</strong>
               </span>
             </div>
             <div className="novel-download-confirm__row">
               <Wifi size={16} aria-hidden="true" />
               <span className="novel-download-confirm__row-copy">
-                <span className="novel-download-confirm__row-label">{t("downloads.novel.confirmDataLabel")}</span>
+                <span className="novel-download-confirm__row-label">{t(`downloads.${mediaKey}.confirmDataLabel`)}</span>
                 <strong className="novel-download-confirm__row-value">{formatDataUsage(estimate.dataBytes, locale)}</strong>
               </span>
             </div>
             {!estimate.precise ? (
-              <p className="novel-download-confirm__note">{t("downloads.novel.confirmApproximate")}</p>
+              <p className="novel-download-confirm__note">{t(`downloads.${mediaKey}.confirmApproximate`)}</p>
             ) : null}
           </div>
           <div className="confirm-dialog__actions">
@@ -82,7 +83,7 @@ export function NovelDownloadConfirmDialog({
               {t("common.cancel")}
             </button>
             <button type="button" className="confirm-dialog__confirm" onClick={onConfirm}>
-              {t("downloads.novel.confirmDownload")}
+              {t(`downloads.${mediaKey}.confirmDownload`)}
             </button>
           </div>
         </section>

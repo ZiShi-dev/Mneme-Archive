@@ -48,20 +48,24 @@ input:focus, input:focus-visible { outline: 0; box-shadow: none; }
 
 .screen { min-height: 100vh; padding-top: var(--screen-top-padding, 0px); padding-bottom: var(--screen-bottom-padding); }
 .screen--details { padding-bottom: max(20px, var(--safe-bottom)); }
-.page-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; box-sizing: border-box; width: 100%; padding: 28px var(--page-header-padding-x) 16px; }
-.page-header__title { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+.page-header { display: flex; flex-direction: column; align-items: stretch; gap: 10px; box-sizing: border-box; width: 100%; padding: 28px var(--page-header-padding-x) 16px; }
+.page-header--brand { flex-direction: column; gap: 12px; }
+.page-header__bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; min-height: 40px; }
+.page-header__title { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; min-width: 0; }
 .page-header__title > .icon-button { flex: 0 0 auto; align-self: center; }
 .page-header:not(.page-header--brand) .page-header__copy {
   display: flex;
   flex-direction: column;
   justify-content: center;
   gap: 3px;
+  width: 100%;
+  min-width: 0;
 }
 .page-header:not(.page-header--brand) h1 { margin: 0; }
-.page-header:not(.page-header--brand) .eyebrow { margin: 0; }
+.page-header:not(.page-header--brand) .eyebrow { margin: 0; overflow-wrap: anywhere; line-height: 1.35; }
 .page-header__copy { flex: 1; min-width: 0; }
 .page-header__mark { flex: 0 0 auto; border-radius: 11px; }
-.page-header h1 { font: 800 24px/1.15 "Shippori Mincho"; letter-spacing: -.035em; }
+.page-header h1 { font: 800 24px/1.15 "Shippori Mincho"; letter-spacing: -.035em; overflow-wrap: normal; word-break: normal; }
 .eyebrow { font: 700 9px/1 "Zen Kaku Gothic New"; letter-spacing: .16em; color: var(--muted); }
 .header-actions { display: flex; gap: 8px; flex-shrink: 0; }
 .icon-button { border: 1px solid var(--line); background: var(--white); width: 40px; height: 40px; display: grid; place-items: center; border-radius: 13px; cursor: pointer; position: relative; }

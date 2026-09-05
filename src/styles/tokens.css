@@ -62,7 +62,7 @@
   --bottom-nav-height: 80px;
   --nav-dock: bottom;
   --screen-top-padding: 0px;
-  --screen-bottom-padding: calc(var(--bottom-nav-height) + var(--nav-offset-bottom) + var(--nav-inner-bottom) + 16px);
+  --screen-bottom-padding: calc(var(--bottom-nav-height) + var(--nav-inner-bottom) + 12px);
   --bottom-nav-bg: color-mix(in srgb, var(--paper) 88%, transparent);
   --bottom-nav-border: color-mix(in srgb, var(--line) 72%, transparent);
   --bottom-nav-shadow: 0 -10px 40px color-mix(in srgb, var(--ink) 8%, transparent);
@@ -507,8 +507,8 @@ html:not([data-theme="nuit"]) .app-shell--dark,
 }
 
 html[data-nav-mode="buttons"] {
-  --nav-offset-bottom: var(--safe-bottom, 0px);
-  --nav-inner-bottom: 8px;
+  --nav-offset-bottom: 0px;
+  --nav-inner-bottom: max(8px, calc(var(--safe-bottom, 0px) + 4px));
   --video-bottom-safe: max(8px, var(--app-safe-area-bottom, 0px));
 }
 
@@ -519,8 +519,8 @@ html[data-nav-mode="gesture"] {
 }
 
 html.native-app:not([data-nav-mode="gesture"]) {
-  --nav-offset-bottom: var(--safe-bottom, 0px);
-  --nav-inner-bottom: 8px;
+  --nav-offset-bottom: 0px;
+  --nav-inner-bottom: max(8px, calc(var(--safe-bottom, 0px) + 4px));
 }
 
 html.native-app {

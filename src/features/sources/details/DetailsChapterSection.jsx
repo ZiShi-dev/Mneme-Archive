@@ -40,6 +40,7 @@ function ChapterListRow({
   onDownload,
   downloaded = false,
   downloading = false,
+  downloadMediaKey = "novel",
   presentation,
   activeAudioLanguage = "",
   chapterReadEntries = [],
@@ -118,7 +119,7 @@ function ChapterListRow({
             event.stopPropagation();
             onDownload(chapter);
           }}
-          aria-label={downloaded ? t("downloads.novel.alreadySaved") : t("downloads.novel.downloadChapter")}
+          aria-label={downloaded ? t(`downloads.${downloadMediaKey}.alreadySaved`) : t(`downloads.${downloadMediaKey}.downloadChapter`)}
         >
           <Download size={15} aria-hidden="true" />
         </button>
@@ -154,6 +155,7 @@ export function DetailsChapterSection({
   onPrefetchChapter,
   onDownloadChapter,
   downloadedChapterUrls = null,
+  downloadMediaKey = "novel",
   seriesUrl = "",
   chapterReadEntries = [],
 }) {
@@ -220,6 +222,7 @@ export function DetailsChapterSection({
                   onDownload={onDownloadChapter}
                   downloaded={onDownloadChapter ? isChapterOfflineStatus(downloadedChapterUrls, sourceId, seriesUrl, chapter.url) : false}
                   downloading={false}
+                  downloadMediaKey={downloadMediaKey}
                   presentation={presentation}
                   activeAudioLanguage={audioLanguage}
                   chapterReadEntries={chapterReadEntries}

@@ -35,7 +35,7 @@ import {
   resolveOpenChapter,
 } from "../lib/downloads/downloadsModel";
 import { formatBytes } from "../lib/downloads/formatBytes";
-import { loadOfflinePrefetch, removeNovelDownload } from "../lib/downloads/novelDownloadService.js";
+import { loadOfflinePrefetch, removeOfflineDownload } from "../lib/downloads/chapterDownloadService.js";
 
 const STATUS_ICONS = {
   complete: CheckCircle2,
@@ -200,7 +200,7 @@ export function DownloadsScreen({
     const chapter = resolveOpenChapter(item);
     const liveItem = buildLiveItemFromDownload(item);
     if (chapter?.url) {
-      const prefetchData = item.mediaType === "novel"
+      const prefetchData = item.mediaType === "novel" || item.mediaType === "manga"
         ? await loadOfflinePrefetch(liveItem, chapter)
         : null;
       openLiveReader(liveItem, {
@@ -225,15 +225,15 @@ export function DownloadsScreen({
     if (!confirmAction) return;
     if (confirmAction.type === "remove") {
       const item = scopedItems.find((entry) => entry.id === confirmAction.id);
-      if (item?.mediaType === "novel") {
-        await removeNovelDownload(item);
+      if (item?.mediaType === "novel" || item?.mediaType === "manga") {
+        await removeOfflineDownload(item);
       }
       setRawDownloads((current) => removeDownloadItem(current, confirmAction.id));
       pushToast({ type: "success", message: t("downloads.removed") });
     }
     if (confirmAction.type === "clear") {
-      for (const item of scopedItems.filter((entry) => entry.mediaType === "novel")) {
-        await removeNovelDownload(item);
+      for (const item of scopedItems.filter((entry) => entry.mediaType === "novel" || entry.mediaType === "manga")) {
+        await removeOfflineDownload(item);
       }
       setRawDownloads(clearDownloads(normalizeDownloads(rawDownloads)));
       pushToast({ type: "success", message: t("downloads.cleared") });

@@ -8,10 +8,10 @@ import {
   removeDownloadItem,
 } from "./downloadsModel.js";
 import {
-  downloadAllNovelChapters,
-  downloadNovelChapter,
-  removeNovelDownload,
-} from "./novelDownloadService.js";
+  downloadAllChapters,
+  downloadChapter as downloadChapterOffline,
+  removeOfflineDownload,
+} from "./chapterDownloadService.js";
 
 export function useNovelDownloads() {
   const [rawDownloads, setRawDownloads] = usePersistedState(DOWNLOADS_STORAGE_KEY, EMPTY_DOWNLOADS);
@@ -25,7 +25,7 @@ export function useNovelDownloads() {
   const downloadChapter = useCallback(async (item, chapter) => {
     setBusy(true);
     try {
-      await downloadNovelChapter(item, chapter, { onStoreUpdate: refreshDownloads });
+      await downloadChapterOffline(item, chapter, { onStoreUpdate: refreshDownloads });
     } finally {
       setBusy(false);
     }
@@ -35,7 +35,7 @@ export function useNovelDownloads() {
     setBusy(true);
     setBatchProgress({ completed: 0, total: chapters.length });
     try {
-      await downloadAllNovelChapters(item, chapters, {
+      await downloadAllChapters(item, chapters, {
         onStoreUpdate: refreshDownloads,
         onProgress: ({ completed, total }) => {
           setBatchProgress({ completed, total });
@@ -48,7 +48,7 @@ export function useNovelDownloads() {
   }, [refreshDownloads]);
 
   const removeDownload = useCallback(async (downloadItem) => {
-    await removeNovelDownload(downloadItem);
+    await removeOfflineDownload(downloadItem);
     setRawDownloads((current) => removeDownloadItem(current, downloadItem.id));
   }, [setRawDownloads]);
 

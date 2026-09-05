@@ -36,6 +36,14 @@ export function isOfflineNovelChapter(data) {
   return data?.kind === "novel" && Array.isArray(data.paragraphs) && data.paragraphs.length > 0;
 }
 
+export function isOfflineMangaChapter(data) {
+  return data?.kind === "manga" && Array.isArray(data.pages) && data.pages.length > 0;
+}
+
+export function isOfflineChapter(data) {
+  return isOfflineNovelChapter(data) || isOfflineMangaChapter(data);
+}
+
 export async function saveOfflineChapter(cacheKey, downloadId, payload) {
   const database = await openOfflineDb();
   return new Promise((resolve, reject) => {
@@ -64,7 +72,7 @@ export async function getOfflineChapter(cacheKey) {
       request.onerror = () => reject(request.error);
     });
     const data = entry?.data;
-    return isOfflineNovelChapter(data) ? data : null;
+    return isOfflineChapter(data) ? data : null;
   } catch {
     return null;
   }

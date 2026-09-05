@@ -1,5 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 import { Directory, Filesystem } from "@capacitor/filesystem";
+import { normalizeRemoteImageUrl } from "../../features/sources/coverDisplay.js";
 import {
   ALLOWED_IMAGE_TYPES,
   IMAGE_CACHE_DIR,
@@ -18,6 +19,13 @@ import { t } from "../../i18n/runtime.js";
 const memoryObjectUrls = new Map();
 const IDB_NAME = "living_archive_images";
 const IDB_STORE = "images";
+
+export async function buildImageCacheKey(sourceId, remoteUrl) {
+  const normalized = normalizeRemoteImageUrl(remoteUrl);
+  if (!normalized || normalized.startsWith("data:image/")) return null;
+  if (!isAllowedImageUrl(normalized)) return null;
+  return sha256Hex(`${sourceId}|${normalized}`);
+}
 
 function arrayBufferToBase64(buffer) {
   const bytes = new Uint8Array(buffer);
@@ -93,6 +101,37 @@ async function listWebCacheEntries() {
     request.onsuccess = () => resolve(request.result || []);
     request.onerror = () => reject(request.error);
   });
+}
+
+async function listPinnedNativeKeys() {
+  const result = await dbQuery("SELECT cache_key FROM image_cache_pins");
+  return new Set((result?.values || []).map((row) => row.cache_key));
+}
+
+async function pinNativeCacheKeys(cacheKeys, downloadId) {
+  if (!downloadId || !cacheKeys.length) return;
+  for (const cacheKey of cacheKeys) {
+    if (!cacheKey) continue;
+    await dbRun(
+      "INSERT OR REPLACE INTO image_cache_pins (cache_key, download_id) VALUES (?, ?)",
+      [cacheKey, downloadId],
+    );
+  }
+}
+
+async function listNativePinnedEntries(downloadId) {
+  const result = await dbQuery(
+    `SELECT p.cache_key, c.local_path
+     FROM image_cache_pins p
+     LEFT JOIN image_cache c ON c.cache_key = p.cache_key
+     WHERE p.download_id = ?`,
+    [downloadId],
+  );
+  return result?.values || [];
+}
+
+async function clearNativeCachePins() {
+  await dbRun("DELETE FROM image_cache_pins");
 }
 
 async function getNativeCacheEntry(cacheKey) {
@@ -178,28 +217,51 @@ function validateFetchedImage(contentType, sizeBytes) {
 }
 
 async function evictNativeIfNeeded() {
-  const entries = await listNativeCacheEntries();
+  const pinnedKeys = await listPinnedNativeKeys();
+  const entries = (await listNativeCacheEntries()).filter((entry) => !pinnedKeys.has(entry.cache_key));
   let totalBytes = entries.reduce((sum, entry) => sum + Number(entry.size_bytes || 0), 0);
-  while (entries.length > MAX_IMAGE_CACHE_ENTRIES || totalBytes > MAX_IMAGE_CACHE_BYTES) {
+  const allEntries = await listNativeCacheEntries();
+  const pinnedBytes = allEntries
+    .filter((entry) => pinnedKeys.has(entry.cache_key))
+    .reduce((sum, entry) => sum + Number(entry.size_bytes || 0), 0);
+  let evictableCount = entries.length;
+  while (
+    (evictableCount + pinnedKeys.size > MAX_IMAGE_CACHE_ENTRIES
+      || totalBytes + pinnedBytes > MAX_IMAGE_CACHE_BYTES)
+    && evictableCount > 0
+  ) {
     const oldest = entries.shift();
     if (!oldest) break;
     revokeObjectUrl(oldest.cache_key);
     await deleteNativeCacheEntry(oldest.cache_key);
     await removeNativeFile(oldest.local_path);
     totalBytes -= Number(oldest.size_bytes || 0);
+    evictableCount -= 1;
   }
 }
 
 async function evictWebIfNeeded() {
-  const entries = await listWebCacheEntries();
-  entries.sort((a, b) => (a.fetchedAt || 0) - (b.fetchedAt || 0));
+  const entries = (await listWebCacheEntries())
+    .filter((entry) => !entry.pinnedBy)
+    .sort((a, b) => (a.fetchedAt || 0) - (b.fetchedAt || 0));
   let totalBytes = entries.reduce((sum, entry) => sum + Number(entry.sizeBytes || 0), 0);
-  while (entries.length > MAX_IMAGE_CACHE_ENTRIES || totalBytes > MAX_IMAGE_CACHE_BYTES) {
+  const allEntries = await listWebCacheEntries();
+  const pinnedBytes = allEntries
+    .filter((entry) => entry.pinnedBy)
+    .reduce((sum, entry) => sum + Number(entry.sizeBytes || 0), 0);
+  let evictableCount = entries.length;
+  const pinnedCount = allEntries.filter((entry) => entry.pinnedBy).length;
+  while (
+    (evictableCount + pinnedCount > MAX_IMAGE_CACHE_ENTRIES
+      || totalBytes + pinnedBytes > MAX_IMAGE_CACHE_BYTES)
+    && evictableCount > 0
+  ) {
     const oldest = entries.shift();
     if (!oldest) break;
     revokeObjectUrl(oldest.cacheKey);
     await deleteWebCacheEntry(oldest.cacheKey);
     totalBytes -= Number(oldest.sizeBytes || 0);
+    evictableCount -= 1;
   }
 }
 
@@ -290,11 +352,11 @@ export async function resolveCachedImage(sourceId, remoteUrl, fetchImage) {
   memoryObjectUrls.set(cacheKey, objectUrl);
 
   if (isNativeStorage()) {
-    void writeNativeCache(cacheKey, sourceId, remoteUrl, buffer, contentType).catch(() => {});
+    await writeNativeCache(cacheKey, sourceId, remoteUrl, buffer, contentType);
     return objectUrl;
   }
   if (typeof indexedDB !== "undefined") {
-    void writeWebCacheEntry({
+    await writeWebCacheEntry({
       cacheKey,
       sourceId,
       remoteUrl,
@@ -302,11 +364,58 @@ export async function resolveCachedImage(sourceId, remoteUrl, fetchImage) {
       contentType,
       sizeBytes: buffer.byteLength,
       fetchedAt: Date.now(),
-    }).then(() => evictWebIfNeeded()).catch(() => {});
+    });
+    await evictWebIfNeeded();
     return objectUrl;
   }
 
   return objectUrl;
+}
+
+export async function pinCachedImages(sourceId, remoteUrls, downloadId) {
+  if (!downloadId || !Array.isArray(remoteUrls) || !remoteUrls.length) return;
+  const cacheKeys = [];
+  for (const remoteUrl of remoteUrls) {
+    const cacheKey = await buildImageCacheKey(sourceId, remoteUrl);
+    if (cacheKey) cacheKeys.push(cacheKey);
+  }
+  if (!cacheKeys.length) return;
+
+  if (isNativeStorage()) {
+    await pinNativeCacheKeys(cacheKeys, downloadId);
+    return;
+  }
+  if (typeof indexedDB !== "undefined") {
+    for (const cacheKey of cacheKeys) {
+      const entry = await readWebCacheEntry(cacheKey);
+      if (!entry) continue;
+      await writeWebCacheEntry({ ...entry, pinnedBy: downloadId });
+    }
+  }
+}
+
+export async function deletePinnedImagesForDownload(downloadId) {
+  if (!downloadId) return;
+
+  if (isNativeStorage()) {
+    const rows = await listNativePinnedEntries(downloadId);
+    for (const row of rows) {
+      revokeObjectUrl(row.cache_key);
+      await deleteNativeCacheEntry(row.cache_key);
+      if (row.local_path) await removeNativeFile(row.local_path);
+    }
+    await dbRun("DELETE FROM image_cache_pins WHERE download_id = ?", [downloadId]);
+    return;
+  }
+
+  if (typeof indexedDB !== "undefined") {
+    const entries = await listWebCacheEntries();
+    for (const entry of entries) {
+      if (entry.pinnedBy !== downloadId) continue;
+      revokeObjectUrl(entry.cacheKey);
+      await deleteWebCacheEntry(entry.cacheKey);
+    }
+  }
 }
 
 export async function clearImageCache() {
@@ -319,6 +428,7 @@ export async function clearImageCache() {
       await deleteNativeCacheEntry(entry.cache_key);
       await removeNativeFile(entry.local_path);
     }));
+    await clearNativeCachePins();
     return;
   }
   if (typeof indexedDB !== "undefined") {

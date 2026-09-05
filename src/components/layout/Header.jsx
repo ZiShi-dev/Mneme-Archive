@@ -82,22 +82,28 @@ export function Header({
 
   return (
     <header className="page-header">
-      <div className="page-header__title">
-        {onBack && <button className="icon-button" onClick={onBack} aria-label={t("common.back")}><ArrowRight size={20} /></button>}
-        <div className="page-header__copy">
-          {eyebrow && <span className="eyebrow">{eyebrow}</span>}
-          <h1>{title}</h1>
+      <div className="page-header__bar">
+        <div className="page-header__title">
+          {onBack && (
+            <button className="icon-button" onClick={onBack} aria-label={t("common.back")}>
+              <ArrowRight size={20} />
+            </button>
+          )}
         </div>
+        {showActions && (
+          <HeaderActions
+            onReadingHistory={onReadingHistory}
+            onDownloads={onDownloads}
+            onSearch={onSearch}
+            onNotifications={onNotifications}
+            t={t}
+          />
+        )}
       </div>
-      {showActions && (
-        <HeaderActions
-          onReadingHistory={onReadingHistory}
-          onDownloads={onDownloads}
-          onSearch={onSearch}
-          onNotifications={onNotifications}
-          t={t}
-        />
-      )}
+      <div className="page-header__copy">
+        {eyebrow && <span className="eyebrow">{eyebrow}</span>}
+        <h1>{title}</h1>
+      </div>
     </header>
   );
 }
