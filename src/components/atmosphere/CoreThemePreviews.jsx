@@ -60,3 +60,11 @@ export function PaperThemePreview() {
     </div>
   );
 }
+
+export function NuitThemePreview() {
+  return (
+    <div className="nuit-preview" aria-hidden="true">
+      <div className="nuit-preview__surface" />
+    </div>
+  );
+}

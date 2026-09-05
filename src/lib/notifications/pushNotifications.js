@@ -25,6 +25,7 @@ export function isWebNotificationsSupported() {
 export function isSystemNotificationsAvailable() {
   if (isNativeNotificationsAvailable()) return true;
   if (isElectronApp() && isWebNotificationsSupported()) return true;
+  if (isWebNotificationsSupported()) return true;
   return isChromebookApp && isWebNotificationsSupported();
 }
 

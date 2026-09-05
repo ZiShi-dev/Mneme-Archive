@@ -10,6 +10,8 @@
 @import "./styles/management.css";
 @import "./styles/favorites.css";
 @import "./styles/reading-history.css";
+@import "./styles/downloads.css";
+@import "./styles/novel-downloads.css";
 @import "./styles/search-results.css";
 @import "./styles/home.css";
 @import "./styles/surfaces.css";
@@ -19,6 +21,7 @@
 @import "./styles/sakura.css";
 @import "./styles/yozakura.css";
 @import "./styles/lune-neige.css";
+@import "./styles/nuit.css";
 @import "./styles/galaxie.css";
 @import "./styles/theme-atmospheres.css";
 @import "./styles/typeface.css";

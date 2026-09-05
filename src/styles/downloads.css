@@ -1,0 +1,366 @@
+/* ── Téléchargements (tous thèmes via tokens sémantiques) ── */
+.downloads-page {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--content-max-width, 100%);
+  margin-inline: auto;
+  min-width: 0;
+  overflow-x: clip;
+  padding-bottom: 112px;
+}
+
+.downloads-hero {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  grid-template-areas:
+    "icon copy"
+    "stats stats";
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--brand) 20%, var(--line));
+  border-radius: var(--radius-sheet, 18px);
+  background: linear-gradient(
+    155deg,
+    color-mix(in srgb, var(--brand) 8%, var(--white)),
+    var(--white) 58%,
+    color-mix(in srgb, var(--brand-warm, var(--brand)) 4%, var(--white))
+  );
+}
+
+.downloads-hero__glow {
+  position: absolute;
+  top: -40%;
+  inset-inline-start: -10%;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--brand) 18%, transparent), transparent 70%);
+  pointer-events: none;
+}
+
+.downloads-hero__icon {
+  grid-area: icon;
+  align-self: start;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 10%, var(--white));
+}
+
+.downloads-hero__copy {
+  grid-area: copy;
+  min-width: 0;
+}
+
+.downloads-hero__copy h2 {
+  margin: 0;
+  color: var(--ink);
+  font: 700 17px/1.4 var(--font-display, "Reem Kufi", "Alexandria");
+  overflow-wrap: anywhere;
+}
+
+.downloads-hero__copy p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font: 500 13px/1.55 var(--font-sans, "Alexandria");
+  overflow-wrap: anywhere;
+}
+
+.downloads-hero__stats {
+  grid-area: stats;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
+.downloads-hero__stats > span {
+  display: grid;
+  gap: 3px;
+  justify-items: center;
+  min-width: 0;
+  padding: 8px 4px;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--white) 72%, transparent);
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  text-align: center;
+}
+
+.downloads-hero__stats svg {
+  color: var(--brand);
+}
+
+.downloads-hero__stats strong {
+  color: var(--ink);
+  font: 700 16px/1 "Fragment Mono", monospace;
+}
+
+.downloads-hero__stats small {
+  color: var(--muted);
+  font: 500 11px/1.35 var(--font-sans, "Alexandria");
+  overflow-wrap: anywhere;
+}
+
+.downloads-controls {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.downloads-controls__search {
+  height: 44px;
+  min-width: 0;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--muted);
+  box-shadow: none;
+}
+
+.downloads-controls__search input {
+  color: var(--ink);
+  font: 400 13px/1.4 var(--font-sans, "Alexandria");
+}
+
+.downloads-controls__search .accessible-search__icon {
+  width: 18px;
+  height: 18px;
+  color: var(--brand);
+}
+
+.downloads-controls__status,
+.downloads-controls__types {
+  min-height: 36px;
+}
+
+.downloads-controls__reset {
+  justify-self: start;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--brand) 10%, var(--paper));
+  color: var(--brand);
+  font: 600 12px/1 var(--font-sans, "Alexandria");
+  cursor: pointer;
+}
+
+.downloads-list {
+  display: grid;
+  gap: 10px;
+}
+
+.downloads-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: stretch;
+  border: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--ink) 2%, var(--white));
+  overflow: hidden;
+}
+
+.downloads-row--downloading {
+  border-color: color-mix(in srgb, var(--brand) 28%, var(--line));
+}
+
+.downloads-row--failed {
+  border-color: color-mix(in srgb, var(--danger, #e35d6a) 30%, var(--line));
+}
+
+.downloads-row__main {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 10px 10px 10px 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.downloads-row__main:disabled {
+  cursor: default;
+  opacity: 0.92;
+}
+
+.downloads-row__cover {
+  width: 56px;
+  height: 76px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.downloads-row__cover.remote-cover--video {
+  height: 56px;
+}
+
+.downloads-row__copy {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.downloads-row__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--muted);
+  font: 500 10px/1.2 var(--font-sans, "Alexandria");
+}
+
+.downloads-row__meta em {
+  font-style: normal;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  background: color-mix(in srgb, var(--paper) 80%, transparent);
+}
+
+.downloads-row__copy strong {
+  color: var(--ink);
+  font: 700 13px/1.35 var(--font-sans, "Alexandria");
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.downloads-row__details {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font: 500 11px/1.3 var(--font-sans, "Alexandria");
+}
+
+.downloads-row__status-icon--spin {
+  animation: downloads-spin 1s linear infinite;
+}
+
+@keyframes downloads-spin {
+  to { transform: rotate(360deg); }
+}
+
+.downloads-row__progress {
+  display: block;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--line) 70%, transparent);
+  overflow: hidden;
+}
+
+.downloads-row__progress-bar {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--brand) 80%, transparent),
+    var(--brand)
+  );
+}
+
+.downloads-row__main > svg:last-child {
+  color: var(--muted);
+}
+
+.downloads-row__delete {
+  width: 44px;
+  border: 0;
+  border-inline-start: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  background: color-mix(in srgb, var(--danger, #e35d6a) 6%, var(--paper));
+  color: color-mix(in srgb, var(--danger, #e35d6a) 82%, var(--ink));
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.downloads-footer {
+  display: flex;
+  justify-content: center;
+  margin-top: 18px;
+}
+
+.downloads-footer__clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid color-mix(in srgb, var(--danger, #e35d6a) 28%, var(--line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--danger, #e35d6a) 8%, var(--paper));
+  color: color-mix(in srgb, var(--danger, #e35d6a) 82%, var(--ink));
+  font: 600 12px/1 var(--font-sans, "Alexandria");
+  cursor: pointer;
+}
+
+/* Thèmes sombres — hero et cartes lisibles sur fond atmosphérique */
+.app-shell--dark .downloads-hero,
+[data-theme="yozakura"] .downloads-hero,
+[data-theme="lune-neige"] .downloads-hero,
+[data-theme="galaxie"] .downloads-hero,
+[data-theme="ink"] .downloads-hero {
+  background: linear-gradient(
+    155deg,
+    color-mix(in srgb, var(--brand) 12%, var(--paper)),
+    var(--paper) 55%,
+    color-mix(in srgb, var(--brand) 6%, var(--surface, var(--paper)))
+  );
+}
+
+.app-shell--dark .downloads-row,
+[data-theme="yozakura"] .downloads-row,
+[data-theme="lune-neige"] .downloads-row,
+[data-theme="galaxie"] .downloads-row,
+[data-theme="ink"] .downloads-row {
+  background: color-mix(in srgb, var(--surface, var(--paper)) 88%, transparent);
+}
+
+.app-shell--dark .downloads-controls__search,
+[data-theme="yozakura"] .downloads-controls__search,
+[data-theme="lune-neige"] .downloads-controls__search,
+[data-theme="galaxie"] .downloads-controls__search,
+[data-theme="ink"] .downloads-controls__search {
+  background: color-mix(in srgb, var(--surface, var(--paper)) 90%, transparent);
+}
+
+@media (max-width: 380px) {
+  .downloads-hero__stats {
+    grid-template-columns: 1fr;
+  }
+
+  .downloads-row__main {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .downloads-row__cover {
+    width: 48px;
+    height: 64px;
+  }
+
+  .downloads-row__cover.remote-cover--video {
+    height: 48px;
+  }
+}
+
+@media (min-width: 768px) {
+  .screen--downloads-desktop .downloads-page {
+    padding-bottom: 48px;
+  }
+}

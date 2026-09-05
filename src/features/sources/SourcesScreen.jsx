@@ -717,7 +717,7 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
 
   return (
     <div className="screen screen--discover">
-      <Header title={t("home.discover")} eyebrow={t("sources.catalogOf", { name: profile.name })} onSearch={() => navigate("search")} onReadingHistory={() => navigate("reading-history")} onNotifications={() => navigate("updates")} />
+      <Header title={t("home.discover")} eyebrow={t("sources.catalogOf", { name: profile.name })} onSearch={() => navigate("search")} onReadingHistory={() => navigate("reading-history")} onDownloads={() => navigate("downloads")} onNotifications={() => navigate("updates")} />
       <main className="content live-catalog">
         <CatalogSourceToolbar
           sources={sources}

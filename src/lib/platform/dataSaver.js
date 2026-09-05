@@ -20,6 +20,17 @@ export function allowsHeavyNetworkUse(settings = getRuntimeSettings()) {
   return !isMeteredConnection();
 }
 
+/** Lightweight follow checks — more permissive than image/preload traffic on native. */
+export function allowsFollowSyncNetworkUse(settings = getRuntimeSettings()) {
+  if (isBrowserSaveDataEnabled()) return false;
+  const { connected, connectionType } = getNetworkStatus();
+  if (connected === false) return false;
+  if (settings.wifi === false) return true;
+  // Android often reports "unknown" even on Wi-Fi — don't block chapter checks.
+  if (!connectionType || connectionType === "unknown") return true;
+  return !isMeteredConnection();
+}
+
 export function allowsSpeculativePrefetch(settings = getRuntimeSettings()) {
   return allowsHeavyNetworkUse(settings);
 }

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  allowsFollowSyncNetworkUse,
   allowsHeavyNetworkUse,
   allowsSpeculativePrefetch,
   getMeteredNetworkLimits,
@@ -10,6 +11,7 @@ import {
 
 test("allowsHeavyNetworkUse always allows traffic when wifi-only is disabled", () => {
   assert.equal(allowsHeavyNetworkUse({ wifi: false }), true);
+  assert.equal(allowsFollowSyncNetworkUse({ wifi: false }), true);
   assert.equal(allowsSpeculativePrefetch({ wifi: false }), true);
 });
 

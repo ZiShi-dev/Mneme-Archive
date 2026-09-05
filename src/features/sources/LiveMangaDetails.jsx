@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useDeferredValue, useMemo, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
-import { ArrowRight, Bell, BellRing, Bookmark, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ExternalLink, Languages, RefreshCw, Wifi } from "lucide-react";
+import { ArrowRight, Bell, BellRing, Bookmark, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, ExternalLink, Languages, RefreshCw, Wifi } from "lucide-react";
 import { useToast } from "../../components/ui/ToastProvider";
 import { getSourceProfile, resolveSourceId } from "../../config/sources";
 import { isChromebookApp, isNotifiableMediaType, PREFERRED_AUDIO_LANGUAGE } from "../../config/appFlavor";
@@ -42,7 +42,7 @@ import {
   isChapterWithinNewWindow,
   parseChapterPublishedAt,
 } from "../../lib/media/chapterTiming";
-import { isAzoraChapterBlocked, isAzoraFlySource } from "../../lib/media/chapterLock";
+import { isAzoraChapterBlocked, isAzoraFlySource, normalizeRealmChapterList } from "../../lib/media/chapterLock";
 import { VideoServerSheet } from "./liveVideo/VideoServerSheet";
 import { formatUniqueServerLabels } from "./liveVideo/constants";
 import { playbackSourcesFromChapterData } from "./liveVideo/videoPlaybackCache";
@@ -53,6 +53,16 @@ import { usePullToRefresh } from "../../hooks/usePullToRefresh";
 import { isNativeMobileApp } from "../../lib/platform/nativeAppLayout";
 import { liveReaderPrefetchOptions, prefetchReaderChapter } from "../../lib/reading/readerChapterCache.js";
 import { chapterMatchesQuery } from "../../lib/reading/chapterListQuery.js";
+import { useNovelDownloads } from "../../lib/downloads/useNovelDownloads.js";
+import { estimateNovelDownloadBatch } from "../../lib/downloads/estimateNovelDownloadSizeWithCache.js";
+import { chapterRangeOptionLabel, sortChaptersAsc } from "../../lib/downloads/chapterDownloadRange.js";
+import {
+  getNotificationPermissionStatus,
+  isSystemNotificationsAvailable,
+  requestNotificationPermission,
+} from "../../lib/notifications/pushNotifications.js";
+import { NovelDownloadSheet } from "./details/NovelDownloadSheet";
+import { NovelDownloadConfirmDialog } from "./details/NovelDownloadConfirmDialog";
 
 const chapterPageSize = 20;
 const GALAXY_AUTHOR_CHAPTER_FILTER_SLUGS = new Set(["netherils-brilliance"]);
@@ -218,6 +228,7 @@ export function LiveMangaDetails({
 }) {
   const { pushToast } = useToast();
   const { t, dir } = useI18n();
+  const novelDownloads = useNovelDownloads();
   const sourceId = resolveSourceId(seed);
   const profile = getSourceProfile(sourceId);
   const [item, setItem] = useState(() => seed);
@@ -232,6 +243,8 @@ export function LiveMangaDetails({
   const [chapterOrder, setChapterOrder] = useState("desc");
   const [chapterPage, setChapterPage] = useState(1);
   const [followSheetOpen, setFollowSheetOpen] = useState(false);
+  const [downloadSheetOpen, setDownloadSheetOpen] = useState(false);
+  const [downloadConfirm, setDownloadConfirm] = useState(null);
   const [serverPicker, setServerPicker] = useState(null);
   const [audioLanguage, setAudioLanguage] = useState(PREFERRED_AUDIO_LANGUAGE);
   const [progressRefresh, setProgressRefresh] = useState(0);
@@ -258,7 +271,9 @@ export function LiveMangaDetails({
         ...cached,
         cover: pickBestCover(cached.cover, seed.cover),
         catalogStyle: cached.catalogStyle || seed.catalogStyle,
-        chapters: cached.chapters?.length ? normalizeChapterList(cached.chapters) : cached.chapters,
+        chapters: cached.chapters?.length
+          ? normalizeRealmChapterList(sourceId, normalizeChapterList(cached.chapters))
+          : cached.chapters,
       });
       setStatus("ready");
     } else {
@@ -274,7 +289,9 @@ export function LiveMangaDetails({
         ...data,
         cover: pickBestCover(data.cover, seed.cover),
         catalogStyle: data.catalogStyle || seed.catalogStyle,
-        chapters: data.chapters?.length ? normalizeChapterList(data.chapters) : data.chapters,
+        chapters: data.chapters?.length
+          ? normalizeRealmChapterList(sourceId, normalizeChapterList(data.chapters))
+          : data.chapters,
       });
       setStatus("ready");
     } catch (reason) {
@@ -601,15 +618,156 @@ export function LiveMangaDetails({
   }
 
   const detailsActionHub = (
-    <DetailsActionHub
-      sourceId={sourceId}
-      mediaType={mediaType}
-      firstChapter={firstChapter ? resolveChapter(firstChapter) : null}
-      readingProgress={readingProgress}
-      continueChapter={continueChapter}
-      onOpenChapter={openChapter}
-    />
+    <>
+      <DetailsActionHub
+        sourceId={sourceId}
+        mediaType={mediaType}
+        firstChapter={firstChapter ? resolveChapter(firstChapter) : null}
+        readingProgress={readingProgress}
+        continueChapter={continueChapter}
+        onOpenChapter={openChapter}
+      />
+      {isNovel && chapters.length > 0 && (
+        <button
+          type="button"
+          className="details-hub__download"
+          disabled={novelDownloads.busy}
+          onClick={() => setDownloadSheetOpen(true)}
+        >
+          <Download size={16} aria-hidden="true" />
+          <span>{t("downloads.novel.openSheet")}</span>
+        </button>
+      )}
+    </>
   );
+
+  const downloadTargetChapter = continueChapter || firstChapter;
+  const downloadableChapters = useMemo(
+    () => filteredChapters.filter((chapter) => !isAzoraChapterBlocked(sourceId, chapter) && !chapter.locked),
+    [filteredChapters, sourceId],
+  );
+  const downloadMangaItem = useMemo(() => ({ ...item, sourceId, url: item.url }), [item, sourceId]);
+
+  const chapterDownloadEstimate = useMemo(() => {
+    if (!isNovel || !downloadTargetChapter) return null;
+    return estimateNovelDownloadBatch(
+      sourceId,
+      [resolveChapter(downloadTargetChapter)],
+      downloadMangaItem,
+      novelDownloads.rawDownloads,
+    );
+  }, [downloadMangaItem, downloadTargetChapter, isNovel, novelDownloads.rawDownloads, sourceId]);
+
+  const allDownloadEstimate = useMemo(() => {
+    if (!isNovel || !downloadableChapters.length) return null;
+    return estimateNovelDownloadBatch(
+      sourceId,
+      downloadableChapters.map((chapter) => resolveChapter(chapter)),
+      downloadMangaItem,
+      novelDownloads.rawDownloads,
+    );
+  }, [downloadMangaItem, downloadableChapters, isNovel, novelDownloads.rawDownloads, sourceId]);
+
+  const resolvedDownloadableChapters = useMemo(
+    () => downloadableChapters.map((chapter) => resolveChapter(chapter)),
+    [downloadableChapters],
+  );
+
+  function buildRangeSummary(chapters) {
+    const sorted = sortChaptersAsc(chapters);
+    if (!sorted.length) return "";
+    const from = chapterRangeOptionLabel(sorted[0]);
+    const to = chapterRangeOptionLabel(sorted[sorted.length - 1]);
+    return t("downloads.novel.confirmRangeSummary", {
+      from,
+      to,
+      count: chapters.length,
+    });
+  }
+
+  function requestDownloadConfirm(chapters, mode = "chapter") {
+    const resolved = chapters.map((chapter) => resolveChapter(chapter));
+    const estimate = estimateNovelDownloadBatch(
+      sourceId,
+      resolved,
+      downloadMangaItem,
+      novelDownloads.rawDownloads,
+    );
+    if (estimate.pendingCount === 0) {
+      pushToast({ type: "info", message: t("downloads.novel.confirmAlreadySaved") });
+      return;
+    }
+    setDownloadConfirm({
+      mode,
+      chapters: resolved,
+      estimate,
+      rangeSummary: mode === "range" ? buildRangeSummary(resolved) : "",
+    });
+  }
+
+  async function executeConfirmedDownload() {
+    if (!downloadConfirm) return;
+    const { mode, chapters } = downloadConfirm;
+    setDownloadConfirm(null);
+    try {
+      if (mode === "all" || mode === "range") {
+        await novelDownloads.downloadAll(downloadMangaItem, chapters);
+        pushToast({
+          type: "success",
+          message: mode === "range" ? t("downloads.novel.rangeSaved") : t("downloads.novel.allSaved"),
+        });
+        setDownloadSheetOpen(false);
+      } else {
+        await novelDownloads.downloadChapter(downloadMangaItem, chapters[0]);
+        pushToast({ type: "success", message: t("downloads.novel.chapterSaved") });
+        if (mode === "sheet-chapter") setDownloadSheetOpen(false);
+      }
+    } catch {
+      pushToast({ type: "error", message: t("downloads.novel.failed") });
+    }
+  }
+
+  function handleDownloadCurrentChapter() {
+    const chapter = downloadTargetChapter ? resolveChapter(downloadTargetChapter) : null;
+    if (!chapter) return;
+    requestDownloadConfirm([chapter], "sheet-chapter");
+  }
+
+  function handleDownloadAllChapters() {
+    if (!downloadableChapters.length) return;
+    requestDownloadConfirm(downloadableChapters, "all");
+  }
+
+  function handleDownloadRange(chapters) {
+    if (!chapters?.length) return;
+    requestDownloadConfirm(chapters, "range");
+  }
+
+  function handleDownloadListedChapter(chapter) {
+    requestDownloadConfirm([chapter], "chapter");
+  }
+
+  async function handleFollowSave(partial) {
+    chapterFollow.savePreference(item, partial, latestChapter);
+    setFollowSheetOpen(false);
+    pushToast({ type: "success", message: t("follow.savedBaseline") });
+
+    if (isSystemNotificationsAvailable()) {
+      const permission = await getNotificationPermissionStatus();
+      if (!permission.granted) {
+        await requestNotificationPermission();
+      }
+    }
+
+    try {
+      const result = await chapterFollow.syncFollowed({ silent: true });
+      if (result.events?.length) {
+        pushToast({ type: "info", message: t("follow.newEventsFound", { count: result.events.length }) });
+      }
+    } catch {
+      // La sync de fond reprendra au prochain cycle.
+    }
+  }
 
   const audioLanguagePicker = availableAudioLanguages.length > 0 ? (
     <AudioLanguagePicker
@@ -831,11 +989,43 @@ export function LiveMangaDetails({
             audioLanguage={audioLanguage}
             onOpenChapter={openChapter}
             onPrefetchChapter={prefetchChapter}
+            onDownloadChapter={isNovel ? handleDownloadListedChapter : undefined}
+            downloadedChapterUrls={isNovel ? novelDownloads.rawDownloads : null}
+            seriesUrl={item.url}
             chapterReadEntries={chapterReadEntries}
           />
         )}
       </main>
     </div>
+      <NovelDownloadSheet
+        open={downloadSheetOpen}
+        onClose={() => setDownloadSheetOpen(false)}
+        onDownloadChapter={handleDownloadCurrentChapter}
+        onDownloadAll={handleDownloadAllChapters}
+        onDownloadRange={handleDownloadRange}
+        busy={novelDownloads.busy}
+        progress={novelDownloads.batchProgress}
+        chapterLabel={downloadTargetChapter ? resolveChapter(downloadTargetChapter).name || resolveChapter(downloadTargetChapter).number : ""}
+        chapterEstimate={chapterDownloadEstimate}
+        allEstimate={allDownloadEstimate}
+        rangeChapters={resolvedDownloadableChapters}
+        defaultRangeFromUrl={downloadTargetChapter ? resolveChapter(downloadTargetChapter).url : ""}
+        sourceId={sourceId}
+        downloadItem={downloadMangaItem}
+        rawDownloads={novelDownloads.rawDownloads}
+      />
+      <NovelDownloadConfirmDialog
+        open={Boolean(downloadConfirm)}
+        mode={downloadConfirm?.mode === "all"
+          ? "all"
+          : downloadConfirm?.mode === "range"
+            ? "range"
+            : "chapter"}
+        estimate={downloadConfirm?.estimate}
+        rangeSummary={downloadConfirm?.rangeSummary || ""}
+        onConfirm={executeConfirmedDownload}
+        onCancel={() => setDownloadConfirm(null)}
+      />
       {serverPicker ? (
         <VideoServerSheet
           open
@@ -850,11 +1040,7 @@ export function LiveMangaDetails({
         <FollowAlertSheet
           item={item}
           preference={followPreference}
-          onSave={(partial) => {
-            chapterFollow.savePreference(item, partial, latestChapter);
-            pushToast({ type: "success", message: t("follow.saved") });
-            setFollowSheetOpen(false);
-          }}
+          onSave={handleFollowSave}
           onDisable={() => {
             chapterFollow.removePreference(item);
             pushToast({ type: "info", message: t("follow.stopped") });

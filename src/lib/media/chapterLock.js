@@ -1,9 +1,30 @@
-﻿export function isAzoraFlySource(sourceId) {
+export function isAzoraFlySource(sourceId) {
   return String(sourceId || "").toLowerCase() === "azorafly";
 }
 
 export function isRealmNovelSource(sourceId) {
   return String(sourceId || "").toLowerCase() === "realmnovel";
+}
+
+const REALM_LOCK_MARKERS = /(?:🔒|🔓|🔐|\u{1F512}|\u{1F513}|\u{1F510})/gu;
+
+export function sanitizeRealmChapterLabel(name) {
+  return String(name || "")
+    .replace(REALM_LOCK_MARKERS, "")
+    .replace(/\s*(?:مدفوع|مقفل)\s*/gi, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+export function normalizeRealmChapterList(sourceId, chapters = []) {
+  if (!isRealmNovelSource(sourceId) || !Array.isArray(chapters)) return chapters;
+  return chapters.map((chapter) => {
+    const next = { ...chapter, locked: false };
+    delete next.lockReason;
+    delete next.permanentlyLocked;
+    if (chapter?.name) next.name = sanitizeRealmChapterLabel(chapter.name);
+    return next;
+  });
 }
 
 /** Catalogue / accueil : Realm Novel n’affiche jamais de cadenas (comme la fiche détail). */

@@ -115,6 +115,7 @@ export function NotificationCenterScreen({
           onBack={onBack}
           onSearch={() => navigate("search")}
           onReadingHistory={() => navigate("reading-history")}
+          onDownloads={() => navigate("downloads")}
           onNotifications={() => navigate("updates")}
         />
       )}
@@ -132,6 +133,25 @@ export function NotificationCenterScreen({
               {globalEnabled && isChromebookApp ? ` · ${t(getDesktopNotificationChipKey())}` : ""}
             </span>
           </div>
+          <button
+            type="button"
+            className="notify-center-hero__feed"
+            onClick={async () => {
+              const result = await chapterFollow.syncFollowed({ silent: false });
+              if (result.events?.length) {
+                pushToast({ type: "success", message: t("notify.newFound", { count: result.events.length }) });
+                return;
+              }
+              if (result.errors?.length) {
+                pushToast({ type: "error", message: result.errors[0]?.message || t("notify.checkFailed") });
+                return;
+              }
+              pushToast({ type: "info", message: t("notify.noNewYet") });
+            }}
+            disabled={!globalEnabled || chapterFollow.syncing}
+          >
+            {chapterFollow.syncing ? t("notify.checking") : t("notify.checkNow")}
+          </button>
           <button type="button" className="notify-center-hero__feed" onClick={() => navigate("updates")}>
             {t("updates.title")}
             <ArrowRight size={14} />
@@ -144,6 +164,7 @@ export function NotificationCenterScreen({
             settings={notificationSettings.settings}
             isNative={notificationSettings.isNative}
             permission={notificationSettings.permission}
+            supportsSystemNotifications={notificationSettings.supportsSystemNotifications}
             onOpen={() => setSheetOpen(true)}
           />
           <div className="notify-center-global__chips" aria-label={t("notify.summary")}>
@@ -158,7 +179,7 @@ export function NotificationCenterScreen({
                 )}
               </>
             )}
-            {isChromebookApp && notificationSettings.supportsSystemNotifications && (
+            {notificationSettings.supportsSystemNotifications && (
               <span><Bell size={12} />{notificationSettings.permission.granted ? t("notify.granted") : t("notify.needed")}</span>
             )}
           </div>

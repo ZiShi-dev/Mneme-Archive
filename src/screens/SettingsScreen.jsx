@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { BellRing, ChevronLeft, Globe2, History, Layers, SlidersHorizontal } from "lucide-react";
+import { BellRing, ChevronLeft, Download, Globe2, History, Layers, SlidersHorizontal } from "lucide-react";
 import { EnableSourcesSheet } from "../features/sources";
 import { Header } from "../components/layout/Header";
 import { useToast } from "../components/ui/ToastProvider";
@@ -79,6 +79,7 @@ export function SettingsScreen({ navigate, appearance, typeface, onSetAppearance
           appearance={appearance}
           onSearch={() => navigate("search")}
           onReadingHistory={() => navigate("reading-history")}
+          onDownloads={() => navigate("downloads")}
           onNotifications={() => navigate("updates")}
         />
       )}
@@ -144,6 +145,14 @@ export function SettingsScreen({ navigate, appearance, typeface, onSetAppearance
             <ChevronLeft size={18} />
           </button>
           <DataUsageSettingsEntry settings={settings} onOpen={() => panels.open("data-usage")} />
+          <button type="button" className="setting-row" onClick={() => navigate("downloads")}>
+            <span className="setting-row__icon"><Download size={19} /></span>
+            <span className="setting-row__copy">
+              <strong>{t("downloads.title")}</strong>
+              <small>{isChromebookApp ? t("settings.downloadsHintDesktop") : t("settings.downloadsHint")}</small>
+            </span>
+            <ChevronLeft size={18} />
+          </button>
           </div>
         </section>
 

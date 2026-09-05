@@ -126,10 +126,9 @@ export function HomeContinueHero({
           )}
         </div>
 
-        <h2 dir="auto">{record.title}</h2>
+        <h2>{record.title}</h2>
         <p
           className={`hero-card__subtitle${subtitle ? "" : " hero-card__subtitle--placeholder"}`}
-          dir="auto"
           aria-hidden={!subtitle}
         >
           {subtitle || "\u00a0"}
@@ -139,7 +138,6 @@ export function HomeContinueHero({
           <span className="hero-card__chapter-badge">{badge}</span>
           <span
             className={`hero-card__chapter-name${chapterName ? "" : " hero-card__chapter-name--placeholder"}`}
-            dir="auto"
             aria-hidden={!chapterName}
           >
             {chapterName || "\u00a0"}

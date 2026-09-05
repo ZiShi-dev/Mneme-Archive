@@ -99,6 +99,7 @@ export function HomeScreen({
           appearance={appearance}
           onSearch={() => navigate("search")}
           onReadingHistory={() => navigate("reading-history")}
+          onDownloads={() => navigate("downloads")}
           onNotifications={() => navigate("updates")}
         />
       )}

@@ -1,4 +1,5 @@
 export const THEME_INK = "ink";
+export const THEME_NUIT = "nuit";
 export const THEME_PAPER = "paper";
 export const THEME_SAKURA = "sakura";
 export const THEME_YOZAKURA = "yozakura";
@@ -7,6 +8,7 @@ export const THEME_GALAXIE = "galaxie";
 
 export const THEME_IDS = [
   THEME_INK,
+  THEME_NUIT,
   THEME_PAPER,
   THEME_SAKURA,
   THEME_YOZAKURA,
@@ -16,6 +18,7 @@ export const THEME_IDS = [
 
 export const THEME_META_COLOR = {
   [THEME_INK]: "#090A12",
+  [THEME_NUIT]: "#000000",
   [THEME_PAPER]: "#F3F0EA",
   [THEME_SAKURA]: "#FFF8F9",
   [THEME_YOZAKURA]: "#171218",
@@ -26,6 +29,7 @@ export const THEME_META_COLOR = {
 export function normalizeThemeId(value) {
   if (
     value === THEME_INK
+    || value === THEME_NUIT
     || value === THEME_PAPER
     || value === THEME_SAKURA
     || value === THEME_YOZAKURA
@@ -44,5 +48,5 @@ export function normalizeThemeId(value) {
 
 export function isDarkTheme(themeId) {
   const id = normalizeThemeId(themeId);
-  return id === THEME_INK || id === THEME_YOZAKURA || id === THEME_LUNE_NEIGE || id === THEME_GALAXIE;
+  return id === THEME_INK || id === THEME_NUIT || id === THEME_YOZAKURA || id === THEME_LUNE_NEIGE || id === THEME_GALAXIE;
 }

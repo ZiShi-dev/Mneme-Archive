@@ -77,7 +77,7 @@ export function RemoteCover({
       src={displaySrc}
       alt={title}
       loading={priority ? "eager" : "lazy"}
-      fetchPriority={priority ? "high" : "auto"}
+      fetchpriority={priority ? "high" : "auto"}
       decoding="async"
       referrerPolicy="no-referrer"
       onError={() => setFailed(true)}

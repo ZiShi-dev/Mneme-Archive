@@ -1,5 +1,5 @@
 import React from "react";
-import { Bell, ChevronLeft, ChevronRight, History, Search } from "lucide-react";
+import { Bell, ChevronLeft, ChevronRight, Download, History, Search } from "lucide-react";
 import { useI18n } from "../../i18n/I18nProvider";
 import { AppMark } from "../brand/AppMark";
 import { AppBrandName } from "../brand/AppBrandName";
@@ -38,6 +38,7 @@ export function BottomNav({ current, navigate }) {
 function DesktopMenuActions({ current, navigate, collapsed, onToggleCollapse, t }) {
   const utilityItems = [
     ["reading-history", History, t("common.readingHistory")],
+    ["downloads", Download, t("downloads.title")],
     ["search", Search, t("common.search")],
   ];
 

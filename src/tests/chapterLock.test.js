@@ -1,4 +1,4 @@
-﻿import test from "node:test";
+import test from "node:test";
 import assert from "node:assert/strict";
 import {
   formatUnlockCountdown,
@@ -9,7 +9,9 @@ import {
   isChapterLocked,
   isChapterTimedLock,
   isRealmNovelSource,
+  normalizeRealmChapterList,
   parseUnlockAt,
+  sanitizeRealmChapterLabel,
 } from "../lib/media/chapterLock.js";
 
 test("isRealmNovelSource matches realmnovel only", () => {
@@ -23,6 +25,16 @@ test("isCatalogChapterBlocked never blocks realmnovel chapters", () => {
   assert.equal(isCatalogChapterBlocked("realmnovel", { locked: true, lockReason: "sky-app" }), false);
   const future = new Date(Date.now() + 60_000).toISOString();
   assert.equal(isCatalogChapterBlocked("azorafly", { locked: true, unlockAt: future }), true);
+});
+
+test("normalizeRealmChapterList clears locks and lock emoji from cached chapters", () => {
+  const chapters = normalizeRealmChapterList("realmnovel", [
+    { number: "51", name: "الفصل 51 🔒", url: "https://realmnovel.com/novel/x/chapter/51", locked: true, lockReason: "sky-app" },
+  ]);
+  assert.equal(chapters[0].locked, false);
+  assert.equal(chapters[0].lockReason, undefined);
+  assert.equal(chapters[0].name, "الفصل 51");
+  assert.equal(sanitizeRealmChapterLabel("5265 — الفصل 5265 🔒"), "5265 — الفصل 5265");
 });
 
 test("isAzoraFlySource matches azorafly only", () => {

@@ -6,6 +6,7 @@ import { normalizeSearchQuery } from "../lib/queryLimits.js";
 import { responseJson } from "../lib/responseJson.js";
 import { applyRecentChapterFields, recentChaptersFromCount } from "../lib/catalogChapters.js";
 import { enrichSourceDetails } from "../lib/detailEnrichment.js";
+import { sanitizeRealmChapterLabel } from "../lib/realmChapterLabels.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
 
 const DEFAULT_BASE_URL = "https://realmnovel.com";
@@ -21,6 +22,8 @@ const FILTER_BOOTSTRAP_PAGES = 6;
 const FILTER_SCAN_BATCH_SIZE = 3;
 const REALM_TYPE_CATEGORIES = new Set(["مترجمة", "مؤلفة"]);
 const realmFiltersCache = new Map();
+
+export { sanitizeRealmChapterLabel } from "../lib/realmChapterLabels.js";
 
 function createFetcher(baseUrl = DEFAULT_BASE_URL) {
   return createCachedHtmlFetcher({
@@ -315,7 +318,7 @@ function parseChapterRows(html, novelId, baseUrl = DEFAULT_BASE_URL) {
     const number = match[2];
     if (seen.has(number)) continue;
     seen.add(number);
-    const label = textOnly(match[3]);
+    const label = sanitizeRealmChapterLabel(textOnly(match[3]));
     chapters.push({
       url: buildChapterUrl(novelId, number, baseUrl),
       name: label || number,
@@ -347,7 +350,12 @@ function extendChapterList(chapters, totalChapters, novelId, baseUrl = DEFAULT_B
 
 export function applyRealmChapterAccess(chapters = []) {
   return chapters.map((chapter) => {
-    const next = { ...chapter, locked: false, permanentlyLocked: false };
+    const next = {
+      ...chapter,
+      locked: false,
+      permanentlyLocked: false,
+      name: sanitizeRealmChapterLabel(chapter.name),
+    };
     if (next.lockReason === "sky-app") delete next.lockReason;
     return next;
   });
@@ -384,7 +392,7 @@ export function mapSkyChaptersToRealm(list = [], novelId, baseUrl = DEFAULT_BASE
       const number = Number(entry?.chapterNumber ?? entry?.number);
       if (!Number.isFinite(number) || number < 1) return null;
       const key = String(number);
-      const rawTitle = textOnly(entry?.title || entry?.name || key) || key;
+      const rawTitle = sanitizeRealmChapterLabel(textOnly(entry?.title || entry?.name || key) || key);
       const stripped = rawTitle.replace(/^الفصل\s*/i, "").trim();
       let name = rawTitle;
       if (/^\d+(?:\.\d+)?$/.test(stripped) && stripped !== key) {

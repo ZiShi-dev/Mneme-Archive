@@ -1,5 +1,5 @@
 import React from "react";
-import { Bookmark, ChevronRight, ExternalLink } from "lucide-react";
+import { Bookmark, ChevronRight, Download, ExternalLink } from "lucide-react";
 import { burstSakuraFrom } from "../../../lib/sakura/burst";
 import { useI18n } from "../../../i18n/I18nProvider";
 import { ChapterLabel } from "./ChapterLabel";
@@ -14,6 +14,9 @@ export function ReaderEpisodeHeader({
   onBack,
   onOpenDetails,
   onToggleFavorite,
+  onDownload,
+  chapterDownloaded = false,
+  chapterDownloading = false,
 }) {
   const { t, dir } = useI18n();
 
@@ -47,6 +50,15 @@ export function ReaderEpisodeHeader({
       </button>
 
       <div className="reader-episode-header__actions">
+        <button
+          type="button"
+          className={`reader-episode-header__action${chapterDownloaded ? " is-downloaded" : ""}`}
+          onClick={onDownload}
+          disabled={!onDownload || chapterDownloading}
+          aria-label={chapterDownloaded ? t("downloads.novel.alreadySaved") : t("downloads.novel.downloadChapter")}
+        >
+          <Download size={15} aria-hidden="true" />
+        </button>
         <button
           type="button"
           className={`reader-episode-header__action${isFavorite ? " is-active" : ""}`}

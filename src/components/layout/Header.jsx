@@ -1,16 +1,21 @@
 import React from "react";
-import { ArrowRight, Bell, History, Search } from "lucide-react";
+import { ArrowRight, Bell, Download, History, Search } from "lucide-react";
 import { isChromebookApp } from "../../config/appFlavor";
 import { useI18n } from "../../i18n/I18nProvider";
 import { AppBrandName } from "../brand/AppBrandName";
 import { MnemeMark } from "../brand/MnemeMark";
 
-function HeaderActions({ onReadingHistory, onSearch, onNotifications, t }) {
+function HeaderActions({ onReadingHistory, onDownloads, onSearch, onNotifications, t }) {
   return (
     <div className="header-actions">
       {onReadingHistory && (
         <button className="icon-button" type="button" aria-label={t("common.readingHistory")} onClick={onReadingHistory}>
           <History size={20} />
+        </button>
+      )}
+      {onDownloads && (
+        <button className="icon-button" type="button" aria-label={t("downloads.title")} onClick={onDownloads}>
+          <Download size={20} />
         </button>
       )}
       <button className="icon-button" type="button" aria-label={t("common.search")} onClick={onSearch}>
@@ -33,6 +38,7 @@ export function Header({
   actions = true,
   onSearch,
   onReadingHistory,
+  onDownloads,
   onNotifications,
   showBrand = false,
   appearance,
@@ -59,6 +65,7 @@ export function Header({
           {showActions && (
             <HeaderActions
               onReadingHistory={onReadingHistory}
+              onDownloads={onDownloads}
               onSearch={onSearch}
               onNotifications={onNotifications}
               t={t}
@@ -85,6 +92,7 @@ export function Header({
       {showActions && (
         <HeaderActions
           onReadingHistory={onReadingHistory}
+          onDownloads={onDownloads}
           onSearch={onSearch}
           onNotifications={onNotifications}
           t={t}

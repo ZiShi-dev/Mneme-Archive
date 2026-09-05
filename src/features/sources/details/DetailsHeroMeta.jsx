@@ -26,8 +26,8 @@ export function DetailsHeroMeta({
           </span>
         ) : null}
       </div>
-      <h1 className="live-details-hero__title" dir="auto">{title}</h1>
-      {showAltTitle && altTitle ? <p className="live-details-hero__subtitle" dir="auto">{altTitle}</p> : null}
+      <h1 className="live-details-hero__title">{title}</h1>
+      {showAltTitle && altTitle ? <p className="live-details-hero__subtitle">{altTitle}</p> : null}
       {isLoading ? (
         <div className="details-hero-head-skeleton details-hero-head-skeleton--facts" aria-hidden="true">
           <span className="details-hero-head-skeleton__line ui-skeleton" />

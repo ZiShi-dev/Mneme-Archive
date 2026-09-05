@@ -55,6 +55,7 @@ export function ReadingHistoryScreen({
   chapterReadLog = {},
   liveFavorites,
   navigate,
+  onBack,
   openManga,
   openLiveManga,
   openReader,
@@ -233,8 +234,8 @@ export function ReadingHistoryScreen({
         <Header
           title={t("history.title")}
           eyebrow={stats.total ? t("history.nFollowed", { count: stats.total }) : t("history.eyebrow")}
-          onSearch={() => navigate("search")}
-          onNotifications={() => navigate("updates")}
+          onBack={onBack || (() => navigate("settings"))}
+          actions={false}
         />
       )}
       <main className="content history-page">

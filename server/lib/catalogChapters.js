@@ -1,4 +1,5 @@
 import { sortChaptersDesc } from "./chapterOrdering.js";
+import { sanitizeRealmChapterLabel } from "./realmChapterLabels.js";
 
 export const CATALOG_RECENT_LIMIT = 2;
 
@@ -23,9 +24,10 @@ export function normalizeRecentChapters(chapters = [], limit = CATALOG_RECENT_LI
     const key = chapter.url;
     if (seen.has(key)) continue;
     seen.add(key);
+    const rawName = String(chapter.name ?? chapter.number ?? "");
     const entry = {
       number: String(chapter.number ?? chapter.name ?? ""),
-      name: String(chapter.name ?? chapter.number ?? ""),
+      name: realmOpen ? sanitizeRealmChapterLabel(rawName) : rawName,
       url: chapter.url,
       date: chapter.date || "",
       locked: realmOpen ? false : Boolean(chapter.locked),

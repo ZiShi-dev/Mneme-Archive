@@ -4,6 +4,8 @@ import { usePersistedState } from "./usePersistedState";
 import { buildFollowItem, getFollowKey } from "../lib/updates/followKeys";
 import { normalizeFollowPreference } from "../lib/updates/followPolicy";
 import { syncAllFollowedTitles } from "../lib/updates/updatesSync";
+import { showChapterUpdateNotifications } from "../lib/notifications/pushNotifications";
+import { getRuntimeSettings } from "../lib/settings/runtimeSettings";
 import { t } from "../i18n/runtime.js";
 
 const MAX_FEED_ITEMS = 120;
@@ -107,6 +109,13 @@ export function useChapterFollow() {
       if (result.snapshots) setSnapshots(result.snapshots);
       if (result.events.length) {
         setFeed((current) => [...result.events, ...current].slice(0, MAX_FEED_ITEMS));
+        if (getRuntimeSettings().notifications) {
+          try {
+            await showChapterUpdateNotifications(result.events);
+          } catch {
+            // Notifications optionnelles.
+          }
+        }
       }
       setLastSyncAt(new Date().toISOString());
       return result;

@@ -124,7 +124,11 @@ export function NotificationSettingsSheet({
                 <div className="notify-sheet__tools">
                   {!permission.granted && (
                     <button type="button" className="notify-sheet__tools-primary" onClick={onRequestPermission}>
-                      {isChromebookApp ? t("notify.desktopPermission") : t("notify.phonePermission")}
+                      {isChromebookApp
+                        ? t("notify.desktopPermission")
+                        : isNative
+                          ? t("notify.phonePermission")
+                          : t("notify.browserPermission")}
                     </button>
                   )}
                   <button type="button" onClick={onTestNotification}>{t("notify.test")}</button>
@@ -164,7 +168,7 @@ export function NotificationSettingsSheet({
   );
 }
 
-export function NotificationSettingsEntry({ settings, isNative, permission, onOpen }) {
+export function NotificationSettingsEntry({ settings, isNative, permission, supportsSystemNotifications = false, onOpen }) {
   const { t } = useI18n();
   const enabled = settings.notifications;
   const pollMinutes = settings.followPollMinutes || 2;
@@ -176,8 +180,8 @@ export function NotificationSettingsEntry({ settings, isNative, permission, onOp
       summary += isElectronApp()
         ? ` · ${t("notify.desktopTrayChip")}`
         : ` · ${t("notify.inAppOnly")}`;
-    } else if (isNative && !permission.granted) summary += ` · ${t("notify.permissionNeeded")}`;
-    else if (enabled) summary += ` · ${t("notify.phonePlus")}`;
+    }     else if (!permission.granted && supportsSystemNotifications) summary += ` · ${t("notify.permissionNeeded")}`;
+    else if (enabled) summary += ` · ${isNative ? t("notify.phonePlus") : t("notify.browserPlus")}`;
   }
 
   return (

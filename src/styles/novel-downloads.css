@@ -1,0 +1,275 @@
+.details-hub__download {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 10px;
+  padding: 0 14px;
+  border: 1px solid color-mix(in srgb, var(--brand) 24%, var(--line));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--brand) 8%, var(--paper));
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font: 600 12px/1.2 var(--font-sans, "Alexandria");
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.details-hub__download:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.details-hub__download svg {
+  color: var(--brand);
+}
+
+.chapter-row-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.chapter-row-wrap .chapter-row {
+  min-width: 0;
+}
+
+.chapter-row__download {
+  width: 42px;
+  min-height: 52px;
+  border: 1px solid color-mix(in srgb, var(--brand) 22%, var(--line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--brand) 8%, var(--paper));
+  color: var(--brand);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.chapter-row__download.is-complete {
+  color: var(--success, #5ecf8f);
+  border-color: color-mix(in srgb, var(--success, #5ecf8f) 34%, var(--line));
+  background: color-mix(in srgb, var(--success, #5ecf8f) 10%, var(--paper));
+}
+
+.chapter-row__download:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.novel-download-sheet {
+  width: min(100%, 420px);
+}
+
+.novel-download-sheet__body {
+  display: grid;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.novel-download-sheet__progress {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--paper) 65%, var(--white));
+  color: var(--muted);
+  font: 500 12px/1.45 var(--font-sans, "Alexandria");
+  text-align: center;
+}
+
+.novel-download-sheet__action {
+  min-height: 58px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--paper) 65%, var(--white));
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: start;
+  cursor: pointer;
+}
+
+.novel-download-sheet__action:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.novel-download-sheet__action svg {
+  flex: 0 0 auto;
+  color: var(--brand);
+}
+
+.novel-download-sheet__action span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.novel-download-sheet__action strong {
+  font: 700 13px/1.3 var(--font-sans, "Alexandria");
+}
+
+.novel-download-sheet__action small {
+  color: var(--muted);
+  font: 500 11px/1.35 var(--font-sans, "Alexandria");
+}
+
+.reader-episode-header__action.is-downloaded {
+  color: var(--success, #5ecf8f);
+}
+
+.confirm-dialog--download .confirm-dialog__icon--download {
+  color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 12%, var(--paper));
+}
+
+.novel-download-confirm__stats {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.novel-download-confirm__summary {
+  margin: 0;
+  color: var(--muted);
+  font: 500 12px/1.45 var(--font-sans, "Alexandria");
+}
+
+.novel-download-confirm__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--paper) 65%, var(--white));
+  border: 1px solid var(--line);
+  font: 600 13px/1.35 var(--font-sans, "Alexandria");
+}
+
+.novel-download-confirm__row-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.novel-download-confirm__row-label {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.novel-download-confirm__row-value {
+  color: var(--ink);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.novel-download-confirm__row svg {
+  flex: 0 0 auto;
+  color: var(--brand);
+}
+
+.novel-download-confirm__note {
+  margin: 0;
+  color: var(--muted);
+  font: 500 11px/1.4 var(--font-sans, "Alexandria");
+}
+
+.confirm-dialog--download .confirm-dialog__confirm {
+  background: var(--brand);
+  color: var(--white);
+}
+
+.novel-download-confirm .confirm-dialog__actions {
+  gap: 14px;
+  margin-top: 4px;
+}
+
+.novel-download-sheet__action span small:last-child {
+  color: var(--muted);
+}
+
+.novel-download-sheet__range {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--paper) 45%, var(--white));
+}
+
+.novel-download-sheet__range-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  font: 700 12px/1.3 var(--font-sans, "Alexandria");
+}
+
+.novel-download-sheet__range-head svg {
+  color: var(--brand);
+}
+
+.novel-download-sheet__range-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.novel-download-sheet__range-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.novel-download-sheet__range-field span {
+  color: var(--muted);
+  font: 600 10px/1.2 var(--font-sans, "Alexandria");
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.novel-download-sheet__range-field select,
+.novel-download-sheet__range-field input {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--ink);
+  font: 600 12px/1.3 var(--font-sans, "Alexandria");
+}
+
+.novel-download-sheet__range-field input:focus {
+  outline: 2px solid color-mix(in srgb, var(--brand) 35%, transparent);
+  outline-offset: 1px;
+}
+
+.novel-download-sheet__range-field input[aria-invalid="true"] {
+  border-color: color-mix(in srgb, var(--danger) 55%, var(--line));
+}
+
+.novel-download-sheet__range-summary.is-error {
+  color: var(--danger);
+}
+
+.novel-download-sheet__range-summary {
+  margin: 0;
+  color: var(--muted);
+  font: 500 11px/1.45 var(--font-sans, "Alexandria");
+  text-align: center;
+}
+
+.novel-download-sheet__action--range {
+  margin-top: 2px;
+}

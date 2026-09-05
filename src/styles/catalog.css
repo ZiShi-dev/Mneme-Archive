@@ -767,6 +767,31 @@
   text-align: start;
 }
 
+[dir="rtl"] .live-details-hero__meta .live-details-hero__title,
+[dir="rtl"] .live-details-hero__meta .live-details-hero__facts {
+  width: 100%;
+  unicode-bidi: plaintext;
+  text-align: match-parent;
+}
+
+[dir="rtl"] .live-details-hero__meta .live-details-hero__subtitle {
+  width: 100%;
+  direction: ltr;
+  unicode-bidi: plaintext;
+  text-align: right;
+}
+
+[dir="rtl"] .live-details-hero__meta .live-details-hero__source span {
+  direction: ltr;
+  unicode-bidi: plaintext;
+}
+
+[dir="rtl"] .live-details-hero__meta .live-details-hero__source {
+  width: 100%;
+  justify-content: flex-start;
+  justify-self: start;
+}
+
 [dir="ltr"] .live-details-hero__meta {
   direction: ltr;
   text-align: start;

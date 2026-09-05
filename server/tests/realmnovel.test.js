@@ -10,6 +10,7 @@ import {
   parseRealmDetails,
   parseRealmFollowLatest,
   parseRealmMoreCatalog,
+  sanitizeRealmChapterLabel,
 } from "../sources/realmnovel.js";
 
 test("novelIdFromUrl reads novel and chapter paths", () => {
@@ -63,6 +64,25 @@ test("buildRealmFiltersFromDocs exposes type categories and genre tags", () => {
   assert.ok(filters.categories.some((entry) => entry.slug === "مؤلفة"));
   assert.ok(filters.categories.some((entry) => entry.slug === "اكشن" && entry.count === 2));
   assert.equal(filters.tags.find((entry) => entry.slug === "سحر")?.count, 2);
+});
+
+test("sanitizeRealmChapterLabel strips lock markers from chapter titles", () => {
+  assert.equal(sanitizeRealmChapterLabel("5265 — الفصل 5265 🔒"), "5265 — الفصل 5265");
+  assert.equal(sanitizeRealmChapterLabel("🔒 الفصل 51"), "الفصل 51");
+});
+
+test("parseRealmDetails strips lock emoji from locked chapter rows", () => {
+  const html = `
+    <article class="novel-head">
+      <button data-fav-btn data-chapters="52"></button>
+      <h1 class="h1">رواية</h1>
+      <img src="/img/novel/690f7c85419b78c5ab0ef3d0.jpg" />
+    </article>
+    <a class="chapter-row is-locked" href="/novel/690f7c85419b78c5ab0ef3d0/chapter/51"><span>51 — الفصل 51 🔒</span></a>
+  `;
+  const details = parseRealmDetails(html, "690f7c85419b78c5ab0ef3d0");
+  assert.equal(details.chapters.find((chapter) => chapter.number === "51")?.name, "51 — الفصل 51");
+  assert.ok(details.chapters.every((chapter) => !chapter.name.includes("🔒")));
 });
 
 test("parseRealmDetails extends chapter list and keeps every chapter readable", () => {

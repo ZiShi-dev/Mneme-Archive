@@ -26,7 +26,7 @@
   --manga: #b9475b;
   --novel: #d8b56a;
   --anime: #6bd7c8;
-  --film: #7aa7ff;
+  --film: #a78bff;
   --danger: #ff7b7b;
 
   --ink: var(--text);
@@ -102,7 +102,7 @@ html[dir="ltr"] {
 }
 
 /* Encre */
-.app-shell--dark,
+html:not([data-theme="nuit"]) .app-shell--dark,
 [data-theme="ink"],
 [data-theme="ink"] .app-shell {
   --brand: #8b7cff;
@@ -117,7 +117,7 @@ html[dir="ltr"] {
   --manga: #e77b89;
   --novel: #d8b56a;
   --anime: #6bd7c8;
-  --film: #7aa7ff;
+  --film: #a78bff;
   --ink: var(--text);
   --muted: var(--text-muted);
   --disabled: #747687;
@@ -297,12 +297,12 @@ html[dir="ltr"] {
 [data-theme="lune-neige"],
 [data-theme="lune-neige"] .app-shell,
 .app-shell--lune-neige {
-  --moon-glow: #D6E6FF;
-  --frost: #8EB4E8;
+  --moon-glow: #DDD6FE;
+  --frost: #A78BFA;
   --star-mist: #121C2B;
 
-  --brand: #A8C4E8;
-  --brand-warm: #C8DAF5;
+  --brand: #A78BFA;
+  --brand-warm: #C4B5FD;
   --bg: #0D1522;
   --surface: #141F2E;
   --surface-raised: #1B2940;
@@ -312,8 +312,8 @@ html[dir="ltr"] {
   --success: #7EAE9A;
   --manga: #E8A8BA;
   --novel: #D4B896;
-  --anime: #8EB4E8;
-  --film: #A8B8D8;
+  --anime: #A78BFA;
+  --film: #B8A8E8;
   --danger: #E89AA8;
 
   --ink: var(--text);
@@ -334,7 +334,7 @@ html[dir="ltr"] {
   --gold: var(--brand-warm);
   --moon-white: var(--text);
   --shadow: 0 22px 54px rgba(2, 8, 20, 0.42);
-  --cta: #C8DAF5;
+  --cta: #C4B5FD;
   --cta-text: #0D1522;
   --radius-control: 14px;
   --bottom-nav-bg: color-mix(in srgb, var(--surface) 90%, transparent);
@@ -353,11 +353,11 @@ html[dir="ltr"] {
 [data-theme="galaxie"] .app-shell,
 .app-shell--galaxie {
   --nebula: #7B5CFF;
-  --nova: #9BB0FF;
+  --nova: #A78BFF;
   --cosmos: #07061A;
   --void: #050414;
 
-  --brand: #9BB0FF;
+  --brand: #A78BFF;
   --brand-warm: #C9A0FF;
   --bg: #07061A;
   --surface: #12102C;
@@ -368,7 +368,7 @@ html[dir="ltr"] {
   --success: #6ED6B0;
   --manga: #E29AB8;
   --novel: #D4B896;
-  --anime: #8EB4E8;
+  --anime: #A78BFA;
   --film: #A8B0E0;
   --danger: #E88AA8;
 

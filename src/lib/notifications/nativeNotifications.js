@@ -8,6 +8,10 @@ const TEST_NOTIFICATION_ID = 900_001;
 
 let initialized = false;
 
+function immediateSchedule() {
+  return { at: new Date(Date.now() + 500) };
+}
+
 function hashNotificationId(key) {
   let hash = 0;
   for (let index = 0; index < key.length; index += 1) {
@@ -75,6 +79,7 @@ export async function showChapterUpdateNotifications(events = []) {
     body: formatFollowNotificationBody(event),
     channelId: CHAPTER_NOTIFICATION_CHANNEL,
     smallIcon: "ic_stat_notify",
+    schedule: immediateSchedule(),
     group: "living-archive-updates",
     groupSummary: false,
     sound: "default",
@@ -100,6 +105,7 @@ export async function showChapterUpdateNotifications(events = []) {
       body: t("notify.summaryUpdates", { count: notifications.length }),
       channelId: CHAPTER_NOTIFICATION_CHANNEL,
       smallIcon: "ic_stat_notify",
+      schedule: immediateSchedule(),
       group: "living-archive-updates",
       groupSummary: true,
       sound: "default",
@@ -129,6 +135,7 @@ export async function sendTestNotification() {
       body: t("notify.testBody"),
       channelId: CHAPTER_NOTIFICATION_CHANNEL,
       smallIcon: "ic_stat_notify",
+      schedule: immediateSchedule(),
       sound: "default",
       autoCancel: true,
       extra: { kind: "test" },

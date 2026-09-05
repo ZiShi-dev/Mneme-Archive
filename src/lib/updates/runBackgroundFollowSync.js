@@ -1,6 +1,6 @@
 import { initStorage } from "../storage/initStorage";
 import { kvGet, kvSet } from "../storage/kvStore";
-import { allowsHeavyNetworkUse } from "../platform/dataSaver";
+import { allowsFollowSyncNetworkUse } from "../platform/dataSaver";
 import { refreshNetworkStatus } from "../platform/networkStatus";
 import { syncAllFollowedTitles } from "./updatesSync";
 
@@ -27,7 +27,7 @@ export async function runBackgroundFollowSync() {
   }
 
   await refreshNetworkStatus();
-  if (!allowsHeavyNetworkUse(settings)) {
+  if (!allowsFollowSyncNetworkUse(settings)) {
     return { events: [], errors: [], skipped: true, reason: "metered" };
   }
 

@@ -1011,7 +1011,8 @@ button.source-overview-row { color: inherit; cursor: pointer; }
 .notify-sheet.data-usage-sheet,
 .notify-sheet.history-chapter-sheet,
 .notify-sheet.source-urls-sheet,
-.notify-sheet.theme-sheet {
+.notify-sheet.theme-sheet,
+.notify-sheet.novel-download-sheet {
   display: flex;
   flex-direction: column;
   overflow: hidden;

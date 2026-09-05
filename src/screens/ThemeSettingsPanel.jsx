@@ -5,6 +5,7 @@ import { Check, ChevronLeft, Moon, Snowflake, Sparkles, Sun } from "lucide-react
 import { GalaxyThemePreview } from "../components/atmosphere/GalaxyAtmosphere";
 import {
   InkThemePreview,
+  NuitThemePreview,
   PaperThemePreview,
   SakuraDayThemePreview,
 } from "../components/atmosphere/CoreThemePreviews";
@@ -22,6 +23,7 @@ import {
   THEME_GALAXIE,
   THEME_INK,
   THEME_LUNE_NEIGE,
+  THEME_NUIT,
   THEME_PAPER,
   THEME_SAKURA,
   THEME_YOZAKURA,
@@ -35,6 +37,8 @@ import {
 const THEME_OPTIONS = [
 
   { id: THEME_PAPER, Icon: Sun, modifier: "paper" },
+
+  { id: THEME_NUIT, Icon: Moon, modifier: "nuit" },
 
   { id: THEME_INK, Icon: Moon, modifier: "ink" },
 
@@ -51,6 +55,8 @@ const THEME_OPTIONS = [
 const THEME_PREVIEW = {
 
   [THEME_PAPER]: PaperThemePreview,
+
+  [THEME_NUIT]: NuitThemePreview,
 
   [THEME_SAKURA]: SakuraDayThemePreview,
 

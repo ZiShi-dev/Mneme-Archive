@@ -478,6 +478,21 @@ body[data-theme="lune-neige"] {
   opacity: 1;
 }
 
+.theme-selector--gallery > .theme-selector__option--nuit {
+  border-color: rgba(167, 139, 250, 0.28);
+  background: linear-gradient(180deg, #141414 0%, #000000 100%);
+  color: #f5f5f5;
+}
+
+.theme-selector--gallery > .theme-selector__option--nuit .theme-selector__copy strong {
+  color: #f5f5f5;
+}
+
+.theme-selector--gallery > .theme-selector__option--nuit .theme-selector__copy small {
+  color: #a3a3a3;
+  opacity: 1;
+}
+
 .theme-selector--gallery > .theme-selector__option--sakura {
   border-color: rgba(231, 123, 137, 0.42);
   background: linear-gradient(180deg, #fff8fa 0%, #fdeef2 100%);
@@ -494,6 +509,7 @@ body[data-theme="lune-neige"] {
 }
 
 .theme-selector--gallery > .theme-selector__option--ink .theme-selector__meta,
+.theme-selector--gallery > .theme-selector__option--nuit .theme-selector__meta,
 .theme-selector--gallery > .theme-selector__option--yozakura .theme-selector__meta,
 .theme-selector--gallery > .theme-selector__option--lune-neige .theme-selector__meta,
 .theme-selector--gallery > .theme-selector__option--galaxie .theme-selector__meta {
@@ -551,6 +567,7 @@ body[data-theme="lune-neige"] {
 .theme-sheet--gallery .theme-selector.theme-selector--gallery > .theme-selector__option--yozakura,
 .theme-sheet--gallery .theme-selector.theme-selector--gallery > .theme-selector__option--lune-neige,
 .theme-sheet--gallery .theme-selector.theme-selector--gallery > .theme-selector__option--ink,
+.theme-sheet--gallery .theme-selector.theme-selector--gallery > .theme-selector__option--nuit,
 .theme-sheet--gallery .theme-selector.theme-selector--gallery > .theme-selector__option--paper,
 .theme-sheet--gallery .theme-selector.theme-selector--gallery > .theme-selector__option--galaxie {
   display: flex;
@@ -603,6 +620,7 @@ body[data-theme="lune-neige"] {
 }
 
 .theme-selector__option--ink,
+.theme-selector__option--nuit,
 .theme-selector__option--paper {
   position: relative;
   overflow: hidden;
@@ -611,6 +629,7 @@ body[data-theme="lune-neige"] {
 
 .sakura-day-preview,
 .ink-preview,
+.nuit-preview,
 .paper-preview {
   position: absolute;
   inset: 0;
@@ -907,6 +926,12 @@ body[data-theme="lune-neige"] {
   background: linear-gradient(90deg, transparent 18%, rgba(243, 240, 234, .48) 45%, rgba(243, 240, 234, .48) 65%, transparent 88%);
 }
 
+.nuit-preview__surface {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #111111 0%, #000000 100%);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sakura-day-preview__petal,
   .ink-preview__mote,
@@ -917,6 +942,7 @@ body[data-theme="lune-neige"] {
 
 .theme-selector--gallery > .theme-selector__option--sakura > .theme-selector__meta,
 .theme-selector--gallery > .theme-selector__option--ink > .theme-selector__meta,
+.theme-selector--gallery > .theme-selector__option--nuit > .theme-selector__meta,
 .theme-selector--gallery > .theme-selector__option--paper > .theme-selector__meta,
 .theme-selector--gallery > .theme-selector__option--yozakura > .theme-selector__meta,
 .theme-selector--gallery > .theme-selector__option--lune-neige > .theme-selector__meta,
@@ -942,6 +968,25 @@ body[data-theme="lune-neige"] {
 .theme-selector__option--ink.active {
   border-color: color-mix(in srgb, #9aa8ff 70%, white);
   box-shadow: 0 0 22px rgba(91, 71, 214, .35), 0 12px 28px rgba(0,0,0,.4);
+}
+
+.theme-selector__option--nuit {
+  border-color: color-mix(in srgb, #a78bfa 28%, #242424);
+  color: #f5f5f5;
+  background: #000000;
+}
+
+.theme-selector__option--nuit strong { color: #f5f5f5; }
+.theme-selector__option--nuit small { color: #a3a3a3; }
+.theme-selector__option--nuit > svg:first-child {
+  color: #c4b5fd;
+  background: color-mix(in srgb, #a78bfa 18%, #121212);
+  border: 1px solid rgba(196, 181, 253, .14);
+}
+.theme-selector__option--nuit > svg:last-child { color: #c4b5fd; }
+.theme-selector__option--nuit.active {
+  border-color: color-mix(in srgb, #c4b5fd 55%, white);
+  box-shadow: 0 0 18px rgba(167, 139, 250, .22), 0 12px 28px rgba(0,0,0,.32);
 }
 
 .theme-selector__option--paper {

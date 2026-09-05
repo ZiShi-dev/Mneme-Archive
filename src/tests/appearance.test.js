@@ -7,6 +7,7 @@ import {
   isGalaxyTheme,
   normalizeThemeId,
   THEME_INK,
+  THEME_NUIT,
   THEME_LUNE_NEIGE,
   THEME_PAPER,
   THEME_SAKURA,
@@ -17,6 +18,7 @@ import {
 
 test("normalizeThemeId keeps known appearance ids", () => {
   assert.equal(normalizeThemeId("ink"), THEME_INK);
+  assert.equal(normalizeThemeId("nuit"), THEME_NUIT);
   assert.equal(normalizeThemeId("paper"), THEME_PAPER);
   assert.equal(normalizeThemeId("sakura"), THEME_SAKURA);
   assert.equal(normalizeThemeId("yozakura"), THEME_YOZAKURA);
@@ -40,8 +42,9 @@ test("normalizeThemeId maps galaxy aliases", () => {
   assert.equal(normalizeThemeId("cosmos"), THEME_GALAXIE);
 });
 
-test("isDarkTheme treats ink, yozakura, lune-neige and galaxie as dark", () => {
+test("isDarkTheme treats ink, nuit, yozakura, lune-neige and galaxie as dark", () => {
   assert.equal(isDarkTheme(THEME_INK), true);
+  assert.equal(isDarkTheme(THEME_NUIT), true);
   assert.equal(isDarkTheme(THEME_YOZAKURA), true);
   assert.equal(isDarkTheme(THEME_LUNE_NEIGE), true);
   assert.equal(isDarkTheme(THEME_GALAXIE), true);
@@ -67,9 +70,10 @@ test("isGalaxyTheme only matches galaxie", () => {
   assert.equal(isGalaxyTheme(THEME_INK), false);
 });
 
-test("hasAtmosphereEffect covers every theme", async () => {
-  const { hasAtmosphereEffect } = await import("../lib/theme/appearance.js");
+test("hasAtmosphereEffect covers animated themes only", async () => {
+  const { hasAtmosphereEffect, THEME_NUIT } = await import("../lib/theme/appearance.js");
   assert.equal(hasAtmosphereEffect(THEME_INK), true);
+  assert.equal(hasAtmosphereEffect(THEME_NUIT), false);
   assert.equal(hasAtmosphereEffect(THEME_PAPER), true);
   assert.equal(hasAtmosphereEffect(THEME_SAKURA), true);
   assert.equal(hasAtmosphereEffect(THEME_YOZAKURA), true);
@@ -79,6 +83,7 @@ test("hasAtmosphereEffect covers every theme", async () => {
 
 test("themeDefaultTypeface pairs each theme with a readable preset", () => {
   assert.equal(themeDefaultTypeface(THEME_INK), "sans");
+  assert.equal(themeDefaultTypeface(THEME_NUIT), "sans");
   assert.equal(themeDefaultTypeface(THEME_PAPER), "classic");
   assert.equal(themeDefaultTypeface(THEME_SAKURA), "naskh");
   assert.equal(themeDefaultTypeface(THEME_YOZAKURA), "kufi");

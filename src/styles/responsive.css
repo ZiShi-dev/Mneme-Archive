@@ -382,7 +382,8 @@
     .la-sheet,
     .notify-sheet,
     .follow-sheet,
-    .genre-picker
+    .genre-picker,
+    .novel-download-sheet
   ) {
     width: var(--sheet-max-width-desktop);
     max-width: var(--sheet-max-width-desktop);

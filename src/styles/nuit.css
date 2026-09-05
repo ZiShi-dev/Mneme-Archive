@@ -1,0 +1,85 @@
+/* Nuit — noir pur (#000), accents violet, sans atmosphère animée */
+
+html[data-theme="nuit"],
+html[data-theme="nuit"] .app-shell,
+html[data-theme="nuit"] .app-shell.app-shell--dark,
+[data-theme="nuit"],
+[data-theme="nuit"] .app-shell {
+  --brand: #a78bfa;
+  --brand-warm: #ffb36b;
+  --bg: #000000;
+  --surface: #0a0a0a;
+  --surface-raised: #121212;
+  --text: #f5f5f5;
+  --text-muted: #a3a3a3;
+  --border: #242424;
+  --success: #63d39b;
+  --manga: #e77b89;
+  --novel: #d8b56a;
+  --anime: #8b7fd6;
+  --film: #c4b5fd;
+  --ink: var(--text);
+  --muted: var(--text-muted);
+  --disabled: #6b6b6b;
+  --paper: var(--bg);
+  --white: var(--surface);
+  --outer: #000000;
+  --outside: var(--surface-raised);
+  --line: var(--border);
+  --green: var(--brand);
+  --green-dark: var(--surface-raised);
+  --green-bright: var(--brand);
+  --green-soft: #161616;
+  --stamp: var(--brand-warm);
+  --favorite: var(--manga);
+  --indigo: var(--brand);
+  --gold: var(--brand-warm);
+  --moon-white: var(--text);
+  --shadow: 0 22px 64px rgba(0, 0, 0, .45);
+  --cta: var(--brand);
+  --cta-text: #000000;
+  --sakura: var(--brand);
+  --nadeshiko: var(--brand);
+  --kobai: var(--brand);
+  --boot-star: #a78bfa;
+  --onboarding-star: #a78bfa;
+  --bottom-nav-bg: color-mix(in srgb, var(--surface) 92%, transparent);
+  --bottom-nav-border: color-mix(in srgb, var(--line) 55%, transparent);
+  --bottom-nav-shadow: 0 -12px 36px rgba(0, 0, 0, .4);
+  --bottom-nav-inactive: color-mix(in srgb, var(--text-muted) 88%, var(--text));
+  --bottom-nav-active-bg: color-mix(in srgb, var(--brand) 22%, var(--surface));
+  --bottom-nav-focus-ring: color-mix(in srgb, var(--brand) 45%, transparent);
+  --bottom-nav-halo: color-mix(in srgb, var(--brand) 70%, var(--surface));
+  --bottom-nav-halo-glow: color-mix(in srgb, var(--brand) 32%, transparent);
+  --bottom-nav-active: var(--brand);
+}
+
+body[data-theme="nuit"] {
+  background-color: #000000;
+}
+
+[data-theme="nuit"] .phone-frame {
+  background-color: #000000;
+  background-image: none;
+  border-color: color-mix(in srgb, var(--line) 70%, transparent);
+}
+
+[data-theme="nuit"] .primary-button,
+[data-theme="nuit"] .button--primary,
+[data-theme="nuit"] .details-hub__primary,
+[data-theme="nuit"] .filter-pill.active {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--brand) 94%, white),
+    color-mix(in srgb, var(--brand) 72%, #1a1030)
+  );
+}
+
+[data-theme="nuit"] .toggle--on {
+  background: color-mix(in srgb, var(--brand) 82%, #000);
+}
+
+[data-theme="nuit"] .progress span,
+[data-theme="nuit"] .catalog-pagination__trail i {
+  background: var(--brand);
+}

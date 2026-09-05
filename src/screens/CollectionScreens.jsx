@@ -145,7 +145,7 @@ export function LibraryScreen({ favorites, liveFavorites, toggleFavorite, toggle
           <h1>{t("favorites.title")}</h1>
         </header>
       ) : (
-        <Header title={t("favorites.title")} eyebrow={totalItems ? t("favorites.savedN", { count: totalItems }) : t("favorites.personal")} onSearch={() => navigate("search")} onReadingHistory={() => navigate("reading-history")} onNotifications={() => navigate("updates")} />
+        <Header title={t("favorites.title")} eyebrow={totalItems ? t("favorites.savedN", { count: totalItems }) : t("favorites.personal")} onSearch={() => navigate("search")} onReadingHistory={() => navigate("reading-history")} onDownloads={() => navigate("downloads")} onNotifications={() => navigate("updates")} />
       )}
       <main className="content bookmarks-page">
         {totalItems > 0 && (
@@ -365,7 +365,7 @@ export function UpdatesScreen({
           <h1>{t("updates.title")}</h1>
         </header>
       ) : (
-        <Header title={t("updates.title")} eyebrow={t("updates.eyebrow")} onSearch={() => navigate("search")} onReadingHistory={() => navigate("reading-history")} onNotifications={() => navigate("updates")} />
+        <Header title={t("updates.title")} eyebrow={t("updates.eyebrow")} onSearch={() => navigate("search")} onReadingHistory={() => navigate("reading-history")} onDownloads={() => navigate("downloads")} onNotifications={() => navigate("updates")} />
       )}
       <main className="content updates-page">
         <section className={`updates-hero${unreadCount ? " updates-hero--unread" : ""}`}>

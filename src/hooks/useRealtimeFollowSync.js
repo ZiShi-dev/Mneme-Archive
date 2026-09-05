@@ -1,12 +1,11 @@
 import { useEffect, useRef } from "react";
 import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
-import { allowsHeavyNetworkUse } from "../lib/platform/dataSaver";
+import { allowsFollowSyncNetworkUse } from "../lib/platform/dataSaver";
 import { refreshNetworkStatus } from "../lib/platform/networkStatus";
 import {
   initSystemNotifications,
   registerNotificationOpenHandler,
-  showChapterUpdateNotifications,
 } from "../lib/notifications/pushNotifications";
 import { shouldRunFollowIntervalPoll } from "../lib/updates/followSyncPollPolicy";
 import { t } from "../i18n/runtime.js";
@@ -47,7 +46,7 @@ export function useRealtimeFollowSync({
       if (!followedCountRef.current || syncLockRef.current) return { events: [], errors: [] };
 
       await refreshNetworkStatus();
-      if (!allowsHeavyNetworkUse(settingsRef.current)) {
+      if (!allowsFollowSyncNetworkUse(settingsRef.current)) {
         return { events: [], errors: [], skipped: true, reason: "metered" };
       }
 
@@ -57,8 +56,6 @@ export function useRealtimeFollowSync({
         const events = result.events || [];
 
         if (events.length) {
-          await showChapterUpdateNotifications(events);
-
           if (appActiveRef.current) {
             pushToastRef.current({
               type: "info",

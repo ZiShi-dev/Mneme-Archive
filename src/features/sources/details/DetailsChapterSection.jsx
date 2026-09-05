@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowUpDown, BookOpen, Check, ChevronLeft, ChevronRight, ExternalLink, Lock, Search } from "lucide-react";
+import { ArrowUpDown, BookOpen, Check, ChevronLeft, ChevronRight, Download, ExternalLink, Lock, Search } from "lucide-react";
 import { AccessibleSearchField } from "../../../components/ui/AccessibleSearchField";
 import { ChipFilterBar, ChipFilterButton } from "../../../components/ui/ChipFilterBar";
 import { ChapterListSkeleton } from "../../../components/ui/ContentSkeleton";
@@ -10,6 +10,7 @@ import { getChapterReadState } from "../../../lib/storage/chapterProgress";
 import { formatChapterPublishedLabel, parseChapterPublishedAt } from "../../../lib/media/chapterTiming";
 import { AUDIO_LANGUAGE_LABELS } from "../audioLanguage";
 import { formatEpisodeHeaderLabel } from "../mediaPresentation";
+import { isChapterOfflineStatus } from "../../../lib/downloads/useNovelDownloads";
 
 function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -36,6 +37,9 @@ function ChapterListRow({
   isLatest,
   onOpen,
   onPrefetch,
+  onDownload,
+  downloaded = false,
+  downloading = false,
   presentation,
   activeAudioLanguage = "",
   chapterReadEntries = [],
@@ -56,15 +60,16 @@ function ChapterListRow({
       : publishedLabel || "";
 
   return (
-    <button
-      className={`chapter-row ${isPaid ? "chapter-row--locked" : ""}${showRead ? " chapter-row--read" : ""}${inProgress ? " chapter-row--progress" : ""}${presentation.isVideo ? " chapter-row--video" : ""}`}
-      onPointerDown={() => { if (!blocked && !isPaid) onPrefetch?.(chapter); }}
-      onClick={() => { if (!blocked) onOpen(chapter); }}
-      type="button"
-      disabled={blocked}
-      aria-disabled={blocked ? "true" : undefined}
-      aria-label={isPaid ? presentation.lockedAria(chapter.name) : presentation.openAria(chapter.name)}
-    >
+    <div className={onDownload ? "chapter-row-wrap" : undefined}>
+      <button
+        className={`chapter-row ${isPaid ? "chapter-row--locked" : ""}${showRead ? " chapter-row--read" : ""}${inProgress ? " chapter-row--progress" : ""}${presentation.isVideo ? " chapter-row--video" : ""}`}
+        onPointerDown={() => { if (!blocked && !isPaid) onPrefetch?.(chapter); }}
+        onClick={() => { if (!blocked) onOpen(chapter); }}
+        type="button"
+        disabled={blocked}
+        aria-disabled={blocked ? "true" : undefined}
+        aria-label={isPaid ? presentation.lockedAria(chapter.name) : presentation.openAria(chapter.name)}
+      >
       <span className="chapter-number">
         {showRead ? <Check size={14} aria-hidden="true" className="chapter-number__read" /> : (chapter.number || "—")}
       </span>
@@ -103,7 +108,22 @@ function ChapterListRow({
       </span>
       {isLatest && <span className={`new-badge ${isPaid ? "new-badge--paid" : ""}`}>{isPaid ? t("details.newPaid") : t("common.new")}</span>}
       {blocked ? null : isPaid ? <ExternalLink size={16} className="chapter-row__external" aria-hidden="true" /> : !showRead ? <ChevronLeft size={18} aria-hidden="true" /> : null}
-    </button>
+      </button>
+      {onDownload && !blocked && !isPaid ? (
+        <button
+          type="button"
+          className={`chapter-row__download${downloaded ? " is-complete" : ""}`}
+          disabled={downloading}
+          onClick={(event) => {
+            event.stopPropagation();
+            onDownload(chapter);
+          }}
+          aria-label={downloaded ? t("downloads.novel.alreadySaved") : t("downloads.novel.downloadChapter")}
+        >
+          <Download size={15} aria-hidden="true" />
+        </button>
+      ) : null}
+    </div>
   );
 }
 
@@ -132,6 +152,9 @@ export function DetailsChapterSection({
   audioLanguage,
   onOpenChapter,
   onPrefetchChapter,
+  onDownloadChapter,
+  downloadedChapterUrls = null,
+  seriesUrl = "",
   chapterReadEntries = [],
 }) {
   const { t } = useI18n();
@@ -194,6 +217,9 @@ export function DetailsChapterSection({
                   isLatest={chapter.url === latestChapter?.url && isLatestChapterNew}
                   onOpen={onOpenChapter}
                   onPrefetch={onPrefetchChapter}
+                  onDownload={onDownloadChapter}
+                  downloaded={onDownloadChapter ? isChapterOfflineStatus(downloadedChapterUrls, sourceId, seriesUrl, chapter.url) : false}
+                  downloading={false}
                   presentation={presentation}
                   activeAudioLanguage={audioLanguage}
                   chapterReadEntries={chapterReadEntries}

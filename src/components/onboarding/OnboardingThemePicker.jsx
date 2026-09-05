@@ -4,6 +4,7 @@ import { Check, Moon, Snowflake, Sparkles, Sun } from "lucide-react";
 import { GalaxyThemePreview } from "../atmosphere/GalaxyAtmosphere";
 import {
   InkThemePreview,
+  NuitThemePreview,
   PaperThemePreview,
   SakuraDayThemePreview,
 } from "../atmosphere/CoreThemePreviews";
@@ -15,6 +16,7 @@ import {
   THEME_GALAXIE,
   THEME_INK,
   THEME_LUNE_NEIGE,
+  THEME_NUIT,
   THEME_PAPER,
   THEME_SAKURA,
   THEME_YOZAKURA,
@@ -24,6 +26,7 @@ import {
 
 const THEME_PREVIEW = {
   [THEME_PAPER]: PaperThemePreview,
+  [THEME_NUIT]: NuitThemePreview,
   [THEME_SAKURA]: SakuraDayThemePreview,
   [THEME_INK]: InkThemePreview,
   [THEME_YOZAKURA]: YozakuraThemePreview,
@@ -44,6 +47,7 @@ const THEME_GROUPS = [
     id: "dark",
     labelKey: "onboarding.themeGroupDark",
     themes: [
+      { id: THEME_NUIT, Icon: Moon },
       { id: THEME_INK, Icon: Moon },
       { id: THEME_YOZAKURA, Icon: SakuraIcon },
       { id: THEME_LUNE_NEIGE, Icon: Snowflake },

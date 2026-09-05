@@ -2,6 +2,7 @@ import { applyThemeIcons } from "./themeIcons.js";
 import { peekStorageString } from "../storage/peek.js";
 import {
   THEME_INK,
+  THEME_NUIT,
   THEME_PAPER,
   THEME_SAKURA,
   THEME_YOZAKURA,
@@ -15,6 +16,7 @@ import {
 
 export {
   THEME_INK,
+  THEME_NUIT,
   THEME_PAPER,
   THEME_SAKURA,
   THEME_YOZAKURA,
@@ -28,6 +30,7 @@ export {
 
 const THEME_DEFAULT_TYPEFACE = {
   [THEME_INK]: "sans",
+  [THEME_NUIT]: "sans",
   [THEME_PAPER]: "classic",
   [THEME_SAKURA]: "naskh",
   [THEME_YOZAKURA]: "kufi",
@@ -67,6 +70,7 @@ export function hasAtmosphereEffect(themeId) {
 export function themeNameKey(themeId) {
   const id = normalizeThemeId(themeId);
   if (id === THEME_PAPER) return "settings.themePapier";
+  if (id === THEME_NUIT) return "settings.themeNuit";
   if (id === THEME_SAKURA) return "settings.themeSakura";
   if (id === THEME_YOZAKURA) return "settings.themeYozakura";
   if (id === THEME_LUNE_NEIGE) return "settings.themeLuneNeige";
@@ -77,6 +81,7 @@ export function themeNameKey(themeId) {
 export function themeHintKey(themeId) {
   const id = normalizeThemeId(themeId);
   if (id === THEME_PAPER) return "settings.themePapierHint";
+  if (id === THEME_NUIT) return "settings.themeNuitHint";
   if (id === THEME_SAKURA) return "settings.themeSakuraHint";
   if (id === THEME_YOZAKURA) return "settings.themeYozakuraHint";
   if (id === THEME_LUNE_NEIGE) return "settings.themeLuneNeigeHint";

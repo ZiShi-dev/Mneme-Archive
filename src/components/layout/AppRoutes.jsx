@@ -3,6 +3,7 @@ import { SourceManagementScreen, SourcesScreen } from "../../features/sources";
 import { LiveMangaDetails } from "../../features/sources/LiveMangaDetails";
 import { LibraryScreen, SearchScreen, UpdatesScreen } from "../../screens/CollectionScreens";
 import { ReadingHistoryScreen } from "../../screens/ReadingHistoryScreen";
+import { DownloadsScreen } from "../../screens/DownloadsScreen";
 import { MangaDetails } from "../../screens/DemoMangaScreens";
 import { HomeScreen } from "../../screens/HomeScreen";
 import { SettingsScreen } from "../../screens/SettingsScreen";
@@ -117,6 +118,17 @@ export function AppRoutes({
     );
   }
 
+  if (screen === "downloads") {
+    return (
+      <DownloadsScreen
+        navigate={navigate}
+        onBack={goBack}
+        openLiveManga={openLiveManga}
+        openLiveReader={openLiveReader}
+      />
+    );
+  }
+
   if (screen === "reading-history") {
     return (
       <ReadingHistoryScreen
@@ -124,6 +136,7 @@ export function AppRoutes({
         chapterReadLog={chapterReadLog}
         liveFavorites={liveFavorites}
         navigate={navigate}
+        onBack={goBack}
         openManga={openManga}
         openLiveManga={openLiveManga}
         openReader={openReader}

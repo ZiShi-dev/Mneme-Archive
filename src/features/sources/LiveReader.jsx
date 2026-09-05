@@ -15,6 +15,7 @@ import { DEFAULT_APP_SETTINGS } from "../../lib/settings/defaults";
 import { fetchSourceChapter, fetchSourceDetails, formatSourceError, peekSourceChapter } from "./sourceApi";
 import { runAppPullRefresh } from "../../lib/platform/appRefresh";
 import { normalizeChapterList } from "../../../server/lib/chapterOrdering.js";
+import { normalizeRealmChapterList } from "../../lib/media/chapterLock";
 import { resolveBookmarkType } from "./contentTypes";
 import { getMediaPresentation, resolveVideoPlayback } from "./mediaPresentation";
 import { ReaderPageList } from "./ReaderPageList";
@@ -44,6 +45,11 @@ import { PullToRefreshIndicator } from "../../components/ui/PullToRefreshIndicat
 import { usePullToRefresh } from "../../hooks/usePullToRefresh";
 import { isNativeMobileApp } from "../../lib/platform/nativeAppLayout";
 import { prefetchReaderChapter, resolveReaderChapterCache } from "../../lib/reading/readerChapterCache.js";
+import { getOfflineChapterByRefs } from "../../lib/downloads/offlineChapterStore.js";
+import { estimateNovelDownloadBatch } from "../../lib/downloads/estimateNovelDownloadSizeWithCache.js";
+import { isChapterOfflineStatus } from "../../lib/downloads/useNovelDownloads.js";
+import { useNovelDownloads } from "../../lib/downloads/useNovelDownloads.js";
+import { NovelDownloadConfirmDialog } from "./details/NovelDownloadConfirmDialog";
 
 const scrollSpeeds = [0.5, 1, 1.5, 2];
 const defaultReaderPreferences = { theme: "night", fontSize: 18, lineHeight: 1.9, fontFamily: "naskh", textAlign: "right", paragraphSpacing: 1.25, contentWidth: "normal" };
@@ -62,6 +68,7 @@ export function LiveReader({
 }) {
   const { pushToast } = useToast();
   const { t, dir } = useI18n();
+  const novelDownloads = useNovelDownloads();
   const sourceId = resolveSourceId(manga);
   const profile = getSourceProfile(sourceId);
   const expectsNovel = useMemo(() => resolveBookmarkType(manga) === "novel", [manga]);
@@ -86,6 +93,8 @@ export function LiveReader({
   const [headerChromeVisible, setHeaderChromeVisible] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [chapterListOpen, setChapterListOpen] = useState(false);
+  const [chapterDownloading, setChapterDownloading] = useState(false);
+  const [downloadConfirm, setDownloadConfirm] = useState(null);
   const [readerPreferences, setReaderPreferences] = usePersistedState(readerPreferencesKey, defaultReaderPreferences);
   const readerChromeHiddenRef = useRef(false);
   const readerBodyRef = useRef(null);
@@ -150,6 +159,52 @@ export function LiveReader({
     pushToast({ type: "success", message: t("media.chapterDone") });
   }, [activeChapter, manga, onSaveProgress, pushToast, sourceId, t]);
 
+  const handleDownloadChapter = useCallback(() => {
+    const novel = expectsNovel || data?.kind === "novel";
+    if (!novel || chapterDownloading) return;
+    if (isChapterOfflineStatus(novelDownloads.rawDownloads, sourceId, manga.url, activeChapter.url)) {
+      pushToast({ type: "info", message: t("downloads.novel.confirmAlreadySaved") });
+      return;
+    }
+    const estimate = estimateNovelDownloadBatch(
+      sourceId,
+      [activeChapter],
+      { ...manga, sourceId, url: manga.url },
+      novelDownloads.rawDownloads,
+    );
+    if (estimate.pendingCount === 0) {
+      pushToast({ type: "info", message: t("downloads.novel.confirmAlreadySaved") });
+      return;
+    }
+    setDownloadConfirm(estimate);
+  }, [
+    activeChapter,
+    chapterDownloading,
+    data?.kind,
+    expectsNovel,
+    manga,
+    novelDownloads.rawDownloads,
+    pushToast,
+    sourceId,
+    t,
+  ]);
+
+  const executeConfirmedDownload = useCallback(async () => {
+    setDownloadConfirm(null);
+    setChapterDownloading(true);
+    try {
+      await novelDownloads.downloadChapter(
+        { ...manga, sourceId, url: manga.url },
+        activeChapter,
+      );
+      pushToast({ type: "success", message: t("downloads.novel.chapterSaved") });
+    } catch {
+      pushToast({ type: "error", message: t("downloads.novel.failed") });
+    } finally {
+      setChapterDownloading(false);
+    }
+  }, [activeChapter, manga, novelDownloads, pushToast, sourceId, t]);
+
   useReaderPagePreload({
     enabled: readerSettings.preload !== false && data?.kind !== "novel",
     wifiOnly: readerSettings.wifi !== false,
@@ -173,7 +228,7 @@ export function LiveReader({
     setChaptersLoading(true);
     fetchSourceDetails(sourceId, manga.url, manga).then((details) => {
       if (active && details.chapters?.length) {
-        setChapters(normalizeChapterList(details.chapters));
+        setChapters(normalizeRealmChapterList(sourceId, normalizeChapterList(details.chapters)));
       }
     }).catch(() => {}).finally(() => {
       if (active) setChaptersLoading(false);
@@ -192,9 +247,11 @@ export function LiveReader({
     if (cached) {
       setData(cached);
       setLoadingChapter(false);
+    } else if (!expectsNovel) {
+      setData(null);
+      setLoadingChapter(true);
     } else {
       setLoadingChapter(true);
-      if (!expectsNovel) setData(null);
     }
     setError("");
     setProgress(normalizedSaved);
@@ -209,24 +266,47 @@ export function LiveReader({
     setControlsMode("panel");
     setHeaderChromeVisible(true);
     readerChromeHiddenRef.current = false;
-    fetchSourceChapter(sourceId, activeChapter.url, chapterOpts)
-      .then((result) => {
+
+    void (async () => {
+      let offlineData = null;
+      if (!cached && expectsNovel) {
+        offlineData = await getOfflineChapterByRefs(sourceId, activeChapter, manga);
         if (!active) return;
-        setData(result);
-        if (normalizedSaved > 0 && normalizedSaved < 100) {
-          pendingSeekRef.current = normalizedSaved;
+        if (offlineData) {
+          setData(offlineData);
+          setLoadingChapter(false);
         }
-      })
-      .catch((reason) => {
-        if (!active || cached) return;
-        const message = formatSourceError(reason, t("reader.loadChapterFailed"));
-        setError(message);
-        if (!expectsNovel) setData(null);
-        pushToast({ type: "error", message });
-      })
-      .finally(() => {
-        if (active) setLoadingChapter(false);
-      });
+      }
+
+      fetchSourceChapter(sourceId, activeChapter.url, chapterOpts)
+        .then((result) => {
+          if (!active) return;
+          setData(result);
+          if (normalizedSaved > 0 && normalizedSaved < 100) {
+            pendingSeekRef.current = normalizedSaved;
+          }
+        })
+        .catch(async (reason) => {
+          if (!active) return;
+          if (cached || offlineData) return;
+          const offline = expectsNovel
+            ? await getOfflineChapterByRefs(sourceId, activeChapter, manga)
+            : null;
+          if (!active) return;
+          if (offline) {
+            setData(offline);
+            return;
+          }
+          const message = formatSourceError(reason, t("reader.loadChapterFailed"));
+          setError(message);
+          if (!expectsNovel) setData(null);
+          pushToast({ type: "error", message });
+        })
+        .finally(() => {
+          if (active) setLoadingChapter(false);
+        });
+    })();
+
     return () => { active = false; };
   }, [activeChapter.url, activeChapter.contentApi, chapter.url, expectsNovel, manga, prefetchData, progressKey, sourceId, pushToast, t]);
 
@@ -496,6 +576,12 @@ export function LiveReader({
     return installEmbedPopupGuards();
   }, [embedPlayback]);
   const isNovel = expectsNovel || data?.kind === "novel";
+  const chapterDownloaded = isNovel && isChapterOfflineStatus(
+    novelDownloads.rawDownloads,
+    sourceId,
+    manga.url,
+    activeChapter.url,
+  );
   const showChapterLoading = !error && !data;
   const showNovelRefresh = isNovel && loadingChapter && Boolean(data) && !error;
   const contentDir = useMemo(() => {
@@ -616,6 +702,9 @@ export function LiveReader({
           onBack={onBack}
           onOpenDetails={onOpenDetails}
           onToggleFavorite={onToggleFavorite}
+          onDownload={isNovel ? handleDownloadChapter : undefined}
+          chapterDownloaded={chapterDownloaded}
+          chapterDownloading={chapterDownloading}
         />
       ) : (
         <ReaderHeader
@@ -722,6 +811,13 @@ export function LiveReader({
           onClose={closeChapterList}
         />
       )}
+      <NovelDownloadConfirmDialog
+        open={Boolean(downloadConfirm)}
+        mode="chapter"
+        estimate={downloadConfirm}
+        onConfirm={executeConfirmedDownload}
+        onCancel={() => setDownloadConfirm(null)}
+      />
     </div>
   );
 }
