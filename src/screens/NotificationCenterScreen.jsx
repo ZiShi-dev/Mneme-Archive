@@ -26,6 +26,10 @@ import { resolveFollowMediaType } from "../lib/updates/followMessaging";
 import { isVideoMediaType } from "../features/sources/mediaPresentation";
 import { useI18n } from "../i18n/I18nProvider";
 import {
+  areNotificationsOperational,
+  resolveNotificationHeroTitleKey,
+} from "../lib/notifications/notificationReadiness";
+import {
   NotificationSettingsEntry,
   NotificationSettingsSheet,
 } from "./NotificationSettingsPanel";
@@ -100,6 +104,16 @@ export function NotificationCenterScreen({
 
   const globalEnabled = notificationSettings.settings.notifications;
   const pollMinutes = notificationSettings.settings.followPollMinutes || 2;
+  const notificationsActive = areNotificationsOperational({
+    settings: notificationSettings.settings,
+    permission: notificationSettings.permission,
+    supportsSystemNotifications: notificationSettings.supportsSystemNotifications,
+  });
+  const heroTitleKey = resolveNotificationHeroTitleKey({
+    settings: notificationSettings.settings,
+    permission: notificationSettings.permission,
+    supportsSystemNotifications: notificationSettings.supportsSystemNotifications,
+  });
 
   return (
     <div className={`screen${isChromebookApp ? " screen--notify-desktop" : ""}`}>
@@ -121,16 +135,19 @@ export function NotificationCenterScreen({
       )}
 
       <main className="content notify-center-page">
-        <section className="notify-center-hero">
+        <section className={`notify-center-hero${notificationsActive ? "" : " notify-center-hero--inactive"}`}>
           <span className="notify-center-hero__icon" aria-hidden="true">
-            {globalEnabled ? <BellRing size={16} /> : <Bell size={16} />}
+            {notificationsActive ? <BellRing size={16} /> : <Bell size={16} />}
           </span>
           <div>
-            <strong>{globalEnabled ? t("notify.on") : t("notify.offStatus")}</strong>
+            <strong>{t(heroTitleKey)}</strong>
             <span>
               {t("notify.nFollowed", { count: followedItems.length })}
-              {globalEnabled ? ` · ${t("notify.checkEvery", { n: pollMinutes })}` : ""}
-              {globalEnabled && isChromebookApp ? ` · ${t(getDesktopNotificationChipKey())}` : ""}
+              {notificationsActive ? ` · ${t("notify.checkEvery", { n: pollMinutes })}` : ""}
+              {notificationsActive && isChromebookApp ? ` · ${t(getDesktopNotificationChipKey())}` : ""}
+              {!notificationsActive && globalEnabled && notificationSettings.supportsSystemNotifications && !notificationSettings.permission.granted
+                ? ` · ${t("notify.needed")}`
+                : ""}
             </span>
           </div>
           <button
@@ -148,7 +165,7 @@ export function NotificationCenterScreen({
               }
               pushToast({ type: "info", message: t("notify.noNewYet") });
             }}
-            disabled={!globalEnabled || chapterFollow.syncing}
+            disabled={!notificationsActive || chapterFollow.syncing}
           >
             {chapterFollow.syncing ? t("notify.checking") : t("notify.checkNow")}
           </button>

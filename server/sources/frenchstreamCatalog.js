@@ -303,6 +303,7 @@ export async function fetchFrenchStreamCatalogPage(ctx, fetchHtml, {
   page = 1,
   filterPath = MIXED_PATH,
   fetchEpisodes,
+  enrich = true,
 } = {}) {
   const normalized = assertFilterPath(filterPath?.trim() || MIXED_PATH);
   const offset = (page - 1) * FRENCH_STREAM_CATALOG_PAGE_SIZE;
@@ -321,7 +322,9 @@ export async function fetchFrenchStreamCatalogPage(ctx, fetchHtml, {
     : collected.pool.slice(offset, offset + FRENCH_STREAM_CATALOG_PAGE_SIZE);
   const hasMoreUpstream = collected.hasMoreUpstream;
 
-  await enrichFrenchStreamCatalog(items, fetchEpisodes ? { fetchEpisodes } : undefined);
+  if (enrich) {
+    await enrichFrenchStreamCatalog(items, fetchEpisodes ? { fetchEpisodes } : undefined);
+  }
 
   return {
     items,

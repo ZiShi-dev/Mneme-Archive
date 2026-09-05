@@ -2,9 +2,13 @@ import { Capacitor } from "@capacitor/core";
 import { isChromebookApp, LOCALE_STORAGE_KEY } from "./config/appFlavor.js";
 import { peekStorageString } from "./lib/storage/peek.js";
 import { markNativeAppShell } from "./lib/platform/nativeAppLayout.js";
+import { initSystemInsets } from "./lib/platform/systemInsets.js";
 import { applyAppearance, readBootAppearance } from "./lib/theme/appearance.js";
 
 try {
+  if (Capacitor.isNativePlatform()) {
+    initSystemInsets();
+  }
   markNativeAppShell();
   if (typeof document !== "undefined" && document.body) {
     applyAppearance(readBootAppearance());

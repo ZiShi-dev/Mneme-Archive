@@ -115,6 +115,7 @@ export function subscribeToastLayout(handler) {
   };
   sync();
   window.addEventListener("resize", sync);
+  window.addEventListener("nativeinsets", sync);
   const detachScroll = addReaderScrollListener(sync);
   const observer = typeof MutationObserver !== "undefined"
     ? new MutationObserver(sync)
@@ -130,6 +131,7 @@ export function subscribeToastLayout(handler) {
   }
   return () => {
     window.removeEventListener("resize", sync);
+    window.removeEventListener("nativeinsets", sync);
     detachScroll();
     observer?.disconnect();
     if (frame) window.cancelAnimationFrame(frame);

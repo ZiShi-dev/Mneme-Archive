@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { SplashScreen } from "@capacitor/splash-screen";
-import { StatusBar, Style } from "@capacitor/status-bar";
 import { Check, Bell, Languages } from "lucide-react";
 import { isChromebookApp } from "../../config/appFlavor";
 import { AppMark } from "../brand/AppMark";
@@ -18,8 +17,9 @@ import {
   peekOnboardingComplete,
   shouldSkipOnboarding,
 } from "../../lib/onboarding/constants";
-import { requestNotificationPermission } from "../../lib/notifications/pushNotifications";
+import { requestNotificationPermission, getNotificationPermissionStatus } from "../../lib/notifications/pushNotifications";
 import { persistStorageString } from "../../lib/storage/kvStore";
+import { DEFAULT_APP_SETTINGS } from "../../lib/settings/defaults";
 import { IMAGE_CACHE_DIR } from "../../lib/storage/constants";
 import {
   THEME_INK,
@@ -34,6 +34,7 @@ import { OnboardingThemePicker } from "./OnboardingThemePicker";
 import { FontSelector } from "../../screens/FontSettingsPanel";
 import { TYPEFACES } from "../../lib/theme/typeface";
 import { ThemedBootScreen } from "../boot/ThemedBootScreen";
+import { syncNativeChrome } from "../../lib/theme/nativeChrome";
 
 const SPLASH_MS = 2400;
 
@@ -56,16 +57,6 @@ async function hideNativeSplash() {
   if (!Capacitor.isNativePlatform()) return;
   try {
     await SplashScreen.hide();
-  } catch {
-    // Plugin optionnel.
-  }
-}
-
-async function syncNativeChrome(backgroundColor, dark) {
-  if (!Capacitor.isNativePlatform()) return;
-  try {
-    await StatusBar.setBackgroundColor({ color: backgroundColor });
-    await StatusBar.setStyle({ style: dark ? Style.Dark : Style.Light });
   } catch {
     // Plugin optionnel.
   }
@@ -101,7 +92,7 @@ function OnboardingSplash({ theme, onDone }) {
 
   useEffect(() => {
     void hideNativeSplash();
-    void syncNativeChrome(theme.palette.canvas, isDarkTheme(theme.appearance));
+    void syncNativeChrome(theme.appearance, theme.palette.canvas);
     const timer = window.setTimeout(onDone, SPLASH_MS);
     return () => window.clearTimeout(timer);
   }, [onDone, theme.appearance, theme.palette.canvas]);
@@ -181,16 +172,35 @@ function OnboardingLanguage({ theme, onContinue }) {
   );
 }
 
-function OnboardingPermissions({ theme, onContinue }) {
+function OnboardingPermissions({ theme, onContinue, onResolveNotifications }) {
   const { t, dir } = useI18n();
   const [notificationsDone, setNotificationsDone] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  const finishStep = async () => {
+    if (notificationsDone) {
+      onContinue();
+      return;
+    }
+    setBusy(true);
+    try {
+      const status = await getNotificationPermissionStatus();
+      await onResolveNotifications?.(status.granted);
+      onContinue();
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const requestNotifications = async () => {
     setBusy(true);
     try {
       const result = await requestNotificationPermission();
-      setNotificationsDone(Boolean(result.granted));
+      const granted = Boolean(result.granted);
+      setNotificationsDone(granted);
+      if (granted) {
+        await onResolveNotifications?.(true);
+      }
     } finally {
       setBusy(false);
     }
@@ -225,10 +235,10 @@ function OnboardingPermissions({ theme, onContinue }) {
         </div>
 
         <div className="onboarding__actions">
-          <button type="button" className="onboarding__primary" onClick={onContinue}>
+          <button type="button" className="onboarding__primary" disabled={busy} onClick={() => void finishStep()}>
             {t("onboarding.continue")}
           </button>
-          <button type="button" className="onboarding__ghost" onClick={onContinue}>
+          <button type="button" className="onboarding__ghost" disabled={busy} onClick={() => void finishStep()}>
             {t("onboarding.skip")}
           </button>
         </div>
@@ -318,6 +328,7 @@ function OnboardingFlow({ onComplete }) {
   const [step, setStep] = useState("splash");
   const [appearance, setAppearanceRaw] = usePersistedState("living-archive:appearance", readBootAppearance());
   const [typeface, setTypefaceRaw] = usePersistedState("living-archive:typeface", FONT_SANS);
+  const [, setSettings] = usePersistedState("mangashelf:settings", DEFAULT_APP_SETTINGS);
   const appearanceId = normalizeThemeId(appearance ?? THEME_INK);
   const typefaceId = normalizeTypefaceId(typeface ?? FONT_SANS);
   const theme = useMemo(() => buildOnboardingTheme(appearanceId), [appearanceId]);
@@ -337,7 +348,7 @@ function OnboardingFlow({ onComplete }) {
   useEffect(() => {
     applyAppearance(appearanceId);
     applyTypeface(typefaceId);
-    void syncNativeChrome(theme.palette.canvas, isDarkTheme(appearanceId));
+    void syncNativeChrome(appearanceId, theme.palette.canvas);
   }, [appearanceId, typefaceId, theme.palette.canvas]);
 
   useEffect(() => {
@@ -356,6 +367,14 @@ function OnboardingFlow({ onComplete }) {
 
   const goToTheme = useCallback(() => setStep("theme"), []);
 
+  const resolveOnboardingNotifications = useCallback((granted) => {
+    setSettings((current) => ({
+      ...current,
+      notifications: granted,
+      backgroundSync: granted,
+    }));
+  }, [setSettings]);
+
   if (step === "splash") {
     return <OnboardingSplash theme={theme} onDone={() => setStep("language")} />;
   }
@@ -373,7 +392,13 @@ function OnboardingFlow({ onComplete }) {
   }
 
   if (step === "permissions") {
-    return <OnboardingPermissions theme={theme} onContinue={goToTheme} />;
+    return (
+      <OnboardingPermissions
+        theme={theme}
+        onContinue={goToTheme}
+        onResolveNotifications={resolveOnboardingNotifications}
+      />
+    );
   }
 
   if (step === "theme") {

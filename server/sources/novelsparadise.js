@@ -16,6 +16,7 @@ import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBas
 import { isNovelBoilerplateParagraph } from "../lib/novelChapterText.js";
 import { configureSourceNativeFetch } from "../lib/nativeFetchBridge.js";
 import { isCloudflareChallengeHtml } from "../lib/cloudflareDetect.js";
+import { catalogEnrichFromCatalogParams, catalogEnrichFromSearchParams } from "../lib/catalogEnrichPolicy.js";
 
 const DEFAULT_BASE_URL = "https://novelsparadise.site";
 const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
@@ -520,6 +521,7 @@ export async function fetchParadiseCatalogPage(ctx, fetchHtml, {
   genre = "",
   tag = "",
   status = "",
+  enrich = true,
 } = {}) {
   const offset = (page - 1) * PARADISE_CATALOG_PAGE_SIZE;
   const upstreamPage = Math.floor(offset / UPSTREAM_CATALOG_PAGE_SIZE) + 1;
@@ -556,7 +558,9 @@ export async function fetchParadiseCatalogPage(ctx, fetchHtml, {
     nextUpstream += 1;
   }
 
-  await enrichParadiseCatalog(items, fetchHtml, ctx);
+  if (enrich) {
+    await enrichParadiseCatalog(items, fetchHtml, ctx);
+  }
 
   return {
     items,
@@ -773,12 +777,14 @@ export async function handleNovelsParadiseRequest(requestUrl) {
     const order = requestUrl.searchParams.get("order")?.trim() || "latest";
     const genre = assertParadiseFilterSlug(requestUrl.searchParams.get("genre"), "تصنيف");
     const tag = assertParadiseFilterSlug(requestUrl.searchParams.get("tag"), "وسم");
+    const enrich = catalogEnrichFromCatalogParams(requestUrl.searchParams);
     return responseJson(200, await fetchParadiseCatalogPage(ctx, fetchHtml, {
       page,
       order,
       genre,
       tag,
       status: requestUrl.searchParams.get("status") ?? "",
+      enrich,
     }));
   }
   if (requestUrl.pathname.endsWith("/search")) {
@@ -795,7 +801,9 @@ export async function handleNovelsParadiseRequest(requestUrl) {
     const html = await fetchHtml(target.toString());
     assertParadiseCatalogHtml(target.toString(), html);
     const items = parseParadiseCatalog(html, ctx.baseUrl).slice(0, PARADISE_CATALOG_PAGE_SIZE);
-    await enrichParadiseCatalog(items, fetchHtml, ctx);
+    if (catalogEnrichFromSearchParams(requestUrl.searchParams)) {
+      await enrichParadiseCatalog(items, fetchHtml, ctx);
+    }
     return responseJson(200, {
       items,
       page,

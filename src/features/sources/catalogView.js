@@ -1,6 +1,6 @@
 import { t } from "../../i18n/runtime.js";
 import { getSourceProfile, getDefaultCatalogKind } from "../../config/sources.js";
-import { sourceCapability, sourcesWithCapability } from "../../config/sourceCapabilities.js";
+import { sourceCapability, sourcesWithCapability, getKindQueryParam } from "../../config/sourceCapabilities.js";
 import { localizeCatalogKind } from "./contentTypes.js";
 
 export { MULTI_TAXONOMY_SOURCES, supportsMultiTaxonomy } from "./videoCatalog.js";
@@ -87,7 +87,17 @@ function primaryTaxonomyFilter(filter) {
 export function shouldUseCatalogScopedSearch(sourceId, kind, taxonomy, query) {
   if (!isSearchQueryActive(query)) return false;
   const primary = primaryTaxonomyFilter(taxonomy);
-  if (isMediaKindFilter(kind) && !primary) return false;
+  if (isMediaKindFilter(kind) && !primary) {
+    const path = String(kind?.filterPath || "").trim();
+    if (path && path !== "/all" && path !== "/all/") {
+      return CATALOG_SCOPED_SEARCH_SOURCES.has(sourceId)
+        || sourceCapability(sourceId, "multiTaxonomy");
+    }
+    if (kind?.slug && kind.slug !== "all" && getKindQueryParam(sourceId)) {
+      return CATALOG_SCOPED_SEARCH_SOURCES.has(sourceId);
+    }
+    return false;
+  }
   if (!primary) return false;
   if (sourceCapability(sourceId, "multiTaxonomy") && primary.filterPath) return true;
   return CATALOG_SCOPED_SEARCH_SOURCES.has(sourceId);
@@ -99,6 +109,43 @@ export function filterCatalogItemsByQuery(items, query) {
   return items.filter((item) => (
     `${item.title || ""} ${item.altTitle || ""} ${item.summary || ""}`.toLocaleLowerCase("ar").includes(needle)
   ));
+}
+
+/** Pool catalogue déjà en mémoire pour une recherche instantanée pendant le debounce réseau. */
+export function collectCatalogSearchPool({
+  sourceId,
+  kind,
+  taxonomy,
+  requestParams = {},
+  peekCatalogPage,
+  readSnapshotPage,
+  extraItems = [],
+  maxPages = 2,
+} = {}) {
+  if (!sourceId || typeof peekCatalogPage !== "function" || typeof readSnapshotPage !== "function") {
+    return Array.isArray(extraItems) ? extraItems : [];
+  }
+
+  const seen = new Set();
+  const pool = [];
+
+  const pushItem = (item) => {
+    const key = item?.url || item?.id;
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    pool.push(item);
+  };
+
+  for (const item of extraItems) pushItem(item);
+
+  for (let page = 1; page <= maxPages; page += 1) {
+    const cached = peekCatalogPage(sourceId, { page, ...requestParams });
+    for (const item of cached?.items || []) pushItem(item);
+    const snapshot = readSnapshotPage(sourceId, taxonomy, page, "", kind);
+    for (const item of snapshot?.items || []) pushItem(item);
+  }
+
+  return pool;
 }
 
 export function catalogViewKey(sourceId, filter, query = "", kind = null) {

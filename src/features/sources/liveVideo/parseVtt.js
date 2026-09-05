@@ -43,6 +43,15 @@ export function parseVtt(content = "") {
   return cues.sort((left, right) => left.start - right.start);
 }
 
+export function formatSubtitleText(text = "") {
+  return String(text)
+    .replace(/\{\\[^}]*\}/g, "")
+    .replace(/<[^>]*>/g, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n[ \t]+/g, "\n")
+    .trim();
+}
+
 export function findActiveCue(cues = [], currentTime = 0) {
   if (!cues.length || !Number.isFinite(currentTime)) return null;
   return cues.find((cue) => currentTime >= cue.start && currentTime <= cue.end) || null;

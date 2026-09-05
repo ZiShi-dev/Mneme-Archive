@@ -3,7 +3,7 @@
  * Ajouter une source : mettre à jour sourceProfiles, sourceRegistry et cette table.
  */
 export const SOURCE_CAPABILITIES = Object.freeze({
-  mangalik: { genreFilter: true, tagFilter: true },
+  mangalik: { genreFilter: true, tagFilter: true, catalogScopedSearch: true },
   azorafly: { genreFilter: true, catalogScopedSearch: true },
   novelsparadise: { genreFilter: true, tagFilter: true, catalogScopedSearch: true },
   kolnovel: { genreFilter: true, tagFilter: true, catalogScopedSearch: true },
@@ -11,12 +11,12 @@ export const SOURCE_CAPABILITIES = Object.freeze({
   wtrlab: { genreFilter: true, tagFilter: true, catalogScopedSearch: true, kindQueryParam: "kind" },
   novelphoenix: { genreFilter: true, tagFilter: true, catalogScopedSearch: true, kindQueryParam: "kind" },
   galaxynovels: { filterPath: true, catalogScopedSearch: true },
-  realmnovel: { genreFilter: true, tagFilter: true },
+  realmnovel: { genreFilter: true, tagFilter: true, catalogScopedSearch: true },
   cenele: { filterPath: true, catalogScopedSearch: true },
   anime4up: { filterPath: true, catalogScopedSearch: true },
   animedar: { filterPath: true, catalogScopedSearch: true },
-  frenchstream: { filterPath: true, multiTaxonomy: true },
-  wiflix: { filterPath: true, multiTaxonomy: true },
+  frenchstream: { filterPath: true, multiTaxonomy: true, catalogScopedSearch: true },
+  wiflix: { filterPath: true, multiTaxonomy: true, catalogScopedSearch: true },
 });
 
 export function sourceCapability(sourceId, key) {

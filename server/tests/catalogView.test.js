@@ -111,7 +111,7 @@ test("sanitizeCatalogKind keeps server sort presets on single-content sources", 
   assert.equal(sanitizeCatalogKind("wtrlab", views)?.queryValue, "trending");
 });
 
-test("shouldUseCatalogScopedSearch keeps kind-only search on the site search", () => {
+test("shouldUseCatalogScopedSearch uses catalog filter for kind tabs on filterPath sources", () => {
   const series = { type: "kind", slug: "series", name: "مسلسلات", filterPath: "/serie-en-streaming/" };
   const movies = { type: "kind", slug: "movies", name: "أفلام", filterPath: "/anime-type/movie/" };
   const anime = { type: "kind", slug: "anime", name: "أنمي", filterPath: "/anime-type/tv2/" };
@@ -119,8 +119,8 @@ test("shouldUseCatalogScopedSearch keeps kind-only search on the site search", (
   const novel = { type: "kind", slug: "novel", name: "روايات", filterPath: "/all/" };
   const genre = { type: "category", slug: "action", name: "أكشن" };
 
-  assert.equal(shouldUseCatalogScopedSearch("wiflix", series, null, "you"), false);
-  assert.equal(shouldUseCatalogScopedSearch("frenchstream", series, null, "reacher"), false);
+  assert.equal(shouldUseCatalogScopedSearch("wiflix", series, null, "you"), true);
+  assert.equal(shouldUseCatalogScopedSearch("frenchstream", series, null, "reacher"), true);
   assert.equal(
     shouldUseCatalogScopedSearch("frenchstream", series, { type: "category", slug: "actions", name: "Action", filterPath: "/films/actions/" }, "reacher"),
     true,
@@ -129,13 +129,16 @@ test("shouldUseCatalogScopedSearch keeps kind-only search on the site search", (
     shouldUseCatalogScopedSearch("wiflix", null, { type: "tag", slug: "2024", name: "2024", filterPath: "/annee/2024/" }, "matrix"),
     true,
   );
-  assert.equal(shouldUseCatalogScopedSearch("anime4up", movies, null, "naruto"), false);
-  assert.equal(shouldUseCatalogScopedSearch("anime4up", anime, null, "naruto"), false);
+  assert.equal(shouldUseCatalogScopedSearch("anime4up", movies, null, "naruto"), true);
+  assert.equal(shouldUseCatalogScopedSearch("anime4up", anime, null, "naruto"), true);
   assert.equal(shouldUseCatalogScopedSearch("azorafly", novel, null, "solo"), false);
+  assert.equal(shouldUseCatalogScopedSearch("azorafly", null, genre, "solo"), true);
   assert.equal(shouldUseCatalogScopedSearch("cenele", manga, null, "solo"), false);
   assert.equal(shouldUseCatalogScopedSearch("anime4up", movies, genre, "naruto"), true);
-  assert.equal(shouldUseCatalogScopedSearch("mangalik", null, genre, "naruto"), false);
-  assert.equal(shouldUseCatalogScopedSearch("realmnovel", null, genre, "solo"), false);
+  assert.equal(shouldUseCatalogScopedSearch("mangalik", null, genre, "naruto"), true);
+  assert.equal(shouldUseCatalogScopedSearch("realmnovel", null, genre, "solo"), true);
+  assert.equal(shouldUseCatalogScopedSearch("wtrlab", { type: "kind", slug: "popular", queryValue: "popular" }, null, "solo"), true);
+  assert.equal(shouldUseCatalogScopedSearch("novelphoenix", { type: "kind", slug: "popular", queryValue: "popular" }, null, "solo"), true);
 });
 
 test("catalogItemMatchesFilter covers video and reading kinds", () => {

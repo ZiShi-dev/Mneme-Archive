@@ -4,9 +4,6 @@ import { useI18n } from "../../i18n/I18nProvider";
 
 export function CatalogCarouselNav({ page, hasMore, loadingMore, error, onPrevious, onNext, onGoToPage }) {
   const { t, dir } = useI18n();
-  const rtl = dir === "rtl";
-  const PreviousIcon = rtl ? ChevronRight : ChevronLeft;
-  const NextIcon = rtl ? ChevronLeft : ChevronRight;
   const [open, setOpen] = useState(false);
   const [draftPage, setDraftPage] = useState(String(page));
 
@@ -30,6 +27,7 @@ export function CatalogCarouselNav({ page, hasMore, loadingMore, error, onPrevio
   return (
     <section
       className={`catalog-carousel-nav${open ? " is-open" : ""}`}
+      dir={dir}
       aria-label={navLabel}
     >
       <div className="catalog-carousel-nav__shell">
@@ -41,7 +39,7 @@ export function CatalogCarouselNav({ page, hasMore, loadingMore, error, onPrevio
             disabled={page === 1 || loadingMore}
             aria-label={t("common.previous")}
           >
-            <PreviousIcon size={16} />
+            <ChevronRight size={16} aria-hidden="true" />
           </button>
 
           <button
@@ -61,7 +59,7 @@ export function CatalogCarouselNav({ page, hasMore, loadingMore, error, onPrevio
             disabled={!hasMore || loadingMore}
             aria-label={t("common.next")}
           >
-            <NextIcon size={16} />
+            <ChevronLeft size={16} aria-hidden="true" />
           </button>
 
           <span className="catalog-carousel-nav__divider" aria-hidden="true" />

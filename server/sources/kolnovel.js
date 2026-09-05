@@ -10,7 +10,7 @@ import {
   normalizeRecentChapters,
   recentChaptersFromList,
 } from "../lib/catalogChapters.js";
-import { catalogEnrichFromSearchParams } from "../lib/catalogEnrichPolicy.js";
+import { catalogEnrichFromCatalogParams, catalogEnrichFromSearchParams } from "../lib/catalogEnrichPolicy.js";
 import { normalizeChapterList } from "../lib/chapterOrdering.js";
 import { enrichSourceDetails } from "../lib/detailEnrichment.js";
 import {
@@ -492,7 +492,7 @@ export async function handleKolnovelRequest(requestUrl) {
     const order = requestUrl.searchParams.get("order")?.trim() || "latest";
     const genre = assertKolnovelFilterSlug(requestUrl.searchParams.get("genre"), "تصنيف");
     const tag = assertKolnovelFilterSlug(requestUrl.searchParams.get("tag"), "وسم");
-    const enrich = catalogEnrichFromSearchParams(requestUrl.searchParams);
+    const enrich = catalogEnrichFromCatalogParams(requestUrl.searchParams);
     const payload = await fetchKolnovelCatalogPage(ctx, fetchKolnovelHtmlBound, {
       page,
       order,

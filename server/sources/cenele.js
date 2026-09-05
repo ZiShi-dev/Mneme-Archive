@@ -11,7 +11,7 @@ import {
 } from "../lib/catalogChapters.js";
 import { extractChapterNumber, normalizeChapterList } from "../lib/chapterOrdering.js";
 import { enrichSourceDetails } from "../lib/detailEnrichment.js";
-import { catalogEnrichFromSearchParams } from "../lib/catalogEnrichPolicy.js";
+import { catalogEnrichFromCatalogParams, catalogEnrichFromSearchParams } from "../lib/catalogEnrichPolicy.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
 import { filterNovelParagraphs } from "../lib/novelChapterText.js";
 
@@ -588,7 +588,7 @@ export async function handleCeneleRequest(requestUrl) {
     if (!/^\/[\p{L}\p{N}/+_.%-]+\/?$/u.test(filterPath) || filterPath.includes("..")) {
       throw new Error("مسار فلتر Cenele غير صالح");
     }
-    const enrich = catalogEnrichFromSearchParams(requestUrl.searchParams);
+    const enrich = catalogEnrichFromCatalogParams(requestUrl.searchParams);
     const payload = await fetchCeneleCatalogPage(ctx, fetchCeneleHtml, { page, filterPath, enrich });
     return responseJson(200, {
       ...payload,
@@ -599,6 +599,23 @@ export async function handleCeneleRequest(requestUrl) {
   if (requestUrl.pathname.endsWith("/search")) {
     const { query, valid } = normalizeSearchQuery(requestUrl.searchParams.get("q"));
     if (!valid) return responseJson(200, { items: [] });
+    const page = Math.min(Math.max(Number(requestUrl.searchParams.get("page")) || 1, 1), 1000);
+    const filterPath = requestUrl.searchParams.get("filterPath")?.trim() || "";
+    if (filterPath && filterPath !== CATALOG_PATH) {
+      const enrich = catalogEnrichFromSearchParams(requestUrl.searchParams);
+      const payload = await fetchCeneleCatalogPage(ctx, fetchCeneleHtml, { page, filterPath, enrich });
+      const needle = query.toLocaleLowerCase("ar");
+      const items = payload.items.filter((item) => (
+        `${item.title || ""} ${item.altTitle || ""}`.toLocaleLowerCase("ar").includes(needle)
+      ));
+      return responseJson(200, {
+        items,
+        page,
+        filterPath,
+        hasMore: payload.hasMore,
+        fetchedAt: payload.fetchedAt,
+      });
+    }
     const items = await searchCeneleCatalog(query, ctx, fetchCeneleHtml);
     return responseJson(200, { items });
   }

@@ -407,7 +407,8 @@ html[dir="ltr"] .catalog-source-picker__footer > span:last-child { text-align: l
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 5px 6px 5px 8px;
+  padding-block: 5px;
+  padding-inline: 8px 6px;
 }
 .catalog-carousel-nav__icon {
   width: 32px;
@@ -1728,38 +1729,38 @@ html.native-app[data-nav-mode="buttons"] .screen--home .page-header {
 }
 
 html.native-app {
-  --safe-top: var(--app-safe-area-top, 0px);
-  --safe-bottom: var(--app-safe-area-bottom, 0px);
-  --safe-left: var(--app-safe-area-left, 0px);
-  --safe-right: var(--app-safe-area-right, 0px);
   --bottom-nav-height: 64px;
   --bottom-nav-bg: color-mix(in srgb, var(--surface, var(--paper)) 92%, transparent);
-  --screen-bottom-padding: calc(var(--bottom-nav-height) + var(--safe-bottom) + 20px);
-}
-
-html.native-app[data-nav-mode="gesture"] {
-  --screen-bottom-padding: calc(var(--bottom-nav-height) + var(--safe-bottom) + 12px);
-}
-
-html.native-app[data-nav-mode="buttons"] {
-  --screen-bottom-padding: calc(var(--bottom-nav-height) + var(--safe-bottom) + 16px);
+  --screen-bottom-padding: calc(var(--bottom-nav-height) + var(--nav-offset-bottom) + var(--nav-inner-bottom) + 12px);
 }
 
 html.native-app.bottom-nav-hidden .bottom-nav {
-  transform: translate(-50%, calc(100% + var(--safe-bottom, 0px) + 28px));
+  transform: translate(-50%, calc(100% + var(--nav-offset-bottom, 0px) + var(--nav-inner-bottom, 8px) + 28px));
+}
+
+html.native-app[data-nav-mode="buttons"]::after {
+  content: "";
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--safe-bottom, 0px);
+  background: var(--paper);
+  pointer-events: none;
+  z-index: 20;
 }
 
 .native-app .bottom-nav {
   position: fixed;
   left: 50%;
   right: auto;
-  bottom: 0;
+  bottom: var(--nav-offset-bottom, 0px);
   width: min(calc(100dvw - max(24px, calc(var(--safe-left, 0px) + var(--safe-right, 0px)))), var(--content-max-width));
   max-width: var(--content-max-width);
   margin: 0;
   transform: translateX(-50%);
   box-sizing: border-box;
-  padding: 5px 6px max(8px, calc(var(--safe-bottom, 0px) + 6px));
+  padding: 5px 6px var(--nav-inner-bottom, max(8px, calc(var(--safe-bottom, 0px) + 6px)));
   min-height: var(--bottom-nav-height);
   border-radius: 22px;
   border: 1px solid var(--bottom-nav-border);
@@ -1776,13 +1777,6 @@ html.native-app.bottom-nav-hidden .bottom-nav {
   .native-app .bottom-nav {
     background: color-mix(in srgb, var(--surface, var(--paper)) 97%, transparent);
   }
-}
-
-/* Ancré en bas : la safe-area est gérée par le padding interne, pas par bottom. */
-html.native-app[data-nav-mode="gesture"] .bottom-nav,
-html.native-app[data-nav-mode="buttons"] .bottom-nav {
-  bottom: 0;
-  padding-bottom: max(8px, calc(var(--safe-bottom, 0px) + 6px));
 }
 
 @media (min-width: 1024px) and (min-height: 700px) {

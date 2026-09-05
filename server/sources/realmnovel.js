@@ -558,6 +558,33 @@ export async function handleRealmNovelRequest(requestUrl) {
     const page = Math.min(Math.max(Number(requestUrl.searchParams.get("page")) || 1, 1), 1000);
     const genre = requestUrl.searchParams.get("genre")?.trim() || "";
     const tag = requestUrl.searchParams.get("tag")?.trim() || genre;
+    if (genre || tag) {
+      try {
+        const { items, hasMore } = await fetchMoreCatalog(page, { tag, genre, baseUrl });
+        const needle = query.toLocaleLowerCase("ar");
+        const filtered = items.filter((item) => (
+          `${item.title || ""} ${item.altTitle || ""} ${item.summary || ""}`.toLocaleLowerCase("ar").includes(needle)
+        ));
+        return responseJson(200, {
+          items: filtered,
+          page,
+          hasMore,
+          fetchedAt: new Date().toISOString(),
+        });
+      } catch {
+        const html = await fetchRealmHtml(buildCatalogUrl(page, { genre, tag, baseUrl }));
+        const needle = query.toLocaleLowerCase("ar");
+        const items = parseRealmCatalog(html, baseUrl).filter((item) => (
+          `${item.title || ""} ${item.altTitle || ""} ${item.summary || ""}`.toLocaleLowerCase("ar").includes(needle)
+        ));
+        return responseJson(200, {
+          items,
+          page,
+          hasMore: catalogHasMore(html, page) && items.length >= CATALOG_PAGE_SIZE,
+          fetchedAt: new Date().toISOString(),
+        });
+      }
+    }
     try {
       const { items, hasMore } = await fetchMoreCatalog(page, { q: query, tag, genre, baseUrl });
       return responseJson(200, { items, page, hasMore });

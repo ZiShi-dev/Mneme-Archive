@@ -235,9 +235,9 @@ export function VideoPlaybackControls({
         dir={dir}
         aria-label={t("reader.playback.watchProgress")}
       >
-        <div className="reader-playback__timeline reader-playback__timeline--dock">
+        <div className="reader-playback__dock-progress">
           <Slider
-            className="reader-playback__slider"
+            className="reader-playback__slider reader-playback__slider--dock-top"
             dir="ltr"
             aria-label={t("reader.playback.watchProgress")}
             value={progress}
@@ -259,9 +259,31 @@ export function VideoPlaybackControls({
               )}
             </SliderTrack>
           </Slider>
-          <span className="reader-playback__time reader-playback__time--dock" aria-hidden="true">
-            {formatTime(currentTime)} / {formatTime(duration)}
-          </span>
+          <div className="reader-playback__dock-toolbar">
+            <button
+              type="button"
+              className={`reader-playback__play reader-playback__play--dock ${playing ? "active is-playing" : ""}`}
+              onClick={onTogglePlay}
+              aria-label={playing ? t("reader.playback.pause") : t("reader.playback.play")}
+            >
+              {playing ? <Pause size={20} aria-hidden="true" /> : <Play size={20} aria-hidden="true" />}
+            </button>
+            <span className="reader-playback__time reader-playback__time--dock" aria-hidden="true">
+              <span className="reader-playback__time-current">{formatTime(currentTime)}</span>
+              <span className="reader-playback__time-sep">/</span>
+              <span className="reader-playback__time-duration">{formatTime(duration)}</span>
+            </span>
+            {!hideFullscreen && onFullscreen ? (
+              <button
+                type="button"
+                className="reader-playback__icon-btn reader-playback__icon-btn--fullscreen"
+                onClick={onFullscreen}
+                aria-label={isFullscreen ? t("reader.playback.exitFullscreen") : t("reader.playback.enterFullscreen")}
+              >
+                {isFullscreen ? <Minimize2 size={16} aria-hidden="true" /> : <Maximize2 size={16} aria-hidden="true" />}
+              </button>
+            ) : null}
+          </div>
         </div>
       </section>
     );
@@ -269,6 +291,7 @@ export function VideoPlaybackControls({
 
   if (dockOnly) {
     const showDockTimeline = !navOnly || embedMode;
+    if (navOnly && !showDockTimeline) return null;
     return (
       <section
         className={`reader-playback reader-playback--video reader-playback--dock${embedMode ? " reader-playback--embed" : ""}${navOnly ? " reader-playback--nav-only" : ""}${netflixMode ? " reader-playback--netflix" : ""}${showServerPicker ? " reader-playback--has-server" : ""}${showChapterNav ? "" : " reader-playback--no-nav"}${className ? ` ${className}` : ""}`}
@@ -305,20 +328,6 @@ export function VideoPlaybackControls({
             </span>
           </div>
         ) : null}
-        <div className="reader-playback__actions reader-playback__actions--primary reader-playback__actions--nav-only">
-          {showChapterNav && renderChapterButton("prev", previousChapter, onPrevious, !previousChapter)}
-
-          {showServerPicker && !minimalOverlay ? (
-            <VideoServerPickerButton
-              compact
-              label={currentServerLabel}
-              onClick={onOpenServers}
-              className="reader-playback__server-picker"
-            />
-          ) : null}
-
-          {showChapterNav && renderChapterButton("next", nextChapter, onNext, !nextChapter)}
-        </div>
       </section>
     );
   }
@@ -369,7 +378,8 @@ export function VideoPlaybackControls({
         </div>
       )}
 
-      <div className={`reader-playback__actions reader-playback__actions--primary${navOnly ? " reader-playback__actions--nav-only" : ""}`}>
+      {!navOnly ? (
+      <div className="reader-playback__actions reader-playback__actions--primary">
         {showChapterNav && renderChapterButton("prev", previousChapter, onPrevious, !previousChapter)}
 
         {showServerPicker && !minimalOverlay ? (
@@ -453,6 +463,7 @@ export function VideoPlaybackControls({
 
         {showChapterNav && renderChapterButton("next", nextChapter, onNext, !nextChapter)}
       </div>
+      ) : null}
 
       {showAuxTools ? (
         <div className="reader-playback__actions reader-playback__actions--tools">

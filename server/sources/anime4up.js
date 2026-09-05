@@ -13,6 +13,7 @@ import {
 } from "../lib/catalogChapters.js";
 import { enrichSourceDetails } from "../lib/detailEnrichment.js";
 import { createHostContext, resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
+import { catalogEnrichFromCatalogParams } from "../lib/catalogEnrichPolicy.js";
 
 const DEFAULT_BASE_URL = "https://4h.b9p2m6c.shop";
 const DEFAULT_CTX = createHostContext(DEFAULT_BASE_URL);
@@ -689,19 +690,16 @@ export function parseAnime4upEpisode(html, url) {
   };
 }
 
-const KIND_FILTER_PATHS = new Set([
-  "/all",
-  "/all/",
-  "/anime-type/tv2",
-  "/anime-type/tv2/",
-  "/anime-type/movie",
-  "/anime-type/movie/",
-]);
-
 export function isAnime4upCatalogScopedSearchPath(filterPath = "") {
   const raw = String(filterPath || "").trim();
   if (!raw || !/^\/[\p{L}\p{N}/+_.%-]+\/?$/u.test(raw) || raw.includes("..")) return false;
-  return !KIND_FILTER_PATHS.has(raw);
+  return true;
+}
+
+function resolveAnime4upSearchCatalogPath(filterPath = "") {
+  const raw = String(filterPath || "").trim();
+  if (!raw || raw === "/all" || raw === "/all/") return HOME_PATH;
+  return raw;
 }
 
 function buildCatalogUrl(page, filterPath = CATALOG_PATH) {
@@ -893,7 +891,7 @@ async function collectCatalogPool(fetchUpstream, { offset, pageSize, maxUpstream
   return { pool, hasMoreUpstream };
 }
 
-export async function fetchAnime4upCatalogPage(ctx, fetchHtml, { page = 1, filterPath = HOME_PATH } = {}) {
+export async function fetchAnime4upCatalogPage(ctx, fetchHtml, { page = 1, filterPath = HOME_PATH, enrich = true } = {}) {
   const normalized = filterPath?.trim() || HOME_PATH;
   const isHome = isHomeCatalogPath(normalized);
   const offset = (page - 1) * ANIME4UP_CATALOG_PAGE_SIZE;
@@ -908,7 +906,9 @@ export async function fetchAnime4upCatalogPage(ctx, fetchHtml, { page = 1, filte
   });
 
   const items = pool.slice(offset, offset + ANIME4UP_CATALOG_PAGE_SIZE);
-  await enrichAnime4upCatalog(items, fetchHtml);
+  if (enrich) {
+    await enrichAnime4upCatalog(items, fetchHtml);
+  }
 
   return {
     items,
@@ -965,7 +965,8 @@ export async function handleAnime4upRequest(requestUrl) {
     if (!/^\/[\p{L}\p{N}/+_.%-]+\/?$/u.test(filterPath) || filterPath.includes("..")) {
       throw new Error("مسار فلتر Anime4up غير صالح");
     }
-    const payload = await fetchAnime4upCatalogPage(ctx, fetchAnime4upHtml, { page, filterPath });
+    const enrich = catalogEnrichFromCatalogParams(requestUrl.searchParams);
+    const payload = await fetchAnime4upCatalogPage(ctx, fetchAnime4upHtml, { page, filterPath, enrich });
     return responseJson(200, payload);
   }
 
@@ -975,7 +976,12 @@ export async function handleAnime4upRequest(requestUrl) {
     const page = Math.min(Math.max(Number(requestUrl.searchParams.get("page")) || 1, 1), 1000);
     const filterPath = requestUrl.searchParams.get("filterPath")?.trim() || "";
     if (isAnime4upCatalogScopedSearchPath(filterPath)) {
-      const payload = await fetchAnime4upCatalogPage(ctx, fetchAnime4upHtml, { page, filterPath });
+      const catalogPath = resolveAnime4upSearchCatalogPath(filterPath);
+      const payload = await fetchAnime4upCatalogPage(ctx, fetchAnime4upHtml, {
+        page,
+        filterPath: catalogPath,
+        enrich: false,
+      });
       const items = payload.items.filter((item) => (
         `${item.title} ${item.altTitle || ""}`.toLocaleLowerCase("ar").includes(query.toLocaleLowerCase("ar"))
       ));
@@ -989,7 +995,6 @@ export async function handleAnime4upRequest(requestUrl) {
     const html = await fetchAnime4upHtml(`${ctx.baseUrl}/?s=${encodeURIComponent(query)}`);
     let items = parseAnime4upCatalog(canonicalAnime4upHtml(html, ctx.baseUrl));
     items = items.slice(0, ANIME4UP_CATALOG_PAGE_SIZE);
-    await enrichAnime4upCatalog(items, fetchAnime4upHtml);
     return responseJson(200, { items, page: 1, hasMore: false });
   }
 

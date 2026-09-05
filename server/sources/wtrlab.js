@@ -440,6 +440,20 @@ export async function handleWtrlabRequest(requestUrl) {
     const genre = requestUrl.searchParams.get("genre")?.trim() || "";
     const tag = requestUrl.searchParams.get("tag")?.trim() || "";
     const kind = requestUrl.searchParams.get("kind")?.trim() || "";
+    if (genre || tag || (kind && kind !== "all")) {
+      const targetUrl = buildWtrlabCatalogUrl({ page, genre, tag, kind });
+      const { items, hasMore } = await fetchCatalogPage(targetUrl);
+      const needle = query.toLocaleLowerCase("ar");
+      const filtered = items.filter((item) => (
+        `${item.title || ""} ${item.altTitle || ""} ${item.summary || ""}`.toLocaleLowerCase("ar").includes(needle)
+      ));
+      return responseJson(200, {
+        items: filtered,
+        page,
+        hasMore,
+        fetchedAt: new Date().toISOString(),
+      });
+    }
     const params = new URLSearchParams({ text: query, page: String(page) });
     if (genre) params.set("gi", genre);
     if (tag) params.set("ti", tag);

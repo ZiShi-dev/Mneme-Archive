@@ -33,6 +33,7 @@ import { isNativeMobileApp } from "./lib/platform/nativeAppLayout";
 import { useI18n } from "./i18n/I18nProvider";
 import { PwaInstallBanner } from "./components/pwa/PwaInstallBanner";
 import { useHideBottomNavOnScroll } from "./hooks/useHideBottomNavOnScroll";
+import { useAndroidSystemNavigation } from "./hooks/useAndroidSystemNavigation";
 import { usePwaInstall } from "./hooks/usePwaInstall";
 import { useAppPullRefreshHandler } from "./hooks/useAppPullRefreshHandler";
 import { runAppPullRefresh } from "./lib/platform/appRefresh";
@@ -103,8 +104,14 @@ export function App() {
   }, [settings]);
   const {
     screen, selected, reader, selectedLive, liveReader,
-    navigate, openManga, openReader, openLiveManga, openLiveReader, goBack, isOverlayOpen,
+    navigate, openManga, openReader, openLiveManga, openLiveReader, goBack, isOverlayOpen, history,
   } = navigation;
+
+  useAndroidSystemNavigation({
+    goBack,
+    isOverlayOpen,
+    canPopHistory: history.length > 1,
+  });
   const {
     favorites, liveFavorites, sources, activeSourceId, sourcePreferences,
     darkMode, appearance, typeface, setReaderProgress,

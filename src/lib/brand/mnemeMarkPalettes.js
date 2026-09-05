@@ -1,5 +1,6 @@
 import {
   THEME_INK,
+  THEME_NUIT,
   THEME_LUNE_NEIGE,
   THEME_PAPER,
   THEME_SAKURA,
@@ -19,6 +20,16 @@ export const MNEME_MARK_PALETTES = {
     node: "#727A92",
     star: "#F8F6F2",
     starGlow: "#8B7CFF",
+  },
+  [THEME_NUIT]: {
+    canvas: "#000000",
+    disk: "#0a0a0a",
+    glyph: "#4B5168",
+    glyphSoft: "#353A4E",
+    ring: "#5A6178",
+    node: "#727A92",
+    star: "#F5F5F5",
+    starGlow: "#a78bfa",
   },
   [THEME_PAPER]: {
     canvas: "#F3F0EA",

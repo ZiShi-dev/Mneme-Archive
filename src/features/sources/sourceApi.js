@@ -249,6 +249,7 @@ export function buildSearchPath(sourceId, query, {
   if (page > 1) params.set("page", String(page));
   appendCatalogQueryFilters(params, sourceId, { genre, tag, tagPath, filterPath, queryParam, queryValue });
   appendSourceQueryParams(params, sourceId);
+  params.set("enrich", "0");
   return `${sourcePath(sourceId, "search")}?${params}`;
 }
 
@@ -326,8 +327,8 @@ export async function resolveSourceImageUrl(sourceId, url) {
   }
 }
 
-export function fetchCatalog(sourceId, { page = 1, genre = "", tag = "", tagPath = "", filterPath = "", queryParam = "", queryValue = "", signal } = {}) {
-  const path = buildCatalogPath(sourceId, { page, genre, tag, tagPath, filterPath, queryParam, queryValue });
+export function fetchCatalog(sourceId, { page = 1, genre = "", tag = "", tagPath = "", filterPath = "", queryParam = "", queryValue = "", enrich, signal } = {}) {
+  const path = buildCatalogPath(sourceId, { page, genre, tag, tagPath, filterPath, queryParam, queryValue, enrich });
   return requestJson(path, t("errors.loadCatalog"), {
     ttlMs: CATALOG_CACHE_TTL_MS,
     staleMs: CATALOG_STALE_TTL_MS,

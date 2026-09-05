@@ -11,6 +11,7 @@ import { responseJson } from "../lib/responseJson.js";
 import { applyRecentChapterFields } from "../lib/catalogChapters.js";
 import { sortSourcesByVideoHost } from "../lib/videoHosts.js";
 import { resolveSourceRequestContext } from "../lib/sourceBaseUrl.js";
+import { catalogEnrichFromSearchParams } from "../lib/catalogEnrichPolicy.js";
 import {
   assertChapterUrl,
   assertFilterPath,
@@ -487,7 +488,8 @@ export async function handleFrenchStreamRequest(requestUrl) {
     const page = Math.min(Math.max(Number(requestUrl.searchParams.get("page")) || 1, 1), 2000);
     const filterPath = assertFilterPath(requestUrl.searchParams.get("filterPath")?.trim() || MIXED_PATH);
     if (filterPath !== MIXED_PATH) {
-      const payload = await fetchFrenchStreamCatalogPage(ctx, fetchFrenchStreamHtml, { page, filterPath });
+      const enrich = catalogEnrichFromSearchParams(requestUrl.searchParams);
+      const payload = await fetchFrenchStreamCatalogPage(ctx, fetchFrenchStreamHtml, { page, filterPath, enrich });
       const needle = query.toLocaleLowerCase("fr");
       const items = payload.items.filter((item) => (
         `${item.title || ""} ${item.altTitle || ""} ${item.year || ""}`.toLocaleLowerCase("fr").includes(needle)
@@ -502,9 +504,10 @@ export async function handleFrenchStreamRequest(requestUrl) {
     }
     const html = await fetchFrenchStreamSearchHtmlCached(query, ctx.baseUrl, page);
     const parsed = parseFrenchStreamSearch(html);
-    const items = await enrichFrenchStreamCatalog(
-      parsed.slice(0, FRENCH_STREAM_CATALOG_PAGE_SIZE),
-    );
+    let items = parsed.slice(0, FRENCH_STREAM_CATALOG_PAGE_SIZE);
+    if (catalogEnrichFromSearchParams(requestUrl.searchParams)) {
+      items = await enrichFrenchStreamCatalog(items);
+    }
     return responseJson(200, {
       items,
       page,

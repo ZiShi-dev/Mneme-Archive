@@ -271,11 +271,11 @@ test("enrichAnime4upEpisodePlayback keeps external mirrors in sources when HLS i
   assert.ok(episode.sources.some((entry) => /uqload/i.test(entry.url)));
 });
 
-test("isAnime4upCatalogScopedSearchPath ignores kind paths but keeps genres", () => {
+test("isAnime4upCatalogScopedSearchPath accepts genre and kind paths", () => {
   assert.equal(isAnime4upCatalogScopedSearchPath(""), false);
-  assert.equal(isAnime4upCatalogScopedSearchPath("/all/"), false);
-  assert.equal(isAnime4upCatalogScopedSearchPath("/anime-type/tv2/"), false);
-  assert.equal(isAnime4upCatalogScopedSearchPath("/anime-type/movie/"), false);
+  assert.equal(isAnime4upCatalogScopedSearchPath("/all/"), true);
+  assert.equal(isAnime4upCatalogScopedSearchPath("/anime-type/tv2/"), true);
+  assert.equal(isAnime4upCatalogScopedSearchPath("/anime-type/movie/"), true);
   assert.equal(isAnime4upCatalogScopedSearchPath("/anime-genre/action/"), true);
 });
 

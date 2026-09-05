@@ -732,7 +732,22 @@ export async function handleAzoraRequest(requestUrl) {
     if (!valid) return responseJson(200, { items: [] });
     const genre = requestUrl.searchParams.get("genre")?.trim() ?? "";
     if (genre && !/^\d+$/.test(genre)) throw new Error("تصنيف AzoraFly غير صالح");
-    const genreQuery = genre ? `&genres=${encodeURIComponent(`+${genre}`)}` : "";
+    if (genre) {
+      const page = Math.min(Math.max(Number(requestUrl.searchParams.get("page")) || 1, 1), 1000);
+      const payload = await fetchAzoraCatalogPage(ctx, fetchAzoraHtml, { page, genre });
+      const needle = query.toLocaleLowerCase("ar");
+      const items = payload.items.filter((item) => (
+        `${item.title || ""} ${item.altTitle || ""}`.toLocaleLowerCase("ar").includes(needle)
+      ));
+      return responseJson(200, {
+        items,
+        page,
+        genre,
+        hasMore: payload.hasMore,
+        fetchedAt: payload.fetchedAt,
+      });
+    }
+    const genreQuery = "";
     const html = await resolveAzoraSearchHtml(
       `${ctx.baseUrl}/series/?searchTerm=${encodeURIComponent(query)}${genreQuery}`,
       fetchAzoraHtml,

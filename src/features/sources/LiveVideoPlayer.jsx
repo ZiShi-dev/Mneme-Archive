@@ -27,7 +27,6 @@ import { VideoEpisodePlaylist } from "./liveVideo/VideoEpisodePlaylist";
 import { VideoSubtitleOverlay } from "./liveVideo/VideoSubtitleOverlay";
 import { VideoServerSheet } from "./liveVideo/VideoServerSheet";
 import { VideoEpisodeHeader } from "./liveVideo/VideoEpisodeHeader";
-import { VideoEpisodeToolbar } from "./liveVideo/VideoEpisodeToolbar";
 import { useFetchedSubtitles } from "./liveVideo/useFetchedSubtitles";
 
 export function LiveVideoPlayer({
@@ -733,24 +732,9 @@ export function LiveVideoPlayer({
     />
   ) : null;
 
-  const showEpisodeToolbar = useNetflixLayout && Boolean(playback && data) && (showServerPicker || chapters.length > 1);
   const showNavDock = useNetflixLayout && Boolean(playback && data);
   const showTheaterOverlay = Boolean(playback && (!useNetflixLayout || isTheaterFullscreen));
   const showDockProgress = showNavDock && !isTheaterFullscreen && !embedMode;
-
-  const videoEpisodeToolbar = showEpisodeToolbar && !isTheaterFullscreen ? (
-    <VideoEpisodeToolbar
-      visible={controlsChromeVisible}
-      embedMode={embedMode}
-      unitLabel={presentation.headerUnit}
-      controlsProps={{
-        ...playbackControlProps,
-        forceChapterNav: !isMovie && chapters.length > 1,
-        showServerPicker,
-      }}
-      {...chromeInteractionHandlers}
-    />
-  ) : null;
 
   const playbackOverlay = showTheaterOverlay ? (
     <div
@@ -770,7 +754,7 @@ export function LiveVideoPlayer({
   const immersiveRoot = (
       <div
         ref={bindImmersiveRoot}
-        className={`live-video-immersive-root${videoEdgeToEdge ? " is-video-fill" : (cinemaMode ? " is-cinema" : "")}${isTheaterFullscreen ? " is-theater-fullscreen" : ""}${useNetflixLayout ? " is-netflix has-episode-header" : ""}${showEpisodeToolbar ? " has-episode-toolbar" : ""}${showNavDock ? " has-nav-dock" : ""}${embedMode ? " is-embed" : ""}${cssFullscreen || isTheaterFullscreen ? " plyr--fullscreen-fallback" : ""}${chromeVisible ? " is-chrome-visible" : " is-chrome-hidden"}`}
+        className={`live-video-immersive-root${videoEdgeToEdge ? " is-video-fill" : (cinemaMode ? " is-cinema" : "")}${isTheaterFullscreen ? " is-theater-fullscreen" : ""}${useNetflixLayout ? " is-netflix has-episode-header" : ""}${showNavDock ? " has-nav-dock" : ""}${embedMode ? " is-embed" : ""}${cssFullscreen || isTheaterFullscreen ? " plyr--fullscreen-fallback" : ""}${chromeVisible ? " is-chrome-visible" : " is-chrome-hidden"}`}
         onPointerMove={(event) => {
           if (useNetflixLayout) return;
           if (isVideoImmersive) {
@@ -903,7 +887,6 @@ export function LiveVideoPlayer({
         )}
         {showTheaterOverlay ? playbackOverlay : null}
         </div>
-        {videoEpisodeToolbar}
         {showDockProgress ? (
           <div className="video-watch-dock">
             <div
@@ -916,7 +899,7 @@ export function LiveVideoPlayer({
                 nextChapter={null}
                 showServerPicker={false}
                 progressOnly
-                className="reader-playback--overlay reader-playback--netflix"
+                className="reader-playback--dock-progress"
               />
             </div>
           </div>

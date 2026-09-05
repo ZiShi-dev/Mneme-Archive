@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { findActiveCue, parseVtt } from "../features/sources/liveVideo/parseVtt.js";
+import { findActiveCue, formatSubtitleText, parseVtt } from "../features/sources/liveVideo/parseVtt.js";
 
 test("parseVtt reads cue timings and text", () => {
   const cues = parseVtt(`WEBVTT
@@ -23,4 +23,13 @@ test("findActiveCue returns the current subtitle line", () => {
   const cues = [{ start: 1, end: 3, text: "test" }];
   assert.equal(findActiveCue(cues, 2)?.text, "test");
   assert.equal(findActiveCue(cues, 5), null);
+});
+
+test("formatSubtitleText strips html and ass markup", () => {
+  assert.equal(
+    formatSubtitleText("ستكون هذه رحلتي الرسمية الأولى<b><i></i></b> إلى أراضي نبيل آخر"),
+    "ستكون هذه رحلتي الرسمية الأولى إلى أراضي نبيل آخر",
+  );
+  assert.equal(formatSubtitleText("{\\i1}Bonjour"), "Bonjour");
+  assert.equal(formatSubtitleText("<font color=\"#fff\">Test</font>"), "Test");
 });

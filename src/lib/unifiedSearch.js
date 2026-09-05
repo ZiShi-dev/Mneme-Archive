@@ -186,8 +186,8 @@ export function resolveUnifiedSearchDebounceMs(query = "", { cacheReady = false 
   const length = normalizeUnifiedSearchQuery(query).length;
   if (length >= 6) return UNIFIED_SEARCH_DEBOUNCE_FAST_MS;
   if (length >= 4) return UNIFIED_SEARCH_DEBOUNCE_MS;
-  if (length >= 3) return 200;
-  return UNIFIED_SEARCH_DEBOUNCE_SHORT_MS;
+  if (length >= 3) return 140;
+  return 200;
 }
 
 export function buildSearchScopeKey(sources = [], sourcePreferences = {}, mediaType = "all") {

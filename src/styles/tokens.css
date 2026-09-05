@@ -57,10 +57,12 @@
   --safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--app-safe-area-bottom));
   --safe-left: max(env(safe-area-inset-left, 0px), var(--app-safe-area-left));
   --safe-right: max(env(safe-area-inset-right, 0px), var(--app-safe-area-right));
+  --nav-offset-bottom: 0px;
+  --nav-inner-bottom: max(8px, calc(var(--safe-bottom, 0px) + 6px));
   --bottom-nav-height: 80px;
   --nav-dock: bottom;
   --screen-top-padding: 0px;
-  --screen-bottom-padding: calc(var(--bottom-nav-height) + 24px + var(--safe-bottom));
+  --screen-bottom-padding: calc(var(--bottom-nav-height) + var(--nav-offset-bottom) + var(--nav-inner-bottom) + 16px);
   --bottom-nav-bg: color-mix(in srgb, var(--paper) 88%, transparent);
   --bottom-nav-border: color-mix(in srgb, var(--line) 72%, transparent);
   --bottom-nav-shadow: 0 -10px 40px color-mix(in srgb, var(--ink) 8%, transparent);
@@ -502,6 +504,30 @@ html:not([data-theme="nuit"]) .app-shell--dark,
     --content-padding-bottom: 16px;
     --page-header-padding-x: 16px;
   }
+}
+
+html[data-nav-mode="buttons"] {
+  --nav-offset-bottom: var(--safe-bottom, 0px);
+  --nav-inner-bottom: 8px;
+  --video-bottom-safe: max(8px, var(--app-safe-area-bottom, 0px));
+}
+
+html[data-nav-mode="gesture"] {
+  --nav-offset-bottom: 0px;
+  --nav-inner-bottom: max(8px, calc(var(--safe-bottom, 0px) + 6px));
+  --video-bottom-safe: max(24px, var(--app-safe-area-bottom, env(safe-area-inset-bottom, 0px)));
+}
+
+html.native-app:not([data-nav-mode="gesture"]) {
+  --nav-offset-bottom: var(--safe-bottom, 0px);
+  --nav-inner-bottom: 8px;
+}
+
+html.native-app {
+  --safe-top: var(--app-safe-area-top, 0px);
+  --safe-bottom: var(--app-safe-area-bottom, 0px);
+  --safe-left: var(--app-safe-area-left, 0px);
+  --safe-right: var(--app-safe-area-right, 0px);
 }
 
 /* Pliable ouvert (deux segments) : rester dans une colonne, pas à cheval sur la charnière */

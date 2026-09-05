@@ -116,8 +116,24 @@ function cacheNativeRows(rows) {
   });
 }
 
+const BOOT_MIRROR_KEYS = new Set([
+  "living-archive:appearance",
+  "living-archive:typeface",
+  "living-archive:locale",
+  "living-archive:ink-mode",
+]);
+
+function mirrorBootKeysToLocalStorage() {
+  if (typeof localStorage === "undefined") return;
+  for (const key of BOOT_MIRROR_KEYS) {
+    if (!memoryCache.has(key)) continue;
+    writeWebRaw(key, memoryCache.get(key));
+  }
+}
+
 async function loadNativeBootCache() {
   await loadNativeCriticalKeys();
+  mirrorBootKeysToLocalStorage();
 }
 
 function scheduleNativeHydration() {
@@ -199,6 +215,7 @@ export function persistStorageString(key, value) {
   memoryCache.set(key, raw);
   if (isNativeStorage()) {
     void writeNativeRaw(key, raw);
+    if (BOOT_MIRROR_KEYS.has(key)) writeWebRaw(key, raw);
   } else {
     writeWebRaw(key, raw);
   }

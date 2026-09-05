@@ -61,7 +61,7 @@ public class MainActivity extends BridgeActivity {
         Window window = getWindow();
         WindowCompat.setDecorFitsSystemWindows(window, false);
         window.setStatusBarColor(Color.TRANSPARENT);
-        window.setNavigationBarColor(Color.parseColor("#090A12"));
+        window.setNavigationBarColor(Color.TRANSPARENT);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.setStatusBarContrastEnforced(false);
             window.setNavigationBarContrastEnforced(false);
@@ -87,7 +87,7 @@ public class MainActivity extends BridgeActivity {
         attachedInsetView = target;
         ViewCompat.setOnApplyWindowInsetsListener(target, (view, windowInsets) -> {
             pushSafeAreaInsets(windowInsets);
-            return windowInsets;
+            return WindowInsetsCompat.CONSUMED;
         });
         ViewCompat.requestApplyInsets(target);
     }
@@ -101,14 +101,21 @@ public class MainActivity extends BridgeActivity {
     }
 
     private static Insets resolveSafeAreaInsets(WindowInsetsCompat windowInsets) {
+        float density = android.content.res.Resources.getSystem().getDisplayMetrics().density;
+        int buttonNavPx = (int) (48f * density + 0.5f);
         int top = maxInset(
             windowInsets.getInsets(WindowInsetsCompat.Type.statusBars()).top,
             windowInsets.getInsets(WindowInsetsCompat.Type.displayCutout()).top,
             windowInsets.getInsets(WindowInsetsCompat.Type.systemBars()).top
         );
-        // Ne pas utiliser mandatorySystemGestures : trop haut en mode glisser.
-        // navigationBars suffit (barre à boutons ou fine pastille home).
-        int bottom = windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
+        int rawBottom = windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
+        int bottom;
+        if (rawBottom >= buttonNavPx) {
+            // MIUI / Redmi : insets parfois surévalués en mode boutons — on plafonne.
+            bottom = Math.min(rawBottom, buttonNavPx + (int) (8f * density + 0.5f));
+        } else {
+            bottom = rawBottom;
+        }
         int left = maxInset(
             windowInsets.getInsets(WindowInsetsCompat.Type.displayCutout()).left,
             windowInsets.getInsets(WindowInsetsCompat.Type.systemBars()).left,
@@ -122,13 +129,27 @@ public class MainActivity extends BridgeActivity {
         return Insets.of(left, top, right, bottom);
     }
 
-    /** Boutons système = barre de navigation ≥ 48dp ; sinon gestes. */
+    /** Boutons système = barre de navigation ≥ 40dp ; sinon gestes. */
     private static String resolveNavMode(WindowInsetsCompat windowInsets) {
+        float density = android.content.res.Resources.getSystem().getDisplayMetrics().density;
+        int buttonNavPx = (int) (40f * density + 0.5f);
         int navBottom = windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
-        if (navBottom >= 48) {
+        int gestureBottom = windowInsets.getInsets(WindowInsetsCompat.Type.systemGestures()).bottom;
+        int tappableBottom = windowInsets.getInsets(WindowInsetsCompat.Type.tappableElements()).bottom;
+
+        if (navBottom >= buttonNavPx) {
+            return "buttons";
+        }
+        if (tappableBottom > gestureBottom + (int) (8f * density + 0.5f) && navBottom > gestureBottom) {
             return "buttons";
         }
         return "gesture";
+    }
+
+    @Override
+    public void onConfigurationChanged(android.content.res.Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        scheduleSafeAreaInsetUpdates();
     }
 
     @Override
@@ -147,12 +168,9 @@ public class MainActivity extends BridgeActivity {
             || windowInsets.isVisible(WindowInsetsCompat.Type.navigationBars());
         if (getBridge() == null || getBridge().getWebView() == null) return;
         String js = String.format(
-            "document.documentElement.style.setProperty('--app-safe-area-top','%dpx');"
-                + "document.documentElement.style.setProperty('--app-safe-area-bottom','%dpx');"
-                + "document.documentElement.style.setProperty('--app-safe-area-left','%dpx');"
-                + "document.documentElement.style.setProperty('--app-safe-area-right','%dpx');"
-                + "document.documentElement.dataset.navMode='%s';"
-                + "document.documentElement.dataset.systemBarsVisible='%s';",
+            "(function(){var fn=window.__applyNativeInsets;if(typeof fn==='function'){fn({top:%d,bottom:%d,left:%d,right:%d,navMode:'%s',systemBarsVisible:%s});}else{document.documentElement.style.setProperty('--app-safe-area-top','%dpx');document.documentElement.style.setProperty('--app-safe-area-bottom','%dpx');document.documentElement.style.setProperty('--app-safe-area-left','%dpx');document.documentElement.style.setProperty('--app-safe-area-right','%dpx');document.documentElement.dataset.navMode='%s';document.documentElement.dataset.systemBarsVisible='%s';}})();",
+            insets.top, insets.bottom, insets.left, insets.right, navMode,
+            systemBarsVisible ? "true" : "false",
             insets.top, insets.bottom, insets.left, insets.right, navMode,
             systemBarsVisible ? "true" : "false"
         );

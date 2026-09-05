@@ -222,8 +222,8 @@ test("peekCachedSearchBatches returns cached remote results without network", as
 
 test("resolveUnifiedSearchDebounceMs skips wait when cache is ready", () => {
   assert.equal(resolveUnifiedSearchDebounceMs("na", { cacheReady: true }), 0);
-  assert.equal(resolveUnifiedSearchDebounceMs("na", { cacheReady: false }), 280);
-  assert.equal(resolveUnifiedSearchDebounceMs("nar", { cacheReady: false }), 200);
+  assert.equal(resolveUnifiedSearchDebounceMs("na", { cacheReady: false }), 200);
+  assert.equal(resolveUnifiedSearchDebounceMs("nar", { cacheReady: false }), 140);
   assert.equal(resolveUnifiedSearchDebounceMs("naru", { cacheReady: false }), 160);
   assert.equal(resolveUnifiedSearchDebounceMs("naruto", { cacheReady: false }), 90);
 });

@@ -6,6 +6,14 @@ export function parseCatalogEnrichFlag(raw) {
   return true;
 }
 
-export function catalogEnrichFromSearchParams(searchParams) {
+/** Catalogue : enrich par défaut sauf ?enrich=0 */
+export function catalogEnrichFromCatalogParams(searchParams) {
   return parseCatalogEnrichFlag(searchParams?.get?.("enrich"));
+}
+
+/** Recherche : pas d'enrich par défaut (réponse rapide) ; ?enrich=1 pour forcer */
+export function catalogEnrichFromSearchParams(searchParams) {
+  const raw = searchParams?.get?.("enrich");
+  if (raw == null || raw === "") return false;
+  return parseCatalogEnrichFlag(raw);
 }

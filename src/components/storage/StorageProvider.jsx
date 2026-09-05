@@ -4,7 +4,8 @@ import { SplashScreen } from "@capacitor/splash-screen";
 import { initStorage, resetStorageInit } from "../../lib/storage/initStorage";
 import { t } from "../../i18n/runtime";
 import { getAppBrandText } from "../../lib/brand/appBrand";
-import { readBootAppearance } from "../../lib/theme/appearance";
+import { applyAppearance, readBootAppearance } from "../../lib/theme/appearance";
+import { syncNativeChrome } from "../../lib/theme/nativeChrome";
 import { ThemedBootScreen } from "../boot/ThemedBootScreen";
 
 const StorageContext = createContext({ ready: false, error: null });
@@ -22,7 +23,7 @@ export function StorageProvider({ children }) {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState(null);
   const [bootAttempt, setBootAttempt] = useState(0);
-  const bootAppearance = useMemo(() => readBootAppearance(), []);
+  const [bootAppearance, setBootAppearance] = useState(() => readBootAppearance());
 
   const retryBoot = useCallback(() => {
     resetStorageInit();
@@ -35,10 +36,13 @@ export function StorageProvider({ children }) {
     let active = true;
     initStorage()
       .then(() => {
-        if (active) {
-          setReady(true);
-          void hideNativeSplash();
-        }
+        if (!active) return;
+        const appearance = readBootAppearance();
+        applyAppearance(appearance);
+        void syncNativeChrome(appearance);
+        setBootAppearance(appearance);
+        setReady(true);
+        void hideNativeSplash();
       })
       .catch((reason) => {
         if (active) {

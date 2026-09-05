@@ -40,18 +40,21 @@ test("mangalikHtmlLooksValid accepts search URLs with minimal templates", () => 
   assert.equal(mangalikHtmlLooksValid(html, searchUrl), true);
 });
 
-test("handleMangalikRequest search finds Lee Hoo even with genre filter", async () => {
+test("handleMangalikRequest search filters genre catalog locally", async () => {
   const { handleMangalikRequest } = await import("../sources/mangalik.js");
   const { configureSourceNativeFetch, clearSourceNativeFetch } = await import("../lib/nativeFetchBridge.js");
   const title = "The Return Of Senior Disciple Lee Hoo";
   configureSourceNativeFetch({
     fetchHtml: async (url) => {
-      if (String(url).includes("wp-json")) return "[]";
-      if (String(url).includes("post_type=wp-manga")) {
+      if (String(url).includes("/manga-genre/action/")) {
         return `
-          <div class="row c-tabs-item__content">
-            <div class="tab-thumb"><img data-src="https://io.mangalik.net/wp-content/uploads/cover.jpg" alt="${title}"></div>
-            <div class="post-title"><a href="https://mangalik.net/manga/the-return-of-senior-disciple-lee-hoo/">${title}</a></div>
+          <div class="page-item-detail manga">
+            <div class="item-thumb">
+              <a href="https://mangalik.net/manga/the-return-of-senior-disciple-lee-hoo/" title="${title}">
+                <img class="img-responsive" src="https://io.mangalik.net/wp-content/uploads/cover.jpg" alt="${title}">
+              </a>
+            </div>
+            <div class="post-title"><h3 class="h5"><a href="https://mangalik.net/manga/the-return-of-senior-disciple-lee-hoo/">${title}</a></h3></div>
           </div>
         `.repeat(2);
       }

@@ -530,26 +530,24 @@ export async function fetchMangalikCatalogPage(ctx, fetchHtml, { page = 1, genre
 }
 
 async function searchMangalikCatalog(query, ctx, fetchHtml, { genre = "", tag = "", tagPath = "tag", page = 1 } = {}) {
-  const global = await searchMangalikGlobal(query, ctx, fetchHtml);
-  if (global.items.length) return global;
+  if (genre || tag) {
+    const { baseUrl } = ctx;
+    const basePath = genre ? `/manga-genre/${encodeURIComponent(genre)}` : `/${tagPath}/${encodeURIComponent(tag)}`;
+    const target = page === 1 ? `${baseUrl}${basePath}/` : `${baseUrl}${basePath}/page/${page}/`;
+    const html = await resolveHtml(target, fetchHtml);
+    const needle = query.toLocaleLowerCase("ar");
+    const items = parseCatalog(html, ctx).filter((item) => (
+      `${item.title || ""} ${item.altTitle || ""}`.toLocaleLowerCase("ar").includes(needle)
+    ));
+    const nextPath = `${basePath}/page/${page + 1}/`;
+    return {
+      items,
+      page,
+      hasMore: html.includes(nextPath) || html.includes(encodeURI(nextPath)),
+    };
+  }
 
-  // Repli faible : filtrer une page de genre/étiquette si la recherche globale est vide.
-  if (!genre && !tag) return global;
-
-  const { baseUrl } = ctx;
-  const basePath = genre ? `/manga-genre/${encodeURIComponent(genre)}` : `/${tagPath}/${encodeURIComponent(tag)}`;
-  const target = page === 1 ? `${baseUrl}${basePath}/` : `${baseUrl}${basePath}/page/${page}/`;
-  const html = await resolveHtml(target, fetchHtml);
-  const needle = query.toLocaleLowerCase("ar");
-  const items = parseCatalog(html, ctx).filter((item) => (
-    `${item.title || ""} ${item.altTitle || ""}`.toLocaleLowerCase("ar").includes(needle)
-  ));
-  const nextPath = `${basePath}/page/${page + 1}/`;
-  return {
-    items,
-    page,
-    hasMore: html.includes(nextPath) || html.includes(encodeURI(nextPath)),
-  };
+  return searchMangalikGlobal(query, ctx, fetchHtml);
 }
 
 async function fetchMangalikSearchJson(baseUrl, query, fetchHtml, ctx = DEFAULT_CTX) {

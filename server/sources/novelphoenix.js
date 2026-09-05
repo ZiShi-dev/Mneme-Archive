@@ -454,6 +454,25 @@ export async function handleNovelphoenixRequest(requestUrl) {
     const { query, valid } = normalizeSearchQuery(requestUrl.searchParams.get("q"));
     if (!valid) return responseJson(200, { items: [], page: 1, hasMore: false });
     const page = Math.min(Math.max(Number(requestUrl.searchParams.get("page")) || 1, 1), 1000);
+    const genre = requestUrl.searchParams.get("genre")?.trim() || "";
+    const tag = requestUrl.searchParams.get("tag")?.trim() || "";
+    const kind = requestUrl.searchParams.get("kind")?.trim() || "";
+    if (genre || tag || (kind && kind !== "all")) {
+      const targetUrl = buildNovelphoenixCatalogUrl({ page, genre, tag, kind, baseUrl });
+      const html = await fetchHtml(targetUrl);
+      const items = parseNovelphoenixCatalog(html, baseUrl);
+      assertNovelphoenixCatalogHtml(targetUrl, html, items);
+      const needle = query.toLocaleLowerCase("ar");
+      const filtered = items.filter((item) => (
+        `${item.title || ""} ${item.altTitle || ""} ${item.summary || ""}`.toLocaleLowerCase("ar").includes(needle)
+      ));
+      return responseJson(200, {
+        items: filtered,
+        page,
+        hasMore: catalogHasMorePages(html),
+        fetchedAt: new Date().toISOString(),
+      });
+    }
     const targetUrl = buildNovelphoenixSearchUrl(query, page, baseUrl);
     const html = await fetchHtml(targetUrl);
     const items = parseNovelphoenixCatalog(html, baseUrl);

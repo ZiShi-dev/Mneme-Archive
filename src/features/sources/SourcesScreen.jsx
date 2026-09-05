@@ -21,6 +21,7 @@ import {
   describeCatalogView,
   filterRequestParams,
   filterCatalogItemsByQuery,
+  collectCatalogSearchPool,
   isSearchQueryActive,
   resolveEffectiveFilter,
   shouldUseCatalogScopedSearch,
@@ -150,9 +151,10 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
     return resolveEffectiveFilter(kind, taxonomy);
   }
 
-  async function fetchCatalogPageSingle(sourceId, kind, taxonomy, pageToLoad, { signal } = {}) {
+  async function fetchCatalogPageSingle(sourceId, kind, taxonomy, pageToLoad, { signal, enrich } = {}) {
     const data = await fetchCatalog(sourceId, {
       page: pageToLoad,
+      enrich,
       ...filterRequestParams(getActiveFilter(kind, taxonomy)),
       signal,
     });
@@ -168,7 +170,7 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
 
   async function fetchSearchPageSingle(sourceId, kind, taxonomy, catalogQuery, pageToLoad, { signal } = {}) {
     if (shouldUseCatalogScopedSearch(sourceId, kind, taxonomy, catalogQuery)) {
-      const data = await fetchCatalogPageSingle(sourceId, kind, taxonomy, pageToLoad, { signal });
+      const data = await fetchCatalogPageSingle(sourceId, kind, taxonomy, pageToLoad, { signal, enrich: false });
       let nextItems = filterCatalogItemsByQuery(data.items || [], catalogQuery);
       if (kind?.slug && kind.slug !== "all") {
         nextItems = nextItems.filter((item) => catalogItemMatchesFilter(item, kind));
@@ -663,19 +665,40 @@ export function SourcesScreen({ sources, activeSourceId, onSetActiveSource, sour
     if (queryTimer.current) clearTimeout(queryTimer.current);
 
     if (isSearchQueryActive(value)) {
+      const requestParams = filterRequestParams(getActiveFilter(selectedKind, selectedFilter));
+      const warmPool = collectCatalogSearchPool({
+        sourceId: activeSource.id,
+        kind: selectedKind,
+        taxonomy: selectedFilter,
+        requestParams,
+        peekCatalogPage: peekCatalog,
+        readSnapshotPage: readCatalogSnapshot,
+        extraItems: items,
+      });
+      const instantItems = filterCatalogItemsByQuery(warmPool, value);
+      if (instantItems.length) {
+        setItems(instantItems);
+        setHasMore(false);
+        setStatus("ready");
+      }
+
       const cachedSearch = peekSourceSearch(buildSearchPath(
         activeSource.id,
         value,
-        { page: 1, ...filterRequestParams(getActiveFilter(selectedKind, selectedFilter)) },
+        { page: 1, ...requestParams },
       ));
       if (cachedSearch?.items?.length) {
         setItems(cachedSearch.items);
         setHasMore(Boolean(cachedSearch.hasMore));
         setStatus("ready");
+      } else if (!instantItems.length) {
+        setStatus("loading");
       }
       queryTimer.current = setTimeout(() => {
         void refreshCatalog({ kind: selectedKind, filter: selectedFilter, catalogQuery: value, page: 1 });
-      }, resolveUnifiedSearchDebounceMs(value, { cacheReady: Boolean(cachedSearch?.items?.length) }));
+      }, resolveUnifiedSearchDebounceMs(value, {
+        cacheReady: Boolean(cachedSearch?.items?.length || instantItems.length),
+      }));
       return;
     }
 

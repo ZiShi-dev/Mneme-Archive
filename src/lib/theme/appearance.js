@@ -1,5 +1,6 @@
 import { applyThemeIcons } from "./themeIcons.js";
 import { peekStorageString } from "../storage/peek.js";
+import { isKvStoreReady, kvGetStringSync, kvHasSync } from "../storage/kvStore.js";
 import {
   THEME_INK,
   THEME_NUIT,
@@ -96,10 +97,17 @@ export function themeSheetModifier(themeId) {
 export function applyAppearance(themeId) {
   if (typeof document === "undefined") return;
   const id = normalizeThemeId(themeId);
+  const background = THEME_META_COLOR[id] || THEME_META_COLOR[THEME_INK];
   document.documentElement.style.colorScheme = isDarkTheme(id) ? "dark" : "light";
+  document.documentElement.style.setProperty("--boot-shell-bg", background);
+  document.documentElement.style.backgroundColor = background;
   document.documentElement.dataset.theme = id;
-  if (document.body) document.body.dataset.theme = id;
-  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", THEME_META_COLOR[id]);
+  if (document.body) {
+    document.body.dataset.theme = id;
+    document.body.style.backgroundColor = background;
+    document.body.style.color = isDarkTheme(id) ? "#f6f7f8" : "#171218";
+  }
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", background);
   document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')?.setAttribute(
     "content",
     isDarkTheme(id) ? "black-translucent" : "default",
@@ -107,7 +115,7 @@ export function applyAppearance(themeId) {
   applyThemeIcons(id);
 }
 
-export function readBootAppearance() {
+function readAppearanceFromLocalStorage() {
   const appearanceRaw = peekStorageString("living-archive:appearance", "");
   if (appearanceRaw) return normalizeThemeId(appearanceRaw);
   try {
@@ -116,4 +124,23 @@ export function readBootAppearance() {
   } catch {
     return THEME_INK;
   }
+}
+
+function readAppearanceFromKvCache() {
+  if (!isKvStoreReady()) return null;
+  const appearanceRaw = kvGetStringSync("living-archive:appearance", "");
+  if (appearanceRaw) return normalizeThemeId(appearanceRaw);
+  if (kvHasSync("living-archive:ink-mode")) {
+    const inkRaw = kvGetStringSync("living-archive:ink-mode", "true");
+    try {
+      return normalizeThemeId(JSON.parse(inkRaw));
+    } catch {
+      return normalizeThemeId(inkRaw);
+    }
+  }
+  return null;
+}
+
+export function readBootAppearance() {
+  return readAppearanceFromKvCache() ?? readAppearanceFromLocalStorage();
 }

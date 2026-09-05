@@ -442,7 +442,7 @@
 }
 
 html.bottom-nav-hidden .app-shell:not(.app-shell--desktop) .bottom-nav {
-  transform: translate(-50%, calc(100% + var(--safe-bottom, 0px) + 28px));
+  transform: translate(-50%, calc(100% + var(--nav-offset-bottom, 0px) + var(--nav-inner-bottom, 8px) + 28px));
 }
 
 @media (min-width: 1024px) and (min-height: 700px) {

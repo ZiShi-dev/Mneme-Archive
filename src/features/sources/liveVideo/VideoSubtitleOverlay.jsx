@@ -1,5 +1,5 @@
 import React from "react";
-import { findActiveCue } from "./parseVtt";
+import { findActiveCue, formatSubtitleText } from "./parseVtt";
 
 export function VideoSubtitleOverlay({
   cues = [],
@@ -18,7 +18,9 @@ export function VideoSubtitleOverlay({
         <p className="live-video-subtitle-overlay__loading">{loadingLabel}</p>
       ) : null}
       {activeCue ? (
-        <p className="live-video-subtitle-overlay__line" dir="auto">{activeCue.text}</p>
+        <p className="live-video-subtitle-overlay__line" dir="auto">
+          {formatSubtitleText(activeCue.text)}
+        </p>
       ) : null}
     </div>
   );

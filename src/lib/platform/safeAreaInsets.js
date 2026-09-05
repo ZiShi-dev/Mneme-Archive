@@ -1,4 +1,5 @@
 import { Capacitor } from "@capacitor/core";
+import { readLastNativeInsets } from "./systemInsets.js";
 
 function setInset(name, value) {
   document.documentElement.style.setProperty(name, `${Math.max(0, Math.round(value))}px`);
@@ -10,15 +11,23 @@ function readInsetValue(name) {
   return Number.isFinite(value) ? value : 0;
 }
 
+function readNativeBottom() {
+  return readLastNativeInsets()?.bottom ?? readInsetValue("--app-safe-area-bottom");
+}
+
 function readFromVisualViewport() {
   const viewport = window.visualViewport;
   if (!viewport) return;
 
-  // Le haut est géré par MainActivity via --app-safe-area-top.
-  // Le bas est poussé par MainActivity ; visualViewport ne sert qu'au clavier virtuel.
   const vpBottom = window.innerHeight - viewport.height - viewport.offsetTop;
   if (vpBottom > 150) {
-    setInset("--app-safe-area-bottom", Math.max(readInsetValue("--app-safe-area-bottom"), vpBottom));
+    setInset("--app-safe-area-bottom", Math.max(readNativeBottom(), vpBottom));
+    return;
+  }
+
+  const native = readLastNativeInsets();
+  if (native) {
+    setInset("--app-safe-area-bottom", native.bottom);
   }
 }
 
@@ -31,10 +40,12 @@ export function initSafeAreaInsets() {
   window.visualViewport?.addEventListener("scroll", update);
   window.addEventListener("resize", update);
   window.addEventListener("orientationchange", () => window.setTimeout(update, 120));
+  window.addEventListener("nativeinsets", update);
 
   return () => {
     window.visualViewport?.removeEventListener("resize", update);
     window.visualViewport?.removeEventListener("scroll", update);
     window.removeEventListener("resize", update);
+    window.removeEventListener("nativeinsets", update);
   };
 }

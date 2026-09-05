@@ -13,6 +13,6 @@ export function markNativeAppShell() {
   document.documentElement.classList.add("native-app");
   document.body?.classList.add("native-app");
   if (!document.documentElement.dataset.navMode) {
-    document.documentElement.dataset.navMode = "gesture";
+    document.documentElement.dataset.navMode = "buttons";
   }
 }

@@ -239,6 +239,14 @@ html.native-app[data-nav-mode="buttons"] .live-reader:not(.live-reader--video) .
   padding-bottom: 0;
 }
 
+html.native-app[data-nav-mode="buttons"] .live-reader:not(.live-reader--video) .live-reader__dock .reader-playback {
+  padding-bottom: max(10px, var(--reader-safe-bottom, 0px));
+}
+
+html.native-app[data-nav-mode="gesture"] .live-reader:not(.live-reader--video) .live-reader__dock .reader-playback {
+  padding-bottom: max(10px, calc(var(--reader-safe-bottom, 0px) + 6px));
+}
+
 .live-reader:not(.live-reader--video) .live-reader__dock .reader-playback {
   position: relative;
   left: auto;
@@ -1406,6 +1414,9 @@ html.app-immersive-fullscreen[data-system-bars-visible="true"] .live-reader.live
   max-height: none;
   margin: 0;
   padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   --reader-safe-top: 0px;
   --reader-safe-bottom: 0px;
   --reader-safe-left: 0px;
@@ -1454,6 +1465,19 @@ html.app-immersive-fullscreen[data-system-bars-visible="true"] .live-reader--vid
   min-height: 0;
   height: 100%;
   width: 100%;
+}
+
+.live-video-immersive-root.is-video-fill.has-nav-dock .live-video-stage,
+.live-video-immersive-root.is-video-fill.has-nav-dock .live-video-stage-shell,
+.live-video-immersive-root.is-video-fill.has-nav-dock .live-video-player-wrap,
+.live-video-immersive-root.is-video-fill.has-nav-dock .live-video-player-frame,
+.live-video-immersive-root.is-video-fill.has-nav-dock .live-video-stage--embed .live-video-embed,
+.live-video-immersive-root.is-video-fill.has-nav-dock .live-video-embed__frame,
+.live-video-immersive-root.is-video-fill.has-nav-dock .plyr-hls-player,
+.live-video-immersive-root.is-video-fill.has-nav-dock .plyr-hls-player .plyr,
+.live-video-immersive-root.is-video-fill.has-nav-dock .live-video-player {
+  height: auto;
+  max-height: 100%;
 }
 
 .live-reader--video-fill .live-video-chrome--top {
@@ -1788,6 +1812,9 @@ html.app-immersive-fullscreen[data-system-bars-visible="true"] .live-reader--vid
 .live-video-immersive-root.is-netflix.has-nav-dock {
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 .live-video-immersive-root.is-netflix.has-nav-dock .live-video-stage-shell {
@@ -1796,11 +1823,14 @@ html.app-immersive-fullscreen[data-system-bars-visible="true"] .live-reader--vid
   display: flex;
   flex-direction: column;
   min-height: 0;
+  height: auto;
+  overflow: hidden;
 }
 
 .live-video-immersive-root.is-netflix.has-nav-dock .live-video-stage {
   flex: 1 1 auto;
   min-height: 0;
+  height: auto;
 }
 
 .live-video-chrome--dock {
@@ -2557,6 +2587,10 @@ html.native-app #root > .reader .live-reader__body::-webkit-scrollbar,
   gap: 6px;
   padding: 6px 8px 0;
   position: relative;
+}
+
+.live-video-immersive-root.is-netflix.has-nav-dock .live-video-subtitle-overlay {
+  bottom: calc(var(--video-watch-dock-height, 72px) + 10px);
 }
 
 .live-video-subtitle-overlay {
