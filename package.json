@@ -57,7 +57,7 @@
     "@capacitor/splash-screen": "^8.0.2",
     "@capacitor/status-bar": "^8.0.3",
     "@capgo/capacitor-background-task": "^8.1.7",
-    "@sentry/react": "^9.47.1",
+    "@sentry/react": "^10.73.0",
     "fdir": "^6.5.0",
     "hls.js": "^1.7.1",
     "ipaddr.js": "^2.5.0",
